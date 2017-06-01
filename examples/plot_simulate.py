@@ -21,16 +21,15 @@ n_times = 512  # T
 n_atoms = 2  # K
 n_trials = 100  # N
 
-reg = 0.1
-alpha = 1.8
+alpha = 1.2
 
 ###############################################################################
 # Next, we define the parameters for alpha CSC
 
-n_iter_global = 5
+n_iter_global = 10
 n_iter_optim = 20
-n_iter_mcmc = 10
-n_burnin_mcmc = 5
+n_iter_mcmc = 100
+n_burnin_mcmc = 50
 
 n_iter = n_iter_global * n_iter_optim  # fair comparison
 
@@ -46,22 +45,25 @@ X, ds_true, Z_true = simulate_data(n_trials, n_times, n_times_atom,
 ###############################################################################
 # Add some noise and corrupt some trials
 
+from scipy.stats import levy_stable # noqa
 from alphacsc import check_random_state # noqa
 
-fraction_corrupted = 0.1
+fraction_corrupted = 0.01
 print('fraction_corrupted: %0.2f' % fraction_corrupted)
 n_corrupted_trials = int(fraction_corrupted * n_trials)
 
 # Add stationary noise:
 rng = check_random_state(random_state_simulate)
 X += 0.01 * rng.randn(*X.shape)
-noise_level = 0.005
 
-# add corrupted trials
+noise_level = 0.005
+# add impulsive noise
 if n_corrupted_trials > 0:
     idx_corrupted = rng.randint(0, n_trials,
                                 size=n_corrupted_trials)
-    X[idx_corrupted] += 0.1 * rng.randn(n_corrupted_trials, X.shape[1])
+    X[idx_corrupted] += levy_stable.rvs(alpha, 0, loc=0, scale=noise_level,
+                                        size=(n_corrupted_trials, n_times),
+                                        random_state=random_state_simulate)
 
 ###############################################################################
 # Now, we run vanilla CSC on the data.
@@ -69,6 +71,7 @@ if n_corrupted_trials > 0:
 from functools import partial # noqa
 from alphacsc import learn_d_z, update_d_block # noqa
 
+reg = 0.2  # twice the regularization in alpha-CSC
 random_state = 60
 func = partial(update_d_block, projection='dual')
 
@@ -84,6 +87,7 @@ print('Vanilla CSC')
 
 from alphacsc import learn_d_z_weighted # noqa
 
+reg = 0.1  # let's give CSC the benefit of doubt :)
 d_hat_mcem, z_hat_mcem, Tau = learn_d_z_weighted(
     X, n_atoms, n_times_atom, func_d=func, reg=reg, alpha=alpha,
     solver_d_kwargs=dict(factr=100), n_iter_global=n_iter_global,
@@ -102,6 +106,4 @@ plt.plot(d_hat_mcem.T, 'r', label=r'$\alpha$CSC')
 plt.plot(ds_true.T, 'k--', label='True atoms')
 handles, labels = plt.gca().get_legend_handles_labels()
 plt.legend(handles[::2], labels[::2], loc='best')
-
-plt.title('%d%% corrupted' % (fraction_corrupted * 100))
 plt.show()

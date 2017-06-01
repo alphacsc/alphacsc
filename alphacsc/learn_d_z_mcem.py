@@ -24,8 +24,9 @@ def learn_d_z_weighted(X, n_atoms, n_times_atom, func_d, reg=0.1, alpha=1.9,
         Phi = np.tile(np.std(X, axis=1)[:, None] ** 2, X.shape[1])
         Tau = 1 / Phi
     else:
-        Phi = np.ones((n_trials, n_times))
-        Tau = np.ones((n_trials, n_times))
+        # assume gaussian to start with
+        Phi = 2 * np.ones((n_trials, n_times))
+        Tau = 0.5 * np.ones((n_trials, n_times))
 
     rng = check_random_state(random_state)
 
