@@ -19,6 +19,7 @@
 # import os
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
+import sphinx_bootstrap_theme
 
 
 # -- General configuration ------------------------------------------------
@@ -30,7 +31,14 @@
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = []
+extensions = [
+    'sphinx.ext.autodoc',
+    'sphinx.ext.autosummary',
+    'sphinx.ext.doctest',
+    'sphinx.ext.intersphinx',
+    'sphinx.ext.mathjax',
+    'sphinx_gallery.gen_gallery',
+]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -76,19 +84,27 @@ pygments_style = 'sphinx'
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = False
 
-
 # -- Options for HTML output ----------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-#
-html_theme = 'alabaster'
+html_theme = 'bootstrap'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
-#
-# html_theme_options = {}
+html_theme_options = {
+    'navbar_sidebarrel': False,
+    'navbar_links': [
+        ("Examples", "auto_examples/index"),
+        ("API", "api"),
+        ("GitHub", "https://github.com/alphacsc/alphacsc", True)
+    ],
+    'bootswatch_theme': "united"
+}
+
+# Add any paths that contain custom themes here, relative to this directory.
+html_theme_path = sphinx_bootstrap_theme.get_html_theme_path()
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -152,5 +168,13 @@ texinfo_documents = [
      'Miscellaneous'),
 ]
 
-
-
+sphinx_gallery_conf = {
+    'examples_dirs': '../examples',
+    'gallery_dirs': 'auto_examples',
+    'reference_url': {
+        'mne': 'http://martinos.org/mne/stable',
+        'alphacsc': 'http://alphacsc.github.io/',
+        'numpy': 'http://docs.scipy.org/doc/numpy-1.9.1',
+        'scipy': 'http://docs.scipy.org/doc/scipy-0.17.0/reference',
+        'mayavi': 'http://docs.enthought.com/mayavi/mayavi'}
+}
