@@ -7,7 +7,7 @@ This example demonstrates alphaCSC on simulated data.
 """
 
 # Authors: Mainak Jas <mainak.jas@telecom-paristech.fr>
-#          Tom Dupre La Tour <tom.duprelatour.10@gmail.com>
+#          Tom Dupre La Tour <tom.duprelatour@telecom-paristech.fr>
 #          Umut Simsekli <umut.simsekli@telecom-paristech.fr>
 #          Alexandre Gramfort <alexandre.gramfort@telecom-paristech.fr>
 #
@@ -26,16 +26,17 @@ alpha = 1.8
 
 fraction_corrupteds = [0.0, 0.1]
 
-n_times_atom = 64  # q
+n_times_atom = 64  # L
 n_times = 512  # T
-n_atoms = 2
-n_trials = 100
+n_atoms = 2  # K
+n_trials = 100  # N
 
 n_iter_global = 5
-n_iter_optim = 50
-n_iter_optim_init = 50
+n_iter_optim = 20
+n_iter_optim_init = 20
 n_iter_mcmc = 10
 n_burnin_mcmc = 5
+n_iter = n_iter_optim_init + n_iter_global * n_iter_optim
 
 random_state = 60
 
@@ -63,15 +64,15 @@ for fraction_corrupted in fraction_corrupteds:
 
     # add corrupted trials
     if n_corrupted_trials > 0:
-        idx_corrupted = rng.random_integers(0, n_trials,
-                                            size=n_corrupted_trials)
+        idx_corrupted = rng.randint(0, n_trials,
+                                    size=n_corrupted_trials)
         X[idx_corrupted] += 0.1 * rng.randn(n_corrupted_trials, X.shape[1])
 
     func = partial(update_d_block, projection='dual')
 
     pobj, times, d_hat, Z_hat = learn_d_z(
         X, n_atoms, n_times_atom, func_d=func, reg=reg,
-        n_iter=30,
+        n_iter=n_iter,
         solver_d_kwargs=dict(factr=100), random_state=random_state,
         n_jobs=1, solver_z='l_bfgs', verbose=1)
     d_hats.append(d_hat)
@@ -86,9 +87,9 @@ for fraction_corrupted in fraction_corrupteds:
         verbose=1)
     d_hats_mcem.append(d_hat_mcem)
 
-# set_matplotlib_defaults(plt, 'seaborn-whitegrid')
 fig, axs = plt.subplots(2, len(fraction_corrupteds),
                         sharex=True, sharey=True, figsize=(12, 8))
+axs = axs.reshape(2, len(fraction_corrupteds))
 for ax, d_hat, d_hat_mcem, fraction_corrupted in \
         zip(axs.T, d_hats, d_hats_mcem, fraction_corrupteds):
 

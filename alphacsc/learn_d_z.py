@@ -1,10 +1,11 @@
 """Convolutional dictionary learning"""
 
 # Authors: Mainak Jas <mainak.jas@telecom-paristech.fr>
-#          Tom Dupre La Tour <tom.duprelatour.10@gmail.com>
+#          Tom Dupre La Tour <tom.duprelatour@telecom-paristech.fr>
 #          Umut Simsekli <umut.simsekli@telecom-paristech.fr>
 #          Alexandre Gramfort <alexandre.gramfort@telecom-paristech.fr>
 
+from __future__ import print_function
 import time
 import sys
 
@@ -72,7 +73,7 @@ def learn_d_z(X, n_atoms, n_times_atom, func_d=update_d_block, reg=0.1,
     with Parallel(n_jobs=n_jobs) as parallel:
         for ii in range(n_iter):  # outer loop of coordinate descent
             if verbose == 1:
-                print '.',
+                print('.', end='')
                 sys.stdout.flush()
             if verbose > 1:
                 print('Coordinate descent loop %d / %d [n_jobs=%d]' %

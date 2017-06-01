@@ -1,3 +1,8 @@
+# Authors: Mainak Jas <mainak.jas@telecom-paristech.fr>
+#          Tom Dupre La Tour <tom.duprelatour@telecom-paristech.fr>
+#          Umut Simsekli <umut.simsekli@telecom-paristech.fr>
+#          Alexandre Gramfort <alexandre.gramfort@telecom-paristech.fr>
+
 import numpy as np
 
 from .utils import check_random_state, construct_X
