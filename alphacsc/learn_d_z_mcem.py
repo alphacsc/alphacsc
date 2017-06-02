@@ -34,6 +34,8 @@ def learn_d_z_weighted(X, n_atoms, n_times_atom, func_d, reg=0.1, alpha=1.9,
     # Run the MCEM algorithm
     for i in range(n_iter_global):
 
+        Tau *= 2
+
         # Optimize d and z wrt the new weights
         pobj, times, d_hat, z_hat = learn_d_z(
             X, n_atoms, n_times_atom, func_d, reg=reg, n_iter=n_iter_optim,

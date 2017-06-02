@@ -91,3 +91,59 @@ def check_random_state(seed):
         return seed
     raise ValueError('%r cannot be used to seed a numpy.random.RandomState'
                      ' instance' % seed)
+
+
+def plot_data(X, plot_types=None):
+    """Plot the data.
+
+    Parameters
+    ----------
+    X : list
+        A list of arrays of shape (n_trials, n_times).
+        E.g., one could give [X, X_hat]
+    plot_types : list of str
+        If None, plt.plot for all.
+        E.g., plot_data([X, Z], ['plot', 'stem'])
+    """
+    import matplotlib.pyplot as plt
+
+    if not isinstance(X, list):
+        raise ValueError('Got %s. It must be a list' % type(X))
+
+    if plot_types is None:
+        plot_types = ['plot' for ii in range(len(X))]
+
+    if not isinstance(plot_types, list):
+        raise ValueError('Got %s. It must be a list' % type(plot_types))
+    if len(plot_types) != len(X):
+        raise ValueError('X and plot_types must be of same length')
+
+    def _onclick(event):
+        orig_ax = event.inaxes
+        fig, ax = plt.subplots(1)
+        ax.set_axis_bgcolor('white')
+        for jj in range(len(plot_types)):
+            if orig_ax._plot_types[jj] == 'plot':
+                ax.plot(orig_ax._X[jj])
+            elif orig_ax._plot_types[jj] == 'stem':
+                ax.plot(orig_ax._X[jj], '-o')
+        plt.title('%s' % orig_ax._name)
+        plt.show()
+
+    n_trials = X[0].shape[0]
+    fig, axes = plt.subplots(n_trials, 1, sharex=True, sharey=True)
+    fig.canvas.mpl_connect('button_press_event', _onclick)
+    fig.patch.set_facecolor('white')
+    for ii in range(n_trials):
+        for jj in range(len(X)):
+            if plot_types[jj] == 'plot':
+                axes[ii].plot(X[jj][ii])
+            elif plot_types[jj] == 'stem':
+                axes[ii].plot(X[jj][ii], '-o')
+        axes[ii].get_yaxis().set_ticks([])
+        axes[ii].set_ylabel('Trial %d' % (ii + 1), rotation=0, ha='right')
+        axes[ii]._name = 'Trial %d' % (ii + 1)
+        axes[ii]._plot_types = plot_types
+        axes[ii]._X = [X[jj][ii] for jj in range(len(X))]
+    plt.xlabel('Time')
+    plt.show()

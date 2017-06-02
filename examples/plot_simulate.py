@@ -22,12 +22,13 @@ n_atoms = 2  # K
 n_trials = 100  # N
 
 alpha = 1.2
+reg = 0.1
 
 ###############################################################################
 # Next, we define the parameters for alpha CSC
 
 n_iter_global = 10
-n_iter_optim = 20
+n_iter_optim = 50
 n_iter_mcmc = 100
 n_burnin_mcmc = 50
 
@@ -71,7 +72,6 @@ if n_corrupted_trials > 0:
 from functools import partial # noqa
 from alphacsc import learn_d_z, update_d_block # noqa
 
-reg = 0.2  # twice the regularization in alpha-CSC
 random_state = 60
 func = partial(update_d_block, projection='dual')
 
@@ -87,11 +87,10 @@ print('Vanilla CSC')
 
 from alphacsc import learn_d_z_weighted # noqa
 
-reg = 0.1  # let's give CSC the benefit of doubt :)
 d_hat_mcem, z_hat_mcem, Tau = learn_d_z_weighted(
     X, n_atoms, n_times_atom, func_d=func, reg=reg, alpha=alpha,
     solver_d_kwargs=dict(factr=100), n_iter_global=n_iter_global,
-    n_iter_optim=n_iter_optim,
+    n_iter_optim=n_iter_optim, init_tau=True,
     n_iter_mcmc=n_iter_mcmc, n_burnin_mcmc=n_burnin_mcmc,
     random_state=random_state, n_jobs=1, solver_z='l_bfgs',
     verbose=1)
@@ -101,6 +100,7 @@ d_hat_mcem, z_hat_mcem, Tau = learn_d_z_weighted(
 
 import matplotlib.pyplot as plt # noqa
 
+plt.figure()
 plt.plot(d_hat.T, 'b', label='CSC')
 plt.plot(d_hat_mcem.T, 'r', label=r'$\alpha$CSC')
 plt.plot(ds_true.T, 'k--', label='True atoms')
