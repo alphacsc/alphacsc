@@ -29,6 +29,22 @@ To check if everything worked fine, you can do::
 
 and it should not give any error messages.
 
+Quickstart
+==========
+
+All you need is a numpy array ``X`` of shape `n_trials` x `n_times`. You need to specify the
+length of atoms `n_times_atom` and the number of atoms `n_atoms` you would like to estimate.
+The penalty parameter `reg` controls the sparsity in the activations estimated.
+
+.. code:: python
+
+>>> from alphacsc import learn_d_z
+>>> from functools import partial
+>>> n_atoms, n_times_atom, n_iter = 2, 64, 160
+>>> func_d = partial(update_d_block, projection='dual')
+>>> pobj, times, d_hat, Z_hat = learn_d_z(X, n_atoms, n_times_atom, func_d=func_d,
+					  reg=reg, n_iter=n_iter)  # doctest: +SKIP
+
 Bug reports
 ===========
 
