@@ -52,6 +52,15 @@ idx_corrupted = rng.randint(0, n_trials,
                             size=n_corrupted_trials)
 
 ###############################################################################
+# Let us look at the first 10 trials to see how they look.
+
+from alphacsc.utils import plot_data # noqa
+plot_data([X[:10]])
+
+###############################################################################
+# Note that the atoms don't always have the same amplitude or occur at the
+# same time instant.
+#
 # Now, we run vanilla CSC on the data.
 
 from functools import partial # noqa
@@ -71,7 +80,7 @@ print('Vanilla CSC')
 # Finally, let's compare the results.
 
 import matplotlib.pyplot as plt # noqa
-
+plt.figure()
 plt.plot(d_hat.T)
 
 ###############################################################################
