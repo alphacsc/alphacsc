@@ -59,7 +59,8 @@ n_atoms = 3
 n_iter = 60
 ###############################################################################
 # Let's stick to one random state for now, but if you want to learn how to
-# select the random state, consult this example.
+# select the random state, consult :ref:`this example
+# <sphx_glr_auto_examples_plot_simulate_randomstate.py>`.
 random_state = 10
 
 ###############################################################################
