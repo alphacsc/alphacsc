@@ -63,8 +63,7 @@ plot_data([X[:10]])
 #
 # Now, we run vanilla CSC on the data.
 
-from functools import partial # noqa
-from alphacsc import learn_d_z, update_d_block # noqa
+from alphacsc import learn_d_z # noqa
 
 random_state = 60
 
