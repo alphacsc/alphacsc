@@ -66,17 +66,14 @@ X[idx_corrupted] += levy_stable.rvs(alpha, 0, loc=0, scale=noise_level,
 # and then alpha CSC on the same data
 
 from functools import partial # noqa
-from alphacsc import update_d_block, learn_d_z_weighted # noqa
-
-func = partial(update_d_block, projection='dual')
+from alphacsc import learn_d_z_weighted # noqa
 
 d_hat, z_hat, Tau = learn_d_z_weighted(
-    X, n_atoms, n_times_atom, func_d=func, reg=reg, alpha=alpha,
+    X, n_atoms, n_times_atom, reg=reg, alpha=alpha,
     solver_d_kwargs=dict(factr=100), n_iter_global=n_iter_global,
     n_iter_optim=n_iter_optim, init_tau=True,
     n_iter_mcmc=n_iter_mcmc, n_burnin_mcmc=n_burnin_mcmc,
-    random_state=60, n_jobs=1, solver_z='l_bfgs',
-    verbose=1)
+    random_state=60, n_jobs=1, verbose=1)
 
 ###############################################################################
 # Finally, let's compare the results. Now, it works even in the presence

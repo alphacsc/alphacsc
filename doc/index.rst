@@ -39,10 +39,8 @@ The penalty parameter `reg` controls the sparsity in the activations estimated.
 .. code:: python
 
 >>> from alphacsc import learn_d_z
->>> from functools import partial
 >>> n_atoms, n_times_atom, n_iter = 2, 64, 160
->>> func_d = partial(update_d_block, projection='dual')
->>> pobj, times, d_hat, Z_hat = learn_d_z(X, n_atoms, n_times_atom, func_d=func_d,
+>>> pobj, times, d_hat, Z_hat = learn_d_z(X, n_atoms, n_times_atom,
 					  reg=reg, n_iter=n_iter)  # doctest: +SKIP
 
 Bug reports

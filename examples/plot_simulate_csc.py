@@ -67,13 +67,11 @@ from functools import partial # noqa
 from alphacsc import learn_d_z, update_d_block # noqa
 
 random_state = 60
-func = partial(update_d_block, projection='dual')
 
 pobj, times, d_hat, Z_hat = learn_d_z(
-    X, n_atoms, n_times_atom, func_d=func, reg=reg,
-    n_iter=n_iter,
+    X, n_atoms, n_times_atom, reg=reg, n_iter=n_iter,
     solver_d_kwargs=dict(factr=100), random_state=random_state,
-    n_jobs=1, solver_z='l_bfgs', verbose=1)
+    n_jobs=1, verbose=1)
 print('Vanilla CSC')
 
 ###############################################################################
@@ -100,10 +98,9 @@ X[idx_corrupted] += levy_stable.rvs(alpha, 0, loc=0, scale=noise_level,
                                     size=(n_corrupted_trials, n_times),
                                     random_state=random_state_simulate)
 pobj, times, d_hat, Z_hat = learn_d_z(
-    X, n_atoms, n_times_atom, func_d=func, reg=reg,
-    n_iter=n_iter,
+    X, n_atoms, n_times_atom, reg=reg, n_iter=n_iter,
     solver_d_kwargs=dict(factr=100), random_state=random_state,
-    n_jobs=1, solver_z='l_bfgs', verbose=1)
+    n_jobs=1, verbose=1)
 plt.figure()
 plt.plot(d_hat.T)
 plt.show()

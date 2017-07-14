@@ -9,10 +9,12 @@ import numpy as np
 
 from .utils import construct_X, check_random_state
 from .learn_d_z import learn_d_z
+from .update_d import update_d_block
 from .update_w import estimate_phi_mh
 
 
-def learn_d_z_weighted(X, n_atoms, n_times_atom, func_d, reg=0.1, alpha=1.9,
+def learn_d_z_weighted(X, n_atoms, n_times_atom, func_d=update_d_block,
+                       reg=0.1, alpha=1.9,
                        n_iter_global=10, init_tau=False, n_iter_optim=10,
                        n_iter_mcmc=10, n_burnin_mcmc=0, random_state=None,
                        n_jobs=1, solver_z='l_bfgs', solver_d_kwargs=dict(),
