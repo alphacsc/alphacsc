@@ -24,7 +24,7 @@ from alphacsc.swm import sliding_window_matching
 
 n_times_atom = 64  # L
 n_times = 5000  # T
-n_atoms = 2  # K
+n_atoms = 1  # K
 n_trials = 10  # N
 
 
@@ -42,6 +42,11 @@ L = 64
 G = 1000
 
 d_hat, window_starts, J = sliding_window_matching(X, Fs, L, G,
-                                                  max_iterations=1000)
+                                                  max_iterations=10000,
+                                                  T=0.01)
 plt.plot(d_hat)
+
+plt.figure()
+plt.plot(J)
+plt.title('Cost function J')
 plt.show()

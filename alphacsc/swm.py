@@ -102,11 +102,13 @@ def sliding_window_matching(x, Fs, L, G, max_iterations=500, T=1,
 
         # Accept update to J with a certain probability
         if np.random.rand() < p_accept:
+            print('Accepted')
             # Update J
             J[iter_num] = J_temp
             # Update X
             window_starts = window_starts_temp
         else:
+            print('Rejected')
             # Update J
             J[iter_num] = J[iter_num - 1]
 
