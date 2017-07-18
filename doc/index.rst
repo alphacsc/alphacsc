@@ -7,7 +7,15 @@
 
 	<h1>&alpha;CSC</h1>
 
-This is a library to perform convolutional dictionary learning on neural time-series data.
+This is a library to perform shift-invariant
+`dictionary learning <https://en.wikipedia.org/wiki/Sparse_dictionary_learning>`_ on neural time-series data.
+
+Wait ... but what is alphaCSC [1] anyway?
+
+CSC stands for "Convolutional Sparse Coding". The alpha refers to the fact that we assume an `alpha-stable
+distribution <https://en.wikipedia.org/wiki/Stable_distribution>`_ for the noise term.
+This leads to a weighted formulation of `vanilla' CSC, the weights being used to downweight
+noisy portions of the data.
 
 Installation
 ============
@@ -39,9 +47,8 @@ The penalty parameter `reg` controls the sparsity in the activations estimated.
 .. code:: python
 
 >>> from alphacsc import learn_d_z
->>> n_atoms, n_times_atom, n_iter = 2, 64, 160
->>> pobj, times, d_hat, Z_hat = learn_d_z(X, n_atoms, n_times_atom,
-					  reg=reg, n_iter=n_iter)  # doctest: +SKIP
+>>> n_atoms, n_times_atom, n_iter = 2, 64, 60
+>>> pobj, times, d_hat, Z_hat = learn_d_z(X, n_atoms, n_times_atom, reg=reg, n_iter=n_iter)  # doctest: +SKIP
 
 Bug reports
 ===========
