@@ -41,10 +41,9 @@ def sliding_window_matching(x, L, G, max_iterations=500, T=1,
     Returns
     -------
     avg_window : ndarray (1d)
-        the average waveform in 'x' in the frequency 'f_range' triggered
-        on 'trigger'
+        The average waveform in x.
     window_starts : ndarray (1d)
-        indices at which each window begins for the final set of windows
+        Indices at which each window begins for the final set of windows
     J : np.ndarray (1d)
         Cost function value at each iteration
 
@@ -81,21 +80,20 @@ def sliding_window_matching(x, L, G, max_iterations=500, T=1,
 
     # For each iteration, randomly replace a window with a new window
     # to improve cross-window similarity
-    iter_num = 1
-    while iter_num < max_iterations:
+    for idx in range(1, max_iterations):
         # Pick a random window position
-        window_idx_replace = random_window_idx[iter_num]
+        window_idx_replace = random_window_idx[idx]
 
         # Find a new allowed position for the window
         window_starts_temp = np.copy(window_starts)
         window_starts_temp[window_idx_replace] = _find_new_windowidx(
             window_starts, G, L, len(x) - L, rng)
 
-        # Calculate the cost
+        # Calculate the cost with replaced windows
         J_temp = _compute_J(x, window_starts_temp, L)
 
         # Calculate the change in cost function
-        deltaJ = J_temp - J[iter_num - 1]
+        deltaJ = J_temp - J[idx - 1]
 
         # Calculate the acceptance probability
         p_accept = np.exp(-deltaJ / float(T))
@@ -104,22 +102,20 @@ def sliding_window_matching(x, L, G, max_iterations=500, T=1,
         if rng.rand() < p_accept:
             print('Accepted')
             # Update J
-            J[iter_num] = J_temp
+            J[idx] = J_temp
             # Update X
             window_starts = window_starts_temp
         else:
             print('Rejected')
             # Update J
-            J[iter_num] = J[iter_num - 1]
+            J[idx] = J[idx - 1]
 
-        print('[iter %03d] Cost function: %s' % (iter_num, J[iter_num]))
-        # Update iteration number
-        iter_num += 1
+        print('[iter %03d] Cost function: %s' % (idx, J[idx]))
 
     # Calculate average window
     avg_window = np.zeros(L)
     for w in range(N_windows):
-        avg_window = avg_window + x[window_starts[w]:window_starts[w] + L]
+        avg_window += x[window_starts[w]:window_starts[w] + L]
     avg_window = avg_window / float(N_windows)
 
     return avg_window, window_starts, J
