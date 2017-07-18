@@ -10,6 +10,11 @@ works on simulated data.
 Journal of neuroscience methods 275 (2017): 66-79.
 """
 
+# Authors: Scott Cole
+#          Mainak Jas <mainak.jas@telecom-paristech.fr>
+#
+# License: BSD (3-clause)
+
 import matplotlib.pyplot as plt
 
 from alphacsc import check_random_state # noqa
