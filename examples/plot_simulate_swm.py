@@ -37,13 +37,12 @@ X += 0.01 * rng.randn(*X.shape)
 
 X = X.reshape(X.shape[0] * X.shape[1])
 
-Fs = 1
 L = 64
 G = 1000
+random_state = 42
 
-d_hat, window_starts, J = sliding_window_matching(X, Fs, L, G,
-                                                  max_iterations=10000,
-                                                  T=0.01)
+d_hat, window_starts, J = sliding_window_matching(
+    X, L, G, max_iterations=10000, T=0.01, random_state=random_state)
 plt.plot(d_hat)
 
 plt.figure()

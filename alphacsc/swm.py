@@ -11,9 +11,11 @@ neural oscillations using correlations.
 
 import numpy as np
 
+from .utils import check_random_state
+
 
 def sliding_window_matching(x, L, G, max_iterations=500, T=1,
-                            window_starts_custom=None):
+                            window_starts_custom=None, random_state=None):
     """
     Find recurring patterns in a time series using the
     sliding window matching algorithm
@@ -32,6 +34,8 @@ def sliding_window_matching(x, L, G, max_iterations=500, T=1,
         Maximum number of iterations of potential changes in window placement
     window_starts_custom : np.ndarray (1d)
         Pre-set locations of initial windows (instead of evenly spaced by 2G)
+    random_state : int
+        The random state
 
     Returns
     -------
@@ -58,6 +62,8 @@ def sliding_window_matching(x, L, G, max_iterations=500, T=1,
     * L and G should be chosen to be about the size of the motif of interest
     """
 
+    rng = check_random_state(random_state)
+
     # Initialize window positions, separated by 2*G
     if window_starts_custom is None:
         window_starts = np.arange(0, len(x) - L, 2 * G)
@@ -70,7 +76,7 @@ def sliding_window_matching(x, L, G, max_iterations=500, T=1,
     J[0] = _compute_J(x, window_starts, L)
 
     # Randomly sample windows with replacement
-    random_window_idx = np.random.choice(range(N_windows), size=max_iterations)
+    random_window_idx = rng.choice(range(N_windows), size=max_iterations)
 
     # For each iteration, randomly replace a window with a new window
     # to improve cross-window similarity
@@ -82,7 +88,7 @@ def sliding_window_matching(x, L, G, max_iterations=500, T=1,
         # Find a new allowed position for the window
         window_starts_temp = np.copy(window_starts)
         window_starts_temp[window_idx_replace] = _find_new_windowidx(
-            window_starts, G, L, len(x) - L)
+            window_starts, G, L, len(x) - L, rng)
 
         # Calculate the cost
         J_temp = _compute_J(x, window_starts_temp, L)
@@ -94,7 +100,7 @@ def sliding_window_matching(x, L, G, max_iterations=500, T=1,
         p_accept = np.exp(-deltaJ / float(T))
 
         # Accept update to J with a certain probability
-        if np.random.rand() < p_accept:
+        if rng.rand() < p_accept:
             print('Accepted')
             # Update J
             J[iter_num] = J_temp
@@ -141,7 +147,7 @@ def _compute_J(x, window_starts, L):
     return J
 
 
-def _find_new_windowidx(window_starts, G, L, N_samp,
+def _find_new_windowidx(window_starts, G, L, N_samp, rng,
                         tries_limit=1000):
     """Find a new sample for the starting window"""
 
@@ -149,7 +155,7 @@ def _find_new_windowidx(window_starts, G, L, N_samp,
     N_tries = 0
     while found is False:
         # Generate a random sample
-        new_samp = np.random.randint(N_samp)
+        new_samp = rng.randint(N_samp)
         # Check how close the sample is to other window starts
         dists = np.abs(window_starts - new_samp)
         if np.min(dists) > G:
