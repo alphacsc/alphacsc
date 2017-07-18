@@ -9,8 +9,8 @@ from Voytek lab. Note that, at present, it does not
 implement parallel tempering.
 
 [1] Gips, Bart, et al.
-"Discovering recurring patterns in electrophysiological recordings."
-Journal of neuroscience methods 275 (2017): 66-79.
+    Discovering recurring patterns in electrophysiological recordings.
+    Journal of neuroscience methods 275 (2017): 66-79.
 """
 
 # Authors: Scott Cole

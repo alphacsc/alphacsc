@@ -58,6 +58,6 @@ Use the `github issue tracker <https://github.com/alphacsc/alphacsc/issues>`_ to
 Cite
 ====
 
-[1] Jas, M., Tour, L., Dupré, T., Şimşekli, U., & Gramfort, A. (2017). `Learning the Morphology of
+[1] Jas, M., Dupré La Tour, T., Şimşekli, U., & Gramfort, A. (2017). `Learning the Morphology of
 Brain Signals Using Alpha-Stable Convolutional Sparse Coding <https://arxiv.org/pdf/1705.08006>`_.
 arXiv preprint arXiv:1705.08006.
