@@ -32,7 +32,8 @@ random_state = 42
 
 random_state_simulate = 1
 X, ds_true, Z_true = simulate_data(n_trials, n_times, n_times_atom,
-                                   n_atoms, random_state_simulate)
+                                   n_atoms, random_state_simulate,
+                                   constant_amplitude=True)
 
 rng = check_random_state(random_state_simulate)
 X += 0.01 * rng.randn(*X.shape)
