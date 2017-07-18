@@ -12,7 +12,7 @@ neural oscillations using correlations.
 import numpy as np
 
 
-def sliding_window_matching(x, Fs, L, G, max_iterations=500, T=1,
+def sliding_window_matching(x, L, G, max_iterations=500, T=1,
                             window_starts_custom=None):
     """
     Find recurring patterns in a time series using the
@@ -22,8 +22,6 @@ def sliding_window_matching(x, Fs, L, G, max_iterations=500, T=1,
     ----------
     x : array-like 1d
         voltage time series
-    Fs : float
-        sampling rate (samples per second)
     L : float
         window length (seconds)
     G : float
@@ -57,24 +55,19 @@ def sliding_window_matching(x, Fs, L, G, max_iterations=500, T=1,
     -----
     * Apply a highpass filter if looking at high frequency activity,
       so that it does not converge on a low frequency motif
-    * L and G should be chosen to be about the size of the motif of interest,
-       and the N derived should be about the number of occurrences
+    * L and G should be chosen to be about the size of the motif of interest
     """
-
-    # Compute window length and spacing in samples
-    L_samp = int(L * Fs)
-    G_samp = int(G * Fs)
 
     # Initialize window positions, separated by 2*G
     if window_starts_custom is None:
-        window_starts = np.arange(0, len(x) - L_samp, 2 * G_samp)
+        window_starts = np.arange(0, len(x) - L, 2 * G)
     else:
         window_starts = window_starts_custom
     N_windows = len(window_starts)
 
     # Calculate initial cost
     J = np.zeros(max_iterations)
-    J[0] = _compute_J(x, window_starts, L_samp)
+    J[0] = _compute_J(x, window_starts, L)
 
     # Randomly sample windows with replacement
     random_window_idx = np.random.choice(range(N_windows), size=max_iterations)
@@ -89,10 +82,10 @@ def sliding_window_matching(x, Fs, L, G, max_iterations=500, T=1,
         # Find a new allowed position for the window
         window_starts_temp = np.copy(window_starts)
         window_starts_temp[window_idx_replace] = _find_new_windowidx(
-            window_starts, G_samp, L_samp, len(x) - L_samp)
+            window_starts, G, L, len(x) - L)
 
         # Calculate the cost
-        J_temp = _compute_J(x, window_starts_temp, L_samp)
+        J_temp = _compute_J(x, window_starts_temp, L)
 
         # Calculate the change in cost function
         deltaJ = J_temp - J[iter_num - 1]
@@ -117,23 +110,23 @@ def sliding_window_matching(x, Fs, L, G, max_iterations=500, T=1,
         iter_num += 1
 
     # Calculate average window
-    avg_window = np.zeros(L_samp)
+    avg_window = np.zeros(L)
     for w in range(N_windows):
-        avg_window = avg_window + x[window_starts[w]:window_starts[w] + L_samp]
+        avg_window = avg_window + x[window_starts[w]:window_starts[w] + L]
     avg_window = avg_window / float(N_windows)
 
     return avg_window, window_starts, J
 
 
-def _compute_J(x, window_starts, L_samp):
+def _compute_J(x, window_starts, L):
     """Compute the cost, which is proportional to the
     difference between pairs of windows"""
 
     # Get all windows and zscore them
     N_windows = len(window_starts)
-    windows = np.zeros((N_windows, L_samp))
+    windows = np.zeros((N_windows, L))
     for w in range(N_windows):
-        temp = x[window_starts[w]:window_starts[w] + L_samp]
+        temp = x[window_starts[w]:window_starts[w] + L]
         windows[w] = (temp - np.mean(temp)) / np.std(temp)
 
     # Calculate distances for all pairs of windows
@@ -141,14 +134,14 @@ def _compute_J(x, window_starts, L_samp):
     for i in range(N_windows):
         for j in range(1, N_windows):
             window_diff = windows[i] - windows[j]
-            d_temp = np.sum(window_diff**2) / float(L_samp)
+            d_temp = np.sum(window_diff**2) / float(L)
             d.append(d_temp)
     # Calculate cost, the average difference, roughly
     J = np.sum(d) / float(2 * (N_windows - 1))
     return J
 
 
-def _find_new_windowidx(window_starts, G_samp, L_samp, N_samp,
+def _find_new_windowidx(window_starts, G, L, N_samp,
                         tries_limit=1000):
     """Find a new sample for the starting window"""
 
@@ -159,7 +152,7 @@ def _find_new_windowidx(window_starts, G_samp, L_samp, N_samp,
         new_samp = np.random.randint(N_samp)
         # Check how close the sample is to other window starts
         dists = np.abs(window_starts - new_samp)
-        if np.min(dists) > G_samp:
+        if np.min(dists) > G:
             return new_samp
         else:
             N_tries += 1
