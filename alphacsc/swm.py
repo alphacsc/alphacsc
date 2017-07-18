@@ -61,7 +61,6 @@ def sliding_window_matching(x, L, G, max_iterations=500, T=1,
       so that it does not converge on a low frequency motif
     * L and G should be chosen to be about the size of the motif of interest
     """
-
     rng = check_random_state(random_state)
 
     # Initialize window positions, separated by 2*G
@@ -100,14 +99,10 @@ def sliding_window_matching(x, L, G, max_iterations=500, T=1,
 
         # Accept update to J with a certain probability
         if rng.rand() < p_accept:
-            print('Accepted')
-            # Update J
             J[idx] = J_temp
             # Update X
             window_starts = window_starts_temp
         else:
-            print('Rejected')
-            # Update J
             J[idx] = J[idx - 1]
 
         print('[iter %03d] Cost function: %s' % (idx, J[idx]))
