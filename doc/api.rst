@@ -17,6 +17,19 @@ Functions
    learn_d_z
    learn_d_z_weighted
 
+.. currentmodule:: alphacsc.swm
+
+.. autosummary::
+   :toctree: generated/
+
+   sliding_window_matching
+
+.. currentmodule:: alphacsc.motif
+
+.. autosummary::
+   :toctree: generated/
+
+   learn_atoms
 
 Simulation
 ==========
@@ -29,3 +42,14 @@ Functions
    :toctree: generated/
 
    simulate_data
+
+Visualization
+=============
+
+
+.. currentmodule:: autoreject.viz
+
+.. autosummary::
+   :toctree: generated/
+
+   plot_data
