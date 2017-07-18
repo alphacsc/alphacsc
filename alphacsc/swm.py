@@ -10,6 +10,7 @@ neural oscillations using correlations.
 #          Mainak Jas <mainak.jas@telecom-paristech.fr>
 
 import numpy as np
+from scipy.spatial.distance import pdist
 
 from .utils import check_random_state
 
@@ -136,14 +137,10 @@ def _compute_J(x, window_starts, L):
         windows[w] = (temp - np.mean(temp)) / np.std(temp)
 
     # Calculate distances for all pairs of windows
-    d = []
-    for i in range(N_windows):
-        for j in range(1, N_windows):
-            window_diff = windows[i] - windows[j]
-            d_temp = np.sum(window_diff**2) / float(L)
-            d.append(d_temp)
-    # Calculate cost, the average difference, roughly
-    J = np.sum(d) / float(2 * (N_windows - 1))
+    dist = pdist(np.vstack(windows),
+                 lambda u, v: np.sum((u - v) ** 2))
+    J = np.sum(dist) / float(L * (N_windows - 1))
+
     return J
 
 

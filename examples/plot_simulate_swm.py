@@ -27,6 +27,8 @@ n_times = 5000  # T
 n_atoms = 1  # K
 n_trials = 10  # N
 
+min_spacing = 1000
+random_state = 42
 
 random_state_simulate = 1
 X, ds_true, Z_true = simulate_data(n_trials, n_times, n_times_atom,
@@ -37,12 +39,9 @@ X += 0.01 * rng.randn(*X.shape)
 
 X = X.reshape(X.shape[0] * X.shape[1])
 
-L = 64
-G = 1000
-random_state = 42
-
 d_hat, window_starts, J = sliding_window_matching(
-    X, L, G, max_iterations=10000, T=0.01, random_state=random_state)
+    X, L=n_times_atom, G=min_spacing,
+    max_iterations=10000, T=0.01, random_state=random_state)
 plt.plot(d_hat)
 
 plt.figure()
