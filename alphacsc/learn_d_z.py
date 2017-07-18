@@ -47,7 +47,55 @@ def learn_d_z(X, n_atoms, n_times_atom, func_d=update_d_block, reg=0.1,
               n_iter=60, random_state=None, n_jobs=1, solver_z='l_bfgs',
               solver_d_kwargs=dict(), solver_z_kwargs=dict(), ds_init=None,
               sample_weights=None, verbose=10, callback=None):
+    """Learn atoms and activations using Convolutional Sparse Coding.
 
+    Parameters
+    ----------
+    X : array, shape (n_trials, n_times)
+        The data on which to perform CSC.
+    n_atoms : int
+        The number of atoms to learn.
+    n_times_atom : int
+        The support of the atom.
+    func_d : callable
+        The function to update the atoms.
+    reg : float
+        The regularization parameter
+    n_iter : int
+        The number of coordinate-descent iterations.
+    random_state : int | None
+        The random state.
+    n_jobs : int
+        The number of parallel jobs.
+    solver_z : str
+        The solver to use for the z update. Options are
+        'l_bfgs' (default) | 'ista' | 'fista'
+    solver_d_kwargs : dict
+        Additional keyword arguments to provide to update_d
+    solver_z_kwargs : dict
+        Additional keyword arguments to pass to update_z
+    ds_init : array, shape (n_atoms, n_trials)
+        The initialization for the atoms.
+    sample_weights : array, shape (n_trials, n_times)
+        The weights in the alphaCSC problem. Should be None
+        when using vanilla CSC.
+    verbose : int
+        The verbosity level.
+    callback : func
+        A callback function called at the end of each loop of the
+        coordinate descent.
+
+    Returns
+    -------
+    pobj : list
+        The objective function value at each step of the coordinate descent.
+    times : list
+        The cumulative time for each iteration of the coordinate descent.
+    d_hat : array, shape (n_atoms, n_times)
+        The estimated atoms.
+    Z_hat : array, shape (n_atoms, n_times - n_times_atom + 1)
+        The sparse activation matrix.
+    """
     n_trials, n_times = X.shape
 
     rng = check_random_state(random_state)
