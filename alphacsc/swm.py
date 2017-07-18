@@ -137,7 +137,7 @@ def _compute_J(x, window_starts, L_samp):
     # Calculate distances for all pairs of windows
     d = []
     for i in range(N_windows):
-        for j in range(i + 1, N_windows):
+        for j in range(1, N_windows):
             window_diff = windows[i] - windows[j]
             d_temp = np.sum(window_diff**2) / float(L_samp)
             d.append(d_temp)
