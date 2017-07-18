@@ -110,6 +110,7 @@ def sliding_window_matching(x, Fs, L, G, max_iterations=500, T=1,
             # Update J
             J[iter_num] = J[iter_num - 1]
 
+        print('[iter %03d] Cost function: %s' % (iter_num, J[iter_num]))
         # Update iteration number
         iter_num += 1
 
