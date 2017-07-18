@@ -2,6 +2,7 @@
 ===========================
 Alpha CSC on simulated data
 ===========================
+
 This example demonstrates alphaCSC on simulated data.
 
 """

@@ -2,6 +2,7 @@
 =============================
 Vanilla CSC on simulated data
 =============================
+
 This example demonstrates `vanilla' CSC on simulated data.
 Note that `vanilla' CSC is just a special case of
 alphaCSC with alpha=2.

@@ -10,7 +10,8 @@ from .utils import check_random_state, construct_X
 
 def simulate_data(n_trials, n_times, n_times_atom, n_atoms, random_state=42,
                   constant_amplitude=False):
-    """
+    """Simulate the data.
+
     Parameters
     ----------
     n_trials : int
@@ -21,6 +22,8 @@ def simulate_data(n_trials, n_times, n_times_atom, n_atoms, random_state=42,
         Number of time points.
     n_atoms : int
         Number of atoms.
+    random_state : int | None
+        If integer, fix the random state.
     constant_amplitude : float
         If True, the activations have constant amplitude.
 
@@ -35,7 +38,7 @@ def simulate_data(n_trials, n_times, n_times_atom, n_atoms, random_state=42,
 
     Note
     ----
-    X will be non-zero from n_times_atom to n_times
+    X will be non-zero from n_times_atom to n_times.
     """
 
     starts = list()

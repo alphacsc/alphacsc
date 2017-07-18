@@ -7,6 +7,23 @@ from .utils import check_random_state
 
 def learn_atoms(X, n_atoms, n_times_atom, n_iter=10, max_shift=11,
                 random_state=None):
+    """Learn atoms using the MoTIF algorithm.
+
+    Parameters
+    ----------
+    X : array, shape (n_trials, n_times)
+        The data on which to apply MoTIF.
+    n_atoms : int
+        The number of atoms.
+    n_times_atom : int
+        The support of the atoms
+    n_iter : int
+        The number of iterations
+    max_shift : int
+        The maximum allowable shift for the atoms.
+    random_state : int | None
+        The random initialization.
+    """
 
     rng = check_random_state(random_state)
 

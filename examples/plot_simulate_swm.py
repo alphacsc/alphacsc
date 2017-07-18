@@ -2,6 +2,7 @@
 =====================
 SWM on simulated data
 =====================
+
 This example shows how the sliding window method (SWM) [1]
 works on simulated data. The code is adapted from the
 `neurodsp package <https://github.com/voytekresearch/neurodsp/>`_

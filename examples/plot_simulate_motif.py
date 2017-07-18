@@ -2,6 +2,7 @@
 =======================
 MoTIF on simulated data
 =======================
+
 This example demonstrates MoTIF [1] on simulated data. In the
 alphacsc module, we are offering all the alternatives for the users
 to try. Please cite our paper [2] if you use this implementation.

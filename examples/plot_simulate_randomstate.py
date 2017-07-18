@@ -2,6 +2,7 @@
 ==============================
 Selecting random state for CSC
 ==============================
+
 The CSC problem is non-convex. Therefore, the solution depends
 on the initialization. Here, we show how to select the
 best atoms amongst different initializations.

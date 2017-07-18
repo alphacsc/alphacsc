@@ -17,9 +17,7 @@ from .utils import check_random_state
 
 def sliding_window_matching(x, L, G, max_iterations=500, T=1,
                             window_starts_custom=None, random_state=None):
-    """
-    Find recurring patterns in a time series using the
-    sliding window matching algorithm
+    """Find recurring patterns in a time series using SWM algorithm.
 
     Parameters
     ----------
