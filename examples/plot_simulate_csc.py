@@ -80,11 +80,12 @@ print('Vanilla CSC')
 import matplotlib.pyplot as plt # noqa
 plt.figure()
 plt.plot(d_hat.T)
+plt.plot(ds_true.T, 'k--')
 
 ###############################################################################
-# This looks quite similar to the true atoms.
-plt.figure()
-plt.plot(ds_true.T)
+# We can also visualize the learned activations
+
+plot_data([Z[:10] for Z in Z_hat], ['stem'] * n_atoms)
 
 ###############################################################################
 # Note if the data is corrupted with impulsive noise, this method may not
@@ -103,4 +104,5 @@ pobj, times, d_hat, Z_hat = learn_d_z(
     n_jobs=1, verbose=1)
 plt.figure()
 plt.plot(d_hat.T)
+plt.plot(ds_true.T, 'k--')
 plt.show()

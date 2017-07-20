@@ -83,7 +83,7 @@ d_hat, z_hat, Tau = learn_d_z_weighted(
 import matplotlib.pyplot as plt # noqa
 
 plt.figure()
-plt.plot(d_hat.T, 'b', label='CSC')
+plt.plot(d_hat.T, 'b', label=r'$\alpha$CSC')
 plt.plot(ds_true.T, 'k--', label='True atoms')
 handles, labels = plt.gca().get_legend_handles_labels()
 plt.legend(handles[::2], labels[::2], loc='best')
