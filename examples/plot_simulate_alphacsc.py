@@ -88,3 +88,21 @@ plt.plot(ds_true.T, 'k--', label='True atoms')
 handles, labels = plt.gca().get_legend_handles_labels()
 plt.legend(handles[::2], labels[::2], loc='best')
 plt.show()
+
+###############################################################################
+# We can even visualize the weights to see what time points were
+# downweighted by the algorithm
+
+fig, axes = plt.subplots(2, 1, sharex=True)
+axes[0].set_xlim([-20, n_times])
+axes[0].set_ylim([0, 2])
+axes[1].set_ylim([-0.5, 0.3])
+
+for t in [2, 250]:
+    axes[0].axvline(t, linestyle='-.')
+    axes[1].axvline(t, linestyle='-.')
+
+axes[0].plot(1 / Tau[idx_corrupted[0], :])
+axes[0].set_ylabel('1 / weights')
+axes[1].plot(X[idx_corrupted[0], :])
+axes[1].set_ylabel('Corrupted trial')
