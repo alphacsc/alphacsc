@@ -9,13 +9,25 @@
 
 This is a library to perform shift-invariant
 `dictionary learning <https://en.wikipedia.org/wiki/Sparse_dictionary_learning>`_ on neural time-series data.
+Framed mathematically, if we are giving a signal :math:`x_n \in \mathbb{R}^T`, we want to learn :math:`k`
+atoms :math:`d^k \in \mathbb{R}^{L}` and their associated activations :math:`z^k_n \in \mathbb{R}^{T - L + 1}`. The optimization
+problem boils down to minimizing an :math:`\ell_2` reconstruction loss with an :math:`\ell_1` penalty term, i.e.,
 
-Wait ... but what is alphaCSC [1] anyway?
+.. math::
+	\min_{d,z} \sum_n (\|x_n - \sum_k d^k * z^k_n \|_2^2 + \lambda \sum_k z_n^k)
 
-CSC stands for "Convolutional Sparse Coding". The alpha refers to the fact that we assume an `alpha-stable
-distribution <https://en.wikipedia.org/wiki/Stable_distribution>`_ for the noise term.
+subject to :math:`z_k >= 0`. The shift invariance is encoded by the convolution operator :math:`*` which is
+why these methods are called "convolutional sparse coding".
+
+The alpha in alphaCSC [1] refers to the fact that we assume an `alpha-stable
+distribution <https://en.wikipedia.org/wiki/Stable_distribution>`_ for the noise.
 This leads to a weighted formulation of `vanilla' CSC, the weights being used to downweight
-noisy portions of the data.
+noisy portions of the data. Or in other words:
+
+.. math::
+	\min_{d,z} \sum_n (\|\sqrt{w_n} \odot (x_n - \sum_k d^k * z^k_n) \|_2^2 + \lambda \sum_k z_k)
+
+where :math:`w_n` are the weights which are learned using an `EM algorithm <https://en.wikipedia.org/wiki/Expectation%E2%80%93maximization_algorithm>`_.
 
 Installation
 ============
