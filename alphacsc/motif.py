@@ -66,7 +66,8 @@ def learn_atoms(X, n_atoms, n_times_atom, n_iter=10, max_shift=11,
                 corrs[n] = tmp[match[k, n]]
 
                 # aligned_data[:, n] = np.roll(X[n], -shift[n])[:n_times_atom]
-                aligned_data[:, n] = X[n, match[k, n] - offset:match[k, n] + offset].copy()
+                aligned_data[:, n] = X[n, match[k, n] - offset:
+                                       match[k, n] + offset].copy()
 
             # ### STEP 2: Solve the generalized eigenvalue problem ####
             A = np.dot(aligned_data, aligned_data.T).copy()

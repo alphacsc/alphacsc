@@ -108,6 +108,7 @@ def test_solve_unit_norm():
 
 
 def test_power_iterations():
+    """Test power iteration."""
     A = np.diag((1, 2, 3))
     mu, b = np.linalg.eig(A)
     mu_hat = power_iteration(A)
@@ -115,6 +116,7 @@ def test_power_iterations():
 
 
 def test_linear_operator():
+    """Test linear operator."""
     n_times, n_atoms, n_times_atom = 128, 32, 32
     n_times_valid = n_times - n_times_atom + 1
 
@@ -148,6 +150,7 @@ def test_linear_operator():
 
 
 def test_update_d():
+    """Test vanilla d update."""
     rng = check_random_state(42)
     X, ds, z = simulate_data(n_trials, n_times, n_times_atom, n_atoms)
     ds_init = rng.randn(n_atoms, n_times_atom)
@@ -164,6 +167,7 @@ def test_update_d():
 
 
 def test_update_z_sample_weights():
+    """Test z update with weights."""
     rng = check_random_state(42)
     X, ds, z = simulate_data(n_trials, n_times, n_times_atom, n_atoms)
     b_hat_0 = rng.randn(n_atoms * (n_times - n_times_atom + 1))
@@ -202,6 +206,7 @@ def test_update_z_sample_weights():
 
 
 def test_update_d_sample_weights():
+    """Test d update with weights."""
     rng = check_random_state(42)
     X, ds, z = simulate_data(n_trials, n_times, n_times_atom, n_atoms)
     ds_init = rng.randn(n_atoms, n_times_atom)
@@ -246,6 +251,7 @@ def test_update_d_sample_weights():
 
 
 def test_learn_codes_atoms_sample_weights():
+    """Test weighted CSC."""
     rng = check_random_state(42)
     X, ds, z = simulate_data(n_trials, n_times, n_times_atom, n_atoms)
     ds_init = rng.randn(n_atoms, n_times_atom)
