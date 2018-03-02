@@ -9,13 +9,11 @@ import numpy as np
 from scipy import optimize, signal
 from joblib import Parallel, delayed
 
-from .utils import check_consistent_shape
 from .utils import _choose_convolve_multi
 
 
-def update_z_multi(X, u, v, reg, z0=None, debug=False,
-                   parallel=None, solver='l_bfgs', b_hat_0=None,
-                   solver_kwargs=dict(), sample_weights=None):
+def update_z_multi(X, u, v, reg, z0=None, debug=False, parallel=None,
+                   solver='l_bfgs', solver_kwargs=dict()):
     """Update Z using L-BFGS with positivity constraints
 
     Parameters
@@ -36,12 +34,8 @@ def update_z_multi(X, u, v, reg, z0=None, debug=False,
         Context manager for running joblibs in a loop.
     solver : 'l_bfgs' | 'ista' | 'fista'
         The solver to use.
-    b_hat_0 : array, shape ((n_times - n_times_atom + 1) * n_atoms)
-        init vector for power_iteration with 'ista' solver
     solver_kwargs : dict
         Parameters for the solver
-    sample_weights: array, shape (n_trials, n_channels, n_times)
-        Weights applied on the cost function.
     verbose : int
         Verbosity level.
 
@@ -51,7 +45,6 @@ def update_z_multi(X, u, v, reg, z0=None, debug=False,
         The true codes.
     """
     n_trials, n_channels, n_times = X.shape
-    check_consistent_shape(X, sample_weights)
     n_atoms, n_times_atom = v.shape
     n_times_valid = n_times - n_times_atom + 1
 
@@ -61,8 +54,7 @@ def update_z_multi(X, u, v, reg, z0=None, debug=False,
         parallel = Parallel(n_jobs=1)
 
     zhats = parallel(
-        my_update_z(X, u, v, reg, z0, i, debug, solver, b_hat_0, solver_kwargs,
-                    sample_weights)
+        my_update_z(X, u, v, reg, z0, i, debug, solver, solver_kwargs)
         for i in np.array_split(np.arange(n_trials), parallel.n_jobs))
     z_hat = np.vstack(zhats)
 
@@ -72,8 +64,7 @@ def update_z_multi(X, u, v, reg, z0=None, debug=False,
     return z_hat2
 
 
-def _fprime(u, v, zi, Xi=None, sample_weights=None, reg=None,
-            return_func=False):
+def _fprime(u, v, zi, Xi=None, reg=None, return_func=False):
     """np.dot(D.T, X[i] - np.dot(D, zi)) + reg
 
     Parameters
@@ -86,8 +77,6 @@ def _fprime(u, v, zi, Xi=None, sample_weights=None, reg=None,
         The activations
     Xi : array, shape (n_channels, n_times) or None
         The data array for one trial
-    sample_weights : array, shape (n_times, n_channels) or None
-        The sample weights for one trial
     reg : float or None
         The regularization constant
     return_func : boolean
@@ -112,36 +101,25 @@ def _fprime(u, v, zi, Xi=None, sample_weights=None, reg=None,
     if Xi is not None:
         Dzi -= Xi
 
-    if sample_weights is not None:
-        if return_func:
-            # preserve Dzi, we don't want to apply the weights twice in func
-            wDzi = sample_weights * Dzi
-        else:
-            Dzi *= sample_weights
-            wDzi = Dzi
-    else:
-        wDzi = Dzi
-
     if return_func:
-        func = 0.5 * np.dot(wDzi.ravel(), Dzi.ravel())
+        func = 0.5 * np.dot(Dzi.ravel(), Dzi.ravel())
         if reg is not None:
             func += reg * zi.sum()
 
     # multiply by the spatial filter u
     # n_atoms, n_channels = u.shape
-    # n_channels, n_times = wDzi.shape
-    uwDzi = np.dot(u, wDzi)
+    # n_channels, n_times = Dzi.shape
+    uDzi = np.dot(u, Dzi)
 
     # Now do the dot product with the transpose of D (D.T) which is
     # the conv by the reversed filter (keeping valid mode)
-    # n_atoms, n_times = uwDzi.shape
+    # n_atoms, n_times = uDzi.shape
     # n_atoms, n_times_atom = v.shape
     # n_atoms * n_times_valid = grad.shape
     grad = np.concatenate([
-        signal.convolve(uwDzi_k, v_k[::-1], 'valid')
-        for (uwDzi_k, v_k) in zip(uwDzi, v)
+        signal.convolve(uDzi_k, v_k[::-1], 'valid')
+        for (uDzi_k, v_k) in zip(uDzi, v)
     ])
-    # grad = -np.dot(D.T, X[i] - np.dot(D, zi))
 
     if reg is not None:
         grad += reg
@@ -153,8 +131,7 @@ def _fprime(u, v, zi, Xi=None, sample_weights=None, reg=None,
 
 
 def _update_z_multi_idx(X, u, v, reg, z0, idxs, debug, solver="l_bfgs",
-                        b_hat_0=None, solver_kwargs=dict(),
-                        sample_weights=None):
+                        solver_kwargs=dict()):
 
     n_trials, n_channels, n_times = X.shape
     n_atoms, n_times_atom = v.shape
@@ -164,18 +141,12 @@ def _update_z_multi_idx(X, u, v, reg, z0, idxs, debug, solver="l_bfgs",
     zhats = []
 
     for i in idxs:
-        if sample_weights is None:
-            sample_weights_i = None
-        else:
-            sample_weights_i = sample_weights[i]
 
         def func_and_grad(zi):
-            return _fprime(u, v, zi, Xi=X[i], reg=reg, return_func=True,
-                           sample_weights=sample_weights_i)
+            return _fprime(u, v, zi, Xi=X[i], reg=reg, return_func=True)
 
         def grad_noreg(zi):
-            return _fprime(u, v, zi, Xi=X[i], reg=None, return_func=False,
-                           sample_weights=sample_weights_i)
+            return _fprime(u, v, zi, Xi=X[i], reg=None, return_func=False)
 
         if z0 is None:
             f0 = np.zeros(n_atoms * n_times_valid)
