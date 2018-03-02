@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 
 from alphacsc.simulate import get_atoms
 from alphacsc.utils import construct_X_multi
+from alphacsc.learn_d_z_multi import learn_d_z_multi
 
 
 # Generate synchronous D
@@ -35,6 +36,12 @@ for i in range(n_trials):
 
 
 X = construct_X_multi(Z, D)
+
+pobj, times, u_hat, v_hat, Z_hat = learn_d_z_multi(X, n_atoms, n_times_atom)
+
+plt.plot(times, pobj)
+plt.show()
+
 
 plt.plot(X[0].T)
 plt.show()

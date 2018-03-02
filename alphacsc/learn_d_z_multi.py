@@ -12,7 +12,7 @@ import sys
 import numpy as np
 from joblib import Parallel
 
-from .utils import construct_X_multi, check_random_state
+from .utils import construct_X_multi, check_random_state, _get_D
 from .update_z_multi import update_z_multi
 from .update_d_multi import update_uv
 
@@ -23,20 +23,21 @@ def objective(X, X_hat, Z_hat, reg):
     return obj
 
 
-def compute_X_and_objective_multi(X, Z_hat, u_hat, v_hat, reg,
+def compute_X_and_objective_multi(X, Z_hat, uv_hat, reg,
                                   feasible_evaluation=True):
-    d_hat = u_hat[:, :, None] * v_hat[:, None, :]
+    n_chan = X.shape[1]
+    d_hat = _get_D(uv_hat, n_chan)
     X_hat = construct_X_multi(Z_hat, d_hat)
 
     if feasible_evaluation:
         Z_hat = Z_hat.copy()
         d_hat = d_hat.copy()
         # project to unit norm
-        d_norm = np.linalg.norm(d_hat, axis=1)
-        mask = d_norm >= 1
-        d_hat[mask] /= d_norm[mask][:, None]
+        d_norm = np.linalg.norm(d_hat, axis=(1, 2), keepdims=True)
+        mask = d_norm[:, 0, 0] >= 1
+        d_hat[mask] /= d_norm[mask]
         # update z in the opposite way
-        Z_hat[mask] *= d_norm[mask][:, None, None]
+        Z_hat[mask] *= d_norm[mask]
 
     return objective(X, X_hat, Z_hat, reg)
 
@@ -44,8 +45,7 @@ def compute_X_and_objective_multi(X, Z_hat, u_hat, v_hat, reg,
 def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
                     n_iter=60, random_state=None, n_jobs=1, solver_z='l_bfgs',
                     solver_d_kwargs=dict(), solver_z_kwargs=dict(),
-                    u_init=None, v_init=None, sample_weights=None, verbose=10,
-                    callback=None):
+                    uv_init=None, verbose=10, callback=None):
     """Learn atoms and activations using Convolutional Sparse Coding.
 
     Parameters
@@ -73,13 +73,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
         Additional keyword arguments to provide to update_d
     solver_z_kwargs : dict
         Additional keyword arguments to pass to update_z_multi
-    u_init : array, shape (n_atoms, n_channels)
+    uv_init : array, shape (n_atoms, n_channels + n_times_atoms)
         The initial temporal atoms.
-    v_init : array, shape (n_atoms, n_times_atoms)
-        The initial temporal atoms.
-    sample_weights : array, shape (n_trials, n_times)
-        The weights in the alphaCSC problem. Should be None
-        when using vanilla CSC.
     verbose : int
         The verbosity level.
     callback : func
@@ -103,15 +98,10 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
 
     rng = check_random_state(random_state)
 
-    if u_init is None:
-        u_hat = rng.randn(n_atoms, n_chan, n_times_atom)
+    if uv_init is None:
+        uv_hat = rng.randn(n_atoms, n_chan + n_times_atom)
     else:
-        u_hat = u_init.copy()
-
-    if v_init is None:
-        v_hat = rng.randn(n_atoms, n_chan, n_times_atom)
-    else:
-        v_hat = v_init.copy()
+        uv_hat = uv_init.copy()
 
     pobj = list()
     times = list()
@@ -121,12 +111,10 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
     else:
         b_hat_0 = None
 
-    lambd0 = None
     Z_hat = np.zeros((n_atoms, n_trials, n_times - n_times_atom + 1))
 
     pobj.append(
-        compute_X_and_objective_multi(X, Z_hat, u_hat, v_hat, reg,
-                                      sample_weights))
+        compute_X_and_objective_multi(X, Z_hat, uv_hat, reg))
     times.append(0.)
     with Parallel(n_jobs=n_jobs) as parallel:
         for ii in range(n_iter):  # outer loop of coordinate descent
@@ -139,33 +127,29 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
 
             start = time.time()
             Z_hat = update_z_multi(
-                X, u_hat, v_hat, reg, z0=Z_hat, parallel=parallel,
+                X, uv_hat, reg=reg, z0=Z_hat, parallel=parallel,
                 solver=solver_z, b_hat_0=b_hat_0,
-                solver_kwargs=solver_z_kwargs, sample_weights=sample_weights)
+                solver_kwargs=solver_z_kwargs)
             times.append(time.time() - start)
 
             # monitor cost function
             pobj.append(
-                compute_X_and_objective_multi(X, Z_hat, u_hat, v_hat, reg,
-                                              sample_weights))
+                compute_X_and_objective_multi(X, Z_hat, uv_hat, reg))
             if verbose > 1:
                 print('[seed %s] Objective (Z) : %0.8f' % (random_state,
                                                            pobj[-1]))
 
             start = time.time()
-            d_hat, lambd0 = func_d(X, Z_hat, u_hat0=u_hat, v_hat0=v_hat,
-                                   verbose=verbose)
+            uv_hat = func_d(X, Z_hat, uv_hat0=uv_hat, verbose=verbose)
             times.append(time.time() - start)
 
             # monitor cost function
-            pobj.append(
-                compute_X_and_objective_multi(X, Z_hat, d_hat, reg,
-                                              sample_weights))
+            pobj.append(compute_X_and_objective_multi(X, Z_hat, uv_hat, reg))
             if verbose > 1:
                 print('[seed %s] Objective (d) %0.8f' % (random_state,
                                                          pobj[-1]))
 
             if callable(callback):
-                callback(X, u_hat, v_hat, Z_hat, reg)
+                callback(X, uv_hat, Z_hat, reg)
 
-    return pobj, times, u_hat, v_hat, Z_hat
+    return pobj, times, uv_hat, Z_hat

@@ -8,24 +8,8 @@
 import numpy as np
 from scipy.signal import convolve
 
-from .utils import construct_X_multi, check_consistent_shape
+from .utils import construct_X_multi, check_consistent_shape, _get_D
 
-
-def _get_D(uv, n_chan):
-    """Compute the rank 1 dictionary associated with the given uv
-
-    Parameter
-    ---------
-    uv: array (n_atoms, n_chan + n_times_atom)
-    n_chan: int
-        number of channels in the original multivariate series
-
-    Return
-    ------
-    D: array (n_atoms, n_chan, n_times_atom)
-    """
-
-    return np.array([np.outer(uvk[:n_chan], uvk[n_chan:]) for uvk in uv])
 
 
 def _dense_transpose_convolve(Z, residual):

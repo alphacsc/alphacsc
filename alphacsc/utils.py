@@ -206,3 +206,20 @@ def plot_data(X, plot_types=None):
         axes[ii]._X = [X[jj][ii] for jj in range(len(X))]
     plt.xlabel('Time')
     plt.show()
+
+
+def _get_D(uv_hat, n_chan):
+    """Compute the rank 1 dictionary associated with the given uv
+
+    Parameter
+    ---------
+    uv: array (n_atoms, n_chan + n_times_atom)
+    n_chan: int
+        number of channels in the original multivariate series
+
+    Return
+    ------
+    D: array (n_atoms, n_chan, n_times_atom)
+    """
+
+    return uv_hat[:, :n_chan, None] * uv_hat[:, None, n_chan:]
