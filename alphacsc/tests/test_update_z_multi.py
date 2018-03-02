@@ -9,7 +9,6 @@ def test_gradient_correctness():
     n_trials, n_channels, n_times = 2, 3, 100
     n_times_atom, n_atoms = 10, 4
     n_times_valid = n_times - n_times_atom + 1
-
     reg = 0
 
     X = np.random.randn(n_trials, n_channels, n_times)
@@ -22,11 +21,9 @@ def test_gradient_correctness():
 
 
 def test_update_z_multi_decrease_cost_function():
-
     n_trials, n_channels, n_times = 2, 3, 100
     n_times_atom, n_atoms = 10, 4
     n_times_valid = n_times - n_times_atom + 1
-
     reg = 0
 
     X = np.random.randn(n_trials, n_channels, n_times)
