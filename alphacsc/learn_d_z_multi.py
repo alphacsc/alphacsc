@@ -139,8 +139,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_d, reg=0.1,
 
             start = time.time()
             Z_hat = update_z_multi(
-                X, u_hat, v_hat, reg, n_times_atom, z0=Z_hat,
-                parallel=parallel, solver=solver_z, b_hat_0=b_hat_0,
+                X, u_hat, v_hat, reg, z0=Z_hat, parallel=parallel,
+                solver=solver_z, b_hat_0=b_hat_0,
                 solver_kwargs=solver_z_kwargs, sample_weights=sample_weights)
             times.append(time.time() - start)
 

@@ -6,15 +6,14 @@
 #          Alexandre Gramfort <alexandre.gramfort@telecom-paristech.fr>
 
 import numpy as np
-from scipy import linalg
 from scipy import optimize, signal
 from joblib import Parallel, delayed
 
-from .utils import check_random_state, check_consistent_shape
+from .utils import check_consistent_shape
 from .utils import _choose_convolve_multi
 
 
-def update_z_multi(X, u, v, reg, n_times_atom, z0=None, debug=False,
+def update_z_multi(X, u, v, reg, z0=None, debug=False,
                    parallel=None, solver='l_bfgs', b_hat_0=None,
                    solver_kwargs=dict(), sample_weights=None):
     """Update Z using L-BFGS with positivity constraints
@@ -29,8 +28,6 @@ def update_z_multi(X, u, v, reg, n_times_atom, z0=None, debug=False,
         The temporal atoms.
     reg : float
         The regularization constant
-    n_times_atom : int
-        Number of time points.
     z0 : None | array, shape (n_atoms, n_trials, n_times_valid)
         Init for z (can be used for warm restart).
     debug : bool
@@ -202,184 +199,11 @@ def _update_z_multi_idx(X, u, v, reg, z0, idxs, debug, solver="l_bfgs",
                                                 bounds=bounds, factr=factr)
         elif solver == "ista":
             raise NotImplementedError('Not adapted yet for n_channels')
-            ds = u[:, :, None] * v[:, None, :]
-            n_atoms, n_channels, n_times_atom = ds.shape
-
-            zhat = f0.copy()
-            DTD = gram_block_circulant(ds, n_times_valid, 'custom',
-                                       sample_weights=sample_weights_i)
-            tol = solver_kwargs.get('power_iteration_tol', 1e-4)
-            L = power_iteration(DTD, b_hat_0=b_hat_0, tol=tol)
-            step_size = 0.99 / L
-
-            max_iter = solver_kwargs.get('max_iter', 20)
-            for k in range(max_iter):  # run ISTA iterations
-                zhat -= step_size * grad_noreg(zhat)
-                zhat = np.maximum(zhat - reg * step_size, 0.)
-
         elif solver == "fista":
             raise NotImplementedError('Not adapted yet for n_channels')
-            ds = u[:, :, None] * v[:, None, :]
-            n_atoms, n_channels, n_times_atom = ds.shape
-
-            # init
-            x_new = f0.copy()
-            y = x_new.copy()
-            t_new = 1.0
-
-            DTD = gram_block_circulant(ds, n_times_valid, 'custom',
-                                       sample_weights=sample_weights_i)
-            # compute the Lipschitz constant
-            tol = solver_kwargs.get('power_iteration_tol', 1e-4)
-            L = power_iteration(DTD, b_hat_0=b_hat_0, tol=tol)
-            step_size = 0.99 / L
-
-            max_iter = solver_kwargs.get('max_iter', 20)
-            restart = solver_kwargs.get('restart', None)
-            for k in range(max_iter):  # run FISTA iterations
-                # restart every n iterations
-                if k > 0 and restart is not None and (k % restart) == 0:
-                    y = x_new.copy()
-                    t_new = 1.0
-
-                # update the old
-                t_old = t_new
-                x_old = x_new
-
-                # update x
-                y -= step_size * grad_noreg(y)
-                x_new = np.maximum(y - reg * step_size, 0.)
-
-                # update t and y
-                t_new = 0.5 * (1. + np.sqrt(1. + 4. * (t_old ** 2)))
-                y = x_new + ((t_old - 1.) / t_new) * (x_new - x_old)
-
-            zhat = x_new
         else:
             raise ValueError("Unrecognized solver %s. Must be 'ista', 'fista',"
                              " or 'l_bfgs'." % solver)
 
         zhats.append(zhat)
     return np.vstack(zhats)
-
-
-def power_iteration(A, max_iter=1000, tol=1e-7, b_hat_0=None,
-                    random_state=None):
-    """Estimate dominant eigenvalue of matrix A.
-
-    Parameters
-    ----------
-    A : array, shape (n_points, n_points)
-        The matrix whose largest eigenvalue is to be found.
-    b_hat_0 : array, shape (n_points, )
-        init vector
-
-    Returns
-    -------
-    mu_hat : float
-        The largest eigenvalue
-    """
-    if b_hat_0 is None:
-        rng = check_random_state(random_state)
-        b_hat = rng.rand((A.shape[1]))
-    else:
-        b_hat = b_hat_0
-
-    Ab_hat = A.dot(b_hat)
-    mu_hat = np.nan
-    for ii in range(max_iter):
-        b_hat = A.dot(b_hat)
-        b_hat /= linalg.norm(b_hat)
-        Ab_hat = A.dot(b_hat)
-        mu_old = mu_hat
-        mu_hat = np.dot(b_hat, Ab_hat)
-        # note, we might exit the loop before b_hat converges
-        # since we care only about mu_hat converging
-        if (mu_hat - mu_old) / mu_old < tol:
-            break
-
-    if b_hat_0 is not None:
-        # copy inplace into b_hat_0 for next call to power_iteration
-        np.copyto(b_hat_0, b_hat)
-
-    return mu_hat
-
-
-def gram_block_circulant(ds, n_times_valid, method='full',
-                         sample_weights=None):
-    """Returns ...
-
-    Parameters
-    ----------
-    ds : array, shape (n_atoms, n_times_atom)
-        The atoms
-    n_times_valid : int
-        n_times - n_times_atom + 1
-    method : string
-        If 'full', returns full circulant matrix.
-        If 'scipy', returns scipy linear operator.
-        If 'custom', returns custom linear operator.
-    sample_weights : array, shape (n_times, )
-        The sample weights for one trial
-    """
-    from scipy.sparse.linalg import LinearOperator
-    from functools import partial
-
-    n_atoms, n_times_atom = ds.shape
-    n_times = n_times_valid + n_times_atom - 1
-
-    if method == 'full':
-        D = np.zeros((n_times, n_atoms * n_times_valid))
-        for k_idx in range(n_atoms):
-            d_padded = np.zeros((n_times, ))
-            d_padded[:n_times_atom] = ds[k_idx]
-            start = k_idx * n_times_valid
-            stop = start + n_times_valid
-            D[:, start:stop] = linalg.circulant((d_padded))[:, :n_times_valid]
-        if sample_weights is not None:
-            wD = sample_weights[:, None] * D
-            return np.dot(D.T, wD)
-        else:
-            return np.dot(D.T, D)
-
-    elif method == 'scipy':
-
-        def matvec(v, ds):
-            assert v.shape[0] % ds.shape[0] == 0
-            return _fprime(ds, v, Xi=None, reg=None,
-                           sample_weights=sample_weights)
-
-        D = LinearOperator((n_atoms * n_times_valid, n_atoms * n_times_valid),
-                           matvec=partial(matvec, ds=ds))
-
-    elif method == 'custom':
-        return CustomLinearOperator(ds, n_times_valid, sample_weights)
-    else:
-        raise ValueError('Unkown method %s.' % method)
-    return D
-
-
-class CustomLinearOperator():
-    """Simpler class than scipy's LinearOperator, with less overhead
-
-    Parameters
-    ----------
-    ds : array, shape (n_atoms, n_times_atom)
-        The atoms
-    n_times_valid : int
-        n_times - n_times_atom + 1
-    sample_weights : array, shape (n_times, )
-        The sample weights for one trial
-    """
-
-    def __init__(self, ds, n_times_valid, sample_weights):
-        self.ds = ds
-        product = ds.shape[0] * n_times_valid
-        self.shape = (product, product)
-        self.sample_weights = sample_weights
-
-    def dot(self, v):
-        ds = self.ds
-        assert v.shape[0] % ds.shape[0] == 0
-        return _fprime(ds, v, Xi=None, reg=None,
-                       sample_weights=self.sample_weights)

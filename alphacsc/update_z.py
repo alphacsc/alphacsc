@@ -14,7 +14,7 @@ from .utils import check_random_state, check_consistent_shape
 from .utils import _choose_convolve
 
 
-def update_z(X, ds, reg, n_times_atom, z0=None, debug=False, parallel=None,
+def update_z(X, ds, reg, z0=None, debug=False, parallel=None,
              solver='l_bfgs', b_hat_0=None, solver_kwargs=dict(),
              sample_weights=None):
     """Update Z using L-BFGS with positivity constraints
@@ -27,8 +27,6 @@ def update_z(X, ds, reg, n_times_atom, z0=None, debug=False, parallel=None,
         The atoms.
     reg : float
         The regularization constant
-    n_times_atom : int
-        Number of time points.
     z0 : None | array, shape (n_atoms, n_trials, n_times_valid)
         Init for z (can be used for warm restart).
     debug : bool
@@ -53,7 +51,7 @@ def update_z(X, ds, reg, n_times_atom, z0=None, debug=False, parallel=None,
     """
     n_trials, n_times = X.shape
     check_consistent_shape(X, sample_weights)
-    n_atoms = ds.shape[0]
+    n_atoms, n_times_atom = ds.shape
     n_times_valid = n_times - n_times_atom + 1
 
     # now estimate the codes
