@@ -14,7 +14,7 @@ from joblib import Parallel
 
 from .utils import construct_X_multi, check_random_state
 from .update_z_multi import update_z_multi
-from .update_d_multi import update_d
+from .update_d_multi import update_uv
 
 
 def objective(X, X_hat, Z_hat, reg):
@@ -41,7 +41,7 @@ def compute_X_and_objective_multi(X, Z_hat, u_hat, v_hat, reg,
     return objective(X, X_hat, Z_hat, reg)
 
 
-def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_d, reg=0.1,
+def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
                     n_iter=60, random_state=None, n_jobs=1, solver_z='l_bfgs',
                     solver_d_kwargs=dict(), solver_z_kwargs=dict(),
                     u_init=None, v_init=None, sample_weights=None, verbose=10,

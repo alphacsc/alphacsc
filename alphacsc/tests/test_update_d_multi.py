@@ -1,7 +1,8 @@
 import numpy as np
 from scipy import optimize, signal
 
-from alphacsc.update_d_multi import _gradient_d, _gradient_uv
+from alphacsc.update_d_multi import _gradient_d, _gradient_uv, _get_D
+from alphacsc.update_d_multi import update_uv
 from alphacsc.utils import construct_X_multi
 
 
@@ -96,9 +97,7 @@ def test_gradient_uv():
 
     def func(uv0):
         uv0 = uv0.reshape(n_atoms, n_chan + n_times_atom)
-        u0 = uv0[:, :n_chan] 
-        v0 = uv0[:, n_chan:]
-        D0 = np.array([np.outer(uk, vk) for uk, vk in zip(u0, v0)])
+        D0 = _get_D(uv0, n_chan)
         X_hat = construct_X_multi(Z, D0)
         res = X - X_hat
         return .5 * np.sum(res * res)
@@ -121,3 +120,33 @@ def test_gradient_uv():
 
     error = optimize.check_grad(func, grad, uv.flatten(), epsilon=2e-8)
     assert error < 1e-3, f"Gradient is false: {error:.4e}"
+
+
+def test_update_uv():
+    # Generate synchronous D
+    n_times_atom, n_times = 10, 100
+    n_chan = 5
+    n_atoms = 2
+    n_trials = 3
+
+    rng = np.random.RandomState()
+    Z = rng.normal(size=(n_atoms, n_trials, n_times - n_times_atom + 1))
+    uv0 = rng.normal(size=(n_atoms, n_chan + n_times_atom))
+    uv1 = rng.normal(size=(n_atoms, n_chan + n_times_atom))
+
+    D0 = _get_D(uv0, n_chan)
+    X = construct_X_multi(Z, D0)
+
+    def objective(uv):
+        D = _get_D(uv, n_chan)
+        X_hat = construct_X_multi(Z, D)
+        res = X - X_hat
+        return .5 * np.sum(res * res)
+
+    cost0 = objective(uv1)
+
+    uv = update_uv(X, Z, uv1, ds_init=None, debug=False,
+                   max_iter=1000, step_size=.001, factr=1e-7, verbose=0)
+
+    cost1 = objective(uv)
+    assert cost1 < cost0

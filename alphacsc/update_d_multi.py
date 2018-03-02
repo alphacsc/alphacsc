@@ -68,8 +68,8 @@ def prox_uv(uv):
     return uv / norm_uv
 
 
-def update_d(X, Z, u_hat0, v_hat0, ds_init=None, debug=False,
-             max_iter=1000, step_size=.1, factr=1e-7, verbose=0):
+def update_uv(X, Z, uv_hat0, ds_init=None, debug=False,
+              max_iter=1000, step_size=.1, factr=1e-7, verbose=0):
     """Learn d's in time domain.
 
     Parameters
@@ -82,8 +82,6 @@ def update_d(X, Z, u_hat0, v_hat0, ds_init=None, debug=False,
         The shape of atoms.
     debug : bool
         If True, check grad.
-    solver_kwargs : dict
-        Parameters for the solver
     verbose : int
         Verbosity level.
 
@@ -104,9 +102,7 @@ def update_d(X, Z, u_hat0, v_hat0, ds_init=None, debug=False,
         return .5 * np.sum(res * res)
 
     eps = np.finfo(np.float64).eps
-    u_hat = u_hat0.copy()
-    v_hat = v_hat0.copy()
-    uv_hat = np.c_[u_hat, v_hat]
+    uv_hat = uv_hat0.copy()
     f_last = objective(uv_hat)
     for ii in range(max_iter):
         uv_hat -= step_size * _gradient_uv(X, Z, uv_hat)
