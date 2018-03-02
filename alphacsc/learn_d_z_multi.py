@@ -10,12 +10,11 @@ import time
 import sys
 
 import numpy as np
-from scipy import linalg
 from joblib import Parallel
 
 from .utils import construct_X_multi, check_random_state
-from .update_z import update_z
-from .update_d import update_d_block
+from .update_z_multi import update_z_multi
+from .update_d_multi import update_d
 
 
 def objective(X, X_hat, Z_hat, reg):
@@ -24,8 +23,9 @@ def objective(X, X_hat, Z_hat, reg):
     return obj
 
 
-def compute_X_and_objective(X, Z_hat, d_hat, reg,
-                            feasible_evaluation=True):
+def compute_X_and_objective_multi(X, Z_hat, u_hat, v_hat, reg,
+                                  feasible_evaluation=True):
+    d_hat = u_hat[:, :, None] * v_hat[:, None, :]
     X_hat = construct_X_multi(Z_hat, d_hat)
 
     if feasible_evaluation:
@@ -41,15 +41,16 @@ def compute_X_and_objective(X, Z_hat, d_hat, reg,
     return objective(X, X_hat, Z_hat, reg)
 
 
-def learn_d_z(X, n_atoms, n_times_atom, func_d=update_d_block, reg=0.1,
-              n_iter=60, random_state=None, n_jobs=1, solver_z='l_bfgs',
-              solver_d_kwargs=dict(), solver_z_kwargs=dict(), ds_init=None,
-              sample_weights=None, verbose=10, callback=None):
+def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_d, reg=0.1,
+                    n_iter=60, random_state=None, n_jobs=1, solver_z='l_bfgs',
+                    solver_d_kwargs=dict(), solver_z_kwargs=dict(),
+                    u_init=None, v_init=None, sample_weights=None, verbose=10,
+                    callback=None):
     """Learn atoms and activations using Convolutional Sparse Coding.
 
     Parameters
     ----------
-    X : array, shape (n_trials, n_chan, n_times)
+    X : array, shape (n_trials, n_channels, n_times)
         The data on which to perform CSC.
     n_atoms : int
         The number of atoms to learn.
@@ -71,9 +72,11 @@ def learn_d_z(X, n_atoms, n_times_atom, func_d=update_d_block, reg=0.1,
     solver_d_kwargs : dict
         Additional keyword arguments to provide to update_d
     solver_z_kwargs : dict
-        Additional keyword arguments to pass to update_z
-    ds_init : array, shape (n_atoms, n_trials)
-        The initialization for the atoms.
+        Additional keyword arguments to pass to update_z_multi
+    u_init : array, shape (n_atoms, n_channels)
+        The initial temporal atoms.
+    v_init : array, shape (n_atoms, n_times_atoms)
+        The initial temporal atoms.
     sample_weights : array, shape (n_trials, n_times)
         The weights in the alphaCSC problem. Should be None
         when using vanilla CSC.
@@ -89,8 +92,10 @@ def learn_d_z(X, n_atoms, n_times_atom, func_d=update_d_block, reg=0.1,
         The objective function value at each step of the coordinate descent.
     times : list
         The cumulative time for each iteration of the coordinate descent.
-    d_hat : array, shape (n_atoms, n_times)
-        The estimated atoms.
+    u_hat : array, shape (n_atoms, n_channels)
+        The estimated temporal atoms.
+    v_hat : array, shape (n_atoms, n_times_atoms)
+        The estimated temporal atoms.
     Z_hat : array, shape (n_atoms, n_times - n_times_atom + 1)
         The sparse activation matrix.
     """
@@ -98,10 +103,15 @@ def learn_d_z(X, n_atoms, n_times_atom, func_d=update_d_block, reg=0.1,
 
     rng = check_random_state(random_state)
 
-    if ds_init is None:
-        d_hat = rng.randn(n_atoms, n_chan, n_times_atom)
+    if u_init is None:
+        u_hat = rng.randn(n_atoms, n_chan, n_times_atom)
     else:
-        d_hat = ds_init.copy()
+        u_hat = u_init.copy()
+
+    if v_init is None:
+        v_hat = rng.randn(n_atoms, n_chan, n_times_atom)
+    else:
+        v_hat = v_init.copy()
 
     pobj = list()
     times = list()
@@ -114,7 +124,9 @@ def learn_d_z(X, n_atoms, n_times_atom, func_d=update_d_block, reg=0.1,
     lambd0 = None
     Z_hat = np.zeros((n_atoms, n_trials, n_times - n_times_atom + 1))
 
-    pobj.append(compute_X_and_objective(X, Z_hat, d_hat, reg, sample_weights))
+    pobj.append(
+        compute_X_and_objective_multi(X, Z_hat, u_hat, v_hat, reg,
+                                      sample_weights))
     times.append(0.)
     with Parallel(n_jobs=n_jobs) as parallel:
         for ii in range(n_iter):  # outer loop of coordinate descent
@@ -126,34 +138,34 @@ def learn_d_z(X, n_atoms, n_times_atom, func_d=update_d_block, reg=0.1,
                       (ii, n_iter, n_jobs))
 
             start = time.time()
-            Z_hat = update_z(X, d_hat, reg, n_times_atom, z0=Z_hat,
-                             parallel=parallel, solver=solver_z,
-                             b_hat_0=b_hat_0, solver_kwargs=solver_z_kwargs,
-                             sample_weights=sample_weights)
+            Z_hat = update_z_multi(
+                X, u_hat, v_hat, reg, n_times_atom, z0=Z_hat,
+                parallel=parallel, solver=solver_z, b_hat_0=b_hat_0,
+                solver_kwargs=solver_z_kwargs, sample_weights=sample_weights)
             times.append(time.time() - start)
 
             # monitor cost function
             pobj.append(
-                compute_X_and_objective(X, Z_hat, d_hat, reg, sample_weights))
+                compute_X_and_objective_multi(X, Z_hat, u_hat, v_hat, reg,
+                                              sample_weights))
             if verbose > 1:
                 print('[seed %s] Objective (Z) : %0.8f' % (random_state,
                                                            pobj[-1]))
 
             start = time.time()
-            d_hat, lambd0 = func_d(X, Z_hat, n_times_atom, lambd0=lambd0,
-                                   ds_init=d_hat, verbose=verbose,
-                                   solver_kwargs=solver_d_kwargs,
-                                   sample_weights=sample_weights)
+            d_hat, lambd0 = func_d(X, Z_hat, u_hat0=u_hat, v_hat0=v_hat,
+                                   verbose=verbose)
             times.append(time.time() - start)
 
             # monitor cost function
             pobj.append(
-                compute_X_and_objective(X, Z_hat, d_hat, reg, sample_weights))
+                compute_X_and_objective_multi(X, Z_hat, d_hat, reg,
+                                              sample_weights))
             if verbose > 1:
                 print('[seed %s] Objective (d) %0.8f' % (random_state,
                                                          pobj[-1]))
 
             if callable(callback):
-                callback(X, d_hat, Z_hat, reg)
+                callback(X, u_hat, v_hat, Z_hat, reg)
 
-    return pobj, times, d_hat, Z_hat
+    return pobj, times, u_hat, v_hat, Z_hat
