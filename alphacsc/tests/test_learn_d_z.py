@@ -70,7 +70,6 @@ def test_learn_codes_atoms():
     func_d_1 = partial(update_d_block, projection='primal', n_iter=5)
     for func_d in [func_d_0, func_d_1, update_d]:
         for solver_z in ('l_bfgs', 'ista', 'fista'):
-            print(func_d, solver_z)
             pobj, times, d_hat, _ = learn_d_z(
                 X, n_atoms, n_times_atom, func_d=func_d, solver_z=solver_z,
                 reg=reg, n_iter=n_iter, verbose=0, random_state=random_state,
@@ -144,7 +143,6 @@ def test_linear_operator():
             t.append(time.time() - start)
             assert_allclose(np.max(mu), mu_hat, rtol=1e-2)
 
-        print(t)
     assert_true(t[1] < t[0])
     assert_true(t[2] < t[0])
 
