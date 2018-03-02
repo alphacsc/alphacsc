@@ -120,7 +120,7 @@ def _choose_convolve_multi(Zi, ds):
     """
     assert Zi.shape[0] == ds.shape[0]
     n_atoms, n_times_valid = Zi.shape
-    n_atoms, n_times_atom = ds.shape
+    n_atoms, n_chan, n_times_atom = ds.shape
     if np.sum(Zi != 0) < 0.01 * Zi.size:
         return _sparse_multi_convolve(Zi, ds)
     else:
