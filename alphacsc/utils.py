@@ -32,6 +32,29 @@ def construct_X(Z, ds):
     return X
 
 
+def construct_X_multi(Z, ds):
+    """
+    Parameters
+    ----------
+    Z : array, shape (n_atoms, n_trials, n_times_valid)
+        The activations
+    ds : array, shape (n_atoms, n_chan, n_times_atom)
+        The atom.
+
+    Returns
+    -------
+    X : array, shape (n_trials, n_chan, n_times)
+    """
+    assert Z.shape[0] == ds.shape[0]
+    n_atoms, n_trials, n_times_valid = Z.shape
+    n_atoms, n_chan, n_times_atom = ds.shape
+    n_times = n_times_valid + n_times_atom - 1
+    X = np.zeros((n_trials, n_chan, n_times))
+    for i in range(Z.shape[1]):
+        X[i] = _choose_convolve_multi(Z[:, i, :], ds)
+    return X
+
+
 def _sparse_convolve(Zi, ds):
     """Same as _dense_convolve, but use the sparsity of zi."""
     n_atoms, n_times_atom = ds.shape
@@ -56,6 +79,12 @@ def _sparse_multi_convolve(Zi, ds):
     return Xi
 
 
+def _dense_multi_convolve(Zi, ds):
+    """Convolve Zi[k] and ds[k] for each atom k, and return the sum."""
+    return np.sum([[signal.convolve(zik, dkp) for dkp in dk]
+                   for zik, dk in zip(Zi, ds)], 0)
+
+
 def _dense_convolve(Zi, ds):
     """Convolve Zi[k] and ds[k] for each atom k, and return the sum."""
     return sum([signal.convolve(zik, dk)
@@ -78,6 +107,24 @@ def _choose_convolve(Zi, ds):
         return _sparse_convolve(Zi, ds)
     else:
         return _dense_convolve(Zi, ds)
+
+
+def _choose_convolve_multi(Zi, ds):
+    """Choose between _dense_convolve and _sparse_convolve with a heuristic
+    on the sparsity of Zi, and perform the convolution.
+
+    Zi : array, shape(n_atoms, n_times_valid)
+        Activations
+    ds : array, shape(n_atoms, n_times_atom)
+        Dictionary
+    """
+    assert Zi.shape[0] == ds.shape[0]
+    n_atoms, n_times_valid = Zi.shape
+    n_atoms, n_times_atom = ds.shape
+    if np.sum(Zi != 0) < 0.01 * Zi.size:
+        return _sparse_multi_convolve(Zi, ds)
+    else:
+        return _dense_multi_convolve(Zi, ds)
 
 
 def check_consistent_shape(*args):
