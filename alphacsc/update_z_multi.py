@@ -9,10 +9,10 @@ import numpy as np
 from scipy import optimize, signal
 from joblib import Parallel, delayed
 
-from .utils import _choose_convolve_multi
+from .utils import _choose_convolve_multi, _get_D
 
 
-def update_z_multi(X, u, v, reg, z0=None, debug=False, parallel=None,
+def update_z_multi(X, uv, reg, z0=None, debug=False, parallel=None,
                    solver='l_bfgs', solver_kwargs=dict()):
     """Update Z using L-BFGS with positivity constraints
 
@@ -20,10 +20,8 @@ def update_z_multi(X, u, v, reg, z0=None, debug=False, parallel=None,
     ----------
     X : array, shape (n_trials, n_channels, n_times)
         The data array
-    u : array, shape (n_atoms, n_channels)
-        The spatial atoms.
-    v : array, shape (n_atoms, n_times_atom)
-        The temporal atoms.
+    uv : array, shape (n_atoms, n_channels + n_times_atom)
+        The spatial and temporal atoms.
     reg : float
         The regularization constant
     z0 : None | array, shape (n_atoms, n_trials, n_times_valid)
@@ -36,8 +34,6 @@ def update_z_multi(X, u, v, reg, z0=None, debug=False, parallel=None,
         The solver to use.
     solver_kwargs : dict
         Parameters for the solver
-    verbose : int
-        Verbosity level.
 
     Returns
     -------
@@ -45,7 +41,8 @@ def update_z_multi(X, u, v, reg, z0=None, debug=False, parallel=None,
         The true codes.
     """
     n_trials, n_channels, n_times = X.shape
-    n_atoms, n_times_atom = v.shape
+    n_atoms, n_channels_n_times_atom = uv.shape
+    n_times_atom = n_channels_n_times_atom - n_channels
     n_times_valid = n_times - n_times_atom + 1
 
     # now estimate the codes
@@ -54,7 +51,7 @@ def update_z_multi(X, u, v, reg, z0=None, debug=False, parallel=None,
         parallel = Parallel(n_jobs=1)
 
     zhats = parallel(
-        my_update_z(X, u, v, reg, z0, i, debug, solver, solver_kwargs)
+        my_update_z(X, uv, reg, z0, i, debug, solver, solver_kwargs)
         for i in np.array_split(np.arange(n_trials), parallel.n_jobs))
     z_hat = np.vstack(zhats)
 
@@ -64,15 +61,13 @@ def update_z_multi(X, u, v, reg, z0=None, debug=False, parallel=None,
     return z_hat2
 
 
-def _fprime(u, v, zi, Xi=None, reg=None, return_func=False):
-    """np.dot(D.T, X[i] - np.dot(D, zi)) + reg
+def _fprime(uv, zi, Xi=None, reg=None, return_func=False):
+    """
 
     Parameters
     ----------
-    u : array, shape (n_atoms, n_channels)
-        The spatial atoms.
-    v : array, shape (n_atoms, n_times_atom)
-        The temporal atoms.
+    uv : array, shape (n_atoms, n_channels + n_times_atom)
+        The spatial and temporal atoms
     zi : array, shape (n_atoms * n_times_valid)
         The activations
     Xi : array, shape (n_channels, n_times) or None
@@ -89,11 +84,12 @@ def _fprime(u, v, zi, Xi=None, reg=None, return_func=False):
     grad : array, shape (n_atoms * n_times_valid)
         The gradient
     """
-    n_atoms, n_channels = u.shape
-    n_atoms, n_times_atom = v.shape
+    n_channels, n_times = Xi.shape
+    n_atoms, n_channels_n_times_atom = uv.shape
+    n_times_atom = n_channels_n_times_atom - n_channels
     zi_reshaped = zi.reshape((n_atoms, -1))
 
-    ds = u[:, :, None] * v[:, None, :]
+    ds = _get_D(uv, n_channels)
     n_atoms, n_channels, n_times_atom = ds.shape
 
     Dzi = _choose_convolve_multi(zi_reshaped, ds)
@@ -109,7 +105,7 @@ def _fprime(u, v, zi, Xi=None, reg=None, return_func=False):
     # multiply by the spatial filter u
     # n_atoms, n_channels = u.shape
     # n_channels, n_times = Dzi.shape
-    uDzi = np.dot(u, Dzi)
+    uDzi = np.dot(uv[:, :n_channels], Dzi)
 
     # Now do the dot product with the transpose of D (D.T) which is
     # the conv by the reversed filter (keeping valid mode)
@@ -118,7 +114,7 @@ def _fprime(u, v, zi, Xi=None, reg=None, return_func=False):
     # n_atoms * n_times_valid = grad.shape
     grad = np.concatenate([
         signal.convolve(uDzi_k, v_k[::-1], 'valid')
-        for (uDzi_k, v_k) in zip(uDzi, v)
+        for (uDzi_k, v_k) in zip(uDzi, uv[:, n_channels:])
     ])
 
     if reg is not None:
@@ -130,11 +126,11 @@ def _fprime(u, v, zi, Xi=None, reg=None, return_func=False):
         return grad
 
 
-def _update_z_multi_idx(X, u, v, reg, z0, idxs, debug, solver="l_bfgs",
+def _update_z_multi_idx(X, uv, reg, z0, idxs, debug, solver="l_bfgs",
                         solver_kwargs=dict()):
-
     n_trials, n_channels, n_times = X.shape
-    n_atoms, n_times_atom = v.shape
+    n_atoms, n_channels_n_times_atom = uv.shape
+    n_times_atom = n_channels_n_times_atom - n_channels
     n_times_valid = n_times - n_times_atom + 1
     bounds = [(0, None) for idx in range(n_atoms * n_times_valid)]
 
@@ -143,10 +139,10 @@ def _update_z_multi_idx(X, u, v, reg, z0, idxs, debug, solver="l_bfgs",
     for i in idxs:
 
         def func_and_grad(zi):
-            return _fprime(u, v, zi, Xi=X[i], reg=reg, return_func=True)
+            return _fprime(uv, zi, Xi=X[i], reg=reg, return_func=True)
 
         def grad_noreg(zi):
-            return _fprime(u, v, zi, Xi=X[i], reg=None, return_func=False)
+            return _fprime(uv, zi, Xi=X[i], reg=None, return_func=False)
 
         if z0 is None:
             f0 = np.zeros(n_atoms * n_times_valid)
