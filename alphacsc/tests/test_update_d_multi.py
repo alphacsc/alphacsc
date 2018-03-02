@@ -29,7 +29,7 @@ def test_simple():
         return grad_d
 
     error = optimize.check_grad(func, grad, d, epsilon=1e-8)
-    assert error < 1e-4, f"Gradient is false: {error}"
+    assert error < 1e-4, "Gradient is false: {:.4e}".format(error)
 
 # def test_simple2():
 #     L = 35000
@@ -80,7 +80,7 @@ def test_gradient_d():
         plt.show()
 
     error = optimize.check_grad(func, grad, D.flatten(), epsilon=2e-8)
-    assert error < 1e-3, f"Gradient is false: {error:.4e}"
+    assert error < 1e-3, "Gradient is false: {:.4e}".format(error)
 
 
 def test_gradient_uv():
@@ -119,7 +119,7 @@ def test_gradient_uv():
         plt.show()
 
     error = optimize.check_grad(func, grad, uv.flatten(), epsilon=2e-8)
-    assert error < 1e-3, f"Gradient is false: {error:.4e}"
+    assert error < 1e-3, "Gradient is false: {:.4e}".format(error)
 
 
 def test_update_uv():
