@@ -14,17 +14,19 @@ from .utils import check_random_state, check_consistent_shape
 from .utils import _choose_convolve
 
 
-def update_z(X, ds, reg, n_times_atom, z0=None, debug=False, parallel=None,
-             solver='l_bfgs', b_hat_0=None, solver_kwargs=dict(),
-             sample_weights=None):
+def update_z_multi(X, u, v, reg, n_times_atom, z0=None, debug=False,
+                   parallel=None, solver='l_bfgs', b_hat_0=None,
+                   solver_kwargs=dict(), sample_weights=None):
     """Update Z using L-BFGS with positivity constraints
 
     Parameters
     ----------
-    X : array, shape (n_trials, n_times)
+    X : array, shape (n_trials, n_channels, n_times)
         The data array
-    ds : array, shape (n_atoms, n_times_atom)
-        The atoms.
+    u : array, shape (n_atoms, n_channels)
+        The spatial atoms.
+    v : array, shape (n_atoms, n_times_atom)
+        The temporal atoms.
     reg : float
         The regularization constant
     n_times_atom : int
@@ -41,28 +43,28 @@ def update_z(X, ds, reg, n_times_atom, z0=None, debug=False, parallel=None,
         init vector for power_iteration with 'ista' solver
     solver_kwargs : dict
         Parameters for the solver
-    sample_weights: array, shape (n_trials, n_times)
+    sample_weights: array, shape (n_trials, n_channels, n_times)
         Weights applied on the cost function.
     verbose : int
         Verbosity level.
 
     Returns
     -------
-    z : array, shape (n_trials, n_times - n_times_atom + 1)
+    z : array, shape (n_atoms, n_trials, n_times - n_times_atom + 1)
         The true codes.
     """
-    n_trials, n_times = X.shape
+    n_trials, n_channels, n_times = X.shape
     check_consistent_shape(X, sample_weights)
-    n_atoms = ds.shape[0]
+    n_atoms = u.shape[0]
     n_times_valid = n_times - n_times_atom + 1
 
     # now estimate the codes
-    my_update_z = delayed(_update_z_idx)
+    my_update_z = delayed(_update_z_multi_idx)
     if parallel is None:
         parallel = Parallel(n_jobs=1)
 
     zhats = parallel(
-        my_update_z(X, ds, reg, z0, i, debug, solver, b_hat_0, solver_kwargs,
+        my_update_z(X, u, v, reg, z0, i, debug, solver, b_hat_0, solver_kwargs,
                     sample_weights)
         for i in np.array_split(np.arange(n_trials), parallel.n_jobs))
     z_hat = np.vstack(zhats)
@@ -73,18 +75,21 @@ def update_z(X, ds, reg, n_times_atom, z0=None, debug=False, parallel=None,
     return z_hat2
 
 
-def _fprime(ds, zi, Xi=None, sample_weights=None, reg=None, return_func=False):
+def _fprime(u, v, zi, Xi=None, sample_weights=None, reg=None,
+            return_func=False):
     """np.dot(D.T, X[i] - np.dot(D, zi)) + reg
 
     Parameters
     ----------
-    ds : array, shape (n_atoms, n_times_atom)
-        The atoms
+    u : array, shape (n_atoms, n_channels)
+        The spatial atoms.
+    v : array, shape (n_atoms, n_times_atom)
+        The temporal atoms.
     zi : array, shape (n_atoms * n_times_valid)
         The activations
-    Xi : array, shape (n_times, ) or None
+    Xi : array, shape (n_times, n_channels) or None
         The data array for one trial
-    sample_weights : array, shape (n_times, ) or None
+    sample_weights : array, shape (n_times, n_channels) or None
         The sample weights for one trial
     reg : float or None
         The regularization constant
@@ -98,9 +103,14 @@ def _fprime(ds, zi, Xi=None, sample_weights=None, reg=None, return_func=False):
     grad : array, shape (n_atoms * n_times_valid)
         The gradient
     """
-    n_atoms, n_times_atom = ds.shape
+    n_atoms, n_times_atom = v.shape
     zi_reshaped = zi.reshape((n_atoms, -1))
-    Dzi = _choose_convolve(zi_reshaped, ds)
+
+    ds = np.zeros((n_atoms, n_channels, n_times_atom))
+    # TODO: ds = u dot v with einsum
+
+    n_atoms, n_channels, n_times_atom = ds.shape
+    Dzi = _choose_convolve_multi(zi_reshaped, ds)
     if Xi is not None:
         Dzi -= Xi
 
@@ -133,11 +143,12 @@ def _fprime(ds, zi, Xi=None, sample_weights=None, reg=None, return_func=False):
         return grad
 
 
-def _update_z_idx(X, ds, reg, z0, idxs, debug, solver="l_bfgs", b_hat_0=None,
-                  solver_kwargs=dict(), sample_weights=None):
+def _update_z_multi_idx(X, u, v, reg, z0, idxs, debug, solver="l_bfgs",
+                        b_hat_0=None, solver_kwargs=dict(),
+                        sample_weights=None):
 
-    n_trials, n_times = X.shape
-    n_atoms, n_times_atom = ds.shape
+    n_trials, n_channels, n_times = X.shape
+    n_atoms, n_times_atom = v.shape
     n_times_valid = n_times - n_times_atom + 1
     bounds = [(0, None) for idx in range(n_atoms * n_times_valid)]
 
@@ -150,11 +161,11 @@ def _update_z_idx(X, ds, reg, z0, idxs, debug, solver="l_bfgs", b_hat_0=None,
             sample_weights_i = sample_weights[i]
 
         def func_and_grad(zi):
-            return _fprime(ds, zi, Xi=X[i], reg=reg, return_func=True,
+            return _fprime(u, v, zi, Xi=X[i], reg=reg, return_func=True,
                            sample_weights=sample_weights_i)
 
         def grad_noreg(zi):
-            return _fprime(ds, zi, Xi=X[i], reg=None, return_func=False,
+            return _fprime(u, v, zi, Xi=X[i], reg=None, return_func=False,
                            sample_weights=sample_weights_i)
 
         if z0 is None:
@@ -178,6 +189,8 @@ def _update_z_idx(X, ds, reg, z0, idxs, debug, solver="l_bfgs", b_hat_0=None,
                                                 args=(), approx_grad=False,
                                                 bounds=bounds, factr=factr)
         elif solver == "ista":
+            raise NotImplementedError()
+
             zhat = f0.copy()
             DTD = gram_block_circulant(ds, n_times_valid, 'custom',
                                        sample_weights=sample_weights_i)
@@ -191,6 +204,8 @@ def _update_z_idx(X, ds, reg, z0, idxs, debug, solver="l_bfgs", b_hat_0=None,
                 zhat = np.maximum(zhat - reg * step_size, 0.)
 
         elif solver == "fista":
+            raise NotImplementedError()
+
             # init
             x_new = f0.copy()
             y = x_new.copy()
