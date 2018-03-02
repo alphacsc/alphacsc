@@ -11,7 +11,7 @@ from scipy import optimize, signal
 from joblib import Parallel, delayed
 
 from .utils import check_random_state, check_consistent_shape
-from .utils import _choose_convolve
+from .utils import _choose_convolve_multi
 
 
 def update_z_multi(X, u, v, reg, n_times_atom, z0=None, debug=False,
@@ -87,7 +87,7 @@ def _fprime(u, v, zi, Xi=None, sample_weights=None, reg=None,
         The temporal atoms.
     zi : array, shape (n_atoms * n_times_valid)
         The activations
-    Xi : array, shape (n_times, n_channels) or None
+    Xi : array, shape (n_channels, n_times) or None
         The data array for one trial
     sample_weights : array, shape (n_times, n_channels) or None
         The sample weights for one trial
@@ -103,14 +103,15 @@ def _fprime(u, v, zi, Xi=None, sample_weights=None, reg=None,
     grad : array, shape (n_atoms * n_times_valid)
         The gradient
     """
+    n_atoms, n_channels = u.shape
     n_atoms, n_times_atom = v.shape
     zi_reshaped = zi.reshape((n_atoms, -1))
 
-    ds = np.zeros((n_atoms, n_channels, n_times_atom))
-    # TODO: ds = u dot v with einsum
-
+    ds = u[:, :, None] * v[:, None, :]
     n_atoms, n_channels, n_times_atom = ds.shape
+
     Dzi = _choose_convolve_multi(zi_reshaped, ds)
+    # n_channels, n_times = Dzi.shape
     if Xi is not None:
         Dzi -= Xi
 
@@ -125,15 +126,26 @@ def _fprime(u, v, zi, Xi=None, sample_weights=None, reg=None,
         wDzi = Dzi
 
     if return_func:
-        func = 0.5 * np.dot(wDzi, Dzi.T)
+        func = 0.5 * np.dot(wDzi.ravel(), Dzi.ravel())
         if reg is not None:
             func += reg * zi.sum()
 
+    # multiply by the spatial filter u
+    # n_atoms, n_channels = u.shape
+    # n_channels, n_times = wDzi.shape
+    uwDzi = np.dot(u, wDzi)
+
     # Now do the dot product with the transpose of D (D.T) which is
     # the conv by the reversed filter (keeping valid mode)
-    grad = np.concatenate(
-        [signal.convolve(wDzi, d[::-1], 'valid') for d in ds])
+    # n_atoms, n_times = uwDzi.shape
+    # n_atoms, n_times_atom = v.shape
+    # n_atoms * n_times_valid = grad.shape
+    grad = np.concatenate([
+        signal.convolve(uwDzi_k, v_k[::-1], 'valid')
+        for (uwDzi_k, v_k) in zip(uwDzi, v)
+    ])
     # grad = -np.dot(D.T, X[i] - np.dot(D, zi))
+
     if reg is not None:
         grad += reg
 
@@ -189,7 +201,9 @@ def _update_z_multi_idx(X, u, v, reg, z0, idxs, debug, solver="l_bfgs",
                                                 args=(), approx_grad=False,
                                                 bounds=bounds, factr=factr)
         elif solver == "ista":
-            raise NotImplementedError()
+            raise NotImplementedError('Not adapted yet for n_channels')
+            ds = u[:, :, None] * v[:, None, :]
+            n_atoms, n_channels, n_times_atom = ds.shape
 
             zhat = f0.copy()
             DTD = gram_block_circulant(ds, n_times_valid, 'custom',
@@ -204,7 +218,9 @@ def _update_z_multi_idx(X, u, v, reg, z0, idxs, debug, solver="l_bfgs",
                 zhat = np.maximum(zhat - reg * step_size, 0.)
 
         elif solver == "fista":
-            raise NotImplementedError()
+            raise NotImplementedError('Not adapted yet for n_channels')
+            ds = u[:, :, None] * v[:, None, :]
+            n_atoms, n_channels, n_times_atom = ds.shape
 
             # init
             x_new = f0.copy()
