@@ -67,7 +67,7 @@ def _sparse_convolve(Zi, ds):
     return Xi
 
 
-def _sparse_multi_convolve(Zi, ds):
+def _sparse_convolve_multi(Zi, ds):
     """Same as _dense_convolve, but use the sparsity of zi."""
     n_atoms, n_chan, n_times_atom = ds.shape
     n_atoms, n_times_valid = Zi.shape
@@ -79,7 +79,7 @@ def _sparse_multi_convolve(Zi, ds):
     return Xi
 
 
-def _dense_multi_convolve(Zi, ds):
+def _dense_convolve_multi(Zi, ds):
     """Convolve Zi[k] and ds[k] for each atom k, and return the sum."""
     return np.sum([[signal.convolve(zik, dkp) for dkp in dk]
                    for zik, dk in zip(Zi, ds)], 0)
@@ -122,9 +122,9 @@ def _choose_convolve_multi(Zi, ds):
     n_atoms, n_times_valid = Zi.shape
     n_atoms, n_chan, n_times_atom = ds.shape
     if np.sum(Zi != 0) < 0.01 * Zi.size:
-        return _sparse_multi_convolve(Zi, ds)
+        return _sparse_convolve_multi(Zi, ds)
     else:
-        return _dense_multi_convolve(Zi, ds)
+        return _dense_convolve_multi(Zi, ds)
 
 
 def check_consistent_shape(*args):
