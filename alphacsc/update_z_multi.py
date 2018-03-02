@@ -193,7 +193,7 @@ def _update_z_multi_idx(X, u, v, reg, z0, idxs, debug, solver="l_bfgs",
             def fprime(zi):
                 return func_and_grad(zi)[1]
 
-            assert optimize.check_grad(pobj, fprime, f0) < 1e-3
+            assert optimize.check_grad(pobj, fprime, f0) < 1e-2
 
         if solver == "l_bfgs":
             factr = solver_kwargs.get('factr', 1e15)  # default value
