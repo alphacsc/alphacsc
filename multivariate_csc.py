@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from alphacsc.simulate import get_atoms
-from alphacsc.utils import construct_X_multi
+from alphacsc.utils import construct_X_multi, _get_D
 from alphacsc.learn_d_z_multi import learn_d_z_multi
 
 
@@ -37,11 +37,24 @@ for i in range(n_trials):
 
 X = construct_X_multi(Z, D)
 
-pobj, times, u_hat, v_hat, Z_hat = learn_d_z_multi(X, n_atoms, n_times_atom)
+pobj, times, uv_hat, Z_hat = learn_d_z_multi(X, n_atoms, n_times_atom)
 
-plt.plot(times, pobj)
-plt.show()
+plt.plot(pobj)
 
+plt.figure("uv")
+for i, uvk in enumerate(uv_hat):
+    plt.subplot(n_atoms, 1, i + 1)
+    plt.plot(uvk[n_chan:])
 
-plt.plot(X[0].T)
+plt.figure("D")
+D_hat = _get_D(uv_hat, n_chan)
+for i, d in enumerate(D_hat):
+    plt.subplot(2, 1, i + 1)
+    plt.plot(d.T)
+
+X_hat = construct_X_multi(Z_hat, D_hat)
+
+plt.figure("X")
+plt.plot(X[0, 0])
+plt.plot(X_hat[0, 0])
 plt.show()

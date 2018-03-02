@@ -14,7 +14,7 @@ from joblib import Parallel
 
 from .utils import construct_X_multi, check_random_state, _get_D
 from .update_z_multi import update_z_multi
-from .update_d_multi import update_uv
+from .update_d_multi import update_uv, prox_uv
 
 
 def objective(X, X_hat, Z_hat, reg):
@@ -102,14 +102,10 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
         uv_hat = rng.randn(n_atoms, n_chan + n_times_atom)
     else:
         uv_hat = uv_init.copy()
+    uv_hat = prox_uv(uv_hat)
 
     pobj = list()
     times = list()
-
-    if 'ista' in solver_z:
-        b_hat_0 = rng.randn(n_atoms * (n_times - n_times_atom + 1))
-    else:
-        b_hat_0 = None
 
     Z_hat = np.zeros((n_atoms, n_trials, n_times - n_times_atom + 1))
 
@@ -128,8 +124,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
             start = time.time()
             Z_hat = update_z_multi(
                 X, uv_hat, reg=reg, z0=Z_hat, parallel=parallel,
-                solver=solver_z, b_hat_0=b_hat_0,
-                solver_kwargs=solver_z_kwargs)
+                solver=solver_z, solver_kwargs=solver_z_kwargs)
             times.append(time.time() - start)
 
             # monitor cost function
@@ -140,7 +135,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
                                                            pobj[-1]))
 
             start = time.time()
-            uv_hat = func_d(X, Z_hat, uv_hat0=uv_hat, verbose=verbose)
+            uv_hat = func_d(X, Z_hat, uv_hat0=uv_hat, verbose=verbose,
+                            step_size=.01)
             times.append(time.time() - start)
 
             # monitor cost function
