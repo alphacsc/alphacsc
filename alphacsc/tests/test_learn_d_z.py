@@ -43,7 +43,7 @@ def test_learn_codes():
     X, ds, z = simulate_data(n_trials, n_times, n_times_atom, n_atoms)
 
     for solver in ('l_bfgs', 'ista', 'fista'):
-        z_hat = update_z(X, ds, reg, n_times_atom, solver=solver,
+        z_hat = update_z(X, ds, reg, solver=solver,
                          solver_kwargs=dict(factr=1e11, max_iter=50))
 
         X_hat = construct_X(z_hat, ds)
@@ -177,10 +177,10 @@ def test_update_z_sample_weights():
     factor = 1.6
     sample_weights = np.ones_like(X) * factor
     for solver in ('l_bfgs', 'ista', 'fista'):
-        z_0 = update_z(X, ds, reg * factor, n_times_atom, solver=solver,
+        z_0 = update_z(X, ds, reg * factor, solver=solver,
                        solver_kwargs=dict(factr=1e7, max_iter=50),
                        b_hat_0=b_hat_0.copy(), sample_weights=sample_weights)
-        z_1 = update_z(X, ds, reg, n_times_atom, solver=solver,
+        z_1 = update_z(X, ds, reg, solver=solver,
                        solver_kwargs=dict(factr=1e7, max_iter=50),
                        b_hat_0=b_hat_0.copy(), sample_weights=None)
         assert_allclose(z_0, z_1, rtol=1e-4)
@@ -190,7 +190,7 @@ def test_update_z_sample_weights():
     sample_weights /= sample_weights.mean()
     z_list = []
     for solver in ('l_bfgs', 'ista', 'fista'):
-        z_hat = update_z(X, ds, reg, n_times_atom, solver=solver,
+        z_hat = update_z(X, ds, reg, solver=solver,
                          solver_kwargs=dict(factr=1e7, max_iter=2000),
                          b_hat_0=b_hat_0.copy(), sample_weights=sample_weights)
         z_list.append(z_hat)
@@ -198,7 +198,7 @@ def test_update_z_sample_weights():
     assert_allclose(z_list[0][z != 0], z_list[2][z != 0], rtol=1e-3)
 
     # And using no sample weights should give different results
-    z_hat = update_z(X, ds, reg, n_times_atom, solver=solver,
+    z_hat = update_z(X, ds, reg, solver=solver,
                      solver_kwargs=dict(factr=1e7, max_iter=2000),
                      b_hat_0=b_hat_0.copy(), sample_weights=None)
     assert_raises(AssertionError, assert_allclose, z_list[0][z != 0],

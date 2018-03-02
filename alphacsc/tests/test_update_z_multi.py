@@ -16,8 +16,7 @@ def test_gradient_correctness():
     v = np.random.randn(n_atoms, n_times_atom)
     z = np.random.randn(n_atoms, n_trials, n_times_valid)
 
-    update_z_multi(X, u, v, reg, z0=z, n_times_atom=n_times_atom,
-                   solver='l_bfgs', debug=True)
+    update_z_multi(X, u, v, reg, z0=z, solver='l_bfgs', debug=True)
 
 
 def test_update_z_multi_decrease_cost_function():
@@ -34,8 +33,7 @@ def test_update_z_multi_decrease_cost_function():
     loss_0 = compute_X_and_objective_multi(X, z, u, v, reg,
                                            feasible_evaluation=False)
 
-    z_hat = update_z_multi(X, u, v, reg, z0=z, n_times_atom=n_times_atom,
-                           solver='l_bfgs')
+    z_hat = update_z_multi(X, u, v, reg, z0=z, solver='l_bfgs')
 
     loss_1 = compute_X_and_objective_multi(X, z_hat, u, v, reg,
                                            feasible_evaluation=False)

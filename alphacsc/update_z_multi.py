@@ -52,7 +52,7 @@ def update_z_multi(X, u, v, reg, z0=None, debug=False,
     """
     n_trials, n_channels, n_times = X.shape
     check_consistent_shape(X, sample_weights)
-    n_atoms = u.shape[0]
+    n_atoms, n_times_atom = v.shape
     n_times_valid = n_times - n_times_atom + 1
 
     # now estimate the codes
