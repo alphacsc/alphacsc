@@ -44,6 +44,18 @@ def _sparse_convolve(Zi, ds):
     return Xi
 
 
+def _sparse_multi_convolve(Zi, ds):
+    """Same as _dense_convolve, but use the sparsity of zi."""
+    n_atoms, n_chan, n_times_atom = ds.shape
+    n_atoms, n_times_valid = Zi.shape
+    n_times = n_times_valid + n_times_atom - 1
+    Xi = np.zeros(shape=(n_chan, n_times))
+    for zik, dk in zip(Zi, ds):
+        for nnz in np.where(zik != 0)[0]:
+            Xi[:, nnz:nnz + n_times_atom] += zik[nnz] * dk
+    return Xi
+
+
 def _dense_convolve(Zi, ds):
     """Convolve Zi[k] and ds[k] for each atom k, and return the sum."""
     return sum([signal.convolve(zik, dk)
