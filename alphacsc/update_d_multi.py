@@ -40,10 +40,8 @@ def _gradient_uv(X, Z, uv):
     n_chan = X.shape[1]
     D = _get_D(uv, n_chan)
     grad_d = _gradient_d(X, Z, D)
-    grad_u = np.array([grad_dk.dot(uvk[n_chan:])
-                       for grad_dk, uvk in zip(grad_d, uv)])
-    grad_v = np.array([uvk[:n_chan].dot(grad_dk)
-                       for grad_dk, uvk in zip(grad_d, uv)])
+    grad_u = (grad_d * uv[:, None, n_chan:]).sum(axis=2)
+    grad_v = (grad_d * uv[:, :n_chan, None]).sum(axis=1)
     return np.c_[grad_u, grad_v]
 
 
@@ -52,8 +50,8 @@ def prox_uv(uv):
     return uv / norm_uv
 
 
-def update_uv(X, Z, uv_hat0, ds_init=None, debug=False,
-              max_iter=300, step_size=.1, factr=1e-7, verbose=0):
+def update_uv(X, Z, uv_hat0, debug=False, max_iter=300, step_size=1e-2,
+             factr=1e-7, verbose=0):
     """Learn d's in time domain.
 
     Parameters
@@ -71,10 +69,8 @@ def update_uv(X, Z, uv_hat0, ds_init=None, debug=False,
 
     Returns
     -------
-    d_hat : array, shape (k, n_times_atom)
-        The atom to learn from the data.
-    lambd_hats : float
-        The dual variables
+    uv_hat : array, shape (n_atoms, n_channels + n_times_atom)
+        The atoms to learn from the data.
     """
     n_atoms, n_trials, n_times_valid = Z.shape
     _, n_chan, n_times = X.shape

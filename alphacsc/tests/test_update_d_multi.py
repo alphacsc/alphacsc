@@ -2,7 +2,7 @@ import numpy as np
 from scipy import optimize, signal
 
 from alphacsc.update_d_multi import _gradient_d, _gradient_uv, _get_D
-from alphacsc.update_d_multi import update_uv
+from alphacsc.update_d_multi import update_uv, prox_uv
 from alphacsc.utils import construct_X_multi
 
 
@@ -129,10 +129,13 @@ def test_update_uv():
     n_atoms = 2
     n_trials = 3
 
-    rng = np.random.RandomState()
+    rng = np.random.RandomState(42)
     Z = rng.normal(size=(n_atoms, n_trials, n_times - n_times_atom + 1))
     uv0 = rng.normal(size=(n_atoms, n_chan + n_times_atom))
     uv1 = rng.normal(size=(n_atoms, n_chan + n_times_atom))
+
+    uv0 = prox_uv(uv0)
+    uv1 = prox_uv(uv1)
 
     D0 = _get_D(uv0, n_chan)
     X = construct_X_multi(Z, D0)
@@ -143,10 +146,19 @@ def test_update_uv():
         res = X - X_hat
         return .5 * np.sum(res * res)
 
+    # Ensure that the known optimal point is stable
+    uv = update_uv(X, Z, uv0, debug=False, max_iter=1000, step_size=.001,
+                   factr=1e-7, verbose=0)
+    cost = objective(uv)
+
+    assert np.isclose(cost, 0), "optimal point not stable"
+    assert np.allclose(uv, uv0), "optimal point not stable"
+
+    # Ensure that the update is going down from a random initialization
     cost0 = objective(uv1)
-
-    uv = update_uv(X, Z, uv1, ds_init=None, debug=False,
-                   max_iter=1000, step_size=.001, factr=1e-7, verbose=0)
-
+    uv = update_uv(X, Z, uv1, debug=False, max_iter=5000, step_size=.001,
+                   factr=1e-7, verbose=0)
     cost1 = objective(uv)
-    assert cost1 < cost0
+    assert cost1 < cost0, "Learning is not going down"
+
+    assert np.isclose(cost1, 0)
