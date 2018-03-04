@@ -3,18 +3,18 @@
 # Authors: Mainak Jas <mainak.jas@telecom-paristech.fr>
 #          Tom Dupre La Tour <tom.duprelatour@telecom-paristech.fr>
 #          Umut Simsekli <umut.simsekli@telecom-paristech.fr>
-#          Alexandre Gramfort <alexandre.gramfort@telecom-paristech.fr>
+#          Alexandre Gramfort <alexandre.gramfort@inria.fr>
+#          Thomas Moreau <thomas.moreau@inria.fr>
 
 import numpy as np
 from scipy.signal import convolve
 
-from .utils import construct_X_multi, check_consistent_shape, _get_D
-
+from .utils import construct_X_multi, _get_D
 
 
 def _dense_transpose_convolve(Z, residual):
     """Convolve residual[i] with the transpose for each atom k, and return the sum
-    
+
     Parameters
     ----------
     Z : array, shape (n_atoms, n_trials, n_times_valid)
@@ -78,6 +78,10 @@ def update_uv(X, Z, uv_hat0, ds_init=None, debug=False,
     """
     n_atoms, n_trials, n_times_valid = Z.shape
     _, n_chan, n_times = X.shape
+
+    # XXX : step_size should not be hard coded but computed with power
+    # method
+    # XXX : computing objective for ealy stopping is brutal
 
     def objective(uv):
         D = _get_D(uv, n_chan)

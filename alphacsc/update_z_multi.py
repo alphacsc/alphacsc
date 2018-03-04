@@ -3,7 +3,8 @@
 # Authors: Mainak Jas <mainak.jas@telecom-paristech.fr>
 #          Tom Dupre La Tour <tom.duprelatour@telecom-paristech.fr>
 #          Umut Simsekli <umut.simsekli@telecom-paristech.fr>
-#          Alexandre Gramfort <alexandre.gramfort@telecom-paristech.fr>
+#          Alexandre Gramfort <alexandre.gramfort@inria.fr>
+#          Thomas Moreau <thomas.moreau@inria.fr>
 
 import numpy as np
 from scipy import optimize, signal
