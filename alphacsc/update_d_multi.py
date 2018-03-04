@@ -48,12 +48,12 @@ def _gradient_uv(X, Z, uv):
 
 
 def prox_uv(uv):
-    norm_uv = np.maximum(1, np.sqrt(np.sum(uv * uv, axis=1, keepdims=True)))
+    norm_uv = np.maximum(1, np.linalg.norm(uv, axis=1)[:, None])
     return uv / norm_uv
 
 
 def update_uv(X, Z, uv_hat0, ds_init=None, debug=False,
-              max_iter=1000, step_size=.1, factr=1e-7, verbose=0):
+              max_iter=300, step_size=.1, factr=1e-7, verbose=0):
     """Learn d's in time domain.
 
     Parameters
@@ -95,6 +95,8 @@ def update_uv(X, Z, uv_hat0, ds_init=None, debug=False,
         if (f_last - f) / max([abs(f), abs(f_last), 1]) <= factr * eps:
             break
         f_last = f
+    else:
+        print('update_uv did not converge')
     if verbose > 1:
         print('%d iterations' % (ii + 1))
     return uv_hat
