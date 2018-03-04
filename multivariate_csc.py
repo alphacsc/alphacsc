@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.linalg import norm
 
 from alphacsc.simulate import get_atoms
 from alphacsc.utils import construct_X_multi, _get_D
@@ -12,14 +13,16 @@ n_chan = 5
 n_atoms = 2
 n_trials = 10
 
-v0 = get_atoms('triangle', n_times_atom)
+v0 = get_atoms('triangle', n_times_atom)  # temporal atoms
 v1 = get_atoms('square', n_times_atom)
 
-u0 = np.random.uniform(size=n_chan)
+u0 = np.random.uniform(size=n_chan)  # spatial maps
 u1 = np.random.uniform(size=n_chan)
 
-D = np.array([np.outer(u0, v0), np.outer(u1, v1)])
+uv = np.array([np.r_[u0, v0], np.r_[u1, v1]])
+uv /= norm(uv)
 
+D = np.array([np.outer(u0, v0), np.outer(u1, v1)])
 
 starts = list()
 
@@ -37,20 +40,30 @@ for i in range(n_trials):
 
 X = construct_X_multi(Z, D)
 
-pobj, times, uv_hat, Z_hat = learn_d_z_multi(X, n_atoms, n_times_atom)
+pobjs, uv_hats = list(), list()
+for random_state in range(7):
+    pobj, times, uv_hat, Z_hat = learn_d_z_multi(X, n_atoms, n_times_atom,
+                                                 random_state=random_state)
+    pobjs.append(pobj[-1])
+    uv_hats.append(uv_hat)
 
+best_state = np.argmin(pobjs)
 plt.plot(pobj)
 
-plt.figure("uv")
-for i, uvk in enumerate(uv_hat):
-    plt.subplot(n_atoms, 1, i + 1)
-    plt.plot(uvk[n_chan:])
+plt.figure("u (Spatial maps)")
+plt.plot(uv_hats[best_state][:, :n_chan].T, 'b')
+plt.plot(uv[:, :n_chan].T, 'b--')
+
+plt.figure("v (Temporal atoms)")
+plt.plot(uv_hats[best_state][:, n_chan:].T, 'r')
+plt.plot(uv[:, n_chan:].T, 'r--')
 
 plt.figure("D")
-D_hat = _get_D(uv_hat, n_chan)
-for i, d in enumerate(D_hat):
+D_hat = _get_D(uv_hats[best_state], n_chan)
+for i, d_hat in enumerate(D_hat):
     plt.subplot(2, 1, i + 1)
-    plt.plot(d.T)
+    plt.plot(d_hat.T, '--')
+    plt.plot(D[i].T)
 
 X_hat = construct_X_multi(Z_hat, D_hat)
 
