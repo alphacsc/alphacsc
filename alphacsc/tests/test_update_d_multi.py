@@ -2,7 +2,7 @@ import numpy as np
 from scipy import optimize, signal
 
 from alphacsc.update_d_multi import _gradient_d, _gradient_uv, _get_D
-from alphacsc.update_d_multi import update_uv, prox_uv
+from alphacsc.update_d_multi import update_uv, prox_uv, _get_d_update_constants
 from alphacsc.utils import construct_X_multi
 
 
@@ -65,7 +65,7 @@ def test_gradient_d():
 
     def grad(d0):
         D0 = d0.reshape(n_atoms, n_chan, n_times_atom)
-        return _gradient_d(X, Z, D0).flatten()
+        return _gradient_d(D0, X, Z).flatten()
 
     if DEBUG:
         grad_approx = optimize.approx_fprime(D.flatten(), func, 2e-8)
@@ -104,7 +104,7 @@ def test_gradient_uv():
 
     def grad(uv0):
         uv0 = uv0.reshape(n_atoms, n_chan + n_times_atom)
-        return _gradient_uv(X, Z, uv0).flatten()
+        return _gradient_uv(uv0, X, Z).flatten()
 
     if DEBUG:
         grad_approx = optimize.approx_fprime(uv.flatten(), func, 2e-8)
@@ -120,6 +120,14 @@ def test_gradient_uv():
 
     error = optimize.check_grad(func, grad, uv.flatten(), epsilon=2e-8)
     assert error < 1e-3, "Gradient is false: {:.4e}".format(error)
+
+    constants = _get_d_update_constants(X, Z)
+    msg = "Wrong value for Zt*X"
+    assert np.allclose(_gradient_uv(0 * uv, X, Z),
+                       _gradient_uv(0 * uv, constants=constants)), msg
+    msg = "Wrong value for Zt*Z"
+    assert np.allclose(_gradient_uv(uv, X, Z),
+                       _gradient_uv(uv, constants=constants)), msg
 
 
 def test_update_uv():
@@ -148,7 +156,7 @@ def test_update_uv():
 
     # Ensure that the known optimal point is stable
     uv = update_uv(X, Z, uv0, debug=False, max_iter=1000, step_size=.001,
-                   factr=1e-7, verbose=0)
+                   factr=1, verbose=0)
     cost = objective(uv)
 
     assert np.isclose(cost, 0), "optimal point not stable"
@@ -157,7 +165,7 @@ def test_update_uv():
     # Ensure that the update is going down from a random initialization
     cost0 = objective(uv1)
     uv = update_uv(X, Z, uv1, debug=False, max_iter=5000, step_size=.001,
-                   factr=1e-7, verbose=0)
+                   factr=1, verbose=0)
     cost1 = objective(uv)
     assert cost1 < cost0, "Learning is not going down"
 

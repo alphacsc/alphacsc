@@ -137,7 +137,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
 
             start = time.time()
             uv_hat = func_d(X, Z_hat, uv_hat0=uv_hat, verbose=verbose,
-                            step_size=.01)
+                            step_size=.01, eps=1e-3)
             times.append(time.time() - start)
 
             # monitor cost function
