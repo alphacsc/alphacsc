@@ -7,27 +7,30 @@ import mne
 from alphacsc.learn_d_z_multi import learn_d_z_multi, _get_D
 from alphacsc.utils import construct_X_multi
 
-n_atoms = 5
+n_atoms = 1
 
 # get X
 data_path = op.join(mne.datasets.sample.data_path(), 'MEG', 'sample')
 raw = mne.io.read_raw_fif(op.join(data_path,
                                   'sample_audvis_filt-0-40_raw.fif'),
                           preload=True)
-raw.pick_types(meg='mag')
 raw.crop(tmax=30.)  # take only 30 s of data
-X = raw[:][0]
+ecg_epochs = mne.preprocessing.create_ecg_epochs(raw, tmin=-.5, tmax=.5)
+ecg_epochs.pick_types(meg='mag')
+
+X = ecg_epochs.get_data()
 
 # define n_chan, n_times, n_trials
-n_chan = X.shape[0]
-n_times = int(round(raw.info['sfreq'] * 1.))  # 1. s
-n_times_atom = int(round(raw.info['sfreq'] * 0.2))  # 200. ms
-n_trials = X.shape[-1] // n_times
+# n_chan = X.shape[0]
+# n_times = int(round(raw.info['sfreq'] * 1.))  # 1. s
+n_trials, n_chan, n_times = X.shape
+n_times_atom = int(round(raw.info['sfreq'] * 0.15))  # 150. ms
+# n_trials = X.shape[-1] // n_times
 
 
 # make windows
-X = X[:, :n_trials * n_times]
-X = X.reshape((n_chan, n_trials, n_times)).swapaxes(0, 1)
+# X = X[:, :n_trials * n_times]
+# X = X.reshape((n_chan, n_trials, n_times)).swapaxes(0, 1)
 X *= hamming(n_times)[None, None, :]
 X /= np.linalg.norm(X, axis=-1, keepdims=True)
 
@@ -38,9 +41,9 @@ fig_topo, axes_topo = plt.subplots(1, n_atoms, figsize=(12, 3))
 
 def callback(X, uv_hat, Z_hat, reg):
     for idx in range(n_atoms):
-        mne.viz.plot_topomap(uv_hat[idx, :n_chan], raw.info,
-                             axes=axes_topo[idx], show=False)
-        axes_topo[idx].set_title('atom %d' % idx)
+        mne.viz.plot_topomap(uv_hat[idx, :n_chan], ecg_epochs.info,
+                             axes=axes_topo, show=False)
+        axes_topo.set_title('atom %d' % idx)
     if axes.lines == []:
         lines = axes.plot(uv_hat[:, n_chan:].T)
         axes.grid(True)
@@ -57,7 +60,7 @@ def callback(X, uv_hat, Z_hat, reg):
 
 pobj, times, uv_hat, Z_hat = learn_d_z_multi(X, n_atoms, n_times_atom,
                                              random_state=42,
-                                             n_jobs=1, reg=0.001,
+                                             n_jobs=1, reg=0.1,
                                              callback=callback)
 
 D_hat = _get_D(uv_hat, n_chan)
