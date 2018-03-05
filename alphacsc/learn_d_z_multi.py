@@ -25,7 +25,8 @@ def objective(X, X_hat, Z_hat, reg):
 
 
 def compute_X_and_objective_multi(X, Z_hat, uv_hat, reg,
-                                  feasible_evaluation=True):
+                                  feasible_evaluation=True,
+                                  uv_constraint='joint'):
     """Compute X and return the value of the objective function
 
     Parameters
@@ -41,18 +42,22 @@ def compute_X_and_objective_multi(X, Z_hat, uv_hat, reg,
     feasible_evaluation: boolean
         If feasible_evaluation is True, it first projects on the feasible set,
         i.e. norm(uv_hat) <= 1.
+    uv_constraint : str in {'joint', 'separate'}
+        The kind of norm constraint on the atoms:
+        If 'joint', the constraint is norm([u, v]) <= 1
+        If 'separate', the constraint is norm(u) <= 1 and norm(v) <= 1
     """
+    n_chan = X.shape[1]
+
     if feasible_evaluation:
         Z_hat = Z_hat.copy()
         uv_hat = uv_hat.copy()
         # project to unit norm
-        norm_uv = np.maximum(1, np.linalg.norm(uv_hat, axis=1))
-        mask = norm_uv >= 1
-        uv_hat[mask] /= norm_uv[mask][:, None]
+        uv_hat, norm_uv = prox_uv(uv_hat, uv_constraint=uv_constraint,
+                                  n_chan=n_chan, return_norm=True)
         # update z in the opposite way
-        Z_hat[mask] *= norm_uv[mask][:, None, None]
+        Z_hat *= norm_uv[:, None, None]
 
-    n_chan = X.shape[1]
     d_hat = _get_D(uv_hat, n_chan)
     X_hat = construct_X_multi(Z_hat, d_hat)
 
@@ -61,8 +66,9 @@ def compute_X_and_objective_multi(X, Z_hat, uv_hat, reg,
 
 def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
                     n_iter=60, random_state=None, n_jobs=1, solver_z='l_bfgs',
-                    solver_d_kwargs=dict(), solver_z_kwargs=dict(), eps=1e-10,
-                    uv_init=None, verbose=10, callback=None):
+                    uv_constraint='joint', solver_d_kwargs=dict(),
+                    solver_z_kwargs=dict(), eps=1e-10, uv_init=None,
+                    verbose=10, callback=None):
     """Learn atoms and activations using Convolutional Sparse Coding.
 
     Parameters
@@ -86,6 +92,10 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
     solver_z : str
         The solver to use for the z update. Options are
         'l_bfgs' (default) | 'ista' | 'fista'
+    uv_constraint : str in {'joint', 'separate'}
+        The kind of norm constraint on the atoms:
+        If 'joint', the constraint is norm([u, v]) <= 1
+        If 'separate', the constraint is norm(u) <= 1 and norm(v) <= 1
     solver_d_kwargs : dict
         Additional keyword arguments to provide to update_d
     solver_z_kwargs : dict
@@ -118,7 +128,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
         uv_hat = rng.randn(n_atoms, n_chan + n_times_atom)
     else:
         uv_hat = uv_init.copy()
-    uv_hat = prox_uv(uv_hat)
+    uv_hat = prox_uv(uv_hat, uv_constraint=uv_constraint, n_chan=n_chan)
 
     b_hat_0 = rng.randn(n_atoms * n_chan * n_times_atom)
 
@@ -127,8 +137,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
 
     Z_hat = np.zeros((n_atoms, n_trials, n_times_valid))
 
-    pobj.append(
-        compute_X_and_objective_multi(X, Z_hat, uv_hat, reg))
+    pobj.append(compute_X_and_objective_multi(X, Z_hat, uv_hat, reg,
+                uv_constraint=uv_constraint))
     times.append(0.)
     with Parallel(n_jobs=n_jobs) as parallel:
         for ii in range(n_iter):  # outer loop of coordinate descent
@@ -153,19 +163,21 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
                 break
 
             # monitor cost function
-            pobj.append(
-                compute_X_and_objective_multi(X, Z_hat, uv_hat, reg))
+            pobj.append(compute_X_and_objective_multi(X, Z_hat, uv_hat, reg,
+                        uv_constraint=uv_constraint))
             if verbose > 1:
                 print('[seed %s] Objective (Z) : %0.8f' % (random_state,
                                                            pobj[-1]))
 
             start = time.time()
             uv_hat = func_d(X, Z_hat, uv_hat0=uv_hat, b_hat_0=b_hat_0,
+                            uv_constraint=uv_constraint,
                             verbose=verbose, eps=1e-8)
             times.append(time.time() - start)
 
             # monitor cost function
-            pobj.append(compute_X_and_objective_multi(X, Z_hat, uv_hat, reg))
+            pobj.append(compute_X_and_objective_multi(X, Z_hat, uv_hat, reg,
+                        uv_constraint=uv_constraint))
             if verbose > 1:
                 print('[seed %s] Objective (d) %0.8f' % (random_state,
                                                          pobj[-1]))

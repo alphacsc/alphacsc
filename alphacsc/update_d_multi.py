@@ -56,13 +56,30 @@ def _gradient_uv(uv, X=None, Z=None, constants=None):
     return np.c_[grad_u, grad_v]
 
 
-def prox_uv(uv):
-    norm_uv = np.maximum(1, np.linalg.norm(uv, axis=1)[:, None])
-    return uv / norm_uv
+def prox_uv(uv, uv_constraint='joint', n_chan=None, return_norm=False):
+    if uv_constraint == 'joint':
+        norm_uv = np.maximum(1, np.linalg.norm(uv, axis=1))
+        uv = uv / norm_uv[:, None]
+
+    elif uv_constraint == 'separate':
+        assert n_chan is not None
+        uv = uv.copy()
+        norm_u = np.maximum(1, np.linalg.norm(uv[:, :n_chan], axis=1))
+        norm_v = np.maximum(1, np.linalg.norm(uv[:, n_chan:], axis=1))
+        uv[:, :n_chan] /= norm_u[:, None]
+        uv[:, n_chan:] /= norm_v[:, None]
+        norm_uv = norm_u * norm_v
+    else:
+        raise ValueError('Unknown uv_constraint: %s.' % (uv_constraint, ))
+
+    if return_norm:
+        return uv, norm_uv
+    else:
+        return uv
 
 
 def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
-              verbose=0):
+              uv_constraint='joint', verbose=0):
     """Learn d's in time domain.
 
     Parameters
@@ -75,6 +92,10 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
         The shape of atoms.
     debug : bool
         If True, check grad.
+    uv_constraint : str in {'joint', 'separate'}
+        The kind of norm constraint on the atoms:
+        If 'joint', the constraint is norm([u, v]) <= 1
+        If 'separate', the constraint is norm(u) <= 1 and norm(v) <= 1
     verbose : int
         Verbosity level.
 
@@ -106,7 +127,7 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
     for ii in range(max_iter):
         grad = _gradient_uv(uv_hat, constants=constants)
         uv_hat -= step_size * grad
-        uv_hat = prox_uv(uv_hat)
+        uv_hat = prox_uv(uv_hat, uv_constraint=uv_constraint, n_chan=n_chan)
         diff = uv_hat1 - uv_hat
         uv_hat1 = uv_hat.copy()
         f = np.sum(abs(diff))
