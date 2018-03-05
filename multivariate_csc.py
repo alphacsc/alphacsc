@@ -8,8 +8,8 @@ from alphacsc.learn_d_z_multi import learn_d_z_multi
 
 
 # Generate synchronous D
-n_times_atom, n_times = 20, 500
-n_chan = 5
+n_times_atom, n_times = 20, 100
+n_chan = 1
 n_atoms = 2
 n_trials = 10
 
@@ -69,11 +69,11 @@ def callback(X, uv_hat, Z_hat, reg):
 X = construct_X_multi(Z, D)
 
 pobjs, uv_hats = list(), list()
-for random_state in range(7):
+for random_state in range(1):
     pobj, times, uv_hat, Z_hat = learn_d_z_multi(X, n_atoms, n_times_atom,
                                                  random_state=random_state,
-                                                 callback=callback,
-                                                 n_jobs=1, reg=0.01)
+                                                 callback=callback, n_iter=400,
+                                                 n_jobs=1, reg=0.005)
     pobjs.append(pobj[-1])
     uv_hats.append(uv_hat)
 

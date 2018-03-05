@@ -102,11 +102,14 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
     if eps is None:
         eps = np.finfo(np.float32).eps
     uv_hat = uv_hat0.copy()
+    uv_hat1 = uv_hat.copy()
     for ii in range(max_iter):
         grad = _gradient_uv(uv_hat, constants=constants)
         uv_hat -= step_size * grad
         uv_hat = prox_uv(uv_hat)
-        f = np.sum(abs(grad))
+        diff = uv_hat1 - uv_hat
+        uv_hat1 = uv_hat.copy()
+        f = np.sum(abs(diff))
         if f <= eps:
             break
     else:
@@ -172,16 +175,16 @@ def power_iteration(lin_op, n_points, b_hat_0=None, max_iter=1000, tol=1e-7,
     mu_hat : float
         The largest eigenvalue
     """
+    rng = check_random_state(random_state)
     if b_hat_0 is None:
-        rng = check_random_state(random_state)
         b_hat = rng.rand(n_points)
     else:
         b_hat = b_hat_0
 
-    fb_hat = lin_op(b_hat)
     mu_hat = np.nan
     for ii in range(max_iter):
         b_hat = lin_op(b_hat)
+        assert np.linalg.norm(b_hat) != 0, np.linalg.norm(b_hat)
         b_hat /= np.linalg.norm(b_hat)
         fb_hat = lin_op(b_hat)
         mu_old = mu_hat

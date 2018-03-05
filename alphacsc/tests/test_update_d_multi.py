@@ -163,7 +163,7 @@ def test_update_uv():
 
     # Ensure that the update is going down from a random initialization
     cost0 = objective(uv1)
-    uv = update_uv(X, Z, uv1, debug=False, max_iter=5000, verbose=0)
+    uv = update_uv(X, Z, uv1, debug=False, max_iter=5000, verbose=10)
     cost1 = objective(uv)
     assert cost1 < cost0, "Learning is not going down"
 

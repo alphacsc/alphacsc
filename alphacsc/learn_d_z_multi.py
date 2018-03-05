@@ -145,6 +145,13 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
                 solver=solver_z, solver_kwargs=solver_z_kwargs)
             times.append(time.time() - start)
 
+            if len(Z_hat.nonzero()[0]) == 0:
+                import warnings
+                warnings.warn("Regularization parameter `reg` is too large "
+                              "and all the activations are zero. No atoms has"
+                              " been learned.", UserWarning)
+                break
+
             # monitor cost function
             pobj.append(
                 compute_X_and_objective_multi(X, Z_hat, uv_hat, reg))
@@ -154,7 +161,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
 
             start = time.time()
             uv_hat = func_d(X, Z_hat, uv_hat0=uv_hat, b_hat_0=b_hat_0,
-                            verbose=verbose, eps=1e-3)
+                            verbose=verbose, eps=1e-8)
             times.append(time.time() - start)
 
             # monitor cost function
@@ -165,5 +172,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
 
             if callable(callback):
                 callback(X, uv_hat, Z_hat, reg)
+
+            if pobj[-2] - pobj[-1] < 1e-7:
+                break
 
     return pobj, times, uv_hat, Z_hat
