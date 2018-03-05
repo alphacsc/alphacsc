@@ -44,12 +44,35 @@ for i in range(n_trials):
         Z[k_idx, i, starts[k_idx][i]] = rng.uniform()
 
 
+fig, axes = plt.subplots(nrows=2, num='atoms', figsize=(10, 8))
+
+
+def callback(X, uv_hat, Z_hat, reg):
+    if axes[0].lines == []:
+        axes[0].plot(uv_hat[:, :n_chan].T)
+        axes[1].plot(uv_hat[:, n_chan:].T)
+        axes[0].grid(True)
+        axes[1].grid(True)
+        axes[0].set_title('spatial atom')
+        axes[1].set_title('temporal atom')
+    else:
+        for line_0, line_1, uv in zip(axes[0].lines, axes[1].lines, uv_hat):
+            line_0.set_ydata(uv[:n_chan])
+            line_1.set_ydata(uv[n_chan:])
+    for ax in axes:
+        ax.relim()  # make sure all the data fits
+        ax.autoscale_view(True, True, True)
+    plt.draw()
+    plt.pause(0.001)
+
+
 X = construct_X_multi(Z, D)
 
 pobjs, uv_hats = list(), list()
 for random_state in range(7):
     pobj, times, uv_hat, Z_hat = learn_d_z_multi(X, n_atoms, n_times_atom,
                                                  random_state=random_state,
+                                                 callback=callback,
                                                  n_jobs=1, reg=0.01)
     pobjs.append(pobj[-1])
     uv_hats.append(uv_hat)
