@@ -106,10 +106,11 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
         The cumulative time for each iteration of the coordinate descent.
     uv_hat : array, shape (n_atoms, n_channels + n_times_atom)
         The atoms to learn from the data.
-    Z_hat : array, shape (n_atoms, n_times - n_times_atom + 1)
+    Z_hat : array, shape (n_trials, n_atoms, n_times_valid)
         The sparse activation matrix.
     """
     n_trials, n_chan, n_times = X.shape
+    n_times_valid = n_times - n_times_atom + 1
 
     rng = check_random_state(random_state)
 
@@ -119,10 +120,12 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
         uv_hat = uv_init.copy()
     uv_hat = prox_uv(uv_hat)
 
+    b_hat_0 = rng.randn(n_atoms * n_chan * n_times_atom)
+
     pobj = list()
     times = list()
 
-    Z_hat = np.zeros((n_atoms, n_trials, n_times - n_times_atom + 1))
+    Z_hat = np.zeros((n_atoms, n_trials, n_times_valid))
 
     pobj.append(
         compute_X_and_objective_multi(X, Z_hat, uv_hat, reg))
@@ -150,8 +153,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
                                                            pobj[-1]))
 
             start = time.time()
-            uv_hat = func_d(X, Z_hat, uv_hat0=uv_hat, verbose=verbose,
-                            step_size=.01, eps=1e-3)
+            uv_hat = func_d(X, Z_hat, uv_hat0=uv_hat, b_hat_0=b_hat_0,
+                            verbose=verbose, eps=1e-3)
             times.append(time.time() - start)
 
             # monitor cost function

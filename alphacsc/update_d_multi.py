@@ -9,7 +9,7 @@
 import numpy as np
 from scipy.signal import convolve
 
-from .utils import construct_X_multi, _get_D
+from .utils import construct_X_multi, _get_D, check_random_state
 
 
 def _dense_transpose_convolve(Z, residual):
@@ -61,8 +61,8 @@ def prox_uv(uv):
     return uv / norm_uv
 
 
-def update_uv(X, Z, uv_hat0, debug=False, max_iter=300, step_size=1e-2,
-              eps=None, verbose=0):
+def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
+              verbose=0):
     """Learn d's in time domain.
 
     Parameters
@@ -96,7 +96,8 @@ def update_uv(X, Z, uv_hat0, debug=False, max_iter=300, step_size=1e-2,
         res = X - X_hat
         return .5 * np.sum(res * res)
 
-    constants = _get_d_update_constants(X, Z)
+    constants = _get_d_update_constants(X, Z, b_hat_0=b_hat_0)
+    step_size = .99 / constants['L']
 
     if eps is None:
         eps = np.finfo(np.float32).eps
@@ -115,7 +116,7 @@ def update_uv(X, Z, uv_hat0, debug=False, max_iter=300, step_size=1e-2,
     return uv_hat
 
 
-def _get_d_update_constants(X, Z):
+def _get_d_update_constants(X, Z, b_hat_0=None):
     # Get shapes
     n_atoms, n_trials, n_times_valid = Z.shape
     _, n_chan, n_times = X.shape
@@ -140,4 +141,58 @@ def _get_d_update_constants(X, Z):
     constants['ZtZ'] = ZtZ
     constants['n_chan'] = n_chan
 
+    def op_ZtZ(d):
+        D = d.reshape(n_atoms, n_chan, n_times_atom)
+        return np.sum([[[convolve(zzkk, dkp, mode='valid') for dkp in dk]
+                        for zzkk, dk in zip(zzk, D)] for zzk in ZtZ],
+                      axis=1).flatten()
+    n_points = n_atoms * n_chan * n_times_atom
+    constants['L'] = power_iteration(op_ZtZ, n_points, b_hat_0=b_hat_0)
+
     return constants
+
+
+def power_iteration(lin_op, n_points, b_hat_0=None, max_iter=1000, tol=1e-7,
+                    random_state=None):
+    """Estimate dominant eigenvalue of linear operator A.
+
+    Parameters
+    ----------
+    lin_op : callable
+        Linear operator from which we estimate the largest eigenvalue.
+    n_points : tuple
+        Input shape of the linear operator `lin_func`.
+    b_hat_0 : array, shape (n_points, )
+        Init vector. The estimated eigen-vector is stored inplace in `b_hat_0`
+        to allow warm start of future call of this function with the same
+        variable.
+
+    Returns
+    -------
+    mu_hat : float
+        The largest eigenvalue
+    """
+    if b_hat_0 is None:
+        rng = check_random_state(random_state)
+        b_hat = rng.rand(n_points)
+    else:
+        b_hat = b_hat_0
+
+    fb_hat = lin_op(b_hat)
+    mu_hat = np.nan
+    for ii in range(max_iter):
+        b_hat = lin_op(b_hat)
+        b_hat /= np.linalg.norm(b_hat)
+        fb_hat = lin_op(b_hat)
+        mu_old = mu_hat
+        mu_hat = np.dot(b_hat, fb_hat)
+        # note, we might exit the loop before b_hat converges
+        # since we care only about mu_hat converging
+        if (mu_hat - mu_old) / mu_old < tol:
+            break
+
+    if b_hat_0 is not None:
+        # copy inplace into b_hat_0 for next call to power_iteration
+        np.copyto(b_hat_0, b_hat)
+
+    return mu_hat
