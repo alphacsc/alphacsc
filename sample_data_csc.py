@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from numpy import hamming
 
 import mne
-from alphacsc.learn_d_z_multi import learn_d_z_multi
+from alphacsc.learn_d_z_multi import learn_d_z_multi, _get_D
 from alphacsc.utils import construct_X_multi
 
 n_atoms = 5
@@ -13,6 +13,7 @@ data_path = op.join(mne.datasets.sample.data_path(), 'MEG', 'sample')
 raw = mne.io.read_raw_fif(op.join(data_path, 'sample_audvis_raw.fif'),
                           preload=True)
 raw.pick_types(meg='mag')
+raw.crop(tmax=30.)  # take only 30 s of data
 X = raw[:][0]
 
 # define n_chan, n_times, n_trials
@@ -30,6 +31,9 @@ X *= hamming(n_times)[None, None, :]
 pobj, times, uv_hat, Z_hat = learn_d_z_multi(X, n_atoms, n_times_atom,
                                              random_state=42,
                                              n_jobs=1, reg=0.001)
+
+D_hat = _get_D(uv_hat, n_chan)
+X_hat = construct_X_multi(Z_hat, D_hat)
 
 plt.figure("X")
 plt.plot(X[0, 0])
