@@ -14,6 +14,8 @@ data_path = op.join(mne.datasets.sample.data_path(), 'MEG', 'sample')
 raw = mne.io.read_raw_fif(op.join(data_path,
                                   'sample_audvis_filt-0-40_raw.fif'),
                           preload=True)
+raw.pick_types(meg='mag')
+raw_data = raw[:][0]
 raw.crop(tmax=30.)  # take only 30 s of data
 ecg_epochs = mne.preprocessing.create_ecg_epochs(raw, tmin=-.5, tmax=.5)
 ecg_epochs.pick_types(meg='mag')
@@ -33,6 +35,9 @@ n_times_atom = int(round(raw.info['sfreq'] * 0.15))  # 150. ms
 # X = X.reshape((n_chan, n_trials, n_times)).swapaxes(0, 1)
 X *= hamming(n_times)[None, None, :]
 X /= np.linalg.norm(X, axis=-1, keepdims=True)
+
+# X = X[:, :5]
+# n_chan = 5
 
 plt.close('all')
 fig, axes = plt.subplots(nrows=1, num='atoms', figsize=(10, 8))
@@ -54,14 +59,19 @@ def callback(X, uv_hat, Z_hat, reg):
             line_0.set_ydata(uv[n_chan:])
         axes.relim()  # make sure all the data fits
         axes.autoscale_view(True, True, True)
-    plt.draw()
+    fig.canvas.draw()
+    fig_topo.canvas.draw()
     plt.pause(0.001)
 
 
 pobj, times, uv_hat, Z_hat = learn_d_z_multi(X, n_atoms, n_times_atom,
-                                             random_state=42,
-                                             n_jobs=1, reg=0.1,
+                                             random_state=27, n_iter=60,
+                                             solver_d_kwargs={'max_iter': 300},
+                                             n_jobs=1, reg=.2,
                                              callback=callback)
+
+plt.figure("Final atom")
+plt.plot(uv_hat[0, n_chan:])
 
 D_hat = _get_D(uv_hat, n_chan)
 X_hat = construct_X_multi(Z_hat, D_hat)

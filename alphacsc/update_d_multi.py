@@ -208,7 +208,6 @@ def power_iteration(lin_op, n_points, b_hat_0=None, max_iter=1000, tol=1e-7,
     mu_hat = np.nan
     for ii in range(max_iter):
         b_hat = lin_op(b_hat)
-        assert np.linalg.norm(b_hat) != 0, np.linalg.norm(b_hat)
         b_hat /= np.linalg.norm(b_hat)
         fb_hat = lin_op(b_hat)
         mu_old = mu_hat

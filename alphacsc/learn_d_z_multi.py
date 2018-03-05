@@ -162,6 +162,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
                               " been learned.", UserWarning)
                 break
 
+            print("sparsity:", np.sum(Z_hat != 0) / Z_hat.size)
+
             # monitor cost function
             pobj.append(compute_X_and_objective_multi(X, Z_hat, uv_hat, reg,
                         uv_constraint=uv_constraint))
@@ -170,9 +172,10 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
                                                            pobj[-1]))
 
             start = time.time()
+            d_kwargs = dict(verbose=verbose, eps=1e-8)
+            d_kwargs.update(solver_d_kwargs)
             uv_hat = func_d(X, Z_hat, uv_hat0=uv_hat, b_hat_0=b_hat_0,
-                            uv_constraint=uv_constraint,
-                            verbose=verbose, eps=1e-8)
+                            uv_constraint=uv_constraint, **d_kwargs)
             times.append(time.time() - start)
 
             # monitor cost function

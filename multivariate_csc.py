@@ -1,19 +1,32 @@
+import io
+import pstats
+import argparse
+import cProfile
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy.linalg import norm
+import matplotlib.pyplot as plt
 
 from alphacsc.simulate import get_atoms
 from alphacsc.utils import construct_X_multi, _get_D
 from alphacsc.learn_d_z_multi import learn_d_z_multi
 
 
+parser = argparse.ArgumentParser('Programme to launch experiment on multi csc')
+parser.add_argument('--profile', action='store_true',
+                    help='Print profiling of the function')
+
+args = parser.parse_args()
+
+
 # Generate synchronous D
 n_times_atom, n_times = 20, 601
-n_chan = 50
+n_chan = 10
 n_atoms = 2
-n_trials = 29
+n_states = 7
+n_trials = 30
+n_iter = 400
 
-reg = n_chan * 0.000001
+reg = n_chan * 0.001
 
 v0 = get_atoms('triangle', n_times_atom)  # temporal atoms
 v1 = get_atoms('square', n_times_atom)
@@ -71,13 +84,31 @@ def callback(X, uv_hat, Z_hat, reg):
 X = construct_X_multi(Z, D)
 
 pobjs, uv_hats = list(), list()
-for random_state in range(1):
+
+if args.profile:
+    callback = None
+    n_states = 1
+    n_iter = 10
+    pr = cProfile.Profile()
+    pr.enable()
+for random_state in range(n_states):
     pobj, times, uv_hat, Z_hat = learn_d_z_multi(X, n_atoms, n_times_atom,
                                                  random_state=random_state,
-                                                 callback=callback, n_iter=400,
-                                                 n_jobs=1, reg=reg)
+                                                 callback=callback,
+                                                 n_iter=n_iter, n_jobs=1,
+                                                 reg=reg)
     pobjs.append(pobj[-1])
     uv_hats.append(uv_hat)
+
+if args.profile:
+    pr.disable()
+    s = io.StringIO()
+    sortby = 'cumulative'
+    ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+    ps.print_stats('alphacsc/*')
+    print(s.getvalue())
+    import sys
+    sys.exit(0)
 
 best_state = np.argmin(pobjs)
 
