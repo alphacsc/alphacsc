@@ -7,7 +7,7 @@
 #          Thomas Moreau <thomas.moreau@inria.fr>
 
 import numpy as np
-from scipy.signal import convolve
+from numpy import convolve
 
 from .utils import construct_X_multi, _get_D, check_random_state
 
