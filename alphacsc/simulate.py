@@ -100,6 +100,8 @@ def get_atoms(shape, n_times_atom, zero_mean=True, n_cycles=1):
         d = np.pad(d, (0, n_times_atom - d.shape[0]), 'constant')
     elif shape == 'sin':
         d = np.sin(2 * np.pi * n_cycles * np.linspace(0, 1, n_times_atom))
+    elif shape == 'cos':
+        d = np.cos(2 * np.pi * n_cycles * np.linspace(0, 1, n_times_atom))
     if zero_mean:
         d -= np.mean(d)
 

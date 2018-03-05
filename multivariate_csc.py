@@ -8,16 +8,18 @@ from alphacsc.learn_d_z_multi import learn_d_z_multi
 
 
 # Generate synchronous D
-n_times_atom, n_times = 20, 100
-n_chan = 1
+n_times_atom, n_times = 20, 601
+n_chan = 50
 n_atoms = 2
-n_trials = 10
+n_trials = 29
+
+reg = n_chan * 0.000001
 
 v0 = get_atoms('triangle', n_times_atom)  # temporal atoms
 v1 = get_atoms('square', n_times_atom)
 
-u0 = np.random.uniform(size=n_chan)  # spatial maps
-u1 = np.random.uniform(size=n_chan)
+u0 = get_atoms('sin', n_chan)  # spatial maps
+u1 = get_atoms('cos', n_chan)
 
 # Build D and scale atoms
 atoms = []
@@ -73,7 +75,7 @@ for random_state in range(1):
     pobj, times, uv_hat, Z_hat = learn_d_z_multi(X, n_atoms, n_times_atom,
                                                  random_state=random_state,
                                                  callback=callback, n_iter=400,
-                                                 n_jobs=1, reg=0.005)
+                                                 n_jobs=1, reg=reg)
     pobjs.append(pobj[-1])
     uv_hats.append(uv_hat)
 
