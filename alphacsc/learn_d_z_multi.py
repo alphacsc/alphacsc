@@ -26,19 +26,24 @@ def objective(X, X_hat, Z_hat, reg):
 
 def compute_X_and_objective_multi(X, Z_hat, uv_hat, reg,
                                   feasible_evaluation=True):
+    """Compute X and return the value of the objective function
+
+    If feasible_evaluation is True, it first projects on the feasible set,
+    i.e. norm(uv_hat) <= 1.
+    """
+    if feasible_evaluation:
+        Z_hat = Z_hat.copy()
+        uv_hat = uv_hat.copy()
+        # project to unit norm
+        norm_uv = np.maximum(1, np.linalg.norm(uv_hat, axis=1)[:, None])
+        mask = norm_uv >= 1
+        uv_hat[mask] /= norm_uv[mask]
+        # update z in the opposite way
+        Z_hat[mask] *= norm_uv[mask]
+
     n_chan = X.shape[1]
     d_hat = _get_D(uv_hat, n_chan)
     X_hat = construct_X_multi(Z_hat, d_hat)
-
-    if feasible_evaluation:
-        Z_hat = Z_hat.copy()
-        d_hat = d_hat.copy()
-        # project to unit norm
-        d_norm = np.linalg.norm(d_hat, axis=(1, 2), keepdims=True)
-        mask = d_norm[:, 0, 0] >= 1
-        d_hat[mask] /= d_norm[mask]
-        # update z in the opposite way
-        Z_hat[mask] *= d_norm[mask]
 
     return objective(X, X_hat, Z_hat, reg)
 
