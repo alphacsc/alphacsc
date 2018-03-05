@@ -101,7 +101,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
     solver_z_kwargs : dict
         Additional keyword arguments to pass to update_z_multi
     uv_init : array, shape (n_atoms, n_channels + n_times_atoms)
-        The initial temporal atoms.
+        The initial atoms.
     verbose : int
         The verbosity level.
     callback : func

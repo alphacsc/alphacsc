@@ -88,8 +88,10 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
         The data for sparse coding
     Z : array, shape (n_atoms, n_trials, n_times - n_times_atom + 1)
         The code for which to learn the atoms
-    n_times_atom : int
-        The shape of atoms.
+    uv_hat0 : array, shape (n_atoms, n_channels + n_times_atom)
+        The initial atoms.
+    b_hat_0 : array, shape (n_points, )
+        Init eigen-vector vector used in power_iteration, used in warm start.
     debug : bool
         If True, check grad.
     uv_constraint : str in {'joint', 'separate'}
@@ -134,7 +136,8 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
         if f <= eps:
             break
     else:
-        print('update_uv did not converge')
+        if verbose > 1:
+            print('update_uv did not converge')
     if verbose > 1:
         print('%d iterations' % (ii + 1))
     return uv_hat
