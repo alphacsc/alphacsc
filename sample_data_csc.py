@@ -11,7 +11,8 @@ n_atoms = 5
 
 # get X
 data_path = op.join(mne.datasets.sample.data_path(), 'MEG', 'sample')
-raw = mne.io.read_raw_fif(op.join(data_path, 'sample_audvis_raw.fif'),
+raw = mne.io.read_raw_fif(op.join(data_path,
+                                  'sample_audvis_filt-0-40_raw.fif'),
                           preload=True)
 raw.pick_types(meg='mag')
 raw.crop(tmax=30.)  # take only 30 s of data
@@ -30,25 +31,26 @@ X = X.reshape((n_chan, n_trials, n_times)).swapaxes(0, 1)
 X *= hamming(n_times)[None, None, :]
 X /= np.linalg.norm(X, axis=-1, keepdims=True)
 
-
-fig, axes = plt.subplots(nrows=2, num='atoms', figsize=(10, 8))
+plt.close('all')
+fig, axes = plt.subplots(nrows=1, num='atoms', figsize=(10, 8))
+fig_topo, axes_topo = plt.subplots(1, n_atoms, figsize=(12, 3))
 
 
 def callback(X, uv_hat, Z_hat, reg):
-    if axes[0].lines == []:
-        axes[0].plot(uv_hat[:, :n_chan].T)
-        axes[1].plot(uv_hat[:, n_chan:].T)
-        axes[0].grid(True)
-        axes[1].grid(True)
-        axes[0].set_title('spatial atom')
-        axes[1].set_title('temporal atom')
+    for idx in range(n_atoms):
+        mne.viz.plot_topomap(uv_hat[idx, :n_chan], raw.info,
+                             axes=axes_topo[idx], show=False)
+        axes_topo[idx].set_title('atom %d' % idx)
+    if axes.lines == []:
+        lines = axes.plot(uv_hat[:, n_chan:].T)
+        axes.grid(True)
+        axes.set_title('temporal atom')
+        axes.legend(lines, ['atom %d' % idx for idx in range(n_atoms)])
     else:
-        for line_0, line_1, uv in zip(axes[0].lines, axes[1].lines, uv_hat):
-            line_0.set_ydata(uv[:n_chan])
-            line_1.set_ydata(uv[n_chan:])
-    for ax in axes:
-        ax.relim()  # make sure all the data fits
-        ax.autoscale_view(True, True, True)
+        for line_0, uv in zip(axes.lines, uv_hat):
+            line_0.set_ydata(uv[n_chan:])
+        axes.relim()  # make sure all the data fits
+        axes.autoscale_view(True, True, True)
     plt.draw()
     plt.pause(0.001)
 
