@@ -14,6 +14,8 @@ from alphacsc.learn_d_z_multi import learn_d_z_multi
 parser = argparse.ArgumentParser('Programme to launch experiment on multi csc')
 parser.add_argument('--profile', action='store_true',
                     help='Print profiling of the function')
+parser.add_argument('--n_iter', type=int, default=400,
+                    help='Print profiling of the function')
 
 args = parser.parse_args()
 
@@ -57,6 +59,8 @@ Z = np.zeros((n_atoms, n_trials, n_times))
 for i in range(n_trials):
     for k_idx, (d, start) in enumerate(zip(D, starts)):
         Z[k_idx, i, starts[k_idx][i]] = rng.uniform()
+
+print(Z.shape, D.shape)
 
 
 fig, axes = plt.subplots(nrows=2, num='atoms', figsize=(10, 8))
@@ -102,11 +106,13 @@ for random_state in range(n_states):
 
 if args.profile:
     pr.disable()
-    s = io.StringIO()
-    sortby = 'cumulative'
-    ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-    ps.print_stats('alphacsc/*')
-    print(s.getvalue())
+    pr.dump_stats('.profile')
+
+    # s = io.StringIO()
+    # sortby = 'cumulative'
+    # ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+    # ps.print_stats('alphacsc/*')
+    # print(s.getvalue())
     import sys
     sys.exit(0)
 

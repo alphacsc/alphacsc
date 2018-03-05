@@ -140,8 +140,11 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
     pobj.append(compute_X_and_objective_multi(X, Z_hat, uv_hat, reg,
                 uv_constraint=uv_constraint))
     times.append(0.)
+    reg_ = reg / 100
     with Parallel(n_jobs=n_jobs) as parallel:
         for ii in range(n_iter):  # outer loop of coordinate descent
+            if ii == 1:
+                reg_ = reg
             if verbose == 1:
                 print('.', end='')
                 sys.stdout.flush()
@@ -151,7 +154,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
 
             start = time.time()
             Z_hat = update_z_multi(
-                X, uv_hat, reg=reg, z0=Z_hat, parallel=parallel,
+                X, uv_hat, reg=reg_, z0=Z_hat, parallel=parallel,
                 solver=solver_z, solver_kwargs=solver_z_kwargs)
             times.append(time.time() - start)
 

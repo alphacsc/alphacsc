@@ -7,7 +7,7 @@ import mne
 from alphacsc.learn_d_z_multi import learn_d_z_multi, _get_D
 from alphacsc.utils import construct_X_multi
 
-n_atoms = 1
+n_atoms = 5
 
 # get X
 data_path = op.join(mne.datasets.sample.data_path(), 'MEG', 'sample')
@@ -40,34 +40,45 @@ X /= np.linalg.norm(X, axis=-1, keepdims=True)
 # n_chan = 5
 
 plt.close('all')
-fig, axes = plt.subplots(nrows=1, num='atoms', figsize=(10, 8))
+fig, axes = plt.subplots(nrows=n_atoms, num='atoms', figsize=(10, 8))
+fig_Z, axes_Z = plt.subplots(nrows=n_atoms, num='Z', figsize=(10, 8))
 fig_topo, axes_topo = plt.subplots(1, n_atoms, figsize=(12, 3))
 
 
 def callback(X, uv_hat, Z_hat, reg):
     for idx in range(n_atoms):
         mne.viz.plot_topomap(uv_hat[idx, :n_chan], ecg_epochs.info,
-                             axes=axes_topo, show=False)
-        axes_topo.set_title('atom %d' % idx)
-    if axes.lines == []:
-        lines = axes.plot(uv_hat[:, n_chan:].T)
-        axes.grid(True)
-        axes.set_title('temporal atom')
-        axes.legend(lines, ['atom %d' % idx for idx in range(n_atoms)])
+                             axes=axes_topo[idx], show=False)
+        axes_topo[idx].set_title('atom %d' % idx)
+    if axes[0].lines == []:
+        for k in range(n_atoms):
+            axes[k].plot(uv_hat[k, n_chan:].T)
+            axes[k].grid(True)
     else:
-        for line_0, uv in zip(axes.lines, uv_hat):
-            line_0.set_ydata(uv[n_chan:])
-        axes.relim()  # make sure all the data fits
-        axes.autoscale_view(True, True, True)
+        for ax, uv in zip(axes, uv_hat):
+            ax.lines[0].set_ydata(uv[n_chan:])
+            ax.relim()  # make sure all the data fits
+            ax.autoscale_view(True, True, True)
+    if axes_Z[0].lines == []:
+        for k in range(n_atoms):
+            axes_Z[k].plot(Z_hat[k, 0])
+            axes_Z[k].grid(True)
+    else:
+        for ax, z in zip(axes_Z, Z_hat[:, 0]):
+            ax.lines[0].set_ydata(z)
+            ax.relim()  # make sure all the data fits
+            ax.autoscale_view(True, True, True)
     fig.canvas.draw()
     fig_topo.canvas.draw()
-    plt.pause(0.001)
+    fig_Z.canvas.draw()
+    plt.pause(.001)
 
 
 pobj, times, uv_hat, Z_hat = learn_d_z_multi(X, n_atoms, n_times_atom,
-                                             random_state=27, n_iter=60,
+                                             random_state=42, n_iter=60,
+                                             solver_z_kwargs={'factr': 1e10},
                                              solver_d_kwargs={'max_iter': 300},
-                                             n_jobs=1, reg=.2,
+                                             n_jobs=1, reg=2, eps=1e-2,
                                              callback=callback)
 
 plt.figure("Final atom")
