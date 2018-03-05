@@ -28,18 +28,29 @@ def compute_X_and_objective_multi(X, Z_hat, uv_hat, reg,
                                   feasible_evaluation=True):
     """Compute X and return the value of the objective function
 
-    If feasible_evaluation is True, it first projects on the feasible set,
-    i.e. norm(uv_hat) <= 1.
+    Parameters
+    ----------
+    X : array, shape (n_trials, n_channels, n_times)
+        The data on which to perform CSC.
+    Z_hat : array, shape (n_atoms, n_times - n_times_atom + 1)
+        The sparse activation matrix.
+    uv_hat : array, shape (n_atoms, n_channels + n_times_atom)
+        The atoms to learn from the data.
+    reg : float
+        The regularization Parameters
+    feasible_evaluation: boolean
+        If feasible_evaluation is True, it first projects on the feasible set,
+        i.e. norm(uv_hat) <= 1.
     """
     if feasible_evaluation:
         Z_hat = Z_hat.copy()
         uv_hat = uv_hat.copy()
         # project to unit norm
-        norm_uv = np.maximum(1, np.linalg.norm(uv_hat, axis=1)[:, None])
+        norm_uv = np.maximum(1, np.linalg.norm(uv_hat, axis=1))
         mask = norm_uv >= 1
-        uv_hat[mask] /= norm_uv[mask]
+        uv_hat[mask] /= norm_uv[mask][:, None]
         # update z in the opposite way
-        Z_hat[mask] *= norm_uv[mask]
+        Z_hat[mask] *= norm_uv[mask][:, None, None]
 
     n_chan = X.shape[1]
     d_hat = _get_D(uv_hat, n_chan)
@@ -93,10 +104,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
         The objective function value at each step of the coordinate descent.
     times : list
         The cumulative time for each iteration of the coordinate descent.
-    u_hat : array, shape (n_atoms, n_channels)
-        The estimated temporal atoms.
-    v_hat : array, shape (n_atoms, n_times_atoms)
-        The estimated temporal atoms.
+    uv_hat : array, shape (n_atoms, n_channels + n_times_atom)
+        The atoms to learn from the data.
     Z_hat : array, shape (n_atoms, n_times - n_times_atom + 1)
         The sparse activation matrix.
     """
