@@ -155,7 +155,7 @@ def test_update_uv():
         return .5 * np.sum(res * res)
 
     # Ensure that the known optimal point is stable
-    uv = update_uv(X, Z, uv0, debug=False, max_iter=1000, verbose=0)
+    uv = update_uv(X, Z, uv0, max_iter=1000, verbose=0)
     cost = objective(uv)
 
     assert np.isclose(cost, 0), "optimal point not stable"
@@ -163,7 +163,16 @@ def test_update_uv():
 
     # Ensure that the update is going down from a random initialization
     cost0 = objective(uv1)
-    uv = update_uv(X, Z, uv1, debug=False, max_iter=5000, verbose=0)
+    uv, pobj = update_uv(X, Z, uv1, debug=True, max_iter=5000, verbose=10,
+                         momentum=False, eps=1e-15)
+    # uv, pobj2 = update_uv(X, Z, uv1, debug=True, max_iter=5000, verbose=10,
+    #                       momentum=True)
+    # import matplotlib.pyplot as plt
+    # pobj = np.array(pobj)
+    # pobj2 = np.array(pobj2)
+    # plt.semilogy(pobj)
+    # plt.semilogy(pobj2)
+    # plt.show()
     cost1 = objective(uv)
     assert cost1 < cost0, "Learning is not going down"
 

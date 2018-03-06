@@ -124,6 +124,97 @@ all_func = [
     numpy_convolve_uv,
 ]
 
+<<<<<<< Updated upstream
+=======
+try:
+    from numba import jit
+
+    @jit(nogil=True)
+    def dot_and_numba(ZtZ, D):
+        """
+        ZtZ.shape = n_atoms, n_atoms, 2 * n_times_atom - 1
+        D.shape = n_atoms, n_channels, n_times_atom
+        """
+        n_atoms, n_channels, n_times_atom = D.shape
+        G = np.zeros(D.shape)
+        for k0 in range(n_atoms):
+            for k1 in range(n_atoms):
+                for p in range(n_channels):
+                    for t in range(n_times_atom):
+                        G[k0, p, t] += np.dot(ZtZ[k0, k1, t:t + n_times_atom],
+                                              D[k1, p, ::-1])
+        return G
+
+
+    @jit(nogil=True)
+    def sum_and_numba(ZtZ, D):
+        """
+        ZtZ.shape = n_atoms, n_atoms, 2 * n_times_atom - 1
+        D.shape = n_atoms, n_channels, n_times_atom
+        """
+        n_atoms, n_channels, n_times_atom = D.shape
+
+        G = np.zeros(D.shape)
+        for k0 in range(n_atoms):
+            for p in range(n_channels):
+                for t in range(n_times_atom):
+                    G[k0, p, t] += np.sum(
+                        ZtZ[k0, :, t:t + n_times_atom] * D[:, p, ::-1])
+        return G
+
+    all_func.append(dot_and_numba, sum_and_numba,)
+
+except ImportError:
+    pass
+
+
+try:
+    import tensorflow as tf
+    raise ImportError()
+
+    def tensorflow_conv(ZtZ, D):
+        """
+        ZtZ.shape = n_atoms, n_atoms, 2 * n_times_atom - 1
+        D.shape = n_atoms, n_channels, n_times_atom
+        """
+        n_atoms, n_channels, n_times_atom = D.shape
+        with tf.Session() as session:
+            tf_D = tf.placeholder(tf.float32,
+                                  shape=(n_times_atom, n_atoms, n_channels))
+            tf_ZtZ = tf.placeholder(tf.float32, shape=(ZtZ.shape))
+
+            res = tf.nn.convolution(tf_ZtZ, tf_D, padding="VALID",
+                                    data_format="NCW")
+            return session.run(res, feed_dict={
+                tf_D: np.moveaxis(D, -1, 0)[::-1], tf_ZtZ: ZtZ})
+
+    all_func.append(tensorflow_conv)
+
+except ImportError:
+    pass
+
+try:
+    import torch
+
+    def torch_conv(ZtZ, D):
+        """
+        ZtZ.shape = n_atoms, n_atoms, 2 * n_times_atom - 1
+        D.shape = n_atoms, n_channels, n_times_atom
+        """
+        D = D.swapaxes(0, 1)[:, :, ::-1].copy()
+        filters = torch.autograd.Variable(torch.from_numpy(D))
+        inputs = torch.autograd.Variable(torch.from_numpy(ZtZ))
+        return torch.nn.functional.conv1d(inputs, filters).data.numpy()
+        # set convolution filter to D
+
+    all_func.append(torch_conv)
+
+except ImportError:
+    pass
+
+# all_func = all_func[-2:]
+
+>>>>>>> Stashed changes
 
 def test_equality():
     n_atoms, n_channels, n_times_atom = 5, 10, 15

@@ -14,6 +14,8 @@ from alphacsc.learn_d_z_multi import learn_d_z_multi
 parser = argparse.ArgumentParser('Programme to launch experiment on multi csc')
 parser.add_argument('--profile', action='store_true',
                     help='Print profiling of the function')
+parser.add_argument('--momentum', action='store_true',
+                    help='Use the momentum for d updates')
 parser.add_argument('--n_iter', type=int, default=400,
                     help='Print profiling of the function')
 
@@ -92,15 +94,14 @@ pobjs, uv_hats = list(), list()
 if args.profile:
     callback = None
     n_states = 1
-    n_iter = 10
+    n_iter = 20
     pr = cProfile.Profile()
     pr.enable()
 for random_state in range(n_states):
-    pobj, times, uv_hat, Z_hat = learn_d_z_multi(X, n_atoms, n_times_atom,
-                                                 random_state=random_state,
-                                                 callback=callback,
-                                                 n_iter=n_iter, n_jobs=1,
-                                                 reg=reg)
+    pobj, times, uv_hat, Z_hat = learn_d_z_multi(
+        X, n_atoms, n_times_atom, random_state=random_state, callback=callback,
+        n_iter=n_iter, n_jobs=1, reg=reg,
+        solver_d_kwargs={'momentum': args.momentum, 'max_iter': 1000})
     pobjs.append(pobj[-1])
     uv_hats.append(uv_hat)
 

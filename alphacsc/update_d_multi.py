@@ -121,13 +121,16 @@ def _gradient_uv(uv, X=None, Z=None, constants=None):
 def prox_uv(uv, uv_constraint='joint', n_chan=None, return_norm=False):
     if uv_constraint == 'joint':
         norm_uv = np.maximum(1, np.linalg.norm(uv, axis=1))
-        uv = uv / norm_uv[:, None]
+        uv /= norm_uv[:, None]
 
     elif uv_constraint == 'separate':
         assert n_chan is not None
         uv = uv.copy()
         norm_u = np.maximum(1, np.linalg.norm(uv[:, :n_chan], axis=1))
         norm_v = np.maximum(1, np.linalg.norm(uv[:, n_chan:], axis=1))
+
+        norm_u[norm_u == 0] = 1
+        norm_v[norm_v == 0] = 1
         uv[:, :n_chan] /= norm_u[:, None]
         uv[:, n_chan:] /= norm_v[:, None]
         norm_uv = norm_u * norm_v
@@ -141,7 +144,7 @@ def prox_uv(uv, uv_constraint='joint', n_chan=None, return_norm=False):
 
 
 def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
-              uv_constraint='joint', verbose=0):
+              momentum=False, uv_constraint='joint', verbose=0):
     """Learn d's in time domain.
 
     Parameters
@@ -155,7 +158,9 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
     b_hat_0 : array, shape (n_atoms * (n_channels + n_times_atom))
         Init eigen-vector vector used in power_iteration, used in warm start.
     debug : bool
-        If True, check grad.
+        If True, return the cost at each iteration.
+    momentum : bool
+        If True, use an accelerated version of the proximal gradient descent.
     uv_constraint : str in {'joint', 'separate'}
         The kind of norm constraint on the atoms:
         If 'joint', the constraint is norm([u, v]) <= 1
@@ -171,7 +176,7 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
     n_atoms, n_trials, n_times_valid = Z.shape
     _, n_chan, n_times = X.shape
 
-    # XXX : computing objective for ealy stopping is brutal
+    # XXX : FISTA does not work and the cost goes up, should be fixed.
 
     def objective(uv):
         D = _get_D(uv, n_chan)
@@ -180,26 +185,40 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
         return .5 * np.sum(res * res)
 
     constants = _get_d_update_constants(X, Z, b_hat_0=b_hat_0)
-    step_size = .99 / constants['L']
+    step_size = 0.99 / constants['L']
+
+    if debug:
+        pobj = list()
 
     if eps is None:
         eps = np.finfo(np.float32).eps
+    tk = 1
     uv_hat = uv_hat0.copy()
-    uv_hat_old = uv_hat.copy()
+    uv_hat_aux = uv_hat.copy()
+    diff = np.empty(uv_hat.shape)
     for ii in range(max_iter):
-        grad = _gradient_uv(uv_hat, constants=constants)
-        uv_hat -= step_size * grad
-        uv_hat = prox_uv(uv_hat, uv_constraint=uv_constraint, n_chan=n_chan)
-        diff = uv_hat_old - uv_hat
-        uv_hat_old = uv_hat.copy()
+        uv_hat_aux -= step_size * _gradient_uv(uv_hat_aux, constants=constants)
+        prox_uv(uv_hat_aux, uv_constraint=uv_constraint, n_chan=n_chan)
+        diff[:] = uv_hat_aux - uv_hat
+        uv_hat[:] = uv_hat_aux
+        if momentum:  # TODO: FISTA does not work well!
+            tk_new = (1 + np.sqrt(1 + 4 * tk * tk)) / 2
+            uv_hat_aux += (tk - 1) / tk_new * diff
+            tk = tk_new
+        if debug:
+            pobj.append(objective(uv_hat))
         f = np.sum(abs(diff))
         if f <= eps:
             break
+        if f > 1e50:
+            raise RuntimeError("The D update have diverged.")
     else:
         if verbose > 1:
             print('update_uv did not converge')
     if verbose > 1:
         print('%d iterations' % (ii + 1))
+    if debug:
+        return uv_hat, pobj
     return uv_hat
 
 

@@ -7,7 +7,7 @@ import mne
 from alphacsc.learn_d_z_multi import learn_d_z_multi, _get_D
 from alphacsc.utils import construct_X_multi
 
-n_atoms = 5
+n_atoms = 15
 
 # get X
 data_path = op.join(mne.datasets.sample.data_path(), 'MEG', 'sample')
@@ -74,12 +74,11 @@ def callback(X, uv_hat, Z_hat, reg):
     plt.pause(.001)
 
 
-pobj, times, uv_hat, Z_hat = learn_d_z_multi(X, n_atoms, n_times_atom,
-                                             random_state=42, n_iter=60,
-                                             solver_z_kwargs={'factr': 1e10},
-                                             solver_d_kwargs={'max_iter': 300},
-                                             n_jobs=1, reg=2, eps=1e-2,
-                                             callback=callback)
+pobj, times, uv_hat, Z_hat = learn_d_z_multi(
+    X, n_atoms, n_times_atom, random_state=42, n_iter=60, n_jobs=1, reg=2,
+    eps=1e-3, solver_z_kwargs={'factr': 1e10},
+    solver_d_kwargs={'max_iter': 300, 'momentum': False},
+    callback=callback)
 
 plt.figure("Final atom")
 plt.plot(uv_hat[0, n_chan:])
