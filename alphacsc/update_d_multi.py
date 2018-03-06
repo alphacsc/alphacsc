@@ -12,6 +12,31 @@ from numpy import convolve
 from .utils import construct_X_multi, _get_D, check_random_state
 
 
+def tensordot_convolve(ZtZ, D):
+    """Compute the multivariate (valid) convolution of ZtZ and D
+
+    Parameters
+    ----------
+    ZtZ: array, shape = (n_atoms, n_atoms, 2 * n_times_atom - 1)
+        Activations
+    D: array, shape = (n_atoms, n_channels, n_times_atom)
+        Dictionnary
+
+    Returns
+    -------
+    G : array, shape = (n_atoms, n_channels, n_times_atom)
+        Gradient
+    """
+    n_atoms, n_channels, n_times_atom = D.shape
+    D_revert = D[:, :, ::-1]
+
+    G = np.zeros(D.shape)
+    for t in range(n_times_atom):
+        G[:, :, t] = np.tensordot(ZtZ[:, :, t:t + n_times_atom], D_revert,
+                                  axes=([1, 2], [0, 2]))
+    return G
+
+
 def _dense_transpose_convolve(Z, residual):
     """Convolve residual[i] with the transpose for each atom k, and return the sum
 
@@ -33,9 +58,11 @@ def _dense_transpose_convolve(Z, residual):
 
 def _gradient_d(D, X=None, Z=None, constants=None):
     if constants:
-        g = np.sum([[[convolve(zzkk, dkp, mode='valid') for dkp in dk]
-                    for zzkk, dk in zip(zzk, D)] for zzk in constants['ZtZ']],
-                   axis=1)
+        g = tensordot_convolve(constants['ZtZ'], D)
+        # g = np.sum([[[convolve(zzkk, dkp, mode='valid') for dkp in dk]
+        #             for zzkk, dk in zip(zzk, D)]
+        #            for zzk in constants['ZtZ']],
+        #            axis=1)
         return g - constants['ZtX']
     else:
         residual = construct_X_multi(Z, D) - X
