@@ -8,6 +8,7 @@
 
 import numpy as np
 from numpy import convolve
+from numba import jit
 
 from .utils import construct_X_multi, _get_D, check_random_state
 
@@ -215,17 +216,7 @@ def _get_d_update_constants(X, Z, b_hat_0=None):
         [[[convolve(zik[::-1], xip, mode='valid') for xip in xi]
           for zik, xi in zip(zk, X)] for zk in Z], axis=1)
 
-    ZtZ = np.zeros(shape=(n_atoms, n_atoms, 2 * n_times_atom - 1))
-    t0 = n_times_atom - 1
-    for k0 in range(n_atoms):
-        for k in range(n_atoms):
-            for i in range(n_trials):
-                for t in range(n_times_atom):
-                    if t == 0:
-                        ZtZ[k0, k, t0] += (Z[k0, i] * Z[k, i]).sum()
-                    else:
-                        ZtZ[k0, k, t0 + t] += (Z[k0, i, :-t] * Z[k, i, t:]).sum()
-                        ZtZ[k0, k, t0 - t] += (Z[k0, i, t:] * Z[k, i, :-t]).sum()
+    ZtZ = compute_ZtZ(Z, n_times_atom)
     constants['ZtZ'] = ZtZ
     constants['n_chan'] = n_chan
 
@@ -240,6 +231,30 @@ def _get_d_update_constants(X, Z, b_hat_0=None):
     constants['L'] = power_iteration(op_ZtZ, n_points, b_hat_0=b_hat_0)
 
     return constants
+
+
+# @jit()
+def compute_ZtZ(Z, n_times_atom):
+    """
+    ZtZ.shape = n_atoms, n_atoms, 2 * n_times_atom - 1
+    Z.shape = n_atoms, n_trials, n_times - n_times_atom + 1)
+    """
+    n_atoms, n_trials, n_times_valid = Z.shape
+
+    ZtZ = np.zeros(shape=(n_atoms, n_atoms, 2 * n_times_atom - 1))
+    t0 = n_times_atom - 1
+    for k0 in range(n_atoms):
+        for k in range(n_atoms):
+            for i in range(n_trials):
+                for t in range(n_times_atom):
+                    if t == 0:
+                        ZtZ[k0, k, t0] += (Z[k0, i] * Z[k, i]).sum()
+                    else:
+                        ZtZ[k0, k, t0 + t] += (
+                            Z[k0, i, :-t] * Z[k, i, t:]).sum()
+                        ZtZ[k0, k, t0 - t] += (
+                            Z[k0, i, t:] * Z[k, i, :-t]).sum()
+    return ZtZ
 
 
 def power_iteration(lin_op, n_points, b_hat_0=None, max_iter=1000, tol=1e-7,

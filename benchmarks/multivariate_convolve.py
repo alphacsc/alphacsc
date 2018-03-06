@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from numpy import convolve
 from scipy.signal import fftconvolve
 from sklearn.externals.joblib import Memory
-# from scipy.fftpack import next_fast_len
+from scipy.stats.mstats import gmean
 
 from numba import jit
 
@@ -117,7 +117,7 @@ def numpy_convolve_uv(ZtZ, uv):
 
 all_func = [
     numpy_convolve,
-    scipy_fftconvolve,
+    # scipy_fftconvolve,
     dot_and_numba,
     sum_and_numba,
     tensordot,
@@ -182,7 +182,8 @@ def benchmark():
     axes = axes.ravel()
 
     def plot(index, ax):
-        pivot = df.pivot_table(columns='func', index=index, values='duration')
+        pivot = df.pivot_table(columns='func', index=index, values='duration',
+                               aggfunc=gmean)
         pivot.plot(ax=ax)
         ax.set_xscale('log')
         ax.set_yscale('log')
