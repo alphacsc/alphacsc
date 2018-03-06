@@ -88,14 +88,18 @@ def _dense_transpose_convolve(Z, residual):
                    for zk in Z], axis=1)                        # n_atoms
 
 
-def _gradient_d(uv, X=None, Z=None, constants=None, n_chan=None):
+def _gradient_d(D, X=None, Z=None, constants=None, uv=None, n_chan=None):
     if constants:
-        g = numpy_convolve_uv(constants['ZtZ'], uv)
+        if D is None:
+            assert uv is not None and n_chan is not None
+            g = numpy_convolve_uv(constants['ZtZ'], uv)
+        else:
+            g = tensordot_convolve(constants['ZtZ'], D)
         return g - constants['ZtX']
     else:
-        u = uv[:, :n_chan]
-        v = uv[:, n_chan:]
-        D = u[:, :, None] * v[:, None, :]
+        if D is None:
+            assert uv is not None and n_chan is not None
+            D = _get_D(uv, n_chan)
         residual = construct_X_multi(Z, D) - X
         return _dense_transpose_convolve(Z, residual)
 
@@ -107,7 +111,7 @@ def _gradient_uv(uv, X=None, Z=None, constants=None):
         assert X is not None
         assert Z is not None
         n_chan = X.shape[1]
-    grad_d = _gradient_d(uv, X, Z, constants, n_chan=n_chan)
+    grad_d = _gradient_d(None, X, Z, constants, uv=uv, n_chan=n_chan)
     grad_u = (grad_d * uv[:, None, n_chan:]).sum(axis=2)
     grad_v = (grad_d * uv[:, :n_chan, None]).sum(axis=1)
     return np.c_[grad_u, grad_v]
