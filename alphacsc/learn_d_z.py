@@ -74,7 +74,7 @@ def learn_d_z(X, n_atoms, n_times_atom, func_d=update_d_block, reg=0.1,
         Additional keyword arguments to provide to update_d
     solver_z_kwargs : dict
         Additional keyword arguments to pass to update_z
-    ds_init : array, shape (n_atoms, n_trials)
+    ds_init : array, shape (n_atoms, n_times_atom)
         The initialization for the atoms.
     sample_weights : array, shape (n_trials, n_times)
         The weights in the alphaCSC problem. Should be None

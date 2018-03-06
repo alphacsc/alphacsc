@@ -165,7 +165,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
                               " been learned.", UserWarning)
                 break
 
-            print("sparsity:", np.sum(Z_hat != 0) / Z_hat.size)
+            if verbose > 1:
+                print("sparsity:", np.sum(Z_hat != 0) / Z_hat.size)
 
             # monitor cost function
             pobj.append(compute_X_and_objective_multi(X, Z_hat, uv_hat, reg,

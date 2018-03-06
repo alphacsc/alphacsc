@@ -171,8 +171,6 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
     n_atoms, n_trials, n_times_valid = Z.shape
     _, n_chan, n_times = X.shape
 
-    # XXX : step_size should not be hard coded but computed with power
-    # method
     # XXX : computing objective for ealy stopping is brutal
 
     def objective(uv):
@@ -187,13 +185,13 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
     if eps is None:
         eps = np.finfo(np.float32).eps
     uv_hat = uv_hat0.copy()
-    uv_hat1 = uv_hat.copy()
+    uv_hat_old = uv_hat.copy()
     for ii in range(max_iter):
         grad = _gradient_uv(uv_hat, constants=constants)
         uv_hat -= step_size * grad
         uv_hat = prox_uv(uv_hat, uv_constraint=uv_constraint, n_chan=n_chan)
-        diff = uv_hat1 - uv_hat
-        uv_hat1 = uv_hat.copy()
+        diff = uv_hat_old - uv_hat
+        uv_hat_old = uv_hat.copy()
         f = np.sum(abs(diff))
         if f <= eps:
             break
