@@ -37,6 +37,38 @@ def tensordot_convolve(ZtZ, D):
     return G
 
 
+def numpy_convolve_uv(ZtZ, uv):
+    """Compute the multivariate (valid) convolution of ZtZ and D
+
+    Parameters
+    ----------
+    ZtZ: array, shape = (n_atoms, n_atoms, 2 * n_times_atom - 1)
+        Activations
+    uv: array, shape = (n_atoms, n_channels + n_times_atom)
+        Dictionnary
+
+    Returns
+    -------
+    G : array, shape = (n_atoms, n_channels, n_times_atom)
+        Gradient
+    """
+    assert uv.ndim == 2
+    n_times_atom = (ZtZ.shape[2] + 1) // 2
+    n_atoms = ZtZ.shape[0]
+    n_channels = uv.shape[1] - n_times_atom
+
+    u = uv[:, :n_channels]
+    v = uv[:, n_channels:]
+
+    G = np.zeros((n_atoms, n_channels, n_times_atom))
+    for k0 in range(n_atoms):
+        for k1 in range(n_atoms):
+            G[k0, :, :] += (convolve(ZtZ[k0, k1], v[k1], mode='valid')[None, :]
+                            * u[k1, :][:, None])
+
+    return G
+
+
 def _dense_transpose_convolve(Z, residual):
     """Convolve residual[i] with the transpose for each atom k, and return the sum
 
@@ -56,15 +88,14 @@ def _dense_transpose_convolve(Z, residual):
                    for zk in Z], axis=1)                        # n_atoms
 
 
-def _gradient_d(D, X=None, Z=None, constants=None):
+def _gradient_d(uv, X=None, Z=None, constants=None, n_chan=None):
     if constants:
-        g = tensordot_convolve(constants['ZtZ'], D)
-        # g = np.sum([[[convolve(zzkk, dkp, mode='valid') for dkp in dk]
-        #             for zzkk, dk in zip(zzk, D)]
-        #            for zzk in constants['ZtZ']],
-        #            axis=1)
+        g = numpy_convolve_uv(constants['ZtZ'], uv)
         return g - constants['ZtX']
     else:
+        u = uv[:, :n_chan]
+        v = uv[:, n_chan:]
+        D = u[:, :, None] * v[:, None, :]
         residual = construct_X_multi(Z, D) - X
         return _dense_transpose_convolve(Z, residual)
 
@@ -76,8 +107,7 @@ def _gradient_uv(uv, X=None, Z=None, constants=None):
         assert X is not None
         assert Z is not None
         n_chan = X.shape[1]
-    D = _get_D(uv, n_chan)
-    grad_d = _gradient_d(D, X, Z, constants)
+    grad_d = _gradient_d(uv, X, Z, constants, n_chan=n_chan)
     grad_u = (grad_d * uv[:, None, n_chan:]).sum(axis=2)
     grad_v = (grad_d * uv[:, :n_chan, None]).sum(axis=1)
     return np.c_[grad_u, grad_v]

@@ -93,28 +93,63 @@ def tensordot(ZtZ, D):
     return G
 
 
+def numpy_convolve_uv(ZtZ, uv):
+    """
+    ZtZ.shape = n_atoms, n_atoms, 2 * n_times_atom - 1
+    uv.shape = n_atoms, n_channels + n_times_atom
+    """
+    assert uv.ndim == 2
+    n_times_atom = (ZtZ.shape[2] + 1) // 2
+    n_atoms = ZtZ.shape[0]
+    n_channels = uv.shape[1] - n_times_atom
+
+    u = uv[:, :n_channels]
+    v = uv[:, n_channels:]
+
+    G = np.zeros((n_atoms, n_channels, n_times_atom))
+    for k0 in range(n_atoms):
+        for k1 in range(n_atoms):
+            G[k0, :, :] += (convolve(ZtZ[k0, k1], v[k1], mode='valid')[None, :]
+                            * u[k1, :][:, None])
+
+    return G
+
+
 all_func = [
     numpy_convolve,
     scipy_fftconvolve,
     dot_and_numba,
     sum_and_numba,
     tensordot,
+    numpy_convolve_uv,
 ]
 
 
 def test_equality():
     n_atoms, n_channels, n_times_atom = 5, 10, 15
     ZtZ = np.random.randn(n_atoms, n_atoms, 2 * n_times_atom - 1)
-    D = np.random.randn(n_atoms, n_channels, n_times_atom)
+    u = np.random.randn(n_atoms, n_channels)
+    v = np.random.randn(n_atoms, n_times_atom)
+    D = u[:, :, None] * v[:, None, :]
 
+    reference = all_func[0](ZtZ, D)
     for func in all_func:
-        assert np.allclose(func(ZtZ, D), all_func[0](ZtZ, D))
+        if 'uv' in func.__name__:
+            result = func(ZtZ, uv=np.hstack([u, v]))
+        else:
+            result = func(ZtZ, D=D)
+        assert np.allclose(result, reference)
 
 
 @memory.cache
 def run_one(n_atoms, n_channels, n_times_atom, func):
     ZtZ = np.random.randn(n_atoms, n_atoms, 2 * n_times_atom - 1)
-    D = np.random.randn(n_atoms, n_channels, n_times_atom)
+
+    if 'uv' in func.__name__:
+        uv = np.random.randn(n_atoms, n_channels + n_times_atom)
+        D = uv
+    else:
+        D = np.random.randn(n_atoms, n_channels, n_times_atom)
 
     start = time.time()
     func(ZtZ, D)
