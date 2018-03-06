@@ -130,7 +130,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
         uv_hat = uv_init.copy()
     uv_hat = prox_uv(uv_hat, uv_constraint=uv_constraint, n_chan=n_chan)
 
-    b_hat_0 = rng.randn(n_atoms * n_chan * n_times_atom)
+    b_hat_0 = rng.randn(n_atoms * (n_chan + n_times_atom))
 
     pobj = list()
     times = list()

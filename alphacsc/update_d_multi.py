@@ -147,7 +147,7 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
         The code for which to learn the atoms
     uv_hat0 : array, shape (n_atoms, n_channels + n_times_atom)
         The initial atoms.
-    b_hat_0 : array, shape (n_points, )
+    b_hat_0 : array, shape (n_atoms * (n_channels + n_times_atom))
         Init eigen-vector vector used in power_iteration, used in warm start.
     debug : bool
         If True, check grad.
@@ -225,12 +225,14 @@ def _get_d_update_constants(X, Z, b_hat_0=None):
     constants['ZtZ'] = ZtZ
     constants['n_chan'] = n_chan
 
-    def op_ZtZ(d):
-        D = d.reshape(n_atoms, n_chan, n_times_atom)
-        return np.sum([[[convolve(zzkk, dkp, mode='valid') for dkp in dk]
-                        for zzkk, dk in zip(zzk, D)] for zzk in ZtZ],
-                      axis=1).flatten()
-    n_points = n_atoms * n_chan * n_times_atom
+    def op_ZtZ(uv):
+        uv = uv.reshape(n_atoms, n_chan + n_times_atom)
+        grad_d = numpy_convolve_uv(ZtZ, uv)
+        grad_u = (grad_d * uv[:, None, n_chan:]).sum(axis=2)
+        grad_v = (grad_d * uv[:, :n_chan, None]).sum(axis=1)
+        return np.c_[grad_u, grad_v].flatten()
+
+    n_points = n_atoms * (n_chan + n_times_atom)
     constants['L'] = power_iteration(op_ZtZ, n_points, b_hat_0=b_hat_0)
 
     return constants
@@ -245,7 +247,7 @@ def power_iteration(lin_op, n_points, b_hat_0=None, max_iter=1000, tol=1e-7,
     lin_op : callable
         Linear operator from which we estimate the largest eigenvalue.
     n_points : tuple
-        Input shape of the linear operator `lin_func`.
+        Input shape of the linear operator `lin_op`.
     b_hat_0 : array, shape (n_points, )
         Init vector. The estimated eigen-vector is stored inplace in `b_hat_0`
         to allow warm start of future call of this function with the same

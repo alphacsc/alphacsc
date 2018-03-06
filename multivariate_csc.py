@@ -21,8 +21,8 @@ args = parser.parse_args()
 
 
 # Generate synchronous D
-n_times_atom, n_times = 20, 601
-n_chan = 10
+n_times_atom, n_times = 100, 601
+n_chan = 100
 n_atoms = 2
 n_states = 7
 n_trials = 30
