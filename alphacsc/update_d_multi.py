@@ -233,7 +233,7 @@ def _get_d_update_constants(X, Z, b_hat_0=None):
     return constants
 
 
-# @jit()
+@jit()
 def compute_ZtZ(Z, n_times_atom):
     """
     ZtZ.shape = n_atoms, n_atoms, 2 * n_times_atom - 1
