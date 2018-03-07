@@ -125,7 +125,6 @@ def prox_uv(uv, uv_constraint='joint', n_chan=None, return_norm=False):
 
     elif uv_constraint == 'separate':
         assert n_chan is not None
-        uv = uv.copy()
         norm_u = np.maximum(1, np.linalg.norm(uv[:, :n_chan], axis=1))
         norm_v = np.maximum(1, np.linalg.norm(uv[:, n_chan:], axis=1))
 
