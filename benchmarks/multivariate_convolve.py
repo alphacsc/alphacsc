@@ -124,8 +124,6 @@ all_func = [
     numpy_convolve_uv,
 ]
 
-<<<<<<< Updated upstream
-=======
 try:
     from numba import jit
 
@@ -214,7 +212,6 @@ except ImportError:
 
 # all_func = all_func[-2:]
 
->>>>>>> Stashed changes
 
 def test_equality():
     n_atoms, n_channels, n_times_atom = 5, 10, 15
