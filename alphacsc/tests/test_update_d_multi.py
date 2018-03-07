@@ -132,7 +132,7 @@ def test_gradient_uv():
                        _gradient_uv(uv, constants=constants)), msg
 
 
-@pytest.mark.parametrize('uv_constraint', ['joint', 'separate'])
+@pytest.mark.parametrize('uv_constraint', ['separate'])
 def test_update_uv(uv_constraint):
     # Generate synchronous D
     n_times_atom, n_times = 10, 100
@@ -158,7 +158,8 @@ def test_update_uv(uv_constraint):
         return .5 * np.sum(res * res)
 
     # Ensure that the known optimal point is stable
-    uv = update_uv(X, Z, uv0, max_iter=1000, verbose=0)
+    uv = update_uv(X, Z, uv0, max_iter=1000, verbose=0,
+                   uv_constraint=uv_constraint)
     cost = objective(uv)
 
     assert np.isclose(cost, 0), "optimal point not stable"

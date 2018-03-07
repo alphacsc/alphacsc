@@ -154,6 +154,38 @@ def prox_uv(uv, uv_constraint='joint', n_chan=None, return_norm=False):
         return uv
 
 
+def fista(grad, prox, step_size, x0, max_iter, verbose=0,
+          momentum=False, eps=None):
+
+    if eps is None:
+        eps = np.finfo(np.float32).eps
+    tk = 1
+    x_hat = x0.copy()
+    z_hat = x_hat.copy()
+    diff = np.empty(x_hat.shape)
+    for ii in range(max_iter):
+        z_hat -= step_size * grad(z_hat)
+        prox(z_hat)
+        diff[:] = z_hat - x_hat
+        x_hat[:] = z_hat
+        if momentum:
+            tk_new = (1 + np.sqrt(1 + 4 * tk * tk)) / 2
+            z_hat += (tk - 1) / tk_new * diff
+            tk = tk_new
+        f = np.sum(abs(diff))
+        if f <= eps:
+            break
+        if f > 1e50:
+            raise RuntimeError("The D update have diverged.")
+    else:
+        if verbose > 1:
+            print('update [fista] did not converge')
+    if verbose > 1:
+        print('%d iterations' % (ii + 1))
+
+    return x_hat
+
+
 def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
               momentum=False, uv_constraint='joint', verbose=0):
     """Learn d's in time domain.
@@ -241,9 +273,41 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
             print('%d iterations' % (ii + 1))
 
     elif uv_constraint == 'separate':
-        # TODO add a for loop on u then a for loop on v
-        # (need to compute Lu and Lv with two power_iteration runs)
-        raise NotImplementedError
+
+        pobj = list()
+        uv_hat = uv_hat0.copy()
+        u_hat, v_hat = uv_hat[:, :n_chan], uv_hat[:, n_chan:]
+
+        def prox(u):
+            u /= np.maximum(1., np.linalg.norm(u, axis=1))[:, None]
+            return u
+
+        for jj in range(5):
+            # update u
+            def grad_u(u):
+                uv = np.c_[u, v_hat]
+                grad_d = _gradient_d(None, constants=constants, uv=uv,
+                                     n_chan=n_chan)
+                return (grad_d * uv[:, None, n_chan:]).sum(axis=2)
+
+            Lu = compute_lipschitz(uv_hat, constants, 'u', b_hat_0)
+            u_hat = fista(grad_u, prox, 0.99 / Lu, u_hat, max_iter)
+            uv_hat = np.c_[u_hat, v_hat]
+            if debug:
+                pobj.append(objective(uv_hat))
+
+            # update v
+            def grad_v(v):
+                uv = np.c_[u_hat, v]
+                grad_d = _gradient_d(None, constants=constants, uv=uv,
+                                     n_chan=n_chan)
+                return (grad_d * uv[:, :n_chan, None]).sum(axis=1)
+            Lv = compute_lipschitz(uv_hat, constants, 'v', b_hat_0)
+            v_hat = fista(grad_v, prox, 0.99 / Lv, v_hat, max_iter)
+            uv_hat = np.c_[u_hat, v_hat]
+            if debug:
+                pobj.append(objective(uv_hat))
+
     elif uv_constraint == 'box':
         # TODO use l_bfgs_b solver on a L_inf joint box constraint
         raise NotImplementedError
@@ -269,18 +333,41 @@ def _get_d_update_constants(X, Z, b_hat_0=None):
     ZtZ = compute_ZtZ(Z, n_times_atom)
     constants['ZtZ'] = ZtZ
     constants['n_chan'] = n_chan
-
-    def op_H(uv):
-        uv = uv.reshape(n_atoms, n_chan + n_times_atom)
-        H_d = 3 * numpy_convolve_uv(ZtZ, uv) - constants['ZtX']
-        H_u = (H_d * uv[:, None, n_chan:]).sum(axis=2)
-        H_v = (H_d * uv[:, :n_chan, None]).sum(axis=1)
-        return np.c_[H_u, H_v].flatten()
-
-    n_points = n_atoms * (n_chan + n_times_atom)
-    constants['L'] = power_iteration(op_H, n_points, b_hat_0=b_hat_0)
-
     return constants
+
+
+def compute_lipschitz(uv0, constants, variable, b_hat_0=None):
+
+    n_chan = constants['n_chan']
+    u0, v0 = uv0[:, :n_chan], uv0[:, n_chan:]
+    n_atoms = uv0.shape[0]
+    n_times_atom = uv0.shape[1] - n_chan
+    if b_hat_0 is None:
+        b_hat_0 = np.random.randn(uv0.size)
+
+    def op_Hu(u):
+        u = np.reshape(u, (n_atoms, n_chan))
+        uv = np.c_[u, v0]
+        H_d = numpy_convolve_uv(constants['ZtZ'], uv)
+        H_u = (H_d * uv[:, None, n_chan:]).sum(axis=2)
+        return H_u.ravel()
+
+    def op_Hv(v):
+        v = np.reshape(v, (n_atoms, n_times_atom))
+        uv = np.c_[u0, v0]
+        H_d = numpy_convolve_uv(constants['ZtZ'], uv)
+        H_v = (H_d * uv[:, :n_chan, None]).sum(axis=1)
+        return H_v.ravel()
+
+    if variable == 'u':
+        b_hat_u0 = b_hat_0.reshape(n_atoms, -1)[:, :n_chan].ravel()
+        n_points = n_atoms * n_chan
+        L = power_iteration(op_Hu, n_points, b_hat_0=b_hat_u0)
+    elif variable == 'v':
+        b_hat_v0 = b_hat_0.reshape(n_atoms, -1)[:, n_chan:].ravel()
+        n_points = n_atoms * n_times_atom
+        L = power_iteration(op_Hv, n_points, b_hat_0=b_hat_v0)
+    return L
 
 
 @jit()
