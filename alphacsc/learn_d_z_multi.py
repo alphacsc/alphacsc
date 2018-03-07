@@ -92,10 +92,11 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
     solver_z : str
         The solver to use for the z update. Options are
         'l_bfgs' (default) | 'ista' | 'fista'
-    uv_constraint : str in {'joint', 'separate'}
+    uv_constraint : str in {'joint', 'separate', 'box'}
         The kind of norm constraint on the atoms:
-        If 'joint', the constraint is norm([u, v]) <= 1
-        If 'separate', the constraint is norm(u) <= 1 and norm(v) <= 1
+        If 'joint', the constraint is norm_2([u, v]) <= 1
+        If 'separate', the constraint is norm_2(u) <= 1 and norm_2(v) <= 1
+        If 'box', the constraint is norm_inf([u, v]) <= 1
     solver_d_kwargs : dict
         Additional keyword arguments to provide to update_d
     solver_z_kwargs : dict

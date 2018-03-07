@@ -160,10 +160,11 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
         If True, return the cost at each iteration.
     momentum : bool
         If True, use an accelerated version of the proximal gradient descent.
-    uv_constraint : str in {'joint', 'separate'}
+    uv_constraint : str in {'joint', 'separate', 'box'}
         The kind of norm constraint on the atoms:
-        If 'joint', the constraint is norm([u, v]) <= 1
-        If 'separate', the constraint is norm(u) <= 1 and norm(v) <= 1
+        If 'joint', the constraint is norm_2([u, v]) <= 1
+        If 'separate', the constraint is norm_2(u) <= 1 and norm_2(v) <= 1
+        If 'box', the constraint is norm_inf([u, v]) <= 1
     verbose : int
         Verbosity level.
 
@@ -183,39 +184,53 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
         res = X - X_hat
         return .5 * np.sum(res * res)
 
-    constants = _get_d_update_constants(X, Z, b_hat_0=b_hat_0)
-    step_size = 0.99 / constants['L']
+    if uv_constraint == 'joint':
+        # TODO: add a line-search
+        constants = _get_d_update_constants(X, Z, b_hat_0=b_hat_0)
+        step_size = 0.99 / constants['L']
 
-    if debug:
-        pobj = list()
-
-    if eps is None:
-        eps = np.finfo(np.float32).eps
-    tk = 1
-    uv_hat = uv_hat0.copy()
-    uv_hat_aux = uv_hat.copy()
-    diff = np.empty(uv_hat.shape)
-    for ii in range(max_iter):
-        uv_hat_aux -= step_size * _gradient_uv(uv_hat_aux, constants=constants)
-        prox_uv(uv_hat_aux, uv_constraint=uv_constraint, n_chan=n_chan)
-        diff[:] = uv_hat_aux - uv_hat
-        uv_hat[:] = uv_hat_aux
-        if momentum:  # TODO: FISTA does not work well!
-            tk_new = (1 + np.sqrt(1 + 4 * tk * tk)) / 2
-            uv_hat_aux += (tk - 1) / tk_new * diff
-            tk = tk_new
         if debug:
-            pobj.append(objective(uv_hat))
-        f = np.sum(abs(diff))
-        if f <= eps:
-            break
-        if f > 1e50:
-            raise RuntimeError("The D update have diverged.")
-    else:
+            pobj = list()
+
+        if eps is None:
+            eps = np.finfo(np.float32).eps
+        tk = 1
+        uv_hat = uv_hat0.copy()
+        uv_hat_aux = uv_hat.copy()
+        diff = np.empty(uv_hat.shape)
+        for ii in range(max_iter):
+            uv_hat_aux -= step_size * _gradient_uv(uv_hat_aux,
+                                                   constants=constants)
+            prox_uv(uv_hat_aux, uv_constraint=uv_constraint, n_chan=n_chan)
+            diff[:] = uv_hat_aux - uv_hat
+            uv_hat[:] = uv_hat_aux
+            if momentum:  # TODO: FISTA does not work well!
+                tk_new = (1 + np.sqrt(1 + 4 * tk * tk)) / 2
+                uv_hat_aux += (tk - 1) / tk_new * diff
+                tk = tk_new
+            if debug:
+                pobj.append(objective(uv_hat))
+            f = np.sum(abs(diff))
+            if f <= eps:
+                break
+            if f > 1e50:
+                raise RuntimeError("The D update have diverged.")
+        else:
+            if verbose > 1:
+                print('update_uv did not converge')
         if verbose > 1:
-            print('update_uv did not converge')
-    if verbose > 1:
-        print('%d iterations' % (ii + 1))
+            print('%d iterations' % (ii + 1))
+
+    elif uv_constraint == 'separate':
+        # TODO add a for loop on u then a for loop on v
+        # (need to compute Lu and Lv with two power_iteration runs)
+        raise NotImplementedError
+    elif uv_constraint == 'box':
+        # TODO use l_bfgs_b solver on a L_inf joint box constraint
+        raise NotImplementedError
+    else:
+        raise ValueError('Unknown uv_constraint: %s' % (uv_constraint, ))
+
     if debug:
         return uv_hat, pobj
     return uv_hat
