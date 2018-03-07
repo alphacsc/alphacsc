@@ -9,8 +9,13 @@
 import numpy as np
 from numpy import convolve
 from numba import jit
+import functools
+
 
 from .utils import construct_X_multi, _get_D, check_random_state
+
+
+PHI = (np.sqrt(5) + 1) / 2
 
 
 def tensordot_convolve(ZtZ, D):
@@ -92,7 +97,7 @@ def _dense_transpose_convolve(Z, residual):
 def _gradient_d(D, X=None, Z=None, constants=None, uv=None, n_chan=None):
     if constants:
         if D is None:
-            assert uv is not None and n_chan is not None
+            assert uv is not None
             g = numpy_convolve_uv(constants['ZtZ'], uv)
         else:
             g = tensordot_convolve(constants['ZtZ'], D)
@@ -116,6 +121,13 @@ def _gradient_uv(uv, X=None, Z=None, constants=None):
     grad_u = (grad_d * uv[:, None, n_chan:]).sum(axis=2)
     grad_v = (grad_d * uv[:, :n_chan, None]).sum(axis=1)
     return np.c_[grad_u, grad_v]
+
+
+def _shifted_objective_uv(uv, constants):
+    n_chan = constants['n_chan']
+    grad_d = .5 * numpy_convolve_uv(constants['ZtZ'], uv) - constants['ZtX']
+    cost = (grad_d * uv[:, None, n_chan:]).sum(axis=2)
+    return np.dot(cost.ravel(), uv[:, :n_chan].ravel())
 
 
 def prox_uv(uv, uv_constraint='joint', n_chan=None, return_norm=False):
@@ -177,17 +189,20 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
     _, n_chan, n_times = X.shape
 
     # XXX : FISTA does not work and the cost goes up, should be fixed.
+    constants = _get_d_update_constants(X, Z, b_hat_0=b_hat_0)
 
-    def objective(uv):
-        D = _get_D(uv, n_chan)
-        X_hat = construct_X_multi(Z, D)
-        res = X - X_hat
-        return .5 * np.sum(res * res)
+    def objective(uv, full=False):
+        cost = _shifted_objective_uv(uv, constants)
+        if full:
+            cost += np.sum(X * X) / 2
+        return cost
+
+    def gradient(uv):
+        uv = uv.reshape((n_atoms, -1))
+        return _gradient_uv(uv, constants=constants).ravel()
 
     if uv_constraint == 'joint':
         # TODO: add a line-search
-        constants = _get_d_update_constants(X, Z, b_hat_0=b_hat_0)
-        step_size = 0.99 / constants['L']
 
         if debug:
             pobj = list()
@@ -197,10 +212,14 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
         tk = 1
         uv_hat = uv_hat0.copy()
         uv_hat_aux = uv_hat.copy()
+        grad = np.empty(uv_hat.shape)
         diff = np.empty(uv_hat.shape)
+        alpha = None
         for ii in range(max_iter):
-            uv_hat_aux -= step_size * _gradient_uv(uv_hat_aux,
-                                                   constants=constants)
+
+            grad[:] = _gradient_uv(uv_hat_aux, constants=constants)
+            alpha = _line_search(objective, uv_hat_aux, grad, alpha=alpha)
+            uv_hat_aux -= alpha * grad
             prox_uv(uv_hat_aux, uv_constraint=uv_constraint, n_chan=n_chan)
             diff[:] = uv_hat_aux - uv_hat
             uv_hat[:] = uv_hat_aux
@@ -331,3 +350,57 @@ def power_iteration(lin_op, n_points, b_hat_0=None, max_iter=1000, tol=1e-7,
         np.copyto(b_hat_0, b_hat)
 
     return mu_hat
+
+
+def _line_search(objective, xk, gk, f0=None, alpha=None, tau=1.2, tol=1e-5):
+
+    if f0 is None:
+        f0 = objective(xk)
+    if alpha is None or True:
+        alpha = 1e10
+
+    @functools.lru_cache(maxsize=None)
+    def f(step_size):
+        return objective(xk - step_size * gk)
+
+    alpha1 = alpha
+    f_alpha = f(alpha)
+
+    # Find the smallest alpha with f(alpha) >= f0
+    if f_alpha < f0:
+        alpha1 *= tau
+        while f(alpha1) < f0:
+            alpha1 *= tau
+    while f(alpha1 / tau) > f0:
+        alpha1 /= tau
+
+    alpha0 = 1e-25
+
+    c = alpha1 - (alpha1 - alpha0) / PHI
+    d = alpha0 + (alpha1 - alpha0) / PHI
+    i = 0
+    while abs(c - d) > tol and abs(f(c) - f(d)) > tol:
+        if f(c) < f(d):
+            alpha1 = d
+        else:
+            alpha0 = c
+
+        # we recompute both c and d here to avoid loss of precision which may lead to incorrect results or infinite loop
+        c = alpha1 - (alpha1 - alpha0) / PHI
+        d = alpha0 + (alpha1 - alpha0) / PHI
+        i += 1
+
+
+    try:
+        assert f0 >= f(c) or f0 >= f(alpha0)
+    except AssertionError:
+        import IPython, sys
+        IPython.embed()
+        sys.exit()
+
+    if f((alpha0 + alpha1) / 2) < f0:
+        return (alpha0 + alpha1) / 2
+    if f(c) < f0:
+        return c
+    assert f(alpha0) <= f0
+    return alpha0

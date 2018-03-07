@@ -3,6 +3,7 @@ import numpy as np
 from scipy import optimize, signal
 
 from alphacsc.update_d_multi import _gradient_d, _gradient_uv, _get_D
+from alphacsc.update_d_multi import _shifted_objective_uv
 from alphacsc.update_d_multi import update_uv, prox_uv, _get_d_update_constants
 from alphacsc.utils import construct_X_multi
 
@@ -66,11 +67,11 @@ def test_gradient_d():
 
     def grad(d0):
         D0 = d0.reshape(n_atoms, n_chan, n_times_atom)
-        return _gradient_d(D0, X, Z).flatten()
+        return _gradient_d(D0, X, Z).ravel()
 
     if DEBUG:
-        grad_approx = optimize.approx_fprime(D.flatten(), func, 2e-8)
-        grad_d = grad(D.flatten())
+        grad_approx = optimize.approx_fprime(D.ravel(), func, 2e-8)
+        grad_d = grad(D.ravel())
 
         import matplotlib.pyplot as plt
         plt.semilogy(abs(grad_approx - grad_d))
@@ -80,7 +81,7 @@ def test_gradient_d():
         plt.legend()
         plt.show()
 
-    error = optimize.check_grad(func, grad, D.flatten(), epsilon=2e-8)
+    error = optimize.check_grad(func, grad, D.ravel(), epsilon=2e-8)
     assert error < 1e-3, "Gradient is false: {:.4e}".format(error)
 
 
@@ -105,11 +106,11 @@ def test_gradient_uv():
 
     def grad(uv0):
         uv0 = uv0.reshape(n_atoms, n_chan + n_times_atom)
-        return _gradient_uv(uv0, X, Z).flatten()
+        return _gradient_uv(uv0, X, Z).ravel()
 
     if DEBUG:
-        grad_approx = optimize.approx_fprime(uv.flatten(), func, 2e-8)
-        grad_d = grad(uv.flatten())
+        grad_approx = optimize.approx_fprime(uv.ravel(), func, 2e-8)
+        grad_d = grad(uv.ravel())
 
         import matplotlib.pyplot as plt
         plt.semilogy(abs(grad_approx - grad_d))
@@ -119,7 +120,7 @@ def test_gradient_uv():
         plt.legend()
         plt.show()
 
-    error = optimize.check_grad(func, grad, uv.flatten(), epsilon=2e-8)
+    error = optimize.check_grad(func, grad, uv.ravel(), epsilon=2e-8)
     assert error < 1e-3, "Gradient is false: {:.4e}".format(error)
 
     constants = _get_d_update_constants(X, Z)
@@ -139,7 +140,7 @@ def test_update_uv(uv_constraint):
     n_atoms = 2
     n_trials = 3
 
-    rng = np.random.RandomState(42)
+    rng = np.random.RandomState()
     Z = rng.normal(size=(n_atoms, n_trials, n_times - n_times_atom + 1))
     uv0 = rng.normal(size=(n_atoms, n_chan + n_times_atom))
     uv1 = rng.normal(size=(n_atoms, n_chan + n_times_atom))
@@ -168,16 +169,51 @@ def test_update_uv(uv_constraint):
     uv, pobj = update_uv(X, Z, uv1, debug=True, max_iter=5000, verbose=10,
                          momentum=False, eps=1e-15,
                          uv_constraint=uv_constraint)
-    # import matplotlib.pyplot as plt
-    # pobj = np.array(pobj)
-    # plt.semilogy(pobj)
-
-    # # uv, pobj2 = update_uv(X, Z, uv1, debug=True, max_iter=5000, verbose=10,
-    # #                       momentum=True, uv_constraint=uv_constraint)
-    # # pobj2 = np.array(pobj2)
-    # # plt.semilogy(pobj2)
-    # plt.show()
     cost1 = objective(uv)
-    assert cost1 < cost0, "Learning is not going down"
 
-    assert np.isclose(cost1, 0)
+    if False:
+        import matplotlib.pyplot as plt
+        pobj = np.array(pobj)
+        plt.semilogy(pobj - np.min(pobj) + 1e-26)
+        plt.show()
+
+    try:
+        assert cost1 < cost0, "Learning is not going down"
+
+        assert np.isclose(cost1, 0)
+    except AssertionError:
+
+        import matplotlib.pyplot as plt
+        pobj = np.array(pobj)
+        plt.semilogy(pobj)
+        plt.show()
+        raise
+
+
+def test_fast_cost():
+    """Test that _shifted_objective_uv compute the right thing"""
+    # Generate synchronous D
+    n_times_atom, n_times = 10, 100
+    n_chan = 5
+    n_atoms = 2
+    n_trials = 3
+
+    rng = np.random.RandomState()
+    X = rng.normal(size=(n_trials, n_chan, n_times))
+    Z = rng.normal(size=(n_atoms, n_trials, n_times - n_times_atom + 1))
+
+    constants = _get_d_update_constants(X, Z)
+
+    def objective(uv):
+        D = _get_D(uv, n_chan)
+        X_hat = construct_X_multi(Z, D)
+        res = X - X_hat
+        return .5 * np.sum(res * res)
+
+    for _ in range(10):
+        uv = rng.normal(size=(n_atoms, n_chan + n_times_atom))
+
+        nX = np.sum(X * X)
+        cost_fast = _shifted_objective_uv(uv, constants) + .5 * nX
+        cost_full = objective(uv)
+        assert np.isclose(cost_full, cost_fast)
