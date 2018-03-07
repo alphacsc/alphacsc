@@ -132,8 +132,10 @@ def test_gradient_uv():
                        _gradient_uv(uv, constants=constants)), msg
 
 
-@pytest.mark.parametrize('uv_constraint', ['joint', 'separate', 'box'])
-def test_update_uv(uv_constraint):
+@pytest.mark.parametrize('solver_d, uv_constraint', [
+    ('joint', 'joint'), ('alternate', 'separate'), ('lbfgs', 'box')
+])
+def test_update_uv(solver_d, uv_constraint):
     # Generate synchronous D
     n_times_atom, n_times = 10, 100
     n_chan = 5
@@ -167,15 +169,9 @@ def test_update_uv(uv_constraint):
     # Ensure that the update is going down from a random initialization
     cost0 = objective(uv1)
     uv, pobj = update_uv(X, Z, uv1, debug=True, max_iter=5000, verbose=10,
-                         momentum=False, eps=1e-15,
+                         solver_d=solver_d, momentum=False, eps=1e-10,
                          uv_constraint=uv_constraint)
     cost1 = objective(uv)
-
-    if False:
-        import matplotlib.pyplot as plt
-        pobj = np.array(pobj)
-        plt.semilogy(pobj - np.min(pobj) + 1e-26)
-        plt.show()
 
     try:
         assert cost1 < cost0, "Learning is not going down"

@@ -66,9 +66,9 @@ def compute_X_and_objective_multi(X, Z_hat, uv_hat, reg,
 
 def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
                     n_iter=60, random_state=None, n_jobs=1, solver_z='l_bfgs',
-                    uv_constraint='joint', solver_d_kwargs=dict(),
-                    solver_z_kwargs=dict(), eps=1e-10, uv_init=None,
-                    verbose=10, callback=None):
+                    solver_d='alternate', uv_constraint='joint',
+                    solver_d_kwargs=dict(), solver_z_kwargs=dict(),
+                    eps=1e-10, uv_init=None, verbose=10, callback=None):
     """Learn atoms and activations using Convolutional Sparse Coding.
 
     Parameters
@@ -92,6 +92,9 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
     solver_z : str
         The solver to use for the z update. Options are
         'l_bfgs' (default) | 'ista' | 'fista'
+    solver_d : str
+        The solver to use for the d update. Options are
+        'alternate' (default) | 'joint' | 'lbfgs'
     uv_constraint : str in {'joint', 'separate', 'box'}
         The kind of norm constraint on the atoms:
         If 'joint', the constraint is norm_2([u, v]) <= 1
@@ -179,10 +182,15 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
             start = time.time()
             d_kwargs = dict(verbose=verbose, eps=1e-8)
             d_kwargs.update(solver_d_kwargs)
-            uv_hat, pobj = func_d(X, Z_hat, uv_hat0=uv_hat, b_hat_0=b_hat_0,
-                                  uv_constraint=uv_constraint, debug=True,
-                                  **d_kwargs)
+
+            print(solver_d, uv_constraint)
+            uv_hat = func_d(X, Z_hat, uv_hat0=uv_hat, b_hat_0=b_hat_0,
+                            solver_d=solver_d, uv_constraint=uv_constraint,
+                            **d_kwargs)
             times.append(time.time() - start)
+
+            pobj.append(compute_X_and_objective_multi(X, Z_hat, uv_hat, reg,
+                        uv_constraint=uv_constraint))
 
             if verbose > 1:
                 print('[seed %s] Objective (d) %0.8f' % (random_state,

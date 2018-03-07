@@ -194,7 +194,8 @@ def fista(grad, prox, step_size, x0, max_iter, verbose=0,
 
 
 def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
-              momentum=False, uv_constraint='joint', verbose=0):
+              solver_d='alternate', momentum=False, uv_constraint='separate',
+              verbose=0):
     """Learn d's in time domain.
 
     Parameters
@@ -216,6 +217,11 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
         If 'joint', the constraint is norm_2([u, v]) <= 1
         If 'separate', the constraint is norm_2(u) <= 1 and norm_2(v) <= 1
         If 'box', the constraint is norm_inf([u, v]) <= 1
+    solver_d : str in {'alternate', 'joint', 'lbfgs'}
+        The type of solver to update d:
+        If 'alternate', the solver alternates between u then v
+        If 'joint', the solver jointly optimize uv with a line search
+        If 'lbfgs', the solver uses lbfgs with box constraints
     verbose : int
         Verbosity level.
 
@@ -226,6 +232,13 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
     """
     n_atoms, n_trials, n_times_valid = Z.shape
     _, n_chan, n_times = X.shape
+
+    if solver_d == 'lbfgs':
+        msg = "L-BFGS sovler only works with box constraints"
+        assert uv_constraint == 'box', msg
+    elif solver_d == 'alternate':
+        msg = "alternate solver should be used with separate constraints"
+        assert uv_constraint == 'separate', msg
 
     # XXX : FISTA does not work and the cost goes up, should be fixed.
     constants = _get_d_update_constants(X, Z, b_hat_0=b_hat_0)
@@ -240,7 +253,7 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
         uv = uv.reshape((n_atoms, -1))
         return _gradient_uv(uv, constants=constants).ravel()
 
-    if uv_constraint == 'joint':
+    if solver_d == 'joint':
         # TODO: add a line-search
 
         if debug:
@@ -257,7 +270,8 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
         for ii in range(max_iter):
 
             grad[:] = _gradient_uv(uv_hat_aux, constants=constants)
-            alpha = _line_search(objective, uv_hat_aux, grad, alpha=alpha)
+            alpha = _line_search(objective, uv_hat_aux, grad, alpha=alpha,
+                                 uv_constraint=uv_constraint, n_chan=n_chan)
             uv_hat_aux -= alpha * grad
             prox_uv(uv_hat_aux, uv_constraint=uv_constraint, n_chan=n_chan)
             diff[:] = uv_hat_aux - uv_hat
@@ -279,7 +293,7 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
         if verbose > 1:
             print('%d iterations' % (ii + 1))
 
-    elif uv_constraint == 'separate':
+    elif solver_d == 'alternate':
 
         pobj = list()
         uv_hat = uv_hat0.copy()
@@ -315,7 +329,7 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
             if debug:
                 pobj.append(objective(uv_hat, full=True))
 
-    elif uv_constraint == 'box':
+    elif solver_d == 'lbfgs':
         constants = _get_d_update_constants(X, Z, b_hat_0=b_hat_0)
 
         def func(uv):
@@ -353,7 +367,7 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
             pobj.append(objective(uv_hat))
 
     else:
-        raise ValueError('Unknown uv_constraint: %s' % (uv_constraint, ))
+        raise ValueError('Unknown solver_d: %s' % (solver_d, ))
 
     if debug:
         return uv_hat, pobj
@@ -480,7 +494,8 @@ def power_iteration(lin_op, n_points, b_hat_0=None, max_iter=1000, tol=1e-7,
     return mu_hat
 
 
-def _line_search(objective, xk, gk, f0=None, alpha=None, tau=1.2, tol=1e-5):
+def _line_search(objective, xk, gk, f0=None, alpha=None, tau=1.2, tol=1e-5,
+                 uv_constraint='joint', n_chan=None):
 
     if f0 is None:
         f0 = objective(xk)
@@ -489,7 +504,10 @@ def _line_search(objective, xk, gk, f0=None, alpha=None, tau=1.2, tol=1e-5):
 
     # @functools.lru_cache(maxsize=None)
     def f(step_size):
-        return objective(xk - step_size * gk)
+
+        return objective(prox_uv(xk - step_size * gk,
+                                 uv_constraint=uv_constraint,
+                                 n_chan=n_chan))
 
     alpha1 = alpha
     f_alpha = f(alpha)
@@ -531,5 +549,5 @@ def _line_search(objective, xk, gk, f0=None, alpha=None, tau=1.2, tol=1e-5):
         return (alpha0 + alpha1) / 2
     if f(c) < f0:
         return c
-    assert f(alpha0) <= f0
+    # assert f(alpha0) <= f0, (f(alpha0), f0, alpha0)
     return alpha0
