@@ -10,7 +10,7 @@ import numpy as np
 from numpy import convolve
 from numba import jit
 import functools
-
+from scipy import optimize
 
 from .utils import construct_X_multi, _get_D, check_random_state
 
@@ -140,8 +140,15 @@ def prox_uv(uv, uv_constraint='joint', n_chan=None, return_norm=False):
         norm_u = np.maximum(1, np.linalg.norm(uv[:, :n_chan], axis=1))
         norm_v = np.maximum(1, np.linalg.norm(uv[:, n_chan:], axis=1))
 
-        norm_u[norm_u == 0] = 1
-        norm_v[norm_v == 0] = 1
+        uv[:, :n_chan] /= norm_u[:, None]
+        uv[:, n_chan:] /= norm_v[:, None]
+        norm_uv = norm_u * norm_v
+
+    elif uv_constraint == 'box':
+        assert n_chan is not None
+        norm_u = np.maximum(1, np.max(uv[:, :n_chan], axis=1))
+        norm_v = np.maximum(1, np.max(uv[:, n_chan:], axis=1))
+
         uv[:, :n_chan] /= norm_u[:, None]
         uv[:, n_chan:] /= norm_v[:, None]
         norm_uv = norm_u * norm_v
@@ -309,8 +316,42 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
                 pobj.append(objective(uv_hat))
 
     elif uv_constraint == 'box':
-        # TODO use l_bfgs_b solver on a L_inf joint box constraint
-        raise NotImplementedError
+        constants = _get_d_update_constants(X, Z, b_hat_0=b_hat_0)
+
+        def func(uv):
+            uv = np.reshape(uv, uv_hat0.shape)
+            return objective(uv)
+
+        def grad(uv):
+            uv = np.reshape(uv, uv_hat0.shape)
+            return _gradient_uv(uv, constants=constants).ravel()
+
+        def callback(uv):
+            import matplotlib.pyplot as plt
+            uv = np.reshape(uv, uv_hat0.shape)
+            plt.figure(0)
+            ax = plt.gca()
+            if ax.lines == []:
+                plt.plot(uv[:, n_chan:].T)
+            else:
+                for line, this in zip(ax.lines, uv[:, n_chan:]):
+                    line.set_ydata(this)
+            ax.relim()  # make sure all the data fits
+            ax.autoscale_view(True, True, True)
+            plt.draw()
+            plt.pause(0.001)
+
+        bounds = [(-1, 1) for idx in range(0, uv_hat0.size)]
+        if debug:
+            assert optimize.check_grad(func, grad, uv_hat0.ravel()) < 1e-5
+            pobj = [objective(uv_hat0)]
+        uv_hat, _, _ = optimize.fmin_l_bfgs_b(func, x0=uv_hat0.ravel(),
+                                              fprime=grad, bounds=bounds,
+                                              factr=1e7, callback=callback)
+        uv_hat = np.reshape(uv_hat, uv_hat0.shape)
+        if debug:
+            pobj.append(objective(uv_hat))
+
     else:
         raise ValueError('Unknown uv_constraint: %s' % (uv_constraint, ))
 
@@ -472,16 +513,17 @@ def _line_search(objective, xk, gk, f0=None, alpha=None, tau=1.2, tol=1e-5):
         else:
             alpha0 = c
 
-        # we recompute both c and d here to avoid loss of precision which may lead to incorrect results or infinite loop
+        # we recompute both c and d here to avoid loss of precision which may
+        # lead to incorrect results or infinite loop
         c = alpha1 - (alpha1 - alpha0) / PHI
         d = alpha0 + (alpha1 - alpha0) / PHI
         i += 1
 
-
     try:
         assert f0 >= f(c) or f0 >= f(alpha0)
     except AssertionError:
-        import IPython, sys
+        import IPython
+        import sys
         IPython.embed()
         sys.exit()
 
