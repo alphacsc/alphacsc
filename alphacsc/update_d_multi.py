@@ -267,7 +267,7 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
                 uv_hat_aux += (tk - 1) / tk_new * diff
                 tk = tk_new
             if debug:
-                pobj.append(objective(uv_hat))
+                pobj.append(objective(uv_hat, full=True))
             f = np.sum(abs(diff))
             if f <= eps:
                 break
@@ -301,7 +301,7 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
             u_hat = fista(grad_u, prox, 0.99 / Lu, u_hat, max_iter)
             uv_hat = np.c_[u_hat, v_hat]
             if debug:
-                pobj.append(objective(uv_hat))
+                pobj.append(objective(uv_hat, full=True))
 
             # update v
             def grad_v(v):
@@ -313,7 +313,7 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
             v_hat = fista(grad_v, prox, 0.99 / Lv, v_hat, max_iter)
             uv_hat = np.c_[u_hat, v_hat]
             if debug:
-                pobj.append(objective(uv_hat))
+                pobj.append(objective(uv_hat, full=True))
 
     elif uv_constraint == 'box':
         constants = _get_d_update_constants(X, Z, b_hat_0=b_hat_0)

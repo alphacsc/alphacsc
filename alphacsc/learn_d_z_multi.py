@@ -179,13 +179,11 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
             start = time.time()
             d_kwargs = dict(verbose=verbose, eps=1e-8)
             d_kwargs.update(solver_d_kwargs)
-            uv_hat = func_d(X, Z_hat, uv_hat0=uv_hat, b_hat_0=b_hat_0,
-                            uv_constraint=uv_constraint, **d_kwargs)
+            uv_hat, pobj = func_d(X, Z_hat, uv_hat0=uv_hat, b_hat_0=b_hat_0,
+                                  uv_constraint=uv_constraint, debug=True,
+                                  **d_kwargs)
             times.append(time.time() - start)
 
-            # monitor cost function
-            pobj.append(compute_X_and_objective_multi(X, Z_hat, uv_hat, reg,
-                        uv_constraint=uv_constraint))
             if verbose > 1:
                 print('[seed %s] Objective (d) %0.8f' % (random_state,
                                                          pobj[-1]))
