@@ -487,7 +487,7 @@ def _line_search(objective, xk, gk, f0=None, alpha=None, tau=1.2, tol=1e-5):
     if alpha is None or True:
         alpha = 1e10
 
-    @functools.lru_cache(maxsize=None)
+    # @functools.lru_cache(maxsize=None)
     def f(step_size):
         return objective(xk - step_size * gk)
 
