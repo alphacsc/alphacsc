@@ -1,3 +1,4 @@
+import pytest
 import numpy as np
 from scipy import optimize, signal
 
@@ -130,7 +131,8 @@ def test_gradient_uv():
                        _gradient_uv(uv, constants=constants)), msg
 
 
-def test_update_uv():
+@pytest.mark.parametrize('uv_constraint', ['joint', 'separate'])
+def test_update_uv(uv_constraint):
     # Generate synchronous D
     n_times_atom, n_times = 10, 100
     n_chan = 5
@@ -164,14 +166,16 @@ def test_update_uv():
     # Ensure that the update is going down from a random initialization
     cost0 = objective(uv1)
     uv, pobj = update_uv(X, Z, uv1, debug=True, max_iter=5000, verbose=10,
-                         momentum=False, eps=1e-15)
-    # uv, pobj2 = update_uv(X, Z, uv1, debug=True, max_iter=5000, verbose=10,
-    #                       momentum=True)
+                         momentum=False, eps=1e-15,
+                         uv_constraint=uv_constraint)
     # import matplotlib.pyplot as plt
     # pobj = np.array(pobj)
-    # pobj2 = np.array(pobj2)
     # plt.semilogy(pobj)
-    # plt.semilogy(pobj2)
+
+    # # uv, pobj2 = update_uv(X, Z, uv1, debug=True, max_iter=5000, verbose=10,
+    # #                       momentum=True, uv_constraint=uv_constraint)
+    # # pobj2 = np.array(pobj2)
+    # # plt.semilogy(pobj2)
     # plt.show()
     cost1 = objective(uv)
     assert cost1 < cost0, "Learning is not going down"

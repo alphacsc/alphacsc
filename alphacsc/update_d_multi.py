@@ -236,15 +236,15 @@ def _get_d_update_constants(X, Z, b_hat_0=None):
     constants['ZtZ'] = ZtZ
     constants['n_chan'] = n_chan
 
-    def op_ZtZ(uv):
+    def op_H(uv):
         uv = uv.reshape(n_atoms, n_chan + n_times_atom)
-        grad_d = numpy_convolve_uv(ZtZ, uv)
-        grad_u = (grad_d * uv[:, None, n_chan:]).sum(axis=2)
-        grad_v = (grad_d * uv[:, :n_chan, None]).sum(axis=1)
-        return np.c_[grad_u, grad_v].flatten()
+        H_d = 3 * numpy_convolve_uv(ZtZ, uv) - constants['ZtX']
+        H_u = (H_d * uv[:, None, n_chan:]).sum(axis=2)
+        H_v = (H_d * uv[:, :n_chan, None]).sum(axis=1)
+        return np.c_[H_u, H_v].flatten()
 
     n_points = n_atoms * (n_chan + n_times_atom)
-    constants['L'] = power_iteration(op_ZtZ, n_points, b_hat_0=b_hat_0)
+    constants['L'] = power_iteration(op_H, n_points, b_hat_0=b_hat_0)
 
     return constants
 
