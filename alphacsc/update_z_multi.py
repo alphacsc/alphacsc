@@ -189,7 +189,7 @@ def _update_z_multi_idx(X, uv, reg, z0, idxs, debug, solver="l_bfgs",
     return np.vstack(zhats)
 
 
-def _support_least_square(X, uv, Z, debug=True):
+def _support_least_square(X, uv, Z, debug=False):
     n_trials, n_chan, n_times = X.shape
     n_atoms, _, n_times_valid = Z.shape
     n_times_atom = n_times - n_times_valid + 1
@@ -197,6 +197,7 @@ def _support_least_square(X, uv, Z, debug=True):
     # Compute DtD
     DtD = _compute_DtD(uv, n_chan)
     t0 = n_times_atom - 1
+    Z_hat = np.zeros(Z.shape)
 
     for idx in range(n_trials):
         Xi = X[idx]
@@ -218,17 +219,15 @@ def _support_least_square(X, uv, Z, debug=True):
         # Solve the non-negative least-square with nnls
         z_star, a = optimize.nnls(rhs, lhs)
         if debug:
-            f0 = np.sum([_fprime(uv, Z[:, idx], X[idx], return_func=True,
-                                 reg=0)[0] for idx in range(n_trials)])
+            f0 = _fprime(uv, Z[:, idx], X[idx], return_func=True,reg=0)[0]
         for i, (k_i, t_i) in enumerate(zip(*support_i)):
-            Z[k_i, idx, t_i] = z_star[i]
+            Z_hat[k_i, idx, t_i] = z_star[i]
 
         if debug:
-            f1 = np.sum([_fprime(uv, Z[:, idx], X[idx], return_func=True,
-                                 reg=0)[0] for idx in range(n_trials)])
+            f1 = _fprime(uv, Z[:, idx], X[idx], return_func=True, reg=0)[0]
             assert f1 <= f0
 
-    return Z
+    return Z_hat
 
 
 @jit

@@ -64,7 +64,7 @@ def test_support_least_square():
                              solver_kwargs={'factr': 1e7}, freeze_support=True)
     loss_2 = compute_X_and_objective_multi(X, z_hat_2, uv, reg,
                                            feasible_evaluation=False)
-    assert loss_2 <= loss_1 or np.isclose(loss_2, loss_1)
+    assert loss_2 <= loss_1 or np.isclose(loss_1, loss_2)
 
     # Here we recompute z with reg=0, but with no support restriction
     z_hat_3 = update_z_multi(X, uv, reg=0, z0=np.ones(z.shape),
