@@ -174,6 +174,9 @@ def test_update_uv(solver_d, uv_constraint):
                          uv_constraint=uv_constraint)
     cost1 = objective(uv)
 
+    assert cost1 < cost0, "Learning is not going down"
+    assert np.isclose(cost1, 0, atol=1e-7)
+
     try:
         assert cost1 < cost0, "Learning is not going down"
 
