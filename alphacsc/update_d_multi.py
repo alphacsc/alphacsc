@@ -370,7 +370,7 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
             pobj = [objective(uv_hat0)]
         uv_hat, _, _ = optimize.fmin_l_bfgs_b(func, x0=uv_hat0.ravel(),
                                               fprime=grad, bounds=bounds,
-                                              factr=1e7, callback=callback)
+                                              factr=1e7, callback=None)
         uv_hat = np.reshape(uv_hat, uv_hat0.shape)
         if debug:
             pobj.append(objective(uv_hat))

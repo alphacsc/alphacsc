@@ -14,7 +14,7 @@ import numpy as np
 from joblib import Parallel
 
 from .utils import construct_X_multi, check_random_state, _get_D
-from .update_z_multi import update_z_multi, _support_least_square
+from .update_z_multi import update_z_multi
 from .update_d_multi import update_uv, prox_uv
 from .profile_this import profile_this
 
@@ -207,6 +207,9 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
             if stopping_pobj is not None and pobj[-1] < stopping_pobj:
                 break
 
-    Z_hat = _support_least_square(X, uv_hat, Z_hat)
+    # recompute Z_hat with no regularization and keeping the support fixed
+    Z_hat = update_z_multi(
+        X, uv_hat, reg=0, z0=Z_hat, parallel=parallel,
+        solver=solver_z, solver_kwargs=solver_z_kwargs, freeze_support=True)
 
     return pobj, times, uv_hat, Z_hat

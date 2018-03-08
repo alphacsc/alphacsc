@@ -15,7 +15,8 @@ from .utils import _choose_convolve_multi, _get_D
 
 
 def update_z_multi(X, uv, reg, z0=None, debug=False, parallel=None,
-                   solver='l_bfgs', solver_kwargs=dict()):
+                   solver='l_bfgs', solver_kwargs=dict(),
+                   freeze_support=False):
     """Update Z using L-BFGS with positivity constraints
 
     Parameters
@@ -36,6 +37,8 @@ def update_z_multi(X, uv, reg, z0=None, debug=False, parallel=None,
         The solver to use.
     solver_kwargs : dict
         Parameters for the solver
+    freeze_support : boolean
+        If True, the support of z0 is frozen.
 
     Returns
     -------
@@ -53,7 +56,8 @@ def update_z_multi(X, uv, reg, z0=None, debug=False, parallel=None,
         parallel = Parallel(n_jobs=1)
 
     zhats = parallel(
-        my_update_z(X, uv, reg, z0, i, debug, solver, solver_kwargs)
+        my_update_z(X, uv, reg, z0, i, debug, solver, solver_kwargs,
+                    freeze_support)
         for i in np.array_split(np.arange(n_trials), parallel.n_jobs))
     z_hat = np.vstack(zhats)
 
@@ -129,12 +133,13 @@ def _fprime(uv, zi, Xi=None, reg=None, return_func=False):
 
 
 def _update_z_multi_idx(X, uv, reg, z0, idxs, debug, solver="l_bfgs",
-                        solver_kwargs=dict()):
+                        solver_kwargs=dict(), freeze_support=False):
     n_trials, n_channels, n_times = X.shape
     n_atoms, n_channels_n_times_atom = uv.shape
     n_times_atom = n_channels_n_times_atom - n_channels
     n_times_valid = n_times - n_times_atom + 1
-    bounds = [(0, None) for idx in range(n_atoms * n_times_valid)]
+
+    assert not (freeze_support and z0 is None), 'Impossible !'
 
     zhats = []
 
@@ -150,6 +155,11 @@ def _update_z_multi_idx(X, uv, reg, z0, idxs, debug, solver="l_bfgs",
             f0 = np.zeros(n_atoms * n_times_valid)
         else:
             f0 = z0[:, i, :].reshape((n_atoms * n_times_valid))
+
+        if freeze_support:
+            bounds = [(0, 0) if z == 0 else (0, None) for z in f0]
+        else:
+            bounds = [(0, None) for z in f0]
 
         if debug:
 
