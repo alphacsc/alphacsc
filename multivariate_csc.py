@@ -49,8 +49,6 @@ for (u, v) in [(u0, v0), (u1, v1)]:
 D = np.array(atoms)
 uv = np.array([np.r_[u0, v0], np.r_[u1, v1]])
 
-starts = list()
-
 # add atoms
 rng = np.random.RandomState(27)
 shape_Z = (n_atoms, n_trials, n_times_atom)
