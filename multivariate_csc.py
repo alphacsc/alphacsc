@@ -6,7 +6,7 @@ import numpy as np
 from scipy.linalg import norm
 import matplotlib.pyplot as plt
 
-from alphacsc.simulate import get_atoms
+from alphacsc.simulate import get_atoms, get_activations
 from alphacsc.utils import construct_X_multi, _get_D
 from alphacsc.learn_d_z_multi import learn_d_z_multi
 
@@ -53,15 +53,8 @@ starts = list()
 
 # add atoms
 rng = np.random.RandomState(27)
-for _ in range(n_atoms):
-    starts.append(rng.randint(low=0, high=n_times - n_times_atom + 1,
-                  size=(n_trials,)))
-# add activations
-Z = np.zeros((n_atoms, n_trials, n_times))
-for i in range(n_trials):
-    for k_idx, (d, start) in enumerate(zip(D, starts)):
-        Z[k_idx, i, starts[k_idx][i]] = rng.uniform()
-
+shape_Z = (n_atoms, n_trials, n_times_atom)
+Z = get_activations(rng, shape_Z)
 print(Z.shape, D.shape)
 
 
