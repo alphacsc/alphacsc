@@ -9,7 +9,6 @@
 import numpy as np
 from numpy import convolve
 from numba import jit
-import functools
 from scipy import optimize
 
 from .utils import construct_X_multi, _get_D, check_random_state

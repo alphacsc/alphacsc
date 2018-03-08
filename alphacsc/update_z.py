@@ -58,6 +58,8 @@ def update_z(X, ds, reg, z0=None, debug=False, parallel=None,
     my_update_z = delayed(_update_z_idx)
     if parallel is None:
         parallel = Parallel(n_jobs=1)
+    else:
+        assert parallel.n_jobs >= 1
 
     zhats = parallel(
         my_update_z(X, ds, reg, z0, i, debug, solver, b_hat_0, solver_kwargs,

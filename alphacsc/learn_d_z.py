@@ -46,7 +46,8 @@ def compute_X_and_objective(X, Z_hat, d_hat, reg, sample_weights=None,
 def learn_d_z(X, n_atoms, n_times_atom, func_d=update_d_block, reg=0.1,
               n_iter=60, random_state=None, n_jobs=1, solver_z='l_bfgs',
               solver_d_kwargs=dict(), solver_z_kwargs=dict(), ds_init=None,
-              sample_weights=None, verbose=10, callback=None):
+              sample_weights=None, verbose=10, callback=None,
+              stopping_pobj=None):
     """Learn atoms and activations using Convolutional Sparse Coding.
 
     Parameters
@@ -157,5 +158,8 @@ def learn_d_z(X, n_atoms, n_times_atom, func_d=update_d_block, reg=0.1,
 
             if callable(callback):
                 callback(X, d_hat, Z_hat, reg)
+
+            if stopping_pobj is not None and pobj[-1] < stopping_pobj:
+                break
 
     return pobj, times, d_hat, Z_hat

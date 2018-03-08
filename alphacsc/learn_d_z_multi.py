@@ -70,7 +70,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
                     n_iter=60, random_state=None, n_jobs=1, solver_z='l_bfgs',
                     solver_d='alternate', uv_constraint='separate',
                     solver_d_kwargs=dict(), solver_z_kwargs=dict(),
-                    eps=1e-10, uv_init=None, verbose=10, callback=None):
+                    eps=1e-10, uv_init=None, verbose=10, callback=None,
+                    stopping_pobj=None):
     """Learn atoms and activations using Convolutional Sparse Coding.
 
     Parameters
@@ -201,6 +202,9 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
                 callback(X, uv_hat, Z_hat, reg)
 
             if pobj[-2] - pobj[-1] < eps:
+                break
+
+            if stopping_pobj is not None and pobj[-1] < stopping_pobj:
                 break
 
     Z_hat = _support_least_square(X, uv_hat, Z_hat)
