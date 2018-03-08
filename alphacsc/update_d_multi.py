@@ -267,19 +267,18 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
         grad = np.empty(uv_hat.shape)
         diff = np.empty(uv_hat.shape)
         alpha = None
+        obj_uv = None
         for ii in range(max_iter):
 
             grad[:] = _gradient_uv(uv_hat_aux, constants=constants)
 
-
-            # @functools.lru_cache(maxsize=None)
             def f(step_size):
-                return objective(prox_uv(uv_hat_aux - step_size * grad,
-                                        uv_constraint=uv_constraint,
-                                        n_chan=n_chan))
-            alpha = _line_search(f, alpha=alpha)
-            uv_hat_aux -= alpha * grad
-            prox_uv(uv_hat_aux, uv_constraint=uv_constraint, n_chan=n_chan)
+                uv = prox_uv(uv_hat_aux - step_size * grad,
+                             uv_constraint=uv_constraint, n_chan=n_chan)
+                return objective(uv), uv
+
+            obj_uv, uv_hat_aux, alpha = _adaptive_step_size(
+                f, obj_uv, alpha=alpha)
             diff[:] = uv_hat_aux - uv_hat
             uv_hat[:] = uv_hat_aux
             if momentum:  # TODO: FISTA does not work well!
@@ -500,63 +499,27 @@ def power_iteration(lin_op, n_points, b_hat_0=None, max_iter=1000, tol=1e-7,
     return mu_hat
 
 
-def _line_search(f, alpha=None, tau=1.2, tol=1e-5,
-                 uv_constraint='joint', n_chan=None):
+def _adaptive_step_size(f, f0=None, alpha=None, tau=2):
 
-    if alpha is None or True:
-        alpha = 1e10
+    if alpha is None:
+        alpha = 1
 
-    f0, f_alpha = f(0), f(alpha)
-    alpha1 = alpha
+    if f0 is None:
+        f0, _ = f(0)
+    f_alpha, x_alpha = f(alpha)
+    f_alpha_down, x_alpha_down = f(alpha / tau)
+    f_alpha_up, x_alpha_up = f(alpha * tau)
 
-    # Find the smallest alpha with f(alpha) >= f0
-    if f_alpha < f0:
-        alpha1 *= tau
-        while f(alpha1) < f0:
-            alpha1 *= tau
-        alpha1 /= tau
+    alphas = [0, alpha / tau, alpha, alpha * tau]
+    fs = [f0, f_alpha_down, f_alpha, f_alpha_up]
+    xs = [None, x_alpha_down, x_alpha, x_alpha_up]
+    i = np.argmin(fs)
+    if i == 0:
+        alpha /= tau * tau
+        f_alpha, x_alpha = f(alpha)
+        while f0 <= f_alpha and alpha > 1e-20:
+            alpha /= tau
+            f_alpha, x_alpha = f(alpha)
+        return f_alpha, x_alpha, alpha
     else:
-        alpha1 /= tau
-        while f(alpha1 / tau) > f0:
-            alpha1 /= tau
-
-    alpha0 = 1e-20
-
-    alpha01 = alpha1 - (alpha1 - alpha0) / PHI
-    alpha10 = alpha0 + (alpha1 - alpha0) / PHI
-    f_alpha01, f_alpha10 = f(alpha01), f(alpha10)
-    if f(alpha0) < f_alpha01:
-        return alpha0
-    i = 0
-    while abs(alpha01 - alpha10) > tol and abs(f_alpha01 - f_alpha10) > tol:
-        if f_alpha01 < f_alpha10:
-            alpha1 = alpha10
-            alpha10 = alpha01
-            alpha01 = alpha1 - (alpha1 - alpha0) / PHI
-            f_alpha10 = f_alpha01
-            f_alpha01 = f(alpha01)
-        else:
-            alpha0 = alpha01
-            alpha01 = alpha10
-            alpha10 = alpha0 + (alpha1 - alpha0) / PHI
-            f_alpha01 = f_alpha10
-            f_alpha10 = f(alpha10)
-
-        # we recompute both c and d here to avoid loss of precision which may
-        # lead to incorrect results or infinite loop
-        i += 1
-
-    try:
-        assert f0 >= f_alpha01 or f0 >= f(alpha0)
-    except AssertionError:
-        import IPython
-        import sys
-        IPython.embed()
-        sys.exit()
-
-    if f((alpha0 + alpha1) / 2) < f0:
-        return (alpha0 + alpha1) / 2
-    if f_alpha01 < f0:
-        return alpha01
-    # assert f(alpha0) <= f0, (f(alpha0), f0, alpha0)
-    return alpha0
+        return fs[i], xs[i], alphas[i]
