@@ -5,7 +5,8 @@ from alphacsc.learn_d_z_multi import learn_d_z_multi
 
 
 @pytest.mark.parametrize('solver_d, uv_constraint', [
-    ('joint', 'joint'), ('alternate', 'separate'), ('lbfgs', 'box')
+    ('joint', 'joint'), ('joint', 'separate'),
+    ('alternate', 'separate'), ('lbfgs', 'box')
 ])
 def test_learn_d_z_multi(solver_d, uv_constraint):
     # smoke test for learn_d_z_multi

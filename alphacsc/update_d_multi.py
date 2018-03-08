@@ -494,11 +494,9 @@ def power_iteration(lin_op, n_points, b_hat_0=None, max_iter=1000, tol=1e-7,
     return mu_hat
 
 
-def _line_search(objective, xk, gk, f0=None, alpha=None, tau=1.2, tol=1e-5,
+def _line_search(objective, xk, gk, alpha=None, tau=1.2, tol=1e-5,
                  uv_constraint='joint', n_chan=None):
 
-    if f0 is None:
-        f0 = objective(xk)
     if alpha is None or True:
         alpha = 1e10
 
@@ -509,8 +507,8 @@ def _line_search(objective, xk, gk, f0=None, alpha=None, tau=1.2, tol=1e-5,
                                  uv_constraint=uv_constraint,
                                  n_chan=n_chan))
 
+    f0, f_alpha = f(0), f(alpha)
     alpha1 = alpha
-    f_alpha = f(alpha)
 
     # Find the smallest alpha with f(alpha) >= f0
     if f_alpha < f0:
@@ -520,25 +518,30 @@ def _line_search(objective, xk, gk, f0=None, alpha=None, tau=1.2, tol=1e-5,
     while f(alpha1 / tau) > f0:
         alpha1 /= tau
 
-    alpha0 = 1e-25
+    alpha0 = 1e-20
 
-    c = alpha1 - (alpha1 - alpha0) / PHI
-    d = alpha0 + (alpha1 - alpha0) / PHI
+    alpha01 = alpha1 - (alpha1 - alpha0) / PHI
+    alpha10 = alpha0 + (alpha1 - alpha0) / PHI
+    f_alpha01, f_alpha10 = f(alpha01), f(alpha10)
+    if f(alpha0) < f_alpha01:
+        return alpha0
     i = 0
-    while abs(c - d) > tol and abs(f(c) - f(d)) > tol:
-        if f(c) < f(d):
-            alpha1 = d
+    while abs(alpha01 - alpha10) > tol and abs(f_alpha01 - f_alpha10) > tol:
+        if f_alpha01 < f_alpha10:
+            alpha1 = alpha10
         else:
-            alpha0 = c
+            alpha0 = alpha01
 
         # we recompute both c and d here to avoid loss of precision which may
         # lead to incorrect results or infinite loop
-        c = alpha1 - (alpha1 - alpha0) / PHI
-        d = alpha0 + (alpha1 - alpha0) / PHI
+
+        alpha01 = alpha1 - (alpha1 - alpha0) / PHI
+        alpha10 = alpha0 + (alpha1 - alpha0) / PHI
+        f_alpha01, f_alpha10 = f(alpha01), f(alpha10)
         i += 1
 
     try:
-        assert f0 >= f(c) or f0 >= f(alpha0)
+        assert f0 >= f_alpha01 or f0 >= f(alpha0)
     except AssertionError:
         import IPython
         import sys
@@ -547,7 +550,7 @@ def _line_search(objective, xk, gk, f0=None, alpha=None, tau=1.2, tol=1e-5,
 
     if f((alpha0 + alpha1) / 2) < f0:
         return (alpha0 + alpha1) / 2
-    if f(c) < f0:
-        return c
+    if f_alpha01 < f0:
+        return alpha01
     # assert f(alpha0) <= f0, (f(alpha0), f0, alpha0)
     return alpha0

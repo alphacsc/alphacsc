@@ -63,7 +63,8 @@ if True:
     pobj, times, uv_hat, Z_hat = learn_d_z_multi(
         X[:, None, :], n_atoms, n_times_atom, reg=reg_, n_iter=n_iter,
         solver_z_kwargs={'factr': 1e10}, random_state=random_state, n_jobs=1,
-        verbose=1, callback=callback, uv_constraint='separate')
+        verbose=1, callback=callback, solver_d='joint',
+        uv_constraint='separate')
     print('Multichannel CSC')
     print(pobj)
 

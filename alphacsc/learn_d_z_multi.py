@@ -183,7 +183,6 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
             d_kwargs = dict(verbose=verbose, eps=1e-8)
             d_kwargs.update(solver_d_kwargs)
 
-            print(solver_d, uv_constraint)
             uv_hat = func_d(X, Z_hat, uv_hat0=uv_hat, b_hat_0=b_hat_0,
                             solver_d=solver_d, uv_constraint=uv_constraint,
                             **d_kwargs)
