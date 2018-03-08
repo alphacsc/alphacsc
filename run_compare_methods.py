@@ -25,9 +25,9 @@ verbose = 1
 # n_jobs for the parallel running of single core methods
 n_jobs = 1
 # number of random states
-n_states = 8
+n_states = 1
 
-n_trials = 100  # N
+n_trials = 10  # N
 n_times_atom = 16  # L
 n_times = 2000  # T
 n_atoms = 2  # K
@@ -119,8 +119,8 @@ def run_multichannel_joint(X, ds_init, reg, n_iter, random_state, label,
     uv_init = np.c_[np.ones((n_atoms, 1)), ds_init]
     pobj, times, d_hat, z_hat = learn_d_z_multi(
         X[:, None, :], n_atoms, n_times_atom,
-        solver_d='joint', uv_constraint='joint', solver_z_kwargs=dict(
-            factr=1e15), reg=reg, solver_d_kwargs=dict(max_iter=50),
+        solver_d='joint', uv_constraint='separate', solver_z_kwargs=dict(
+            factr=1e15), reg=reg, solver_d_kwargs=dict(max_iter=10),
         n_iter=n_iter, random_state=random_state, uv_init=uv_init, n_jobs=1,
         stopping_pobj=stopping_pobj, verbose=verbose)
 
@@ -134,7 +134,7 @@ def run_multichannel_separate(X, ds_init, reg, n_iter, random_state, label,
     pobj, times, d_hat, z_hat = learn_d_z_multi(
         X[:, None, :], n_atoms, n_times_atom,
         solver_d='alternate', uv_constraint='separate', solver_z_kwargs=dict(
-            factr=1e15), reg=reg, solver_d_kwargs=dict(max_iter=50),
+            factr=1e15), reg=reg, solver_d_kwargs=dict(max_iter=10),
         n_iter=n_iter, random_state=random_state, uv_init=uv_init, n_jobs=1,
         stopping_pobj=stopping_pobj, verbose=verbose)
 
@@ -142,11 +142,11 @@ def run_multichannel_separate(X, ds_init, reg, n_iter, random_state, label,
 
 
 methods = [
-    [run_ista, 'ISTA', 30],
-    [run_fista, 'FISTA', 30],
-    [run_lbfgs, 'L-BFGS-B ', 30],
-    [run_multichannel_joint, 'multi_joint', 30],
-    [run_multichannel_separate, 'multi_separate', 30],
+    [run_ista, 'vanilla_ista', 100],
+    [run_fista, 'vanilla_fista', 100],
+    [run_lbfgs, 'vanilla_lbfgsb ', 100],
+    [run_multichannel_joint, 'multi_joint_sep', 100],
+    [run_multichannel_separate, 'multi_alternate_s', 100],
 ]
 
 
@@ -184,7 +184,7 @@ if __name__ == '__main__':
 
     all_results = []
     for n_atoms in [
-            4,
+            2,
             # 10,
     ]:
         for n_times_atom in [
@@ -204,14 +204,15 @@ if __name__ == '__main__':
                 delayed_one_run(X, X_shape, random_state, method, n_atoms,
                                 n_times_atom, stopping_pobj, best_pobj)
                 for method, random_state in itertools.product(
-                    methods[:-1], range(n_states)))
+                    methods, range(n_states)))
 
-            # add the multicore runs outside the parallel loop
-            if methods[-1][0] is not None:
-                for random_state in range(n_states):
-                    results.append(
-                        one_run(X, X_shape, random_state, methods[-1], n_atoms,
-                                n_times_atom, stopping_pobj, best_pobj))
+            # # add the multicore runs outside the parallel loop
+            # if methods[-1][0] is not None:
+            #     for random_state in range(n_states):
+            #         results.append(
+            #             one_run(
+            #                 X, X_shape, random_state, methods[-1], n_atoms,
+            #                 n_times_atom, stopping_pobj, best_pobj))
 
             all_results.extend(results)
 

@@ -241,7 +241,7 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
         assert uv_constraint == 'separate', msg
 
     # XXX : FISTA does not work and the cost goes up, should be fixed.
-    constants = _get_d_update_constants(X, Z, b_hat_0=b_hat_0)
+    constants = _get_d_update_constants(X, Z)
 
     def objective(uv, full=False):
         cost = _shifted_objective_uv(uv, constants)
@@ -339,7 +339,6 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
                 pobj.append(objective(uv_hat, full=True))
 
     elif solver_d == 'lbfgs':
-        constants = _get_d_update_constants(X, Z, b_hat_0=b_hat_0)
 
         def func(uv):
             uv = np.reshape(uv, uv_hat0.shape)
@@ -370,7 +369,7 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
             pobj = [objective(uv_hat0)]
         uv_hat, _, _ = optimize.fmin_l_bfgs_b(func, x0=uv_hat0.ravel(),
                                               fprime=grad, bounds=bounds,
-                                              factr=1e7, callback=None)
+                                              factr=1e7, callback=callback)
         uv_hat = np.reshape(uv_hat, uv_hat0.shape)
         if debug:
             pobj.append(objective(uv_hat))
@@ -383,7 +382,7 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
     return uv_hat
 
 
-def _get_d_update_constants(X, Z, b_hat_0=None):
+def _get_d_update_constants(X, Z):
     # Get shapes
     n_atoms, n_trials, n_times_valid = Z.shape
     _, n_chan, n_times = X.shape

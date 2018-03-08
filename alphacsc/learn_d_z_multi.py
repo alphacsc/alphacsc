@@ -16,7 +16,7 @@ from joblib import Parallel
 from .utils import construct_X_multi, check_random_state, _get_D
 from .update_z_multi import update_z_multi
 from .update_d_multi import update_uv, prox_uv
-from .profile_this import profile_this
+from .profile_this import profile_this  # noqa
 
 
 def objective(X, X_hat, Z_hat, reg):
@@ -65,7 +65,7 @@ def compute_X_and_objective_multi(X, Z_hat, uv_hat, reg,
     return objective(X, X_hat, Z_hat, reg)
 
 
-@profile_this
+# @profile_this
 def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
                     n_iter=60, random_state=None, n_jobs=1, solver_z='l_bfgs',
                     solver_d='alternate', uv_constraint='separate',
