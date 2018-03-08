@@ -16,7 +16,7 @@ def test_learn_d_z_multi(solver_d, uv_constraint):
     X = np.random.randn(n_trials, n_channels, n_times)
     pobj, times, uv_hat, Z_hat = learn_d_z_multi(
         X, n_atoms, n_times_atom, uv_constraint=uv_constraint,
-        solver_d=solver_d, random_state=0, n_iter=10)
+        solver_d=solver_d, random_state=0, n_iter=20)
 
     msg = "Cost function does not go down for uv_constraint {}".format(
         uv_constraint)

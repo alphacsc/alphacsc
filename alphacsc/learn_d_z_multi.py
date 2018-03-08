@@ -66,7 +66,7 @@ def compute_X_and_objective_multi(X, Z_hat, uv_hat, reg,
 
 def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
                     n_iter=60, random_state=None, n_jobs=1, solver_z='l_bfgs',
-                    solver_d='alternate', uv_constraint='joint',
+                    solver_d='alternate', uv_constraint='separate',
                     solver_d_kwargs=dict(), solver_z_kwargs=dict(),
                     eps=1e-10, uv_init=None, verbose=10, callback=None):
     """Learn atoms and activations using Convolutional Sparse Coding.

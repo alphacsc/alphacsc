@@ -270,8 +270,14 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
         for ii in range(max_iter):
 
             grad[:] = _gradient_uv(uv_hat_aux, constants=constants)
-            alpha = _line_search(objective, uv_hat_aux, grad, alpha=alpha,
-                                 uv_constraint=uv_constraint, n_chan=n_chan)
+
+
+            # @functools.lru_cache(maxsize=None)
+            def f(step_size):
+                return objective(prox_uv(uv_hat_aux - step_size * grad,
+                                        uv_constraint=uv_constraint,
+                                        n_chan=n_chan))
+            alpha = _line_search(f, alpha=alpha)
             uv_hat_aux -= alpha * grad
             prox_uv(uv_hat_aux, uv_constraint=uv_constraint, n_chan=n_chan)
             diff[:] = uv_hat_aux - uv_hat
@@ -494,18 +500,11 @@ def power_iteration(lin_op, n_points, b_hat_0=None, max_iter=1000, tol=1e-7,
     return mu_hat
 
 
-def _line_search(objective, xk, gk, alpha=None, tau=1.2, tol=1e-5,
+def _line_search(f, alpha=None, tau=1.2, tol=1e-5,
                  uv_constraint='joint', n_chan=None):
 
     if alpha is None or True:
         alpha = 1e10
-
-    # @functools.lru_cache(maxsize=None)
-    def f(step_size):
-
-        return objective(prox_uv(xk - step_size * gk,
-                                 uv_constraint=uv_constraint,
-                                 n_chan=n_chan))
 
     f0, f_alpha = f(0), f(alpha)
     alpha1 = alpha
@@ -515,8 +514,11 @@ def _line_search(objective, xk, gk, alpha=None, tau=1.2, tol=1e-5,
         alpha1 *= tau
         while f(alpha1) < f0:
             alpha1 *= tau
-    while f(alpha1 / tau) > f0:
         alpha1 /= tau
+    else:
+        alpha1 /= tau
+        while f(alpha1 / tau) > f0:
+            alpha1 /= tau
 
     alpha0 = 1e-20
 
@@ -529,15 +531,19 @@ def _line_search(objective, xk, gk, alpha=None, tau=1.2, tol=1e-5,
     while abs(alpha01 - alpha10) > tol and abs(f_alpha01 - f_alpha10) > tol:
         if f_alpha01 < f_alpha10:
             alpha1 = alpha10
+            alpha10 = alpha01
+            alpha01 = alpha1 - (alpha1 - alpha0) / PHI
+            f_alpha10 = f_alpha01
+            f_alpha01 = f(alpha01)
         else:
             alpha0 = alpha01
+            alpha01 = alpha10
+            alpha10 = alpha0 + (alpha1 - alpha0) / PHI
+            f_alpha01 = f_alpha10
+            f_alpha10 = f(alpha10)
 
         # we recompute both c and d here to avoid loss of precision which may
         # lead to incorrect results or infinite loop
-
-        alpha01 = alpha1 - (alpha1 - alpha0) / PHI
-        alpha10 = alpha0 + (alpha1 - alpha0) / PHI
-        f_alpha01, f_alpha10 = f(alpha01), f(alpha10)
         i += 1
 
     try:
