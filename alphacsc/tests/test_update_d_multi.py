@@ -3,9 +3,10 @@ import numpy as np
 from scipy import optimize, signal
 
 from alphacsc.update_d_multi import _gradient_d, _gradient_uv, _get_D
-from alphacsc.update_d_multi import _shifted_objective_uv
+from alphacsc.update_d_multi import _shifted_objective_uv, fista
 from alphacsc.update_d_multi import update_uv, prox_uv, _get_d_update_constants
 from alphacsc.utils import construct_X_multi
+from alphacsc.update_z import power_iteration
 
 
 DEBUG = False
@@ -213,3 +214,27 @@ def test_fast_cost():
         cost_fast = _shifted_objective_uv(uv, constants) + .5 * nX
         cost_full = objective(uv)
         assert np.isclose(cost_full, cost_fast)
+
+
+def test_ista():
+    """Test that objective goes down in ISTA for a simple problem."""
+
+    # || Ax - b ||_2^2
+    n, p = 20, 10
+    x = np.zeros(p)
+    x[3] = 3.
+    A = np.random.randn(n, p)
+    b = np.dot(A, x)
+
+    def grad(x):
+        return A.T.dot(A.dot(x) - b)
+
+    def prox(x):
+        return x / max(np.linalg.norm(x), 1.)
+
+    x0 = np.random.rand(p)
+    L = power_iteration(A.dot(A.T))
+    step_size = 0.99 / L
+    x_hat = fista(grad, prox, step_size, x0, max_iter=60,
+                  verbose=0, momentum=False, eps=None)
+    np.testing.assert_array_equal(x, x_hat)
