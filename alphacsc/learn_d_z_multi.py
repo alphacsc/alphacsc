@@ -147,7 +147,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
     pobj.append(compute_X_and_objective_multi(X, Z_hat, uv_hat, reg,
                 uv_constraint=uv_constraint))
     times.append(0.)
-    reg_ = reg / 100
+    reg_ = reg / 100  # mj: this won't affect pobj in first iter?
     with Parallel(n_jobs=n_jobs) as parallel:
         for ii in range(n_iter):  # outer loop of coordinate descent
             if ii == 1:
