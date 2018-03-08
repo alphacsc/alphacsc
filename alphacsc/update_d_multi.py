@@ -317,6 +317,7 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
                 return (grad_d * uv[:, None, n_chan:]).sum(axis=2)
 
             Lu = compute_lipschitz(uv_hat, constants, 'u', b_hat_0)
+            assert Lu > 0
             u_hat = fista(grad_u, prox, 0.99 / Lu, u_hat, max_iter)
             uv_hat = np.c_[u_hat, v_hat]
             if debug:
@@ -329,6 +330,7 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
                                      n_chan=n_chan)
                 return (grad_d * uv[:, :n_chan, None]).sum(axis=1)
             Lv = compute_lipschitz(uv_hat, constants, 'v', b_hat_0)
+            assert Lv > 0
             v_hat = fista(grad_v, prox, 0.99 / Lv, v_hat, max_iter)
             uv_hat = np.c_[u_hat, v_hat]
             if debug:
@@ -414,7 +416,7 @@ def compute_lipschitz(uv0, constants, variable, b_hat_0=None):
 
     def op_Hv(v):
         v = np.reshape(v, (n_atoms, n_times_atom))
-        uv = np.c_[u0, v0]
+        uv = np.c_[u0, v]
         H_d = numpy_convolve_uv(constants['ZtZ'], uv)
         H_v = (H_d * uv[:, :n_chan, None]).sum(axis=1)
         return H_v.ravel()
