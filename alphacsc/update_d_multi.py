@@ -308,7 +308,7 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
             u /= np.maximum(1., np.linalg.norm(u, axis=1))[:, None]
             return u
 
-        for jj in range(5):
+        for jj in range(1):
             # update u
             def grad_u(u):
                 uv = np.c_[u, v_hat]
@@ -318,7 +318,8 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
 
             Lu = compute_lipschitz(uv_hat, constants, 'u', b_hat_0)
             assert Lu > 0
-            u_hat = fista(grad_u, prox, 0.99 / Lu, u_hat, max_iter)
+            u_hat = fista(grad_u, prox, 0.99 / Lu, u_hat, max_iter,
+                          momentum=momentum)
             uv_hat = np.c_[u_hat, v_hat]
             if debug:
                 pobj.append(objective(uv_hat, full=True))
@@ -331,7 +332,8 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
                 return (grad_d * uv[:, :n_chan, None]).sum(axis=1)
             Lv = compute_lipschitz(uv_hat, constants, 'v', b_hat_0)
             assert Lv > 0
-            v_hat = fista(grad_v, prox, 0.99 / Lv, v_hat, max_iter)
+            v_hat = fista(grad_v, prox, 0.99 / Lv, v_hat, max_iter,
+                          momentum=momentum)
             uv_hat = np.c_[u_hat, v_hat]
             if debug:
                 pobj.append(objective(uv_hat, full=True))
