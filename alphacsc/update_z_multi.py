@@ -60,7 +60,7 @@ def update_z_multi(X, uv, reg, z0=None, debug=False, parallel=None,
     z_hat2 = z_hat.reshape((n_trials, n_atoms, n_times_valid))
     z_hat2 = np.swapaxes(z_hat2, 0, 1)
 
-    return z_hat3
+    return z_hat2
 
 
 def _fprime(uv, zi, Xi=None, reg=None, return_func=False):
