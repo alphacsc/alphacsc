@@ -12,7 +12,7 @@ n_times_atom, n_times = 64, 512
 n_chan = 100
 n_atoms = 2
 n_trials = 100
-n_iter = 60
+n_iter = 100
 
 v0 = get_atoms('triangle', n_times_atom)  # temporal atoms
 v1 = get_atoms('square', n_times_atom)
@@ -31,7 +31,7 @@ Z = get_activations(rng, shape_Z)
 print(Z.shape, D.shape)
 
 X = construct_X_multi(Z, D)
-X += 0.001 * rng.randn(*X.shape)
+X += 0.01 * rng.randn(*X.shape)
 
 reg = 0.01
 random_state = 60
