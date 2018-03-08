@@ -6,7 +6,6 @@
 #          Alexandre Gramfort <alexandre.gramfort@telecom-paristech.fr>
 
 import numpy as np
-from scipy import signal
 
 
 def construct_X(Z, ds):
@@ -81,13 +80,13 @@ def _sparse_convolve_multi(Zi, ds):
 
 def _dense_convolve_multi(Zi, ds):
     """Convolve Zi[k] and ds[k] for each atom k, and return the sum."""
-    return np.sum([[signal.convolve(zik, dkp) for dkp in dk]
+    return np.sum([[np.convolve(zik, dkp) for dkp in dk]
                    for zik, dk in zip(Zi, ds)], 0)
 
 
 def _dense_convolve(Zi, ds):
     """Convolve Zi[k] and ds[k] for each atom k, and return the sum."""
-    return sum([signal.convolve(zik, dk)
+    return sum([np.convolve(zik, dk)
                for zik, dk in zip(Zi, ds)], 0)
 
 
