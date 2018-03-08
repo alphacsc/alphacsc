@@ -14,13 +14,22 @@ parser.add_argument('--profile', action='store_true',
                     help='Print profiling of the function')
 args = parser.parse_args()
 
+dataset = 'sample'
+
 n_atoms = 5
 
 # get X
-data_path = op.join(mne.datasets.sample.data_path(), 'MEG', 'sample')
-raw = mne.io.read_raw_fif(op.join(data_path,
-                                  'sample_audvis_filt-0-40_raw.fif'),
-                          preload=True)
+if dataset == 'sample':
+    data_path = op.join(mne.datasets.sample.data_path(), 'MEG', 'sample')
+    raw = mne.io.read_raw_fif(op.join(data_path,
+                                      'sample_audvis_filt-0-40_raw.fif'),
+                              preload=True)
+elif dataset == 'somato':
+
+    data_path = op.join(mne.datasets.somato.data_path(), 'MEG', 'somato')
+    raw = mne.io.read_raw_fif(op.join(data_path, 'sef_raw_sss.fif'),
+                              preload=True)
+
 raw.pick_types(meg='mag')
 raw_data = raw[:][0]
 raw.crop(tmax=30.)  # take only 30 s of data
