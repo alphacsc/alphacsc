@@ -14,7 +14,7 @@ import numpy as np
 from joblib import Parallel
 
 from .utils import construct_X_multi, check_random_state, _get_D
-from .update_z_multi import update_z_multi
+from .update_z_multi import update_z_multi, _support_least_square
 from .update_d_multi import update_uv, prox_uv
 
 
@@ -200,5 +200,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
 
             if pobj[-2] - pobj[-1] < eps:
                 break
+
+    Z_hat = _support_least_square(X, uv_hat, Z_hat)
 
     return pobj, times, uv_hat, Z_hat

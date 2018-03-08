@@ -43,6 +43,7 @@ def tensordot_convolve(ZtZ, D):
     return G
 
 
+@jit()
 def numpy_convolve_uv(ZtZ, uv):
     """Compute the multivariate (valid) convolution of ZtZ and D
 
@@ -440,6 +441,7 @@ def compute_ZtZ(Z, n_times_atom):
     ZtZ.shape = n_atoms, n_atoms, 2 * n_times_atom - 1
     Z.shape = n_atoms, n_trials, n_times - n_times_atom + 1)
     """
+    # TODO: benchmark the cross correlate function of numpy
     n_atoms, n_trials, n_times_valid = Z.shape
 
     ZtZ = np.zeros(shape=(n_atoms, n_atoms, 2 * n_times_atom - 1))

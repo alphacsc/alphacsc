@@ -7,7 +7,8 @@
 #          Thomas Moreau <thomas.moreau@inria.fr>
 
 import numpy as np
-from scipy import optimize, signal
+from numba import jit
+from scipy import optimize
 from joblib import Parallel, delayed
 
 from .utils import _choose_convolve_multi, _get_D
@@ -59,7 +60,7 @@ def update_z_multi(X, uv, reg, z0=None, debug=False, parallel=None,
     z_hat2 = z_hat.reshape((n_trials, n_atoms, n_times_valid))
     z_hat2 = np.swapaxes(z_hat2, 0, 1)
 
-    return z_hat2
+    return z_hat3
 
 
 def _fprime(uv, zi, Xi=None, reg=None, return_func=False):
@@ -114,7 +115,7 @@ def _fprime(uv, zi, Xi=None, reg=None, return_func=False):
     # n_atoms, n_times_atom = v.shape
     # n_atoms * n_times_valid = grad.shape
     grad = np.concatenate([
-        signal.convolve(uDzi_k, v_k[::-1], 'valid')
+        np.convolve(uDzi_k, v_k[::-1], 'valid')
         for (uDzi_k, v_k) in zip(uDzi, uv[:, n_channels:])
     ])
 
@@ -164,7 +165,8 @@ def _update_z_multi_idx(X, uv, reg, z0, idxs, debug, solver="l_bfgs",
             factr = solver_kwargs.get('factr', 1e15)  # default value
             zhat, f, d = optimize.fmin_l_bfgs_b(func_and_grad, f0, fprime=None,
                                                 args=(), approx_grad=False,
-                                                bounds=bounds, factr=factr)
+                                                bounds=bounds, factr=factr,
+                                                maxiter=1e6)
         elif solver == "ista":
             raise NotImplementedError('Not adapted yet for n_channels')
         elif solver == "fista":
@@ -175,3 +177,69 @@ def _update_z_multi_idx(X, uv, reg, z0, idxs, debug, solver="l_bfgs",
 
         zhats.append(zhat)
     return np.vstack(zhats)
+
+
+def _support_least_square(X, uv, Z, debug=True):
+    n_trials, n_chan, n_times = X.shape
+    n_atoms, _, n_times_valid = Z.shape
+    n_times_atom = n_times - n_times_valid + 1
+
+    # Compute DtD
+    DtD = _compute_DtD(uv, n_chan)
+    t0 = n_times_atom - 1
+
+    for idx in range(n_trials):
+        Xi = X[idx]
+        support_i = Z[:, idx].nonzero()
+        n_support = len(support_i[0])
+        if n_support == 0:
+            continue
+        rhs = np.zeros((n_support, n_support))
+        lhs = np.zeros(n_support)
+
+        for i, (k_i, t_i) in enumerate(zip(*support_i)):
+            for j, (k_j, t_j) in enumerate(zip(*support_i)):
+                dt = t_i - t_j
+                if abs(dt) < n_times_atom:
+                    rhs[i, j] = DtD[k_i, k_j, t0 + dt]
+            aux_i = np.dot(uv[k_i, :n_chan], Xi[:, t_i:t_i + n_times_atom])
+            lhs[i] = np.dot(uv[k_i, n_chan:], aux_i)
+
+        # Solve the non-negative least-square with nnls
+        z_star, a = optimize.nnls(rhs, lhs)
+        if debug:
+            f0 = np.sum([_fprime(uv, Z[:, idx], X[idx], return_func=True,
+                                 reg=0)[0] for idx in range(n_trials)])
+        for i, (k_i, t_i) in enumerate(zip(*support_i)):
+            Z[k_i, idx, t_i] = z_star[i]
+
+        if debug:
+            f1 = np.sum([_fprime(uv, Z[:, idx], X[idx], return_func=True,
+                                 reg=0)[0] for idx in range(n_trials)])
+            assert f1 <= f0
+
+    return Z
+
+
+@jit
+def _compute_DtD(uv, n_chan):
+    """Compute the DtD matrix"""
+    # TODO: benchmark the cross correlate function of numpy
+    n_atoms, n_times_atom = uv.shape
+    n_times_atom -= n_chan
+
+    u = uv[:, :n_chan]
+    v = uv[:, n_chan:]
+
+    DtD = np.zeros(shape=(n_atoms, n_atoms, 2 * n_times_atom - 1))
+    t0 = n_times_atom - 1
+    for k0 in range(n_atoms):
+        for k in range(n_atoms):
+            for t in range(n_times_atom):
+                if t == 0:
+                    DtD[k0, k, t0] = np.dot(v[k0], v[k])
+                else:
+                    DtD[k0, k, t0 + t] = np.dot(v[k0, :-t], v[k, t:])
+                    DtD[k0, k, t0 - t] = np.dot(v[k0, t:], v[k, :-t])
+    DtD *= np.dot(u, u.T)[:, :, None]
+    return DtD
