@@ -92,8 +92,9 @@ for random_state in range(n_states):
     pobj, times, uv_hat, Z_hat = learn_d_z_multi(
         X, n_atoms, n_times_atom, random_state=random_state, callback=callback,
         n_iter=n_iter, n_jobs=1, reg=reg, uv_constraint='separate',
-        solver_d='alternate',
-        solver_d_kwargs={'momentum': args.momentum, 'max_iter': 1000})
+        solver_d='alternate', solver_z="gcd",
+        solver_d_kwargs={'momentum': args.momentum, 'max_iter': 1000},
+        solver_z_kwargs={'max_iter': 10000, 'tol': 1e-3})
     pobjs.append(pobj[-1])
     uv_hats.append(uv_hat)
 

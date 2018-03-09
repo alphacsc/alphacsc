@@ -40,7 +40,7 @@ def plot_convergence(all_results_df, threshold, normalize_method, save_name):
             best_pobj = min(this_res['best_pobj'].unique())
 
             # draw a different figure for each setting
-            fig = plt.figure(figsize=(5, 4))
+            fig = plt.figure(figsize=(12, 9))
             ax = fig.gca()
             plt.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
             ymin = np.inf
@@ -113,7 +113,7 @@ def plot_convergence(all_results_df, threshold, normalize_method, save_name):
             if normalize_method is None:
                 plt.ylabel('objective')
                 xmax = np.sort(tmax)[0] / 10
-                plt.xlim(-xmax / 10, xmax)
+                # plt.xlim(-xmax / 10, xmax)
             else:
                 plt.ylabel('(objective - best) / best')
             plt.legend(loc=0, ncol=1)
@@ -127,7 +127,7 @@ def plot_convergence(all_results_df, threshold, normalize_method, save_name):
             plt.tight_layout()
 
             fig.savefig(save_name + '_bench_K%d_L%d.png' % (n_atoms,
-                                                            n_times_atom))
+                                                            n_times_atom), dpi=150)
 
 
 ##############################################################################

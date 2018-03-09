@@ -23,9 +23,9 @@ START = time.time()
 verbose = 1
 
 # n_jobs for the parallel running of single core methods
-n_jobs = 5
+n_jobs = 6
 # number of random states
-n_states = 1
+n_states = 5
 
 n_trials = 10  # N
 n_times_atom = 16  # L
@@ -127,6 +127,21 @@ def run_multichannel_joint(X, ds_init, reg, n_iter, random_state, label,
     return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
 
 
+def run_multichannel_joint_cd(X, ds_init, reg, n_iter, random_state, label,
+                              stopping_pobj):
+    n_atoms, n_times_atom = ds_init.shape
+    uv_init = np.c_[np.ones((n_atoms, 1)), ds_init]
+    pobj, times, d_hat, z_hat = learn_d_z_multi(
+        X[:, None, :], n_atoms, n_times_atom,
+        solver_d='joint', solver_z='gcd', uv_constraint='joint',
+        solver_z_kwargs={'max_iter': 200, 'tol': 1e-5},
+        reg=reg, solver_d_kwargs=dict(max_iter=50),
+        n_iter=n_iter, random_state=random_state, uv_init=uv_init, n_jobs=1,
+        stopping_pobj=stopping_pobj, verbose=verbose)
+
+    return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
+
+
 def run_multichannel_alternate(X, ds_init, reg, n_iter, random_state, label,
                                stopping_pobj):
     n_atoms, n_times_atom = ds_init.shape
@@ -154,14 +169,15 @@ def run_multichannel_alternate_adaptive(X, ds_init, reg, n_iter, random_state,
 
     return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
 
-
+n_iter = 100
 methods = [
-    [run_ista, 'vanilla_ista', 500],
-    [run_fista, 'vanilla_fista', 500],
-    [run_lbfgs, 'vanilla_lbfgsb ', 500],
-    [run_multichannel_joint, 'multi_joint', 500],
-    # [run_multichannel_alternate_adaptive, 'multi_alternate', 500],
-    [run_multichannel_alternate_adaptive, 'multi_alternate_adaptive', 500],
+    [run_ista, 'vanilla_ista', n_iter],
+    [run_fista, 'vanilla_fista', n_iter],
+    [run_lbfgs, 'vanilla_lbfgsb ', n_iter],
+    [run_multichannel_joint, 'multi_joint', n_iter],
+    [run_multichannel_joint_cd, 'multi_joint_cd', n_iter],
+    # [run_multichannel_alternate_adaptive, 'multi_alternate', n_iter],
+    [run_multichannel_alternate_adaptive, 'multi_alternate_adaptive', n_iter],
 ]
 
 
