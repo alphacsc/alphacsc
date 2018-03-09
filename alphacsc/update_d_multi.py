@@ -318,8 +318,10 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
         if debug:
             uv_hat, pobj = uv_hat
 
-    elif solver_d == 'alternate':
+    elif solver_d in ['alternate', 'alternate_adaptive']:
         # use FISTA on alternate u and v
+
+        adaptive_step_size = (solver_d == 'alternate_adaptive')
 
         pobj = list()
         uv_hat = uv_hat0.copy()
@@ -330,31 +332,50 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
             return u
 
         for jj in range(1):
-            # update u
+            # ---------------- update u
+            def obj(u):
+                uv = np.c_[u, v_hat]
+                return objective(uv)
+
             def grad_u(u):
                 uv = np.c_[u, v_hat]
                 grad_d = _gradient_d(None, constants=constants, uv=uv,
                                      n_chan=n_chan)
                 return (grad_d * uv[:, None, n_chan:]).sum(axis=2)
 
-            Lu = compute_lipschitz(uv_hat, constants, 'u', b_hat_0)
+            if adaptive_step_size:
+                Lu = 1
+            else:
+                Lu = compute_lipschitz(uv_hat, constants, 'u', b_hat_0)
             assert Lu > 0
-            u_hat = fista(objective, grad_u, prox, 0.99 / Lu, u_hat, max_iter,
-                          verbose=verbose, momentum=momentum, eps=eps)
+
+            u_hat = fista(obj, grad_u, prox, 0.99 / Lu, u_hat, max_iter,
+                          verbose=verbose, momentum=momentum, eps=eps,
+                          adaptive_step_size=adaptive_step_size)
             uv_hat = np.c_[u_hat, v_hat]
             if debug:
                 pobj.append(objective(uv_hat, full=True))
 
-            # update v
+            # ---------------- update v
+            def obj(v):
+                uv = np.c_[u_hat, v]
+                return objective(uv)
+
             def grad_v(v):
                 uv = np.c_[u_hat, v]
                 grad_d = _gradient_d(None, constants=constants, uv=uv,
                                      n_chan=n_chan)
                 return (grad_d * uv[:, :n_chan, None]).sum(axis=1)
-            Lv = compute_lipschitz(uv_hat, constants, 'v', b_hat_0)
+
+            if adaptive_step_size:
+                Lv = 1
+            else:
+                Lv = compute_lipschitz(uv_hat, constants, 'v', b_hat_0)
             assert Lv > 0
-            v_hat = fista(objective, grad_v, prox, 0.99 / Lv, v_hat, max_iter,
-                          verbose=verbose, momentum=momentum, eps=eps)
+
+            v_hat = fista(obj, grad_v, prox, 0.99 / Lv, v_hat, max_iter,
+                          verbose=verbose, momentum=momentum, eps=eps,
+                          adaptive_step_size=adaptive_step_size)
             uv_hat = np.c_[u_hat, v_hat]
             if debug:
                 pobj.append(objective(uv_hat, full=True))

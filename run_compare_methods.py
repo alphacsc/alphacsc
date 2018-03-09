@@ -127,8 +127,8 @@ def run_multichannel_joint(X, ds_init, reg, n_iter, random_state, label,
     return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
 
 
-def run_multichannel_separate(X, ds_init, reg, n_iter, random_state, label,
-                              stopping_pobj):
+def run_multichannel_alternate(X, ds_init, reg, n_iter, random_state, label,
+                               stopping_pobj):
     n_atoms, n_times_atom = ds_init.shape
     uv_init = np.c_[np.ones((n_atoms, 1)), ds_init]
     pobj, times, d_hat, z_hat = learn_d_z_multi(
@@ -141,12 +141,27 @@ def run_multichannel_separate(X, ds_init, reg, n_iter, random_state, label,
     return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
 
 
+def run_multichannel_alternate_adaptive(X, ds_init, reg, n_iter, random_state,
+                                        label, stopping_pobj):
+    n_atoms, n_times_atom = ds_init.shape
+    uv_init = np.c_[np.ones((n_atoms, 1)), ds_init]
+    pobj, times, d_hat, z_hat = learn_d_z_multi(
+        X[:, None, :], n_atoms, n_times_atom, solver_d='alternate_adaptive',
+        uv_constraint='separate', solver_z_kwargs=dict(
+            factr=1e15), reg=reg, solver_d_kwargs=dict(max_iter=10),
+        n_iter=n_iter, random_state=random_state, uv_init=uv_init, n_jobs=1,
+        stopping_pobj=stopping_pobj, verbose=verbose)
+
+    return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
+
+
 methods = [
     [run_ista, 'vanilla_ista', 500],
     [run_fista, 'vanilla_fista', 500],
     [run_lbfgs, 'vanilla_lbfgsb ', 500],
-    [run_multichannel_joint, 'multi_joint_s', 500],
-    [run_multichannel_separate, 'multi_alternate_se', 500],
+    [run_multichannel_joint, 'multi_joint', 500],
+    # [run_multichannel_alternate_adaptive, 'multi_alternate', 500],
+    [run_multichannel_alternate_adaptive, 'multi_alternate_adaptive', 500],
 ]
 
 

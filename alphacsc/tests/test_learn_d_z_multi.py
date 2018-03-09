@@ -6,8 +6,9 @@ from alphacsc.utils import check_random_state
 
 
 @pytest.mark.parametrize('solver_d, uv_constraint', [
-    ('joint', 'joint'), ('joint', 'separate'),
-    ('alternate', 'separate'), ('lbfgs', 'box')
+    # ('joint', 'joint'), ('joint', 'separate'),
+    # ('alternate', 'separate'), ('lbfgs', 'box'),
+    ('alternate_adaptive', 'separate')
 ])
 def test_learn_d_z_multi(solver_d, uv_constraint):
     # smoke test for learn_d_z_multi
