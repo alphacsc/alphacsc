@@ -63,10 +63,10 @@ def callback(X, uv_hat, Z_hat, reg):
     if axes_Z[0].lines == []:
         for k in range(n_atoms):
             axes_Z[k].plot(np.arange(Z_hat.shape[-1]) / epochs.info['sfreq'],
-                           Z_hat[k].mean(axis=0))
+                           Z_hat[k, 0])
             axes_Z[k].grid(True)
     else:
-        for ax, z in zip(axes_Z, Z_hat.mean(axis=1)):
+        for ax, z in zip(axes_Z, Z_hat[:, 0]):
             ax.lines[0].set_ydata(z)
             ax.relim()  # make sure all the data fits
             ax.autoscale_view(True, True, True)
