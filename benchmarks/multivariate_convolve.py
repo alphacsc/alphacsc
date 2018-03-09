@@ -160,7 +160,7 @@ try:
                         ZtZ[k0, :, t:t + n_times_atom] * D[:, p, ::-1])
         return G
 
-    all_func.append(dot_and_numba, sum_and_numba,)
+    all_func.extend([dot_and_numba, sum_and_numba])
 
 except ImportError:
     pass
