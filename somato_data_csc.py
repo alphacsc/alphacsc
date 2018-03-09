@@ -13,7 +13,7 @@ n_atoms = 5
 data_path = op.join(mne.datasets.somato.data_path(), 'MEG', 'somato')
 raw = mne.io.read_raw_fif(op.join(data_path, 'sef_raw_sss.fif'),
                           preload=True)
-raw.filter(10., 30., n_jobs=n_jobs)
+raw.filter(15., 40., n_jobs=n_jobs)
 events = mne.find_events(raw, stim_channel='STI 014')
 
 event_id, tmin, tmax = 1, -1., 3.
@@ -63,10 +63,10 @@ def callback(X, uv_hat, Z_hat, reg):
     if axes_Z[0].lines == []:
         for k in range(n_atoms):
             axes_Z[k].plot(np.arange(Z_hat.shape[-1]) / epochs.info['sfreq'],
-                           Z_hat[k, 0])
+                           Z_hat[k].mean(axis=0))
             axes_Z[k].grid(True)
     else:
-        for ax, z in zip(axes_Z, Z_hat[:, 0]):
+        for ax, z in zip(axes_Z, Z_hat.mean(axis=1)):
             ax.lines[0].set_ydata(z)
             ax.relim()  # make sure all the data fits
             ax.autoscale_view(True, True, True)
@@ -77,7 +77,7 @@ def callback(X, uv_hat, Z_hat, reg):
 
 
 pobj, times, uv_hat, Z_hat = learn_d_z_multi(
-    X, n_atoms, n_times_atom, random_state=42, n_iter=100, n_jobs=1, reg=20.0,
+    X, n_atoms, n_times_atom, random_state=42, n_iter=100, n_jobs=1, reg=5,
     eps=1e-3, solver_z_kwargs={'factr': 1e12},
     solver_d_kwargs={'max_iter': 300}, uv_constraint='separate',
-    solver_d='alternate', callback=callback)
+    solver_d='alternate_adaptive', callback=callback)
