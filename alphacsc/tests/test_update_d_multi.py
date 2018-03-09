@@ -220,11 +220,15 @@ def test_ista():
     """Test that objective goes down in ISTA for a simple problem."""
 
     # || Ax - b ||_2^2
-    n, p = 20, 10
-    x = np.zeros(p)
-    x[3] = 3.
+    n, p = 100, 10
+    x = np.random.randn(p)
+    x /= np.linalg.norm(x)
     A = np.random.randn(n, p)
     b = np.dot(A, x)
+
+    def obj(x):
+        res = A.dot(x) - b
+        return 0.5 * np.dot(res.ravel(), res.ravel())
 
     def grad(x):
         return A.T.dot(A.dot(x) - b)
@@ -235,6 +239,6 @@ def test_ista():
     x0 = np.random.rand(p)
     L = power_iteration(A.dot(A.T))
     step_size = 0.99 / L
-    x_hat = fista(grad, prox, step_size, x0, max_iter=600,
+    x_hat = fista(obj, grad, prox, step_size, x0, max_iter=600,
                   verbose=0, momentum=False, eps=None)
     np.testing.assert_array_almost_equal(x, x_hat)

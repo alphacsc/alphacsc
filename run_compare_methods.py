@@ -6,7 +6,7 @@ import time
 import numpy as np
 import pandas as pd
 import scipy.sparse as sp
-from joblib import Parallel, delayed, Memory
+from sklearn.externals.joblib import Parallel, delayed, Memory
 
 from alphacsc.utils import check_random_state
 from alphacsc.simulate import simulate_data
@@ -23,7 +23,7 @@ START = time.time()
 verbose = 1
 
 # n_jobs for the parallel running of single core methods
-n_jobs = 1
+n_jobs = 5
 # number of random states
 n_states = 1
 
@@ -142,11 +142,11 @@ def run_multichannel_separate(X, ds_init, reg, n_iter, random_state, label,
 
 
 methods = [
-    [run_ista, 'vanilla_ista', 100],
-    [run_fista, 'vanilla_fista', 100],
-    [run_lbfgs, 'vanilla_lbfgsb ', 100],
-    [run_multichannel_joint, 'multi_joint_sep', 100],
-    [run_multichannel_separate, 'multi_alternate_s', 100],
+    [run_ista, 'vanilla_ista', 500],
+    [run_fista, 'vanilla_fista', 500],
+    [run_lbfgs, 'vanilla_lbfgsb ', 500],
+    [run_multichannel_joint, 'multi_joint_s', 500],
+    [run_multichannel_separate, 'multi_alternate_se', 500],
 ]
 
 
@@ -160,6 +160,9 @@ def one_run(X, X_shape, random_state, method, n_atoms, n_times_atom,
     # use the same init for all methods
     rng = check_random_state(random_state)
     ds_init = rng.randn(n_atoms, n_times_atom * 2 + 1)
+
+    # run the selected algorithm with one iter to remove compilation overhead
+    _, _, _, _ = func(X, ds_init, reg, 1, random_state, label, stopping_pobj)
 
     # run the selected algorithm
     pobj, times, d_hat, z_hat = func(X, ds_init, reg, n_iter, random_state,

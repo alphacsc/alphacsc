@@ -112,8 +112,8 @@ def plot_convergence(all_results_df, threshold, normalize_method, save_name):
             plt.xlabel('Time (s)')
             if normalize_method is None:
                 plt.ylabel('objective')
-                # xmax = np.sort(tmax)[0]
-                # plt.xlim(-xmax / 10, xmax)
+                xmax = np.sort(tmax)[0] / 10
+                plt.xlim(-xmax / 10, xmax)
             else:
                 plt.ylabel('(objective - best) / best')
             plt.legend(loc=0, ncol=1)

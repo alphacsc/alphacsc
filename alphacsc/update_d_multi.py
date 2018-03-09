@@ -161,24 +161,77 @@ def prox_uv(uv, uv_constraint='joint', n_chan=None, return_norm=False):
         return uv
 
 
-def fista(grad, prox, step_size, x0, max_iter, verbose=0,
-          momentum=False, eps=None):
+def fista(f_obj, f_grad, f_prox, step_size, x0, max_iter, verbose=0,
+          momentum=False, eps=None, adaptive_step_size=False, debug=False):
+    """ISTA and FISTA algorithm
 
+    Parameters
+    ----------
+    f_obj : callable
+        Objective function. Used only if debug or adaptive_step_size.
+    f_grad : callable
+        Gradient of the objective function
+    f_prox : callable
+        Proximal operator
+    step_size : float or None
+        Step size of each update. Can be None if adaptive_step_size.
+    x0 : array
+        Initial point of the optimization
+    max_iter : int
+        Maximum number of iterations
+    verbose : int
+        Verbosity level
+    momentum : boolean
+        If True, use FISTA instead of ISTA
+    eps : float or None
+        Tolerance for the stopping criterion
+    adaptive_step_size : boolean
+        If True, the step size is adapted at each step
+    debug : boolean
+        If true, compute the objective function at each step and return the
+        list at the end.
+
+    Returns
+    -------
+    x_hat : array
+        The final point after optimization
+    """
+
+    if debug:
+        pobj = list()
     if eps is None:
         eps = np.finfo(np.float32).eps
+    obj_uv = None
+
     tk = 1
     x_hat = x0.copy()
-    z_hat = x_hat.copy()
+    x_hat_aux = x_hat.copy()
+    grad = np.empty(x_hat.shape)
     diff = np.empty(x_hat.shape)
     for ii in range(max_iter):
-        z_hat -= step_size * grad(z_hat)
-        prox(z_hat)
-        diff[:] = z_hat - x_hat
-        x_hat[:] = z_hat
+        grad[:] = f_grad(x_hat_aux)
+
+        if adaptive_step_size:
+
+            def f(step_size):
+                x_hat = f_prox(x_hat_aux - step_size * grad)
+                pobj = f_obj(x_hat)
+                return pobj, x_hat
+
+            obj_uv, x_hat_aux, step_size = _adaptive_step_size(
+                f, obj_uv, alpha=step_size)
+        else:
+            x_hat_aux -= step_size * grad
+            x_hat_aux = f_prox(x_hat_aux)
+
+        diff[:] = x_hat_aux - x_hat
+        x_hat[:] = x_hat_aux
         if momentum:
             tk_new = (1 + np.sqrt(1 + 4 * tk * tk)) / 2
-            z_hat += (tk - 1) / tk_new * diff
+            x_hat_aux += (tk - 1) / tk_new * diff
             tk = tk_new
+        if debug:
+            pobj.append(f_obj(x_hat, full=True))
         f = np.sum(abs(diff))
         if f <= eps:
             break
@@ -190,6 +243,8 @@ def fista(grad, prox, step_size, x0, max_iter, verbose=0,
     if verbose > 1:
         print('%d iterations' % (ii + 1))
 
+    if debug:
+        return x_hat, pobj
     return x_hat
 
 
@@ -240,7 +295,6 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
         msg = "alternate solver should be used with separate constraints"
         assert uv_constraint == 'separate', msg
 
-    # XXX : FISTA does not work and the cost goes up, should be fixed.
     constants = _get_d_update_constants(X, Z)
 
     def objective(uv, full=False):
@@ -249,56 +303,23 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
             cost += np.sum(X * X) / 2
         return cost
 
-    def gradient(uv):
-        uv = uv.reshape((n_atoms, -1))
-        return _gradient_uv(uv, constants=constants).ravel()
-
     if solver_d == 'joint':
-        # TODO: add a line-search
+        # use FISTA on joint [u, v], with an adaptive step size
 
+        def grad(uv):
+            return _gradient_uv(uv, constants=constants)
+
+        def prox(uv):
+            return prox_uv(uv, uv_constraint=uv_constraint, n_chan=n_chan)
+
+        uv_hat = fista(objective, grad, prox, None, uv_hat0, max_iter,
+                       verbose=verbose, momentum=momentum, eps=eps,
+                       adaptive_step_size=True, debug=debug)
         if debug:
-            pobj = list()
-
-        if eps is None:
-            eps = np.finfo(np.float32).eps
-        tk = 1
-        uv_hat = uv_hat0.copy()
-        uv_hat_aux = uv_hat.copy()
-        grad = np.empty(uv_hat.shape)
-        diff = np.empty(uv_hat.shape)
-        alpha = None
-        obj_uv = None
-        for ii in range(max_iter):
-
-            grad[:] = _gradient_uv(uv_hat_aux, constants=constants)
-
-            def f(step_size):
-                uv = prox_uv(uv_hat_aux - step_size * grad,
-                             uv_constraint=uv_constraint, n_chan=n_chan)
-                return objective(uv), uv
-
-            obj_uv, uv_hat_aux, alpha = _adaptive_step_size(
-                f, obj_uv, alpha=alpha)
-            diff[:] = uv_hat_aux - uv_hat
-            uv_hat[:] = uv_hat_aux
-            if momentum:  # TODO: FISTA does not work well!
-                tk_new = (1 + np.sqrt(1 + 4 * tk * tk)) / 2
-                uv_hat_aux += (tk - 1) / tk_new * diff
-                tk = tk_new
-            if debug:
-                pobj.append(objective(uv_hat, full=True))
-            f = np.sum(abs(diff))
-            if f <= eps:
-                break
-            if f > 1e50:
-                raise RuntimeError("The D update have diverged.")
-        else:
-            if verbose > 1:
-                print('update_uv did not converge')
-        if verbose > 1:
-            print('%d iterations' % (ii + 1))
+            uv_hat, pobj = uv_hat
 
     elif solver_d == 'alternate':
+        # use FISTA on alternate u and v
 
         pobj = list()
         uv_hat = uv_hat0.copy()
@@ -318,8 +339,8 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
 
             Lu = compute_lipschitz(uv_hat, constants, 'u', b_hat_0)
             assert Lu > 0
-            u_hat = fista(grad_u, prox, 0.99 / Lu, u_hat, max_iter,
-                          momentum=momentum)
+            u_hat = fista(objective, grad_u, prox, 0.99 / Lu, u_hat, max_iter,
+                          verbose=verbose, momentum=momentum, eps=eps)
             uv_hat = np.c_[u_hat, v_hat]
             if debug:
                 pobj.append(objective(uv_hat, full=True))
@@ -332,13 +353,14 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
                 return (grad_d * uv[:, :n_chan, None]).sum(axis=1)
             Lv = compute_lipschitz(uv_hat, constants, 'v', b_hat_0)
             assert Lv > 0
-            v_hat = fista(grad_v, prox, 0.99 / Lv, v_hat, max_iter,
-                          momentum=momentum)
+            v_hat = fista(objective, grad_v, prox, 0.99 / Lv, v_hat, max_iter,
+                          verbose=verbose, momentum=momentum, eps=eps)
             uv_hat = np.c_[u_hat, v_hat]
             if debug:
                 pobj.append(objective(uv_hat, full=True))
 
     elif solver_d == 'lbfgs':
+        # use L-BFGS on joint [u, v] with a box constraint (L_inf norm <= 1)
 
         def func(uv):
             uv = np.reshape(uv, uv_hat0.shape)
@@ -504,6 +526,18 @@ def power_iteration(lin_op, n_points, b_hat_0=None, max_iter=1000, tol=1e-7,
 
 
 def _adaptive_step_size(f, f0=None, alpha=None, tau=2):
+    """
+    Parameters
+    ----------
+    f : callable
+        Optimized function, take only the step size as argument
+    f0 : float
+        value of f at current point, i.e. step size = 0
+    alpha : float
+        Initial step size
+    tau : float
+        Multiplication factor of the step size during the adaptation
+    """
 
     if alpha is None:
         alpha = 1
