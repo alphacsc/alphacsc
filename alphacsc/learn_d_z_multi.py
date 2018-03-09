@@ -198,7 +198,13 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
             if callable(callback):
                 callback(X, uv_hat, Z_hat, reg)
 
-            if pobj[-2] - pobj[-1] < eps:
+            if pobj[-3] - pobj[-2] < eps and pobj[-2] - pobj[-1] < eps:
+                if pobj[-3] - pobj[-2] < -eps:
+                    raise RuntimeError(
+                        "The z update have increased the objective value.")
+                if pobj[-2] - pobj[-1] < -eps:
+                    raise RuntimeError(
+                        "The d update have increased the objective value.")
                 break
 
             if stopping_pobj is not None and pobj[-1] < stopping_pobj:
