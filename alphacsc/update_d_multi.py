@@ -162,7 +162,8 @@ def prox_uv(uv, uv_constraint='joint', n_chan=None, return_norm=False):
 
 
 def fista(f_obj, f_grad, f_prox, step_size, x0, max_iter, verbose=0,
-          momentum=False, eps=None, adaptive_step_size=False, debug=False):
+          momentum=False, eps=None, adaptive_step_size=False, debug=False,
+          scipy_line_search=True):
     """ISTA and FISTA algorithm
 
     Parameters
@@ -199,6 +200,8 @@ def fista(f_obj, f_grad, f_prox, step_size, x0, max_iter, verbose=0,
 
     if debug:
         pobj = list()
+    if step_size is None:
+        step_size = 1.
     if eps is None:
         eps = np.finfo(np.float32).eps
     obj_uv = None
@@ -212,14 +215,28 @@ def fista(f_obj, f_grad, f_prox, step_size, x0, max_iter, verbose=0,
         grad[:] = f_grad(x_hat_aux)
 
         if adaptive_step_size:
+            if scipy_line_search:
 
-            def f(step_size):
-                x_hat = f_prox(x_hat_aux - step_size * grad)
-                pobj = f_obj(x_hat)
-                return pobj, x_hat
+                def f_obj_(x_hat):
+                    x_hat = np.reshape(x_hat, x0.shape)
+                    return f_obj(f_prox(x_hat))
 
-            obj_uv, x_hat_aux, step_size = _adaptive_step_size(
-                f, obj_uv, alpha=step_size)
+                step_size, _, obj_uv = optimize.linesearch.line_search_armijo(
+                    f_obj_, x_hat.ravel(), -grad.ravel(), grad.ravel(), obj_uv,
+                    c1=1e-4, alpha0=step_size)
+                x_hat_aux -= step_size * grad
+                x_hat_aux = f_prox(x_hat_aux)
+
+            else:
+
+                def f(step_size):
+                    x_hat = f_prox(x_hat_aux - step_size * grad)
+                    pobj = f_obj(x_hat)
+                    return pobj, x_hat
+
+                obj_uv, x_hat_aux, step_size = _adaptive_step_size(
+                    f, obj_uv, alpha=step_size)
+
         else:
             x_hat_aux -= step_size * grad
             x_hat_aux = f_prox(x_hat_aux)
