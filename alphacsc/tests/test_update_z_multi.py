@@ -1,7 +1,9 @@
 import numpy as np
 
 from alphacsc.update_z_multi import update_z_multi
+from alphacsc.update_z_multi import _compute_DtD, _coordinate_descent_idx
 from alphacsc.learn_d_z_multi import compute_X_and_objective_multi
+from alphacsc.utils import _get_D, construct_X_multi
 
 
 def test_gradient_correctness():
@@ -73,3 +75,41 @@ def test_support_least_square():
     loss_3 = compute_X_and_objective_multi(X, z_hat_3, uv, reg,
                                            feasible_evaluation=False)
     assert loss_3 <= loss_2 or np.isclose(loss_3, loss_2)
+
+
+def test_cd():
+    n_trials, n_channels, n_times = 5, 3, 100
+    n_times_atom, n_atoms = 10, 4
+    n_times_valid = n_times - n_times_atom + 1
+    reg = 1
+
+    uv = np.random.randn(n_atoms, n_channels + n_times_atom)
+    Z = abs(np.random.randn(n_atoms, n_trials, n_times_valid))
+    Z0 = abs(np.random.randn(n_atoms, n_trials, n_times_valid))
+    Z[Z < 2] = 0
+    Z0[Z0 < 2] = 0
+
+    D0 = _get_D(uv, n_channels)
+    X = construct_X_multi(Z, D0)
+
+    loss_0 = compute_X_and_objective_multi(X, Z, uv, reg,
+                                           feasible_evaluation=False)
+
+    constants = {}
+    constants['DtD'] = _compute_DtD(uv, n_channels)
+
+    z_hat, pobj = _coordinate_descent_idx(X[0], uv, constants, reg, debug=True,
+                                          z0=Z0[:, 0], max_iter=10000)
+    z_hat = z_hat[None]
+
+    assert all([p1 >= p2 for p1, p2 in zip(pobj[:-1], pobj[1:])]), "oups"
+
+    z_hat = update_z_multi(X, uv, reg, z0=Z0,
+                           solver='gcd',
+                           solver_kwargs={
+                               'max_iter': 10000, 'tol': 1e-5}
+                           )
+
+    loss_1 = compute_X_and_objective_multi(X, z_hat, uv, reg,
+                                           feasible_evaluation=False)
+    assert loss_1 <= loss_0

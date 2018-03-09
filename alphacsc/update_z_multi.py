@@ -141,7 +141,11 @@ def _update_z_multi_idx(X, uv, reg, z0, idxs, debug, solver="l_bfgs",
 
     assert not (freeze_support and z0 is None), 'Impossible !'
 
+    constants = {}
     zhats = []
+
+    if solver == "gcd":
+        constants['DtD'] = _compute_DtD(uv, n_channels)
 
     for i in idxs:
 
@@ -154,7 +158,7 @@ def _update_z_multi_idx(X, uv, reg, z0, idxs, debug, solver="l_bfgs",
         if z0 is None:
             f0 = np.zeros(n_atoms * n_times_valid)
         else:
-            f0 = z0[:, i, :].reshape((n_atoms * n_times_valid))
+            f0 = z0[:, i, :].reshape(n_atoms * n_times_valid)
 
         if freeze_support:
             bounds = [(0, 0) if z == 0 else (0, None) for z in f0]
@@ -181,6 +185,11 @@ def _update_z_multi_idx(X, uv, reg, z0, idxs, debug, solver="l_bfgs",
             raise NotImplementedError('Not adapted yet for n_channels')
         elif solver == "fista":
             raise NotImplementedError('Not adapted yet for n_channels')
+        elif solver == "gcd":
+            f0 = f0.reshape(n_atoms, n_times_valid)
+            zhat = _coordinate_descent_idx(X[i], uv, constants, reg=reg, z0=f0,
+                                           **solver_kwargs)
+            # raise NotImplementedError('Not implemented yet!')
         else:
             raise ValueError("Unrecognized solver %s. Must be 'ista', 'fista',"
                              " or 'l_bfgs'." % solver)
@@ -219,7 +228,7 @@ def _support_least_square(X, uv, Z, debug=False):
         # Solve the non-negative least-square with nnls
         z_star, a = optimize.nnls(rhs, lhs)
         if debug:
-            f0 = _fprime(uv, Z[:, idx], X[idx], return_func=True,reg=0)[0]
+            f0 = _fprime(uv, Z[:, idx], X[idx], return_func=True, reg=0)[0]
         for i, (k_i, t_i) in enumerate(zip(*support_i)):
             Z_hat[k_i, idx, t_i] = z_star[i]
 
@@ -252,3 +261,123 @@ def _compute_DtD(uv, n_chan):
                     DtD[k0, k, t0 - t] = np.dot(v[k0, t:], v[k, :-t])
     DtD *= np.dot(u, u.T)[:, :, None]
     return DtD
+
+
+def _coordinate_descent_idx(Xi, uv, constants, reg, z0=None, max_iter=1000,
+                            tol=1e-5, strategy='greedy', n_seg='auto',
+                            debug=False, verbose=0):
+    """Compute the coding signal associated to Xi with coordinate descent.
+
+    Parameters
+    ----------
+    Xi : array, shape (n_channels, n_times)
+        The signal to encode.
+    constants : dict
+        Constants containing DtD to speedup computation
+    z0 : array, shape (n_atoms, n_time_valid)
+        Initial estimate of the coding signal, to warm start the algorithm.
+    tol : float
+        Tolerance for the stopping criterion of the algorithm
+    max_iter : int
+        Maximal number of iterations run by the algorithm
+    strategy : str in {'greedy' | 'random'}
+        Strategy to select the updated coordinate in the CD algorithm.
+    n_seg : int or 'auto'
+        Number of segments used to divide the coding signal. The updates are
+        performed successively on each of these segments.
+    """
+    n_chan, n_times = Xi.shape
+    n_atoms, n_times_atom = uv.shape
+    n_times_atom -= n_chan
+    n_times_valid = n_times - n_times_atom + 1
+    t0 = n_times_atom - 1
+
+    if z0 is None:
+        z_hat = np.zeros((n_atoms, n_times_valid))
+    else:
+        z_hat = z0.copy()
+
+    if n_seg == 'auto':
+        n_seg = max(n_times_valid // (2 * n_times_atom), 1)
+
+    n_times_seg = n_times_valid // n_seg + 1
+
+    def objective(zi):
+        ds = _get_D(uv, n_chan)
+
+        Dzi = _choose_convolve_multi(zi, ds)
+        Dzi -= Xi
+        func = 0.5 * np.dot(Dzi.ravel(), Dzi.ravel())
+        func += reg * zi.sum()
+        return func
+
+    DtD = constants["DtD"]
+    norm_Dk = np.array([DtD[k, k, t0] for k in range(n_atoms)]).reshape(-1, 1)
+    if debug:
+        pobj = [objective(z_hat)]
+
+    # Init beta with -DtX
+    beta = _fprime(uv, z_hat.ravel(), Xi=Xi, reg=None, return_func=False)
+    beta = beta.reshape(n_atoms, n_times_valid)
+    for k, t in zip(*z_hat.nonzero()):
+        beta[k, t] -= z0[k, t] * norm_Dk[k]  # np.sum(DtD[k, k, t0])
+    z_opt = np.maximum(-beta - reg, 0) / norm_Dk
+
+    dZs = 2 * tol * np.ones(n_seg)
+    i_seg, t_start_seg = 0, 0
+    t_end_seg = n_times_seg
+    for ii in range(max_iter):
+        # Pick a coordinate to update
+        if strategy == 'random':
+            raise NotImplementedError()
+        elif strategy == 'greedy':
+            i0 = 0
+            i0 = np.argmax(np.abs(z_hat[:, t_start_seg:t_end_seg] -
+                                  z_opt[:, t_start_seg:t_end_seg]))
+            n_times_current = min(n_times_seg, n_times_valid - t_start_seg)
+        else:
+            raise ValueError('The coordinate selection method should be in '
+                             "{'greedy' | 'random'}. Got {}.".format(strategy))
+
+        k0, t0 = np.unravel_index(i0, (n_atoms, n_times_current))
+        t0 += t_start_seg
+        dz = z_hat[k0, t0] - z_opt[k0, t0]
+        dZs[i_seg] = abs(dz)
+
+        # Update the selected coordinate and beta if the update is greater than
+        # the convergence tolerance.
+        if abs(dz) > tol:
+            z_hat[k0, t0] = z_opt[k0, t0]
+
+            beta_i0 = beta[k0, t0]
+            offset = max(0, n_times_atom - t0 - 1)
+            t_start = max(0, t0 - n_times_atom + 1)
+            ll = min(t0 + n_times_atom, n_times_valid) - t_start
+            beta[:, t_start:t0 + n_times_atom] -= DtD[:, k0, offset:offset + ll] * dz
+            beta[k0, t0] = beta_i0
+            z_opt[:, t_start:t0 + n_times_atom] = np.maximum(
+                -beta[:, t_start:t0 + n_times_atom] - reg, 0) / norm_Dk
+
+        if debug:
+            pobj.append(objective(z_hat))
+
+        if dZs.max() <= tol:
+            break
+
+        i_seg += 1
+        t_start_seg += n_times_seg
+        t_end_seg += n_times_seg
+        if i_seg >= n_seg:
+            i_seg = 0
+            t_start_seg = 0
+            t_end_seg = n_times_seg
+
+    else:
+        if verbose > 1:
+            print('update z [cd] did not converge')
+    if verbose > 1:
+        print('[CD] computed %d iterations' % (ii + 1))
+
+    if debug:
+        return z_hat, pobj
+    return z_hat
