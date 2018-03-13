@@ -2,10 +2,10 @@ import pytest
 import numpy as np
 from scipy import optimize, signal
 
-from alphacsc.update_d_multi import _gradient_d, _gradient_uv, _get_D
+from alphacsc.update_d_multi import _gradient_d, _gradient_uv
 from alphacsc.update_d_multi import _shifted_objective_uv, fista
 from alphacsc.update_d_multi import update_uv, prox_uv, _get_d_update_constants
-from alphacsc.utils import construct_X_multi
+from alphacsc.utils import construct_X_multi, construct_X_multi_uv
 from alphacsc.update_z import power_iteration
 
 
@@ -100,8 +100,7 @@ def test_gradient_uv():
 
     def func(uv0):
         uv0 = uv0.reshape(n_atoms, n_chan + n_times_atom)
-        D0 = _get_D(uv0, n_chan)
-        X_hat = construct_X_multi(Z, D0)
+        X_hat = construct_X_multi_uv(Z, uv0, n_chan)
         res = X - X_hat
         return .5 * np.sum(res * res)
 
@@ -151,12 +150,10 @@ def test_update_uv(solver_d, uv_constraint):
     uv0 = prox_uv(uv0)
     uv1 = prox_uv(uv1)
 
-    D0 = _get_D(uv0, n_chan)
-    X = construct_X_multi(Z, D0)
+    X = construct_X_multi_uv(Z, uv0, n_chan)
 
     def objective(uv):
-        D = _get_D(uv, n_chan)
-        X_hat = construct_X_multi(Z, D)
+        X_hat = construct_X_multi_uv(Z, uv, n_chan)
         res = X - X_hat
         return .5 * np.sum(res * res)
 
@@ -202,8 +199,7 @@ def test_fast_cost():
     constants = _get_d_update_constants(X, Z)
 
     def objective(uv):
-        D = _get_D(uv, n_chan)
-        X_hat = construct_X_multi(Z, D)
+        X_hat = construct_X_multi_uv(Z, uv, n_chan)
         res = X - X_hat
         return .5 * np.sum(res * res)
 

@@ -11,7 +11,9 @@ from numpy import convolve
 from numba import jit
 from scipy import optimize
 
-from .utils import construct_X_multi, _get_D, check_random_state
+from .utils import construct_X_multi
+from .utils import check_random_state
+from .utils import construct_X_multi_uv
 
 
 PHI = (np.sqrt(5) + 1) / 2
@@ -105,8 +107,10 @@ def _gradient_d(D, X=None, Z=None, constants=None, uv=None, n_chan=None):
     else:
         if D is None:
             assert uv is not None and n_chan is not None
-            D = _get_D(uv, n_chan)
-        residual = construct_X_multi(Z, D) - X
+            residual = construct_X_multi_uv(Z, uv, n_chan) - X
+        else:
+            assert uv is None
+            residual = construct_X_multi(Z, D) - X
         return _dense_transpose_convolve(Z, residual)
 
 

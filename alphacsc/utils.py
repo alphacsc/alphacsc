@@ -15,7 +15,7 @@ def construct_X(Z, ds):
     z : array, shape (n_atoms, n_trials, n_times_valid)
         The activations
     ds : array, shape (n_atoms, n_times_atom)
-        The atom.
+        The atoms
 
     Returns
     -------
@@ -25,8 +25,9 @@ def construct_X(Z, ds):
     n_atoms, n_trials, n_times_valid = Z.shape
     n_atoms, n_times_atom = ds.shape
     n_times = n_times_valid + n_times_atom - 1
+
     X = np.zeros((n_trials, n_times))
-    for i in range(Z.shape[1]):
+    for i in range(n_trials):
         X[i] = _choose_convolve(Z[:, i, :], ds)
     return X
 
@@ -38,7 +39,7 @@ def construct_X_multi(Z, ds):
     Z : array, shape (n_atoms, n_trials, n_times_valid)
         The activations
     ds : array, shape (n_atoms, n_chan, n_times_atom)
-        The atom.
+        The atoms
 
     Returns
     -------
@@ -48,9 +49,37 @@ def construct_X_multi(Z, ds):
     n_atoms, n_trials, n_times_valid = Z.shape
     n_atoms, n_chan, n_times_atom = ds.shape
     n_times = n_times_valid + n_times_atom - 1
+
     X = np.zeros((n_trials, n_chan, n_times))
-    for i in range(Z.shape[1]):
+    for i in range(n_trials):
         X[i] = _choose_convolve_multi(Z[:, i, :], ds)
+    return X
+
+
+def construct_X_multi_uv(Z, uv, n_channels):
+    """
+    Parameters
+    ----------
+    Z : array, shape (n_atoms, n_trials, n_times_valid)
+        The activations
+    uv : array, shape (n_atoms, n_chan + n_times_atom)
+        The atoms
+    n_channels : int
+        Number of channels
+
+    Returns
+    -------
+    X : array, shape (n_trials, n_chan, n_times)
+    """
+    assert Z.shape[0] == uv.shape[0]
+    n_atoms, n_trials, n_times_valid = Z.shape
+    n_atoms, n_chan_n_times_atom = uv.shape
+    n_times_atom = uv.shape[1] - n_channels
+    n_times = n_times_valid + n_times_atom - 1
+
+    X = np.zeros((n_trials, n_channels, n_times))
+    for i in range(n_trials):
+        X[i] = _choose_convolve_multi_uv(Z[:, i, :], uv, n_channels)
     return X
 
 
@@ -78,16 +107,51 @@ def _sparse_convolve_multi(Zi, ds):
     return Xi
 
 
-def _dense_convolve_multi(Zi, ds):
-    """Convolve Zi[k] and ds[k] for each atom k, and return the sum."""
-    return np.sum([[np.convolve(zik, dkp) for dkp in dk]
-                   for zik, dk in zip(Zi, ds)], 0)
+def _sparse_convolve_multi_uv(Zi, uv, n_channels):
+    """Same as _dense_convolve, but use the sparsity of zi."""
+    u = uv[:, :n_channels]
+    v = uv[:, n_channels:]
+    n_atoms, n_times_valid = Zi.shape
+    n_atoms, n_times_atom = v.shape
+    n_times = n_times_valid + n_times_atom - 1
+
+    Xi = np.zeros(shape=(n_channels, n_times))
+    for zik, uk, vk in zip(Zi, u, v):
+        zik_vk = np.zeros(n_times)
+        for nnz in np.where(zik != 0)[0]:
+            zik_vk[nnz:nnz + n_times_atom] += zik[nnz] * vk
+
+        Xi += zik_vk[None, :] * uk[:, None]
+
+    return Xi
 
 
 def _dense_convolve(Zi, ds):
     """Convolve Zi[k] and ds[k] for each atom k, and return the sum."""
     return sum([np.convolve(zik, dk)
                for zik, dk in zip(Zi, ds)], 0)
+
+
+def _dense_convolve_multi(Zi, ds):
+    """Convolve Zi[k] and ds[k] for each atom k, and return the sum."""
+    return np.sum([[np.convolve(zik, dkp) for dkp in dk]
+                   for zik, dk in zip(Zi, ds)], 0)
+
+
+def _dense_convolve_multi_uv(Zi, uv, n_channels):
+    """Convolve Zi[k] and uv[k] for each atom k, and return the sum."""
+    u = uv[:, :n_channels]
+    v = uv[:, n_channels:]
+    n_atoms, n_times_valid = Zi.shape
+    n_atoms, n_times_atom = v.shape
+    n_times = n_times_valid + n_times_atom - 1
+
+    Xi = np.zeros((n_channels, n_times))
+    for zik, uk, vk in zip(Zi, u, v):
+        zik_vk = np.convolve(zik, vk)
+        Xi += zik_vk[None, :] * uk[:, None]
+
+    return Xi
 
 
 def _choose_convolve(Zi, ds):
@@ -100,8 +164,7 @@ def _choose_convolve(Zi, ds):
         Dictionary
     """
     assert Zi.shape[0] == ds.shape[0]
-    n_atoms, n_times_valid = Zi.shape
-    n_atoms, n_times_atom = ds.shape
+
     if np.sum(Zi != 0) < 0.01 * Zi.size:
         return _sparse_convolve(Zi, ds)
     else:
@@ -114,16 +177,34 @@ def _choose_convolve_multi(Zi, ds):
 
     Zi : array, shape(n_atoms, n_times_valid)
         Activations
-    ds : array, shape(n_atoms, n_times_atom)
+    ds : array, shape(n_atoms, n_chan, n_times_atom)
         Dictionary
     """
     assert Zi.shape[0] == ds.shape[0]
-    n_atoms, n_times_valid = Zi.shape
-    n_atoms, n_chan, n_times_atom = ds.shape
+
     if np.sum(Zi != 0) < 0.01 * Zi.size:
         return _sparse_convolve_multi(Zi, ds)
     else:
         return _dense_convolve_multi(Zi, ds)
+
+
+def _choose_convolve_multi_uv(Zi, uv, n_channels):
+    """Choose between _dense_convolve and _sparse_convolve with a heuristic
+    on the sparsity of Zi, and perform the convolution.
+
+    Zi : array, shape(n_atoms, n_times_valid)
+        Activations
+    uv : array, shape(n_atoms, n_chan + n_times_atom)
+        Dictionary
+    n_channels : int
+        Number of channels
+    """
+    assert Zi.shape[0] == uv.shape[0]
+
+    if np.sum(Zi != 0) < 0.01 * Zi.size:
+        return _sparse_convolve_multi_uv(Zi, uv, n_channels)
+    else:
+        return _dense_convolve_multi_uv(Zi, uv, n_channels)
 
 
 def check_consistent_shape(*args):

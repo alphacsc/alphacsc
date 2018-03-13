@@ -11,7 +11,7 @@ from numba import jit
 from scipy import optimize
 from joblib import Parallel, delayed
 
-from .utils import _choose_convolve_multi, _get_D
+from .utils import _choose_convolve_multi_uv
 
 
 def update_z_multi(X, uv, reg, z0=None, debug=False, parallel=None,
@@ -90,15 +90,11 @@ def _fprime(uv, zi, Xi=None, reg=None, return_func=False):
     grad : array, shape (n_atoms * n_times_valid)
         The gradient
     """
-    n_channels, n_times = Xi.shape
-    n_atoms, n_channels_n_times_atom = uv.shape
-    n_times_atom = n_channels_n_times_atom - n_channels
+    n_channels, _ = Xi.shape
+    n_atoms, _ = uv.shape
     zi_reshaped = zi.reshape((n_atoms, -1))
 
-    ds = _get_D(uv, n_channels)
-    n_atoms, n_channels, n_times_atom = ds.shape
-
-    Dzi = _choose_convolve_multi(zi_reshaped, ds)
+    Dzi = _choose_convolve_multi_uv(zi_reshaped, uv, n_channels)
     # n_channels, n_times = Dzi.shape
     if Xi is not None:
         Dzi -= Xi
@@ -303,9 +299,7 @@ def _coordinate_descent_idx(Xi, uv, constants, reg, z0=None, max_iter=1000,
     n_times_seg = n_times_valid // n_seg + 1
 
     def objective(zi):
-        ds = _get_D(uv, n_chan)
-
-        Dzi = _choose_convolve_multi(zi, ds)
+        Dzi = _choose_convolve_multi_uv(zi, uv, n_chan)
         Dzi -= Xi
         func = 0.5 * np.dot(Dzi.ravel(), Dzi.ravel())
         func += reg * zi.sum()
@@ -353,7 +347,8 @@ def _coordinate_descent_idx(Xi, uv, constants, reg, z0=None, max_iter=1000,
             offset = max(0, n_times_atom - t0 - 1)
             t_start = max(0, t0 - n_times_atom + 1)
             ll = min(t0 + n_times_atom, n_times_valid) - t_start
-            beta[:, t_start:t0 + n_times_atom] -= DtD[:, k0, offset:offset + ll] * dz
+            beta[:, t_start:t0 + n_times_atom] -= \
+                DtD[:, k0, offset:offset + ll] * dz
             beta[k0, t0] = beta_i0
             z_opt[:, t_start:t0 + n_times_atom] = np.maximum(
                 -beta[:, t_start:t0 + n_times_atom] - reg, 0) / norm_Dk

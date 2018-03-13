@@ -13,7 +13,7 @@ import sys
 import numpy as np
 from joblib import Parallel
 
-from .utils import construct_X_multi, check_random_state, _get_D
+from .utils import construct_X_multi_uv, check_random_state
 from .update_z_multi import update_z_multi
 from .update_d_multi import update_uv, prox_uv
 from .profile_this import profile_this  # noqa
@@ -59,8 +59,7 @@ def compute_X_and_objective_multi(X, Z_hat, uv_hat, reg,
         # update z in the opposite way
         Z_hat *= norm_uv[:, None, None]
 
-    d_hat = _get_D(uv_hat, n_chan)
-    X_hat = construct_X_multi(Z_hat, d_hat)
+    X_hat = construct_X_multi_uv(Z_hat, uv_hat, n_chan)
 
     return objective(X, X_hat, Z_hat, reg)
 

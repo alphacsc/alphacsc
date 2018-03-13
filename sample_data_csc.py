@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 from scipy.signal import tukey
 
 import mne
-from alphacsc.learn_d_z_multi import learn_d_z_multi, _get_D
-from alphacsc.utils import construct_X_multi
+from alphacsc.learn_d_z_multi import learn_d_z_multi
+from alphacsc.utils import construct_X_multi_uv
 
 
 parser = argparse.ArgumentParser('Programme to launch experiment on multi csc')
@@ -95,8 +95,7 @@ if args.profile:
 plt.figure("Final atom")
 plt.plot(uv_hat[0, n_chan:])
 
-D_hat = _get_D(uv_hat, n_chan)
-X_hat = construct_X_multi(Z_hat, D_hat)
+X_hat = construct_X_multi_uv(Z_hat, uv_hat, n_chan)
 
 plt.figure("X")
 plt.plot(X.mean(axis=1)[0])
