@@ -72,7 +72,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
                     solver_d='alternate', uv_constraint='separate',
                     solver_d_kwargs=dict(), solver_z_kwargs=dict(),
                     eps=1e-10, uv_init=None, verbose=10, callback=None,
-                    stopping_pobj=None):
+                    stopping_pobj=None, kmeans_params=dict()):
     """Learn atoms and activations using Convolutional Sparse Coding.
 
     Parameters
@@ -115,6 +115,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
     callback : func
         A callback function called at the end of each loop of the
         coordinate descent.
+    kmeans_params : dict
+        Dictionnary of parameters for the kmeans init method.
 
     Returns
     -------
@@ -138,7 +140,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
     rng = check_random_state(random_state)
 
     uv_hat = init_uv(X, n_atoms, n_times_atom, uv_init=uv_init,
-                     uv_constraint=uv_constraint, random_state=rng)
+                     uv_constraint=uv_constraint, random_state=rng,
+                     kmeans_params=kmeans_params)
     b_hat_0 = rng.randn(n_atoms * (n_chan + n_times_atom))
     times.append(time.time() - start)
 
