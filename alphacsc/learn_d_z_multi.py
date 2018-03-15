@@ -65,7 +65,7 @@ def compute_X_and_objective_multi(X, Z_hat, uv_hat, reg,
     return objective(X, X_hat, Z_hat, reg)
 
 
-@profile_this
+# @profile_this
 def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
                     n_iter=60, random_state=None, n_jobs=1, solver_z='l_bfgs',
                     solver_d='alternate', uv_constraint='separate',
@@ -187,8 +187,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
                         uv_constraint=uv_constraint))
 
             if verbose > 1:
-                print('[seed %s] Objective (d) %0.8f' % (random_state,
-                                                         pobj[-1]))
+                print('[seed %s] Objective (d) : %0.8f' % (random_state,
+                                                           pobj[-1]))
 
             if callable(callback):
                 callback(X, uv_hat, Z_hat, reg)

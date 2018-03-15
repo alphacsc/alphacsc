@@ -29,7 +29,7 @@ to try. Please cite our paper [2] if you use this implementation.
 
 import matplotlib.pyplot as plt
 from alphacsc.simulate import simulate_data
-from alphacsc.motif import learn_atoms
+from alphacsc.other.motif import learn_atoms
 
 ###############################################################################
 # and define the relevant parameters. Note we choose a large n_times

@@ -16,9 +16,6 @@ from .utils import check_random_state
 from .utils import construct_X_multi_uv
 
 
-PHI = (np.sqrt(5) + 1) / 2
-
-
 def tensordot_convolve(ZtZ, D):
     """Compute the multivariate (valid) convolution of ZtZ and D
 
@@ -228,6 +225,8 @@ def fista(f_obj, f_grad, f_prox, step_size, x0, max_iter, verbose=0,
                 step_size, _, obj_uv = optimize.linesearch.line_search_armijo(
                     f_obj_, x_hat.ravel(), -grad.ravel(), grad.ravel(), obj_uv,
                     c1=1e-4, alpha0=step_size)
+                if step_size is None:
+                    step_size = 0
                 x_hat_aux -= step_size * grad
                 x_hat_aux = f_prox(x_hat_aux)
 
@@ -262,7 +261,7 @@ def fista(f_obj, f_grad, f_prox, step_size, x0, max_iter, verbose=0,
         if verbose > 1:
             print('update [fista] did not converge')
     if verbose > 1:
-        print('%d iterations' % (ii + 1))
+        print('ISTA: %d iterations' % (ii + 1))
 
     if debug:
         return x_hat, pobj

@@ -17,14 +17,14 @@ Functions
    learn_d_z
    learn_d_z_weighted
 
-.. currentmodule:: alphacsc.swm
+.. currentmodule:: alphacsc.other.swm
 
 .. autosummary::
    :toctree: generated/
 
    sliding_window_matching
 
-.. currentmodule:: alphacsc.motif
+.. currentmodule:: alphacsc.other.motif
 
 .. autosummary::
    :toctree: generated/

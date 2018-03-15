@@ -57,7 +57,7 @@ window_starts = rng.choice(np.arange(n_trials * n_times), size=n_trials)
 
 ###############################################################################
 # Now, we apply the SWM algorithm now.
-from alphacsc.swm import sliding_window_matching # noqa
+from alphacsc.other.swm import sliding_window_matching # noqa
 
 random_state = 42
 X = X.reshape(X.shape[0] * X.shape[1])  # expects 1D time series
