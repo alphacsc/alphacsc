@@ -1,6 +1,6 @@
 import numpy as np
 from numpy.fft import rfft, irfft
-from scipy.fftpack import next_fast_len
+from scipy.fftpack import next_fast_len  # noqa
 
 from sklearn.metrics.pairwise import check_pairwise_arrays
 
@@ -36,8 +36,9 @@ def roll_invariant_euclidean_distances(X, Y=None, squared=False):
     X_norm = np.power(np.linalg.norm(X, axis=1), 2)
     Y_norm = np.power(np.linalg.norm(Y, axis=1), 2)
 
-    n_pads = 0
-    n_fft = next_fast_len(n_features + n_pads)
+    # n_pads = 0
+    # n_fft = next_fast_len(n_features + n_pads)
+    n_fft = n_features  # not fast but otherwise the distance is wrong
     X_hat = rfft(X, n_fft, axis=1)
     Y_hat = rfft(Y, n_fft, axis=1).conj()
 

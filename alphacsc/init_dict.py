@@ -99,18 +99,19 @@ def kmeans_init(X, n_atoms, n_times_atom, max_iter=0, random_state=None,
         The initial atoms to learn from the data.
     """
     if use_custom_distances:
-        # Only take the strongest channel, otherwise X is too big
-        strongest_channel = np.argmax(X.std(axis=2).mean(axis=0))
-        X_strong = X[:, strongest_channel, :]
-    else:
-        X_strong = X.reshape(-1, X.shape[-1])
+        # Only take the strongest channels, otherwise X is too big
+        n_strong_channels = 3
+        strongest_channels = np.argsort(X.std(axis=2).mean(axis=0))
+        X = X[:, strongest_channels[-n_strong_channels:], :]
+
+    X = X.reshape(-1, X.shape[-1])
 
     # Time step between two windows
     step = max(1, n_times_atom // 3)
 
-    # embed all the windows of length n_times_atom in X_strong
+    # embed all the windows of length n_times_atom in X
     X_embed = np.concatenate(
-        [_embed(Xi, n_times_atom).T[::step, :] for Xi in X_strong])
+        [_embed(Xi, n_times_atom).T[::step, :] for Xi in X])
     X_embed = np.atleast_2d(X_embed)
 
     if non_uniform:

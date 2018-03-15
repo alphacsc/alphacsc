@@ -14,14 +14,14 @@ figure_path = 'figures'
 mem = Memory(cachedir='.', verbose=0)
 colors = ["#4C72B0", "#55A868", "#C44E52", "#8172B2", "#CCB974", "#64B5CD"]
 
-sfreq = 150.
+sfreq = 300.
 n_times_atom = int(round(sfreq * 0.3))  # 300. ms
 n_atoms = 5
-n_jobs = 5
+n_jobs = 1
 
 
 @mem.cache()
-def load_data():
+def load_data(sfreq=sfreq):
     data_path = os.path.join(mne.datasets.somato.data_path(), 'MEG', 'somato')
     raw = mne.io.read_raw_fif(
         os.path.join(data_path, 'sef_raw_sss.fif'), preload=True)
