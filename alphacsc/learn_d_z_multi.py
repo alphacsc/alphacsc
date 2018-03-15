@@ -16,6 +16,7 @@ from joblib import Parallel
 from .utils import construct_X_multi_uv, check_random_state
 from .update_z_multi import update_z_multi
 from .update_d_multi import update_uv, prox_uv
+from .init_dict import init_uv
 from .profile_this import profile_this  # noqa
 
 
@@ -129,13 +130,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
     n_times_valid = n_times - n_times_atom + 1
 
     rng = check_random_state(random_state)
-
-    if uv_init is None:
-        uv_hat = rng.randn(n_atoms, n_chan + n_times_atom)
-    else:
-        uv_hat = uv_init.copy()
-    uv_hat = prox_uv(uv_hat, uv_constraint=uv_constraint, n_chan=n_chan)
-
+    uv_hat = init_uv(X, n_atoms, n_times_atom, uv_init=uv_init,
+                     uv_constraint=uv_constraint, random_state=rng)
     b_hat_0 = rng.randn(n_atoms * (n_chan + n_times_atom))
 
     pobj = list()
