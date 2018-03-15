@@ -3,6 +3,7 @@ from numpy.testing import assert_allclose
 
 from alphacsc.utils import _sparse_convolve, _dense_convolve, _choose_convolve
 from alphacsc.utils import check_random_state
+from alphacsc.utils import _get_D, construct_X_multi, construct_X_multi_uv
 
 
 def test_sparse_convolve():
@@ -21,3 +22,22 @@ def test_sparse_convolve():
     zd_2 = _choose_convolve(zi, ds)
     assert_allclose(zd_0, zd_1, atol=1e-16)
     assert_allclose(zd_0, zd_2, atol=1e-16)
+
+
+def test_construct_X():
+    rng = check_random_state(42)
+    n_times_atoms, n_times = 21, 128
+    n_atoms = 3
+    n_trials, n_channels = 29, 7
+    n_times_valid = n_times - n_times_atoms + 1
+    density = 0.1
+    zi = sparse.random(n_atoms * n_trials, n_times_valid, density,
+                       random_state=rng).toarray().reshape(
+                           (n_atoms, n_trials, n_times_valid))
+    uv = rng.randn(n_atoms, n_channels + n_times_atoms)
+    ds = _get_D(uv, n_channels)
+
+    X_uv = construct_X_multi_uv(zi, uv, n_channels)
+    X_ds = construct_X_multi(zi, ds)
+
+    assert_allclose(X_uv, X_ds, atol=1e-16)
