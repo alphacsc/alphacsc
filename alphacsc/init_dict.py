@@ -2,8 +2,9 @@ import numpy as np
 
 import kmc2
 from sklearn.cluster import MiniBatchKMeans
+from sklearn.decomposition import PCA
 
-from .utils import check_random_state
+from .utils import check_random_state, _get_uv
 from .update_d_multi import prox_uv
 from .other.k_medoids import KMedoids
 
@@ -48,14 +49,12 @@ def init_uv(X, n_atoms, n_times_atom, uv_init=None, uv_constraint='separate',
         uv_hat = rng.randn(n_atoms, n_channels + n_times_atom)
 
     elif uv_init == 'chunk':
-        u_hat = rng.randn(n_atoms, n_channels)
-        v_hat = np.zeros((n_atoms, n_times_atom))
+        D_hat = np.zeros((n_atoms, n_channels, n_times_atom))
         for i_atom in range(n_atoms):
             i_trial = rng.randint(n_trials)
-            i_channel = rng.randint(n_channels)
             t0 = rng.randint(n_times - n_times_atom)
-            v_hat[i_atom] = X[i_trial, i_channel, t0:t0 + n_times_atom]
-        uv_hat = np.c_[u_hat, v_hat]
+            D_hat[i_atom] = X[i_trial, :, t0:t0 + n_times_atom]
+        uv_hat = _get_uv(D_hat)
 
     elif uv_init == "kmeans":
         u_hat = rng.randn(n_atoms, n_channels)
@@ -63,6 +62,13 @@ def init_uv(X, n_atoms, n_times_atom, uv_init=None, uv_constraint='separate',
                             **kmeans_params)
         uv_hat = np.c_[u_hat, v_hat]
 
+    elif uv_init == "ssa":
+        u_hat = rng.randn(n_atoms, n_channels)
+        v_hat = ssa_init(X, n_atoms, n_times_atom, random_state=rng,
+                         **kmeans_params)
+        uv_hat = np.c_[u_hat, v_hat]
+    elif uv_init == "d_update":
+        Z_hat
     else:
         raise NotImplementedError('It is not possible to initialize uv with'
                                   ' parameter {}.'.format(uv_init))
@@ -139,6 +145,55 @@ def kmeans_init(X, n_atoms, n_times_atom, max_iter=0, random_state=None,
                                 max_iter=max_iter,
                                 random_state=random_state).fit(X_embed)
         v_init = model.cluster_centers_
+
+    return v_init
+
+
+def ssa_init(X, n_atoms, n_times_atom, max_iter=100, random_state=None,
+             non_uniform=True, use_custom_distances=False):
+    """Return an initial temporal dictionary for the signals X
+
+    Parameter
+    ---------
+    X: array, shape (n_trials, n_channels, n_times)
+        The data on which to perform CSC.
+    n_atoms : int
+        The number of atoms to learn.
+    n_times_atom : int
+        The support of the atom.
+    max_iter : int
+        Number of iteration of kmeans algorithm
+    random_state : int | None
+        The random state.
+    non_uniform : boolean
+        If True, the kmc2 init uses the norm of each data chunk.
+    use_custom_distances : boolean
+        If True, the kmc2 init and the kmeans algorithm use a convolutional
+        distance instead of the euclidean distance
+
+    Return
+    ------
+    uv: array shape (n_atoms, n_channels + n_times_atom)
+        The initial atoms to learn from the data.
+    """
+    # Only take the strongest channel, otherwise X is too big
+    strongest_channel = np.argmax(X.std(axis=2).mean(axis=0))
+    X_strong = X[:, strongest_channel, :]
+
+    # Time step between two windows
+    if use_custom_distances:
+        step = n_times_atom // 3
+    else:
+        step = 1
+
+    # embed all the windows of length n_times_atom in X_strong
+    X_embed = np.concatenate(
+        [_embed(Xi, n_times_atom).T[::step, :] for Xi in X_strong])
+    X_embed = np.atleast_2d(X_embed)
+
+    model = PCA(n_components=n_atoms, random_state=random_state).fit(X_embed)
+    v_init = model.components_
+
 
     return v_init
 

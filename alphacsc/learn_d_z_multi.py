@@ -14,6 +14,7 @@ import numpy as np
 from joblib import Parallel
 
 from .utils import construct_X_multi_uv, check_random_state
+from .utils import _patch_reconstruction_error, _get_uv
 from .update_z_multi import update_z_multi
 from .update_d_multi import update_uv, prox_uv
 from .init_dict import init_uv
@@ -174,7 +175,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
             pobj.append(compute_X_and_objective_multi(X, Z_hat, uv_hat, reg,
                         uv_constraint=uv_constraint))
             if verbose > 1:
-                print('[seed %s] Objective (Z) : %0.8f' % (random_state,
+                print('[seed %s] Objective (Z) : %0.4e' % (random_state,
                                                            pobj[-1]))
 
             start = time.time()
@@ -189,8 +190,13 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
             pobj.append(compute_X_and_objective_multi(X, Z_hat, uv_hat, reg,
                         uv_constraint=uv_constraint))
 
+            null_atom_indices = np.where(abs(Z_hat).sum(axis=(1, 2)) == 0)[0]
+            if len(null_atom_indices) > 0:
+                k0 = null_atom_indices[0]
+                uv_hat[k0] = get_max_error_dict(X, Z_hat, uv_hat)[0]
+
             if verbose > 1:
-                print('[seed %s] Objective (d) : %0.8f' % (random_state,
+                print('[seed %s] Objective (d) : %0.4e' % (random_state,
                                                            pobj[-1]))
 
             if callable(callback):
@@ -214,3 +220,37 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
         solver=solver_z, solver_kwargs=solver_z_kwargs, freeze_support=True)
 
     return pobj, times, uv_hat, Z_hat
+
+
+def get_max_error_dict(X, Z, uv):
+    """Get the maximal reconstruction error patch from the data as a new atom
+
+    This idea is used for instance in [Yellin2017]
+
+    Parameters
+    ----------
+    X: array, shape (n_trials, n_channels, n_times)
+        Signals encoded in the CSC.
+    Z: array, shape (n_atoms, n_trials, n_times_valid)
+        Current estimate of the coding signals.
+    uv: array, shape (n_atoms, n_channels + n_times_atom)
+        Current estimate of the rank1 multivariate dictionary.
+
+    Return
+    ------
+    uvk: array, shape (n_channels + n_times_atom,)
+        New atom for the dictionary, chosen as the chunk of data with the
+        maximal reconstruction error.
+
+    [Yellin2017] BLOOD CELL DETECTION AND COUNTING IN HOLOGRAPHIC LENS-FREE 
+    IMAGING BY CONVOLUTIONAL SPARSE DICTIONARY LEARNING AND CODING.
+    """
+    n_trials, n_channels, n_times = X.shape
+    n_times_atom = uv.shape[1] - n_channels
+    patch_rec_error = _patch_reconstruction_error(X, Z, uv)
+    i0 = patch_rec_error.argmax()
+    n0, t0 = np.unravel_index(i0, Z.shape[1:])
+
+    d0 = X[n0, :, t0:t0 + n_times_atom][None]
+
+    return _get_uv(d0)
