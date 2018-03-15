@@ -71,7 +71,7 @@ def test_init_random(uv_constraint):
 
 
 @pytest.mark.parametrize("uv_init", [
-    None, 'random', 'chunk'
+    None, 'random', 'chunk', 'kmeans'
 ])
 def test_init_shape(uv_init):
     """"""

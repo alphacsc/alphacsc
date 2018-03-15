@@ -129,19 +129,22 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
     n_trials, n_chan, n_times = X.shape
     n_times_valid = n_times - n_times_atom + 1
 
-    rng = check_random_state(random_state)
-    uv_hat = init_uv(X, n_atoms, n_times_atom, uv_init=uv_init,
-                     uv_constraint=uv_constraint, random_state=rng)
-    b_hat_0 = rng.randn(n_atoms * (n_chan + n_times_atom))
-
     pobj = list()
     times = list()
 
-    Z_hat = np.zeros((n_atoms, n_trials, n_times_valid))
+    # initialization
+    start = time.time()
+    rng = check_random_state(random_state)
 
+    uv_hat = init_uv(X, n_atoms, n_times_atom, uv_init=uv_init,
+                     uv_constraint=uv_constraint, random_state=rng)
+    b_hat_0 = rng.randn(n_atoms * (n_chan + n_times_atom))
+    times.append(time.time() - start)
+
+    Z_hat = np.zeros((n_atoms, n_trials, n_times_valid))
     pobj.append(compute_X_and_objective_multi(X, Z_hat, uv_hat, reg,
                 uv_constraint=uv_constraint))
-    times.append(0.)
+
     with Parallel(n_jobs=n_jobs) as parallel:
         for ii in range(n_iter):  # outer loop of coordinate descent
             if verbose == 1:
