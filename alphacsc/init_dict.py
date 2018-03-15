@@ -37,10 +37,23 @@ def init_uv(X, n_atoms, n_times_atom, uv_init=None, uv_constraint='separate',
     if isinstance(uv_init, np.ndarray):
         uv_hat = uv_init.copy()
         assert uv_hat.shape == (n_atoms, n_channels + n_times_atom)
+
     elif uv_init is None or uv_init == "random":
         uv_hat = rng.randn(n_atoms, n_channels + n_times_atom)
+
+    elif uv_init == 'chunk':
+        u_hat = rng.randn(n_atoms, n_channels)
+        v_hat = np.zeros((n_atoms, n_times_atom))
+        for i_atom in range(n_atoms):
+            i_trial = rng.randint(n_trials)
+            i_channel = rng.randint(n_channels)
+            t0 = rng.randint(n_times - n_times_atom)
+            v_hat[i_atom] = X[i_trial, i_channel, t0:t0 + n_times_atom]
+        uv_hat = np.c_[u_hat, v_hat]
+
     elif uv_init == "kmeans":
         raise NotImplementedError("Not yet")
+
     else:
         raise NotImplementedError('It is not possible to initialize uv with'
                                   ' parameter {}.'.format(uv_init))
