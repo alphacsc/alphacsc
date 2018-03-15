@@ -71,7 +71,7 @@ def init_uv(X, n_atoms, n_times_atom, uv_init=None, uv_constraint='separate',
     return uv_hat
 
 
-def kmeans_init(X, n_atoms, n_times_atom, max_iter=100, random_state=None,
+def kmeans_init(X, n_atoms, n_times_atom, max_iter=0, random_state=None,
                 non_uniform=True, use_custom_distances=False):
     """Return an initial temporal dictionary for the signals X
 
@@ -98,15 +98,15 @@ def kmeans_init(X, n_atoms, n_times_atom, max_iter=100, random_state=None,
     uv: array shape (n_atoms, n_channels + n_times_atom)
         The initial atoms to learn from the data.
     """
-    # Only take the strongest channel, otherwise X is too big
-    strongest_channel = np.argmax(X.std(axis=2).mean(axis=0))
-    X_strong = X[:, strongest_channel, :]
+    if use_custom_distances:
+        # Only take the strongest channel, otherwise X is too big
+        strongest_channel = np.argmax(X.std(axis=2).mean(axis=0))
+        X_strong = X[:, strongest_channel, :]
+    else:
+        X_strong = X.reshape(-1, X.shape[-1])
 
     # Time step between two windows
-    if use_custom_distances:
-        step = n_times_atom // 3
-    else:
-        step = 1
+    step = max(1, n_times_atom // 3)
 
     # embed all the windows of length n_times_atom in X_strong
     X_embed = np.concatenate(
