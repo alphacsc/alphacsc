@@ -67,8 +67,8 @@ def init_uv(X, n_atoms, n_times_atom, uv_init=None, uv_constraint='separate',
         v_hat = ssa_init(X, n_atoms, n_times_atom, random_state=rng,
                          **kmeans_params)
         uv_hat = np.c_[u_hat, v_hat]
-    elif uv_init == "d_update":
-        Z_hat
+    elif uv_init == 'greedy':
+        raise NotImplementedError()
     else:
         raise NotImplementedError('It is not possible to initialize uv with'
                                   ' parameter {}.'.format(uv_init))
@@ -149,8 +149,7 @@ def kmeans_init(X, n_atoms, n_times_atom, max_iter=0, random_state=None,
     return v_init
 
 
-def ssa_init(X, n_atoms, n_times_atom, max_iter=100, random_state=None,
-             non_uniform=True, use_custom_distances=False):
+def ssa_init(X, n_atoms, n_times_atom, random_state=None):
     """Return an initial temporal dictionary for the signals X
 
     Parameter
@@ -161,15 +160,8 @@ def ssa_init(X, n_atoms, n_times_atom, max_iter=100, random_state=None,
         The number of atoms to learn.
     n_times_atom : int
         The support of the atom.
-    max_iter : int
-        Number of iteration of kmeans algorithm
     random_state : int | None
         The random state.
-    non_uniform : boolean
-        If True, the kmc2 init uses the norm of each data chunk.
-    use_custom_distances : boolean
-        If True, the kmc2 init and the kmeans algorithm use a convolutional
-        distance instead of the euclidean distance
 
     Return
     ------
@@ -181,10 +173,7 @@ def ssa_init(X, n_atoms, n_times_atom, max_iter=100, random_state=None,
     X_strong = X[:, strongest_channel, :]
 
     # Time step between two windows
-    if use_custom_distances:
-        step = n_times_atom // 3
-    else:
-        step = 1
+    step = 1
 
     # embed all the windows of length n_times_atom in X_strong
     X_embed = np.concatenate(
@@ -193,7 +182,6 @@ def ssa_init(X, n_atoms, n_times_atom, max_iter=100, random_state=None,
 
     model = PCA(n_components=n_atoms, random_state=random_state).fit(X_embed)
     v_init = model.components_
-
 
     return v_init
 
