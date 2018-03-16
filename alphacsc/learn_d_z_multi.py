@@ -126,7 +126,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
         The cumulative time for each iteration of the coordinate descent.
     uv_hat : array, shape (n_atoms, n_channels + n_times_atom)
         The atoms to learn from the data.
-    Z_hat : array, shape (n_trials, n_atoms, n_times_valid)
+    Z_hat : array, shape (n_atoms, n_trials, n_times_valid)
         The sparse activation matrix.
     """
     n_trials, n_chan, n_times = X.shape
