@@ -368,9 +368,9 @@ def _coordinate_descent_idx(Xi, uv, constants, reg, z0=None, max_iter=1000,
             t_end_seg = n_times_seg
 
     else:
-        if verbose > 1:
+        if verbose > 10:
             print('update z [cd] did not converge')
-    if verbose > 1:
+    if verbose > 10:
         print('[CD] computed %d iterations' % (ii + 1))
 
     if debug:

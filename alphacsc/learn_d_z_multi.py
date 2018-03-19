@@ -159,9 +159,11 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
                       (ii, n_iter, n_jobs))
 
             start = time.time()
+            z_kwargs = dict(verbose=verbose, eps=1e-8)
+            z_kwargs.update(solver_z_kwargs)
             Z_hat = update_z_multi(
                 X, uv_hat, reg=reg, z0=Z_hat, parallel=parallel,
-                solver=solver_z, solver_kwargs=solver_z_kwargs)
+                solver=solver_z, solver_kwargs=z_kwargs)
             times.append(time.time() - start)
 
             if len(Z_hat.nonzero()[0]) == 0:
@@ -197,6 +199,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
             if len(null_atom_indices) > 0:
                 k0 = null_atom_indices[0]
                 uv_hat[k0] = get_max_error_dict(X, Z_hat, uv_hat)[0]
+                if verbose > 1:
+                    print('[seed %s] Resampled atom %d' % (random_state, k0))
 
             if verbose > 1:
                 print('[seed %s] Objective (d) : %0.4e' % (random_state,
