@@ -262,7 +262,7 @@ def get_max_error_dict(X, Z, uv):
 
     return _get_uv(d0)
 
-@profile_this
+# @profile_this
 def learn_uv_z(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
                n_iter=60, random_state=None, n_jobs=1, solver_z='l_bfgs',
                solver_d='alternate', uv_constraint='separate',
