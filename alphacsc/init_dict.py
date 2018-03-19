@@ -112,7 +112,7 @@ def kmeans_init(X, n_atoms, n_times_atom, max_iter=0, random_state=None,
 
     X = X.reshape(-1, X.shape[-1])
 
-    # Time step between two windows
+    # Time step between two windows
     step = max(1, n_times_atom // 3)
 
     # embed all the windows of length n_times_atom in X
@@ -172,7 +172,7 @@ def ssa_init(X, n_atoms, n_times_atom, random_state=None):
     strongest_channel = np.argmax(X.std(axis=2).mean(axis=0))
     X_strong = X[:, strongest_channel, :]
 
-    # Time step between two windows
+    # Time step between two windows
     step = 1
 
     # embed all the windows of length n_times_atom in X_strong

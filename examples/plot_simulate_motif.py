@@ -12,7 +12,7 @@ to try. Please cite our paper [2] if you use this implementation.
     translation invariant dictionaries." Acoustics, Speech and Signal
     Processing, 2006. ICASSP 2006 Proceedings. 2006 IEEE International
     Conference on. Vol. 5. IEEE, 2006.
-[2] Jas, M., Dupré La Tour, T., Şimşekli, U., & Gramfort, A. (2017).
+[2] Jas, M., Dupr'e La Tour, T., Simsekli, U., & Gramfort, A. (2017).
     Learning the Morphology of Brain Signals Using Alpha-Stable Convolutional
     Sparse Coding. arXiv preprint arXiv:1705.08006.
 """

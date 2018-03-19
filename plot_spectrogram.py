@@ -70,7 +70,7 @@ if True:
     sp.plot()
     plt.show()
 
-# compute the spectrogram, with a mean over channels
+# compute the spectrogram, with a mean over channels
 f, t, _ = spectrogram(X[0, 0], sfreq, nperseg=32, noverlap=24, nfft=256)
 S = Parallel(n_jobs=5)(delayed(spectro_mean)(X_n)
                        for X_n in X)

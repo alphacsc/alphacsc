@@ -24,7 +24,7 @@ X += 0.01 * rng.randn(*X.shape)
 
 n_times_atom += 32
 ###############################################################################
-# Multichannel CSC
+# Multichannel CSC
 n_chan = 1
 fig, axes = plt.subplots(nrows=2, num='atoms', figsize=(10, 8))
 
@@ -74,7 +74,7 @@ if True:
     plt.show()
 
 ###############################################################################
-# Vanilla CSC
+# Vanilla CSC
 
 fig, axes = plt.subplots(nrows=2, num='atoms', figsize=(10, 8))
 

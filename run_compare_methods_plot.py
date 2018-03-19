@@ -82,7 +82,7 @@ def plot_convergence(all_results_df, threshold, normalize_method, save_name):
                     ymin = min(ymin, pobj_mean[pobj_mean > 0].min())
 
                 else:
-                    color = None  # new color for new label
+                    color = None  # new color for new label
                     for times_, pobj_ in zip(times, pobj):
                         if pobj_[-1] <= threshold:
                             if normalize_method == 'last' and True:
@@ -93,7 +93,7 @@ def plot_convergence(all_results_df, threshold, normalize_method, save_name):
 
                             plot_func(times_, pobj_, marker=marker,
                                       label=label, alpha=alpha, color=color)
-                            # reuse color for next lines
+                            # reuse color for next lines
                             color = ax.lines[-1].get_color()
                             # don't duplicate label for next lines
                             label = None
@@ -104,7 +104,7 @@ def plot_convergence(all_results_df, threshold, normalize_method, save_name):
 
                             plot_func(times_, pobj_, marker=marker,
                                       label=label, alpha=alpha, color=color)
-                            # reuse color for next lines
+                            # reuse color for next lines
                             color = ax.lines[-1].get_color()
                             # don't duplicate label for next lines
                             label = None

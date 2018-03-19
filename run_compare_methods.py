@@ -33,7 +33,7 @@ n_times = 2000  # T
 n_atoms = 2  # K
 reg = 1.0
 
-# A method stops if its objective function reaches best_pobj * (1 + threshold)
+# A method stops if its objective function reaches best_pobj * (1 + threshold)
 threshold = -1
 
 save_name = 'methods_th%s_' % (threshold, )

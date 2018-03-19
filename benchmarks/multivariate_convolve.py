@@ -19,7 +19,7 @@ def scipy_fftconvolve(ZtZ, D):
     D.shape = n_atoms, n_channels, n_times_atom
     """
     n_atoms, n_channels, n_times_atom = D.shape
-    # TODO: try with zero padding to next_fast_len
+    # TODO: try with zero padding to next_fast_len
 
     G = np.zeros(D.shape)
     for k0 in range(n_atoms):

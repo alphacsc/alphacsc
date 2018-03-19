@@ -91,7 +91,7 @@ def plot_activations_density(Z_hat, n_times_atom, sfreq=1., threshold=0.01,
                     activations[selection] / activations[selection].max(), '.',
                     color='k')
 
-        # compute the kernel density and plot it
+        # compute the kernel density and plot it
         kde_x = kde_sklearn(time_instants[selection], time_instants,
                             bandwidth=bandwidth)
         ax.fill_between(time_instants, kde_x * n_elements, color=color,
