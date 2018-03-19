@@ -15,7 +15,7 @@ mem = Memory(cachedir='.', verbose=0)
 
 @mem.cache()
 def load_data(n_trials=40, n_channels=1, T=4, sigma=.05, sfreq=300,
-              f_noise=True, random_state=None):
+              f_noise=True, random_state=None, n_jobs=4):
     """Simulate data following the convolutional model
 
     Parameters
@@ -35,6 +35,8 @@ def load_data(n_trials=40, n_channels=1, T=4, sigma=.05, sfreq=300,
         If set to True, use MNE empty room data as a noise in the signal
     random_state : int or None
         State to seed the random number generator
+    n_jobs : int
+        Number of processes used to filter the f_noise
 
     Return
     ------
@@ -71,7 +73,9 @@ def load_data(n_trials=40, n_channels=1, T=4, sigma=.05, sfreq=300,
                                   preload=True)
 
         raw.pick_types(meg='mag')
-        raw.filter(.5, None, n_jobs=4)
+        nyquist = raw.info['sfreq'] / 2.
+        raw.notch_filter(np.arange(60, nyquist - 10., 60), n_jobs=n_jobs)
+        raw.filter(.5, None, n_jobs=n_jobs)
         X = raw[:][0]
         X /= X.std(axis=1, keepdims=True)
         max_channels, T_max = X.shape
