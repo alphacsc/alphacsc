@@ -1,3 +1,5 @@
+import itertools
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -72,7 +74,8 @@ def plot_activations_density(Z_hat, n_times_atom, sfreq=1., threshold=0.01,
         fig, axes = plt.subplots(n_atoms, num='density',
                                  figsize=(8, 2 + n_atoms * 3))
 
-    for ax, activations, color in zip(axes, Z_hat_sum, colors):
+    color_cycle = itertools.cycle(colors)
+    for ax, activations, color in zip(axes, Z_hat_sum, color_cycle):
         time_instants = np.arange(n_times_valid) / float(sfreq)
         selection = activations > threshold
         n_elements = selection.sum()
