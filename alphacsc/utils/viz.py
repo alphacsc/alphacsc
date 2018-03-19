@@ -66,9 +66,9 @@ def plot_activations_density(Z_hat, n_times_atom, sfreq=1., threshold=0.01,
         Z_hat_sum /= Z_hat_sum.max()
 
     if bandwidth == 'auto':
-        bandwidth = n_times_atom / float(sfreq) / 2.
+        bandwidth = n_times_atom / float(sfreq) / 4.
     elif bandwidth == 'grid':
-        bandwidth = n_times_atom / float(sfreq) / 2. * np.logspace(-1, 1, 20)
+        bandwidth = n_times_atom / float(sfreq) / 4. * np.logspace(-1, 1, 20)
 
     if axes is None:
         fig, axes = plt.subplots(n_atoms, num='density',
