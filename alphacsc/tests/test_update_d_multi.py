@@ -34,19 +34,6 @@ def test_simple():
     error = optimize.check_grad(func, grad, d, epsilon=1e-8)
     assert error < 1e-4, "Gradient is false: {:.4e}".format(error)
 
-# def test_simple2():
-#     L = 35000
-#     d = np.random.random(L)
-
-#     def func(d0):
-#         return d0.dot(d0)
-
-#     def grad(d0):
-#         return 2 * d0
-
-#     error = optimize.check_grad(func, grad, d, epsilon=1e-8)
-#     assert error < 1e-4, f"Gradient is false: {error:.4e}"
-
 
 def test_gradient_d():
     # Generate synchronous D
@@ -238,3 +225,39 @@ def test_ista():
     x_hat = fista(obj, grad, prox, step_size, x0, max_iter=600,
                   verbose=0, momentum=False, eps=None)
     np.testing.assert_array_almost_equal(x, x_hat)
+
+
+def test_constants_d():
+    """Test that _shifted_objective_uv compute the right thing"""
+    # Generate synchronous D
+    n_times_atom, n_times = 10, 100
+    n_chan = 5
+    n_atoms = 2
+    n_trials = 3
+
+    rng = np.random.RandomState()
+    X = rng.normal(size=(n_trials, n_chan, n_times))
+    Z = rng.normal(size=(n_atoms, n_trials, n_times - n_times_atom + 1))
+
+    from alphacsc.update_d_multi import _get_d_update_constants
+    constants = _get_d_update_constants(X, Z)
+
+    ZtX = np.sum([[[np.convolve(zik[::-1], xip, mode='valid') for xip in xi]
+                   for zik, xi in zip(zk, X)] for zk in Z], axis=1)
+
+    assert np.allclose(ZtX, constants['ZtX'])
+
+    ZtZ = np.zeros(shape=(n_atoms, n_atoms, 2 * n_times_atom - 1))
+    t0 = n_times_atom - 1
+    axes = ([1, 2], [1, 2])
+
+    for t in range(n_times_atom):
+        if t == 0:
+            ZtZ[:, :, t0] += np.tensordot(Z, Z, axes=axes)
+        else:
+            tmp = np.tensordot(Z[:, :, :-t], Z[:, :, t:], axes=axes)
+            ZtZ[:, :, t0 + t] += tmp
+            tmp = np.tensordot(Z[:, :, t:], Z[:, :, :-t], axes=axes)
+            ZtZ[:, :, t0 - t] += tmp
+
+    assert np.allclose(ZtZ, constants['ZtZ'])

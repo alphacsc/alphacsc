@@ -451,10 +451,14 @@ def _get_d_update_constants(X, Z):
     _, n_chan, n_times = X.shape
     n_times_atom = n_times - n_times_valid + 1
 
+    ZtX = np.zeros((n_atoms, n_chan, n_times_atom))
+    for k, n, t in zip(*Z.nonzero()):
+        ZtX[k, :, :] += Z[k, n, t] * X[n, :, t:t + n_times_atom]
+
     constants = {}
-    constants['ZtX'] = np.sum(
-        [[[convolve(zik[::-1], xip, mode='valid') for xip in xi]
-          for zik, xi in zip(zk, X)] for zk in Z], axis=1)
+    constants['ZtX'] = ZtX
+
+    assert np.allclose(ZtX, constants['ZtX'])
 
     ZtZ = compute_ZtZ(Z, n_times_atom)
     constants['ZtZ'] = ZtZ
