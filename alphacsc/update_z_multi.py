@@ -16,7 +16,7 @@ from .loss_and_gradient import gradient_zi
 
 
 def update_z_multi(X, uv, reg, z0=None, debug=False, parallel=None,
-                   solver='l_bfgs', solver_kwargs=dict(),
+                   solver='l_bfgs', solver_kwargs=dict(), loss='l2',
                    freeze_support=False):
     """Update Z using L-BFGS with positivity constraints
 
@@ -38,6 +38,8 @@ def update_z_multi(X, uv, reg, z0=None, debug=False, parallel=None,
         The solver to use.
     solver_kwargs : dict
         Parameters for the solver
+    loss : 'l2' | 'dtw'
+        The data fit loss, either classical l2 norm or the soft-DTW loss.
     freeze_support : boolean
         If True, the support of z0 is frozen.
 
@@ -58,7 +60,7 @@ def update_z_multi(X, uv, reg, z0=None, debug=False, parallel=None,
 
     zhats = parallel(
         my_update_z(X, uv, reg, z0, i, debug, solver, solver_kwargs,
-                    freeze_support)
+                    freeze_support, loss)
         for i in np.array_split(np.arange(n_trials), parallel.n_jobs))
     z_hat = np.vstack(zhats)
 
@@ -68,69 +70,8 @@ def update_z_multi(X, uv, reg, z0=None, debug=False, parallel=None,
     return z_hat2
 
 
-def _fprime(uv, zi, Xi=None, reg=None, return_func=False):
-    """
-
-    Parameters
-    ----------
-    uv : array, shape (n_atoms, n_channels + n_times_atom)
-        The spatial and temporal atoms
-    zi : array, shape (n_atoms * n_times_valid)
-        The activations
-    Xi : array, shape (n_channels, n_times) or None
-        The data array for one trial
-    reg : float or None
-        The regularization constant
-    return_func : boolean
-        Returns also the objective function, used to speed up LBFGS solver
-
-    Returns
-    -------
-    (func) : float
-        The objective function
-    grad : array, shape (n_atoms * n_times_valid)
-        The gradient
-    """
-    n_channels, _ = Xi.shape
-    n_atoms, _ = uv.shape
-    zi_reshaped = zi.reshape((n_atoms, -1))
-
-    Dzi = _choose_convolve_multi_uv(zi_reshaped, uv, n_channels)
-    # n_channels, n_times = Dzi.shape
-    if Xi is not None:
-        Dzi -= Xi
-
-    if return_func:
-        func = 0.5 * np.dot(Dzi.ravel(), Dzi.ravel())
-        if reg is not None:
-            func += reg * zi.sum()
-
-    # multiply by the spatial filter u
-    # n_atoms, n_channels = u.shape
-    # n_channels, n_times = Dzi.shape
-    uDzi = np.dot(uv[:, :n_channels], Dzi)
-
-    # Now do the dot product with the transpose of D (D.T) which is
-    # the conv by the reversed filter (keeping valid mode)
-    # n_atoms, n_times = uDzi.shape
-    # n_atoms, n_times_atom = v.shape
-    # n_atoms * n_times_valid = grad.shape
-    grad = np.concatenate([
-        np.convolve(uDzi_k, v_k[::-1], 'valid')
-        for (uDzi_k, v_k) in zip(uDzi, uv[:, n_channels:])
-    ])
-
-    if reg is not None:
-        grad += reg
-
-    if return_func:
-        return func, grad
-    else:
-        return grad
-
-
 def _update_z_multi_idx(X, uv, reg, z0, idxs, debug, solver="l_bfgs",
-                        solver_kwargs=dict(), freeze_support=False):
+                        solver_kwargs=dict(), freeze_support=False, loss='l2'):
     n_trials, n_channels, n_times = X.shape
     n_atoms, n_channels_n_times_atom = uv.shape
     n_times_atom = n_channels_n_times_atom - n_channels
@@ -144,13 +85,18 @@ def _update_z_multi_idx(X, uv, reg, z0, idxs, debug, solver="l_bfgs",
     if solver == "gcd":
         constants['DtD'] = _compute_DtD(uv, n_channels)
 
+    if loss == "dtw":
+        constants['gamma'] = solver_kwargs.get('gamma', .1)
+
     for i in idxs:
 
         def func_and_grad(zi):
-            return _fprime(uv, zi, Xi=X[i], reg=reg, return_func=True)
+            return gradient_zi(uv, zi, X[i], constants=constants, reg=reg,
+                               return_func=True, flatten=True, loss=loss)
 
         def grad_noreg(zi):
-            return _fprime(uv, zi, Xi=X[i], reg=None, return_func=False)
+            return gradient_zi(uv, zi, Xi=X[i], constants=constants, reg=None,
+                               return_func=False, flatten=True, loss=loss)
 
         if z0 is None:
             f0 = np.zeros(n_atoms * n_times_valid)
@@ -247,8 +193,10 @@ def _coordinate_descent_idx(Xi, uv, constants, reg, z0=None, max_iter=1000,
         pobj = [objective(z_hat)]
 
     # Init beta with -DtX
-    beta = _fprime(uv, z_hat.ravel(), Xi=Xi, reg=None, return_func=False)
-    beta = beta.reshape(n_atoms, n_times_valid)
+    # beta = _fprime(uv, z_hat.ravel(), Xi=Xi, reg=None, return_func=False)
+    # beta = beta.reshape(n_atoms, n_times_valid)
+    beta = gradient_zi(uv, z_hat, Xi, reg=None, loss='l2', return_func=False,
+                       constants=constants)
     for k, t in zip(*z_hat.nonzero()):
         beta[k, t] -= z0[k, t] * norm_Dk[k]  # np.sum(DtD[k, k, t0])
     z_opt = np.maximum(-beta - reg, 0) / norm_Dk
