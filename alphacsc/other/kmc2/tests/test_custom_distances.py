@@ -1,7 +1,8 @@
 import numpy as np
 from numpy.testing import assert_array_almost_equal
 
-from alphacsc.kmc2.custom_distances import roll_invariant_euclidean_distances
+from alphacsc.other.kmc2.custom_distances import \
+    roll_invariant_euclidean_distances
 
 
 def test_roll_invariant_euclidean_distance():

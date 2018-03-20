@@ -7,11 +7,12 @@
 #          Thomas Moreau <thomas.moreau@inria.fr>
 
 import numpy as np
-from numba import jit
 from scipy import optimize
 from joblib import Parallel, delayed
 
-from .utils import _choose_convolve_multi_uv
+from .utils.convolution import _choose_convolve_multi_uv
+from .utils.compute_constants import _compute_DtD
+from .loss_and_gradient import gradient_zi
 
 
 def update_z_multi(X, uv, reg, z0=None, debug=False, parallel=None,
@@ -192,71 +193,6 @@ def _update_z_multi_idx(X, uv, reg, z0, idxs, debug, solver="l_bfgs",
 
         zhats.append(zhat)
     return np.vstack(zhats)
-
-
-def _support_least_square(X, uv, Z, debug=False):
-    n_trials, n_chan, n_times = X.shape
-    n_atoms, _, n_times_valid = Z.shape
-    n_times_atom = n_times - n_times_valid + 1
-
-    # Compute DtD
-    DtD = _compute_DtD(uv, n_chan)
-    t0 = n_times_atom - 1
-    Z_hat = np.zeros(Z.shape)
-
-    for idx in range(n_trials):
-        Xi = X[idx]
-        support_i = Z[:, idx].nonzero()
-        n_support = len(support_i[0])
-        if n_support == 0:
-            continue
-        rhs = np.zeros((n_support, n_support))
-        lhs = np.zeros(n_support)
-
-        for i, (k_i, t_i) in enumerate(zip(*support_i)):
-            for j, (k_j, t_j) in enumerate(zip(*support_i)):
-                dt = t_i - t_j
-                if abs(dt) < n_times_atom:
-                    rhs[i, j] = DtD[k_i, k_j, t0 + dt]
-            aux_i = np.dot(uv[k_i, :n_chan], Xi[:, t_i:t_i + n_times_atom])
-            lhs[i] = np.dot(uv[k_i, n_chan:], aux_i)
-
-        # Solve the non-negative least-square with nnls
-        z_star, a = optimize.nnls(rhs, lhs)
-        if debug:
-            f0 = _fprime(uv, Z[:, idx], X[idx], return_func=True, reg=0)[0]
-        for i, (k_i, t_i) in enumerate(zip(*support_i)):
-            Z_hat[k_i, idx, t_i] = z_star[i]
-
-        if debug:
-            f1 = _fprime(uv, Z[:, idx], X[idx], return_func=True, reg=0)[0]
-            assert f1 <= f0
-
-    return Z_hat
-
-
-@jit
-def _compute_DtD(uv, n_chan):
-    """Compute the DtD matrix"""
-    # TODO: benchmark the cross correlate function of numpy
-    n_atoms, n_times_atom = uv.shape
-    n_times_atom -= n_chan
-
-    u = uv[:, :n_chan]
-    v = uv[:, n_chan:]
-
-    DtD = np.zeros(shape=(n_atoms, n_atoms, 2 * n_times_atom - 1))
-    t0 = n_times_atom - 1
-    for k0 in range(n_atoms):
-        for k in range(n_atoms):
-            for t in range(n_times_atom):
-                if t == 0:
-                    DtD[k0, k, t0] = np.dot(v[k0], v[k])
-                else:
-                    DtD[k0, k, t0 + t] = np.dot(v[k0, :-t], v[k, t:])
-                    DtD[k0, k, t0 - t] = np.dot(v[k0, t:], v[k, :-t])
-    DtD *= np.dot(u, u.T)[:, :, None]
-    return DtD
 
 
 def _coordinate_descent_idx(Xi, uv, constants, reg, z0=None, max_iter=1000,

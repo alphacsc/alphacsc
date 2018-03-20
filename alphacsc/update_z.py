@@ -11,7 +11,7 @@ from scipy import optimize, signal
 from joblib import Parallel, delayed
 
 from .utils import check_random_state, check_consistent_shape
-from .utils import _choose_convolve
+from .utils.convolution import _choose_convolve
 
 
 def update_z(X, ds, reg, z0=None, debug=False, parallel=None,

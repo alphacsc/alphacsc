@@ -1,11 +1,13 @@
-"""Convolutional dictionary learning"""
+"""Convolutional utilities for dictionary learning"""
 
-# Authors: Mainak Jas <mainak.jas@telecom-paristech.fr>
+# Authors: Thomas Moreau <thomas.moreau@inria.fr>
+#          Mainak Jas <mainak.jas@telecom-paristech.fr>
 #          Tom Dupre La Tour <tom.duprelatour@telecom-paristech.fr>
 #          Umut Simsekli <umut.simsekli@telecom-paristech.fr>
 #          Alexandre Gramfort <alexandre.gramfort@telecom-paristech.fr>
 
 import numpy as np
+from numba import jit
 
 
 def construct_X(Z, ds):
@@ -207,131 +209,60 @@ def _choose_convolve_multi_uv(Zi, uv, n_channels):
         return _dense_convolve_multi_uv(Zi, uv, n_channels)
 
 
-def check_consistent_shape(*args):
-    for array in args[1:]:
-        if array is not None and array.shape != args[0].shape:
-            raise ValueError('Incompatible shapes. Got '
-                             '(%s != %s)' % (array.shape, args[0].shape))
-
-
-def check_random_state(seed):
-    """Turn seed into a np.random.RandomState instance.
-
-    If seed is None, return the RandomState singleton used by np.random.
-    If seed is an int, return a new RandomState instance seeded with seed.
-    If seed is already a RandomState instance, return it.
-    Otherwise raise ValueError.
-    """
-    if seed is None or seed is np.random:
-        return np.random.mtrand._rand
-    if isinstance(seed, (int, np.integer)):
-        return np.random.RandomState(seed)
-    if isinstance(seed, np.random.RandomState):
-        return seed
-    raise ValueError('%r cannot be used to seed a numpy.random.RandomState'
-                     ' instance' % seed)
-
-
-def plot_data(X, plot_types=None):
-    """Plot the data.
+@jit()
+def numpy_convolve_uv(ZtZ, uv):
+    """Compute the multivariate (valid) convolution of ZtZ and D
 
     Parameters
     ----------
-    X : list
-        A list of arrays of shape (n_trials, n_times).
-        E.g., one could give [X, X_hat]
-    plot_types : list of str
-        If None, plt.plot for all.
-        E.g., plot_data([X, Z], ['plot', 'stem'])
+    ZtZ: array, shape = (n_atoms, n_atoms, 2 * n_times_atom - 1)
+        Activations
+    uv: array, shape = (n_atoms, n_channels + n_times_atom)
+        Dictionnary
+
+    Returns
+    -------
+    G : array, shape = (n_atoms, n_channels, n_times_atom)
+        Gradient
     """
-    import matplotlib.pyplot as plt
+    assert uv.ndim == 2
+    n_times_atom = (ZtZ.shape[2] + 1) // 2
+    n_atoms = ZtZ.shape[0]
+    n_channels = uv.shape[1] - n_times_atom
 
-    if not isinstance(X, list):
-        raise ValueError('Got %s. It must be a list' % type(X))
+    u = uv[:, :n_channels]
+    v = uv[:, n_channels:]
 
-    if plot_types is None:
-        plot_types = ['plot' for ii in range(len(X))]
+    G = np.zeros((n_atoms, n_channels, n_times_atom))
+    for k0 in range(n_atoms):
+        for k1 in range(n_atoms):
+            G[k0, :, :] += (
+                np.convolve(ZtZ[k0, k1], v[k1], mode='valid')[None, :]
+                * u[k1, :][:, None])
 
-    if not isinstance(plot_types, list):
-        raise ValueError('Got %s. It must be a list' % type(plot_types))
-    if len(plot_types) != len(X):
-        raise ValueError('X and plot_types must be of same length')
-
-    def _onclick(event):
-        orig_ax = event.inaxes
-        fig, ax = plt.subplots(1)
-        ax.set_axis_bgcolor('white')
-        for jj in range(len(plot_types)):
-            if orig_ax._plot_types[jj] == 'plot':
-                ax.plot(orig_ax._X[jj])
-            elif orig_ax._plot_types[jj] == 'stem':
-                ax.plot(orig_ax._X[jj], '-o')
-        plt.title('%s' % orig_ax._name)
-        plt.show()
-
-    n_trials = X[0].shape[0]
-    fig, axes = plt.subplots(n_trials, 1, sharex=True, sharey=True)
-    fig.canvas.mpl_connect('button_press_event', _onclick)
-    fig.patch.set_facecolor('white')
-    for ii in range(n_trials):
-        for jj in range(len(X)):
-            if plot_types[jj] == 'plot':
-                axes[ii].plot(X[jj][ii])
-            elif plot_types[jj] == 'stem':
-                axes[ii].plot(X[jj][ii], '-o')
-        axes[ii].get_yaxis().set_ticks([])
-        axes[ii].set_ylabel('Trial %d' % (ii + 1), rotation=0, ha='right')
-        axes[ii]._name = 'Trial %d' % (ii + 1)
-        axes[ii]._plot_types = plot_types
-        axes[ii]._X = [X[jj][ii] for jj in range(len(X))]
-    plt.xlabel('Time')
-    plt.show()
+    return G
 
 
-def _get_D(uv_hat, n_chan):
-    """Compute the rank 1 dictionary associated with the given uv
+def tensordot_convolve(ZtZ, D):
+    """Compute the multivariate (valid) convolution of ZtZ and D
 
-    Parameter
-    ---------
-    uv: array (n_atoms, n_chan + n_times_atom)
-    n_chan: int
-        number of channels in the original multivariate series
+    Parameters
+    ----------
+    ZtZ: array, shape = (n_atoms, n_atoms, 2 * n_times_atom - 1)
+        Activations
+    D: array, shape = (n_atoms, n_channels, n_times_atom)
+        Dictionnary
 
-    Return
-    ------
-    D: array (n_atoms, n_chan, n_times_atom)
+    Returns
+    -------
+    G : array, shape = (n_atoms, n_channels, n_times_atom)
+        Gradient
     """
+    n_atoms, n_channels, n_times_atom = D.shape
+    D_revert = D[:, :, ::-1]
 
-    return uv_hat[:, :n_chan, None] * uv_hat[:, None, n_chan:]
-
-
-def _get_uv(D):
-    """Project D on the space of rank 1 dictionaries
-
-    Parameter
-    ---------
-    D: array (n_atoms, n_chan, n_times_atom)
-
-    Return
-    ------
-    uv: array (n_atoms, n_chan + n_times_atom)
-    """
-    n_atoms, n_chan, n_times_atom = D.shape
-    uv = np.zeros((n_atoms, n_chan + n_times_atom))
-    for k, d in enumerate(D):
-        U, s, V = np.linalg.svd(d)
-        uv[k] = np.r_[U[:, 0], V[0]]
-    return uv
-
-
-def _patch_reconstruction_error(X, Z, uv):
-    n_trials, n_channels, n_times = X.shape
-    n_times_atom = uv.shape[1] - n_channels
-    X_hat = construct_X_multi_uv(Z, uv, n_channels)
-
-    diff = (X - X_hat)**2
-    patch = np.ones(n_times_atom)
-
-    return np.sum([[np.convolve(patch, diff_ip, mode='valid')
-                    for diff_ip in diff_i]
-                   for diff_i in diff], axis=1)
+    G = np.zeros(D.shape)
+    for t in range(n_times_atom):
+        G[:, :, t] = np.tensordot(ZtZ[:, :, t:t + n_times_atom], D_revert,
+                                  axes=([1, 2], [0, 2]))
+    return G

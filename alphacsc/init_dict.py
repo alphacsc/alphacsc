@@ -4,7 +4,8 @@ import kmc2
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.decomposition import PCA
 
-from .utils import check_random_state, _get_uv
+from .utils import check_random_state
+from .utils.dictionary import _get_uv, _patch_reconstruction_error
 from .update_d_multi import prox_uv
 from .other.k_medoids import KMedoids
 
@@ -193,3 +194,37 @@ def _embed(x, dim, lag=1):
     X = np.lib.stride_tricks.as_strided(x, (len(x) - dim * lag + lag, dim),
                                         (x.strides[0], x.strides[0] * lag))
     return X.T
+
+
+def get_max_error_dict(X, Z, uv):
+    """Get the maximal reconstruction error patch from the data as a new atom
+
+    This idea is used for instance in [Yellin2017]
+
+    Parameters
+    ----------
+    X: array, shape (n_trials, n_channels, n_times)
+        Signals encoded in the CSC.
+    Z: array, shape (n_atoms, n_trials, n_times_valid)
+        Current estimate of the coding signals.
+    uv: array, shape (n_atoms, n_channels + n_times_atom)
+        Current estimate of the rank1 multivariate dictionary.
+
+    Return
+    ------
+    uvk: array, shape (n_channels + n_times_atom,)
+        New atom for the dictionary, chosen as the chunk of data with the
+        maximal reconstruction error.
+
+    [Yellin2017] BLOOD CELL DETECTION AND COUNTING IN HOLOGRAPHIC LENS-FREE
+    IMAGING BY CONVOLUTIONAL SPARSE DICTIONARY LEARNING AND CODING.
+    """
+    n_trials, n_channels, n_times = X.shape
+    n_times_atom = uv.shape[1] - n_channels
+    patch_rec_error = _patch_reconstruction_error(X, Z, uv)
+    i0 = patch_rec_error.argmax()
+    n0, t0 = np.unravel_index(i0, Z.shape[1:])
+
+    d0 = X[n0, :, t0:t0 + n_times_atom][None]
+
+    return _get_uv(d0)

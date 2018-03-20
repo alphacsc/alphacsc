@@ -11,67 +11,9 @@ from numpy import convolve
 from numba import jit
 from scipy import optimize
 
-from .utils import construct_X_multi
 from .utils import check_random_state
-from .utils import construct_X_multi_uv
-
-
-def tensordot_convolve(ZtZ, D):
-    """Compute the multivariate (valid) convolution of ZtZ and D
-
-    Parameters
-    ----------
-    ZtZ: array, shape = (n_atoms, n_atoms, 2 * n_times_atom - 1)
-        Activations
-    D: array, shape = (n_atoms, n_channels, n_times_atom)
-        Dictionnary
-
-    Returns
-    -------
-    G : array, shape = (n_atoms, n_channels, n_times_atom)
-        Gradient
-    """
-    n_atoms, n_channels, n_times_atom = D.shape
-    D_revert = D[:, :, ::-1]
-
-    G = np.zeros(D.shape)
-    for t in range(n_times_atom):
-        G[:, :, t] = np.tensordot(ZtZ[:, :, t:t + n_times_atom], D_revert,
-                                  axes=([1, 2], [0, 2]))
-    return G
-
-
-@jit()
-def numpy_convolve_uv(ZtZ, uv):
-    """Compute the multivariate (valid) convolution of ZtZ and D
-
-    Parameters
-    ----------
-    ZtZ: array, shape = (n_atoms, n_atoms, 2 * n_times_atom - 1)
-        Activations
-    uv: array, shape = (n_atoms, n_channels + n_times_atom)
-        Dictionnary
-
-    Returns
-    -------
-    G : array, shape = (n_atoms, n_channels, n_times_atom)
-        Gradient
-    """
-    assert uv.ndim == 2
-    n_times_atom = (ZtZ.shape[2] + 1) // 2
-    n_atoms = ZtZ.shape[0]
-    n_channels = uv.shape[1] - n_times_atom
-
-    u = uv[:, :n_channels]
-    v = uv[:, n_channels:]
-
-    G = np.zeros((n_atoms, n_channels, n_times_atom))
-    for k0 in range(n_atoms):
-        for k1 in range(n_atoms):
-            G[k0, :, :] += (convolve(ZtZ[k0, k1], v[k1], mode='valid')[None, :]
-                            * u[k1, :][:, None])
-
-    return G
+from .utils import construct_X_multi, construct_X_multi_uv
+from .utils.convolution import numpy_convolve_uv, tensordot_convolve
 
 
 def _dense_transpose_convolve(Z, residual):

@@ -27,8 +27,9 @@ def test_learn_d_z_multi(solver_d, uv_constraint):
     assert np.sum(np.diff(pobj) > 0) == 0, msg
     try:
         assert all([p1 >= p2 for p1, p2 in zip(pobj[:-1], pobj[1:])]), msg
-    except:
+    except AssertionError:
         import matplotlib.pyplot as plt
         plt.semilogy(pobj - np.min(pobj) + 1e-6)
         plt.title(msg)
         plt.show()
+        raise

@@ -1,12 +1,15 @@
+import pytest
 import numpy as np
 
 from alphacsc.update_z_multi import update_z_multi
 from alphacsc.update_z_multi import _compute_DtD, _coordinate_descent_idx
-from alphacsc.learn_d_z_multi import compute_X_and_objective_multi
-from alphacsc.utils import _get_D, construct_X_multi
+from alphacsc.loss_and_gradient import compute_X_and_objective_multi
+from alphacsc.utils import construct_X_multi
+from alphacsc.utils.dictionary import _get_D
 
 
-def test_gradient_correctness():
+@pytest.mark.parametrize('loss', ['l2', 'dtw'])
+def test_gradient_correctness(loss):
 
     n_trials, n_channels, n_times = 2, 3, 100
     n_times_atom, n_atoms = 10, 4
@@ -17,10 +20,11 @@ def test_gradient_correctness():
     uv = np.random.randn(n_atoms, n_channels + n_times_atom)
     z = np.random.randn(n_atoms, n_trials, n_times_valid)
 
-    update_z_multi(X, uv, reg, z0=z, solver='l_bfgs', debug=True)
+    update_z_multi(X, uv, reg, z0=z, solver='l_bfgs', debug=True, loss=loss)
 
 
-def test_update_z_multi_decrease_cost_function():
+@pytest.mark.parametrize('loss', ['l2', 'dtw'])
+def test_update_z_multi_decrease_cost_function(loss):
     n_trials, n_channels, n_times = 2, 3, 100
     n_times_atom, n_atoms = 10, 4
     n_times_valid = n_times - n_times_atom + 1
@@ -33,7 +37,7 @@ def test_update_z_multi_decrease_cost_function():
     loss_0 = compute_X_and_objective_multi(X, z, uv, reg,
                                            feasible_evaluation=False)
 
-    z_hat = update_z_multi(X, uv, reg, z0=z, solver='l_bfgs')
+    z_hat = update_z_multi(X, uv, reg, z0=z, solver='l_bfgs', loss=loss)
 
     loss_1 = compute_X_and_objective_multi(X, z_hat, uv, reg,
                                            feasible_evaluation=False)

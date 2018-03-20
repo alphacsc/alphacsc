@@ -116,7 +116,7 @@ def test_power_iterations():
 
 def test_linear_operator():
     """Test linear operator."""
-    n_times, n_atoms, n_times_atom = 128, 32, 32
+    n_times, n_atoms, n_times_atom = 64, 16, 32
     n_times_valid = n_times - n_times_atom + 1
 
     rng = check_random_state(42)
