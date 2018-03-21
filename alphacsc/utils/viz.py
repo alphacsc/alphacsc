@@ -1,5 +1,6 @@
 import itertools
 
+import mne
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -154,3 +155,44 @@ def plot_data(X, plot_types=None):
         axes[ii]._X = [X[jj][ii] for jj in range(len(X))]
     plt.xlabel('Time')
     plt.show()
+
+
+def plot_callback(X, info, n_atoms):
+    n_chan = X.shape[1]
+
+    fig, axes = plt.subplots(nrows=n_atoms, num='atoms', figsize=(10, 8))
+    fig_Z, axes_Z = plt.subplots(nrows=n_atoms, num='Z', figsize=(10, 8),
+                                 sharex=True, sharey=True)
+    fig_topo, axes_topo = plt.subplots(1, n_atoms, figsize=(12, 3))
+    if n_atoms == 1:
+        axes_topo, axes, axes_Z = [axes_topo], [axes], [axes_Z]
+
+    def callback(X, uv_hat, Z_hat, reg):
+        for idx in range(n_atoms):
+            mne.viz.plot_topomap(uv_hat[idx, :n_chan], info,
+                                 axes=axes_topo[idx], show=False)
+            axes_topo[idx].set_title('atom %d' % idx)
+        if axes[0].lines == []:
+            for k in range(n_atoms):
+                axes[k].plot(uv_hat[k, n_chan:].T)
+                axes[k].grid(True)
+        else:
+            for ax, uv in zip(axes, uv_hat):
+                ax.lines[0].set_ydata(uv[n_chan:])
+                ax.relim()  # make sure all the data fits
+                ax.autoscale_view(True, True, True)
+        if axes_Z[0].lines == []:
+            for k in range(n_atoms):
+                axes_Z[k].plot(Z_hat[k, 0])
+                axes_Z[k].grid(True)
+        else:
+            for ax, z in zip(axes_Z, Z_hat[:, 0]):
+                ax.lines[0].set_ydata(z)
+                ax.relim()  # make sure all the data fits
+                ax.autoscale_view(True, True, True)
+        fig.canvas.draw()
+        fig_topo.canvas.draw()
+        fig_Z.canvas.draw()
+        plt.pause(.001)
+
+    return callback

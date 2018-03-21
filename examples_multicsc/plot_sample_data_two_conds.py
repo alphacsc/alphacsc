@@ -8,7 +8,8 @@ from mne.utils import _reject_data_segments
 from mne.preprocessing import compute_proj_ecg, compute_proj_eog
 
 from alphacsc.learn_d_z_multi import learn_d_z_multi
-from alphacsc.utils import construct_X_multi_uv, _choose_convolve
+from alphacsc.utils import (construct_X_multi_uv, _choose_convolve,
+                            plot_callback)
 
 dataset = 'sample'
 
@@ -66,38 +67,8 @@ X = X[None, ...]
 X *= tukey(n_times, alpha=0.1)[None, None, :]
 X /= np.linalg.norm(X, axis=-1, keepdims=True)
 
-fig, axes = plt.subplots(nrows=5, ncols=5, num='atoms', figsize=(10, 8),
-                         sharex=True, sharey=True)
-fig_Z, axes_Z = plt.subplots(nrows=n_atoms, num='Z', figsize=(10, 8),
-                             sharex=True, sharey=True)
-if n_atoms == 1:
-    axes, axes_Z = [axes], [axes_Z]
-axes = axes.ravel()
-
-
-def callback(X, uv_hat, Z_hat, reg):
-    if axes[0].lines == []:
-        for k in range(n_atoms):
-            axes[k].plot(uv_hat[k, n_chan:].T)
-            axes[k].grid(True)
-    else:
-        for ax, uv in zip(axes, uv_hat):
-            ax.lines[0].set_ydata(uv[n_chan:])
-            ax.relim()  # make sure all the data fits
-            ax.autoscale_view(True, True, True)
-    if axes_Z[0].lines == []:
-        for k in range(n_atoms):
-            axes_Z[k].plot(Z_hat[k, 0])
-            axes_Z[k].grid(True)
-    else:
-        for ax, z in zip(axes_Z, Z_hat[:, 0]):
-            ax.lines[0].set_ydata(z)
-            ax.relim()  # make sure all the data fits
-            ax.autoscale_view(True, True, True)
-    fig.canvas.draw()
-    fig_Z.canvas.draw()
-    plt.pause(.001)
-
+plt.close('all')
+callback = plot_callback(X, raw.info, n_atoms)
 
 pobj, times, uv_hat, Z_hat = learn_d_z_multi(
     X, n_atoms, n_times_atom, random_state=42, n_iter=60, n_jobs=1, reg=1e-2,

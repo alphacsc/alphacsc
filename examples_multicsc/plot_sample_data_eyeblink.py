@@ -10,6 +10,7 @@ from mne.preprocessing import ICA, create_eog_epochs
 
 from alphacsc.learn_d_z_multi import learn_d_z_multi
 from alphacsc.utils import construct_X_multi_uv, _choose_convolve
+from alphacsc.utils import plot_callback
 
 parser = argparse.ArgumentParser('Programme to launch experiment on multi csc')
 parser.add_argument('--profile', action='store_true',
@@ -66,42 +67,7 @@ X *= tukey(n_times, alpha=0.1)[None, None, :]
 X /= np.linalg.norm(X, axis=-1, keepdims=True)
 
 plt.close('all')
-fig, axes = plt.subplots(nrows=n_atoms, num='atoms', figsize=(10, 8))
-fig_Z, axes_Z = plt.subplots(nrows=n_atoms, num='Z', figsize=(10, 8),
-                             sharex=True, sharey=True)
-fig_topo, axes_topo = plt.subplots(1, n_atoms, figsize=(12, 3))
-if n_atoms == 1:
-    axes, axes_topo, axes_Z = [axes_topo], [axes], [axes_Z]
-
-
-def callback(X, uv_hat, Z_hat, reg):
-    for idx in range(n_atoms):
-        mne.viz.plot_topomap(uv_hat[idx, :n_chan], raw.info,
-                             axes=axes_topo[idx], show=False)
-        axes_topo[idx].set_title('atom %d' % idx)
-    if axes[0].lines == []:
-        for k in range(n_atoms):
-            axes[k].plot(uv_hat[k, n_chan:].T)
-            axes[k].grid(True)
-    else:
-        for ax, uv in zip(axes, uv_hat):
-            ax.lines[0].set_ydata(uv[n_chan:])
-            ax.relim()  # make sure all the data fits
-            ax.autoscale_view(True, True, True)
-    if axes_Z[0].lines == []:
-        for k in range(n_atoms):
-            axes_Z[k].plot(Z_hat[k, 0])
-            axes_Z[k].grid(True)
-    else:
-        for ax, z in zip(axes_Z, Z_hat[:, 0]):
-            ax.lines[0].set_ydata(z)
-            ax.relim()  # make sure all the data fits
-            ax.autoscale_view(True, True, True)
-    fig.canvas.draw()
-    fig_topo.canvas.draw()
-    fig_Z.canvas.draw()
-    plt.pause(.001)
-
+callback = plot_callback(X, raw.info, n_atoms)
 
 if args.profile:
     import cProfile
