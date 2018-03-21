@@ -200,7 +200,7 @@ def _coordinate_descent_idx(Xi, uv, constants, reg, z0=None, max_iter=1000,
     beta = gradient_zi(uv, z_hat, Xi, reg=None, loss='l2', return_func=False,
                        constants=constants)
     for k, t in zip(*z_hat.nonzero()):
-        beta[k, t] -= z0[k, t] * norm_Dk[k]  # np.sum(DtD[k, k, t0])
+        beta[k, t] -= z_hat[k, t] * norm_Dk[k]  # np.sum(DtD[k, k, t0])
     z_opt = np.maximum(-beta - reg, 0) / norm_Dk
 
     dZs = 2 * tol * np.ones(n_seg)

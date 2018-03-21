@@ -34,13 +34,13 @@ def test_update_z_multi_decrease_cost_function(loss):
     uv = np.random.randn(n_atoms, n_channels + n_times_atom)
     z = np.random.randn(n_atoms, n_trials, n_times_valid)
 
-    loss_0 = compute_X_and_objective_multi(X, z, uv, reg,
+    loss_0 = compute_X_and_objective_multi(X=X, Z_hat=z, uv_hat=uv, reg=reg,
                                            feasible_evaluation=False)
 
     z_hat = update_z_multi(X, uv, reg, z0=z, solver='l_bfgs', loss=loss)
 
-    loss_1 = compute_X_and_objective_multi(X, z_hat, uv, reg,
-                                           feasible_evaluation=False)
+    loss_1 = compute_X_and_objective_multi(X=X, Z_hat=z_hat, uv_hat=uv,
+                                           reg=reg, feasible_evaluation=False)
     assert loss_1 < loss_0
 
 
@@ -94,26 +94,30 @@ def test_cd():
     Z0[Z0 < 2] = 0
 
     D0 = _get_D(uv, n_channels)
-    X = construct_X_multi(Z, D0)
+    X = construct_X_multi(Z0, D0)
 
-    loss_0 = compute_X_and_objective_multi(X, Z, uv, reg,
+    loss_0 = compute_X_and_objective_multi(X=X, Z_hat=Z0, uv_hat=uv, reg=reg,
+                                           loss='l2',
                                            feasible_evaluation=False)
 
     constants = {}
     constants['DtD'] = _compute_DtD(uv, n_channels)
 
     z_hat, pobj = _coordinate_descent_idx(X[0], uv, constants, reg, debug=True,
-                                          z0=Z0[:, 0], max_iter=10000)
+                                          z0=Z[:, 0], max_iter=10000)
     z_hat = z_hat[None]
 
     assert all([p1 >= p2 for p1, p2 in zip(pobj[:-1], pobj[1:])]), "oups"
 
+    # Ensure that the initialization is good, by using a nearly optimal point
+    # and verifying that the cost does not goes up.
     z_hat = update_z_multi(X, uv, reg, z0=Z0,
                            solver='gcd',
                            solver_kwargs={
-                               'max_iter': 10000, 'tol': 1e-5}
+                               'max_iter': 3, 'tol': 1e-5}
                            )
 
-    loss_1 = compute_X_and_objective_multi(X, z_hat, uv, reg,
+    loss_1 = compute_X_and_objective_multi(X=X, Z_hat=z_hat, uv_hat=uv,
+                                           reg=reg, loss='l2',
                                            feasible_evaluation=False)
-    assert loss_1 <= loss_0
+    assert loss_1 <= loss_0, "Bad initialization in greedy CD."

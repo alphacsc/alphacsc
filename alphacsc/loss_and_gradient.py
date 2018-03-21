@@ -84,7 +84,8 @@ def compute_X_and_objective_multi(X, Z_hat, uv_hat, reg=None, loss='l2',
 
     X_hat = construct_X_multi_uv(Z_hat, uv_hat, n_channels)
 
-    return compute_objective(X, X_hat, Z_hat, reg, loss=loss, gamma=gamma)
+    return compute_objective(X=X, X_hat=X_hat, Z_hat=Z_hat, reg=reg, loss=loss,
+                             gamma=gamma)
 
 
 def gradient_uv(uv, X=None, Z=None, constants=None, reg=None, loss='l2',
@@ -230,7 +231,7 @@ def gradient_d(D=None, uv=None, X=None, Z=None, constants=None, reg=None,
 
     if flatten:
         grad_d = grad_d.ravel()
-    
+
     if return_func:
         if reg is not None:
             cost += reg * Z.sum()
