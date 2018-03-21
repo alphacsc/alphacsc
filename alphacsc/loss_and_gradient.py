@@ -240,7 +240,8 @@ def gradient_d(D=None, uv=None, X=None, Z=None, constants=None, reg=None,
     return grad_d
 
 
-def _dtw_objective(X, X_hat, gamma=.1):
+def _dtw_objective(X, X_hat, gamma=None):
+    assert gamma is not None
     n_trials = X.shape[0]
     cost = 0
     for idx in range(n_trials):
@@ -251,7 +252,8 @@ def _dtw_objective(X, X_hat, gamma=.1):
     return cost
 
 
-def _dtw_gradient(X, Z, uv=None, D=None, gamma=.1):
+def _dtw_gradient(X, Z, uv=None, D=None, gamma=None):
+    assert gamma is not None, "Parameter gamma is not passed in grad dtw"
     n_trials, n_channels, n_times = X.shape
     if uv is not None:
         X_hat = construct_X_multi_uv(Z, uv, n_channels)
@@ -269,7 +271,7 @@ def _dtw_gradient(X, Z, uv=None, D=None, gamma=.1):
     return cost, grad
 
 
-def _dtw_gradient_d(X=None, Z=None, uv=None, D=None, gamma=.1):
+def _dtw_gradient_d(X=None, Z=None, uv=None, D=None, gamma=None):
     cost, grad_X_hat = _dtw_gradient(X, Z, uv=uv, D=D, gamma=gamma)
 
     return cost, _dense_transpose_convolve(Z, grad_X_hat)

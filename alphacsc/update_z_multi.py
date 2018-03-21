@@ -17,7 +17,7 @@ from .loss_and_gradient import gradient_zi
 
 def update_z_multi(X, uv, reg, z0=None, debug=False, parallel=None,
                    solver='l_bfgs', solver_kwargs=dict(), loss='l2',
-                   gamma=.1, freeze_support=False):
+                   gamma=None, freeze_support=False):
     """Update Z using L-BFGS with positivity constraints
 
     Parameters
@@ -62,7 +62,7 @@ def update_z_multi(X, uv, reg, z0=None, debug=False, parallel=None,
 
     zhats = parallel(
         my_update_z(X, uv, reg, z0, i, debug, solver, solver_kwargs,
-                    freeze_support, loss)
+                    freeze_support, loss, gamma=gamma)
         for i in np.array_split(np.arange(n_trials), parallel.n_jobs))
     z_hat = np.vstack(zhats)
 
@@ -74,7 +74,7 @@ def update_z_multi(X, uv, reg, z0=None, debug=False, parallel=None,
 
 def _update_z_multi_idx(X, uv, reg, z0, idxs, debug, solver="l_bfgs",
                         solver_kwargs=dict(), freeze_support=False, loss='l2',
-                        gamma=.1):
+                        gamma=None):
     n_trials, n_channels, n_times = X.shape
     n_atoms, n_channels_n_times_atom = uv.shape
     n_times_atom = n_channels_n_times_atom - n_channels

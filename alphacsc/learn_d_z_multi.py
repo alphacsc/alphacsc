@@ -152,7 +152,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
         # recompute Z_hat with no regularization and keeping the support fixed
         Z_hat = update_z_multi(
             X, uv_hat, reg=0, z0=Z_hat, parallel=parallel, solver=solver_z,
-            solver_kwargs=solver_z_kwargs, freeze_support=True, loss=loss)
+            solver_kwargs=solver_z_kwargs, freeze_support=True, loss=loss,
+            gamma=gamma)
 
     return pobj, times, uv_hat, Z_hat
 
