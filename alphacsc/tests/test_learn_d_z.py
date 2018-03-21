@@ -1,4 +1,3 @@
-import time
 import unittest
 from functools import partial
 
@@ -64,7 +63,7 @@ def test_learn_codes():
 def test_learn_codes_atoms():
     """Test that the objective function is decreasing."""
     random_state = 1
-    n_iter = 10
+    n_iter = 3
     X, ds, z = simulate_data(n_trials, n_times, n_times_atom, n_atoms)
     func_d_0 = partial(update_d_block, projection='dual', n_iter=5)
     func_d_1 = partial(update_d_block, projection='primal', n_iter=5)
@@ -136,15 +135,9 @@ def test_linear_operator():
 
         # test power iterations with linear operator
         mu, _ = linalg.eigh(DTD_full)
-        t = []
         for DTD in [DTD_full, DTD_scipy, DTD_custom]:
-            start = time.time()
             mu_hat = power_iteration(DTD)
-            t.append(time.time() - start)
             assert_allclose(np.max(mu), mu_hat, rtol=1e-2)
-
-    assert_true(t[1] < t[0])
-    assert_true(t[2] < t[0])
 
 
 def test_update_d():
