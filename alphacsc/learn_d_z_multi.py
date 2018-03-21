@@ -21,13 +21,13 @@ from .init_dict import init_uv, get_max_error_dict
 from .profile_this import profile_this  # noqa
 
 
-def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
-                    n_iter=60, random_state=None, n_jobs=1, solver_z='l_bfgs',
-                    solver_d='alternate', uv_constraint='separate',
-                    solver_d_kwargs=dict(), solver_z_kwargs=dict(),
-                    eps=1e-10, uv_init=None, verbose=10, callback=None,
-                    stopping_pobj=None, kmeans_params=dict(),
-                    algorithm='batch'):
+def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
+                    solver_z='l_bfgs', solver_z_kwargs=dict(),
+                    solver_d='alternate', solver_d_kwargs=dict(),
+                    uv_constraint='separate', eps=1e-10,
+                    uv_init=None, kmeans_params=dict(), stopping_pobj=None,
+                    algorithm='batch', loss='l2', gamma=.1,
+                    verbose=10, callback=None, random_state=None):
     """Learn atoms and activations using Convolutional Sparse Coding.
 
     Parameters
@@ -38,40 +38,47 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
         The number of atoms to learn.
     n_times_atom : int
         The support of the atom.
-    func_d : callable
-        The function to update the atoms.
     reg : float
         The regularization parameter
     n_iter : int
         The number of coordinate-descent iterations.
-    random_state : int | None
-        The random state.
     n_jobs : int
         The number of parallel jobs.
     solver_z : str
         The solver to use for the z update. Options are
         'l_bfgs' (default) | 'ista' | 'fista'
+    solver_z_kwargs : dict
+        Additional keyword arguments to pass to update_z_multi
     solver_d : str
         The solver to use for the d update. Options are
         'alternate' (default) | 'joint' | 'lbfgs'
+    solver_d_kwargs : dict
+        Additional keyword arguments to provide to update_d
     uv_constraint : str in {'joint', 'separate', 'box'}
         The kind of norm constraint on the atoms:
         If 'joint', the constraint is norm_2([u, v]) <= 1
         If 'separate', the constraint is norm_2(u) <= 1 and norm_2(v) <= 1
         If 'box', the constraint is norm_inf([u, v]) <= 1
-    solver_d_kwargs : dict
-        Additional keyword arguments to provide to update_d
-    solver_z_kwargs : dict
-        Additional keyword arguments to pass to update_z_multi
+    eps : float
+        Stopping criterion. If the cost descent after a uv and a z update is
+        smaller than eps, return.
     uv_init : array, shape (n_atoms, n_channels + n_times_atoms)
         The initial atoms.
+    kmeans_params : dict
+        Dictionnary of parameters for the kmeans init method.
+    algorithm : 'batch' | 'greedy' | 'online'
+        Dictionary learning algorithm.
+    loss : 'l2' | 'dtw'
+        Loss for the data-fit term. Either the norm l2 or the soft-DTW.
+    gamma : float
+        Parameter of the soft-DTW loss
     verbose : int
         The verbosity level.
     callback : func
         A callback function called at the end of each loop of the
         coordinate descent.
-    kmeans_params : dict
-        Dictionnary of parameters for the kmeans init method.
+    random_state : int | None
+        The random state.
 
     Returns
     -------
@@ -107,19 +114,21 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
 
     def compute_z_func(X, Z_hat, uv_hat, parallel=None):
         return update_z_multi(X, uv_hat, reg=reg, z0=Z_hat, parallel=parallel,
-                              solver=solver_z, solver_kwargs=z_kwargs)
+                              solver=solver_z, solver_kwargs=z_kwargs,
+                              loss=loss, gamma=gamma)
 
     def obj_func(X, Z_hat, uv_hat):
         return compute_X_and_objective_multi(X, Z_hat, uv_hat, reg,
-                                             uv_constraint=uv_constraint)
+                                             uv_constraint=uv_constraint,
+                                             loss=loss, gamma=gamma)
 
     d_kwargs = dict(verbose=verbose, eps=1e-8)
     d_kwargs.update(solver_d_kwargs)
 
     def compute_d_func(X, Z_hat, uv_hat):
-        return func_d(X, Z_hat, uv_hat0=uv_hat, b_hat_0=b_hat_0,
-                      solver_d=solver_d, uv_constraint=uv_constraint,
-                      **d_kwargs)
+        return update_uv(X, Z_hat, uv_hat0=uv_hat, b_hat_0=b_hat_0,
+                         solver_d=solver_d, uv_constraint=uv_constraint,
+                         loss=loss, gamma=gamma, **d_kwargs)
 
     end_iter_func = get_iteration_func(reg, eps, stopping_pobj, callback)
 
@@ -128,14 +137,14 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
             pobj, times, uv_hat, Z_hat = _batch_learn(
                 X, uv_hat, Z_hat, compute_z_func, compute_d_func, obj_func,
                 end_iter_func, n_iter=n_iter, n_jobs=n_jobs, verbose=verbose,
-                random_state=random_state, parallel=parallel
+                random_state=random_state, parallel=parallel,
             )
         elif algorithm == "greedy":
-            pobj, times, uv_hat, Z_hat = _batch_learn(
-                X, uv_hat, Z_hat, compute_z_func, compute_d_func, obj_func,
-                end_iter_func, n_iter=n_iter, n_jobs=n_jobs, verbose=verbose,
-                random_state=random_state, parallel=parallel
-            )
+            raise NotImplementedError(
+                "Algorithm greedy is not implemented yet.")
+        elif algorithm == "online":
+            raise NotImplementedError(
+                "Algorithm online is not implemented yet.")
         else:
             raise NotImplementedError("Algorithm {} is not implemented to "
                                       "dictionary atoms.".format(algorithm))
@@ -143,7 +152,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, func_d=update_uv, reg=0.1,
         # recompute Z_hat with no regularization and keeping the support fixed
         Z_hat = update_z_multi(
             X, uv_hat, reg=0, z0=Z_hat, parallel=parallel, solver=solver_z,
-            solver_kwargs=solver_z_kwargs, freeze_support=True)
+            solver_kwargs=solver_z_kwargs, freeze_support=True, loss=loss)
 
     return pobj, times, uv_hat, Z_hat
 

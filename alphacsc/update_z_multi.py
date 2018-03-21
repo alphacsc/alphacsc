@@ -17,7 +17,7 @@ from .loss_and_gradient import gradient_zi
 
 def update_z_multi(X, uv, reg, z0=None, debug=False, parallel=None,
                    solver='l_bfgs', solver_kwargs=dict(), loss='l2',
-                   freeze_support=False):
+                   gamma=.1, freeze_support=False):
     """Update Z using L-BFGS with positivity constraints
 
     Parameters
@@ -40,6 +40,8 @@ def update_z_multi(X, uv, reg, z0=None, debug=False, parallel=None,
         Parameters for the solver
     loss : 'l2' | 'dtw'
         The data fit loss, either classical l2 norm or the soft-DTW loss.
+    gamma : float
+        Parameter of the soft-DTW loss
     freeze_support : boolean
         If True, the support of z0 is frozen.
 
@@ -71,7 +73,8 @@ def update_z_multi(X, uv, reg, z0=None, debug=False, parallel=None,
 
 
 def _update_z_multi_idx(X, uv, reg, z0, idxs, debug, solver="l_bfgs",
-                        solver_kwargs=dict(), freeze_support=False, loss='l2'):
+                        solver_kwargs=dict(), freeze_support=False, loss='l2',
+                        gamma=.1):
     n_trials, n_channels, n_times = X.shape
     n_atoms, n_channels_n_times_atom = uv.shape
     n_times_atom = n_channels_n_times_atom - n_channels
@@ -85,18 +88,17 @@ def _update_z_multi_idx(X, uv, reg, z0, idxs, debug, solver="l_bfgs",
     if solver == "gcd":
         constants['DtD'] = _compute_DtD(uv, n_channels)
 
-    if loss == "dtw":
-        constants['gamma'] = solver_kwargs.get('gamma', .1)
-
     for i in idxs:
 
         def func_and_grad(zi):
             return gradient_zi(uv, zi, X[i], constants=constants, reg=reg,
-                               return_func=True, flatten=True, loss=loss)
+                               return_func=True, flatten=True, loss=loss,
+                               gamma=gamma)
 
         def grad_noreg(zi):
             return gradient_zi(uv, zi, Xi=X[i], constants=constants, reg=None,
-                               return_func=False, flatten=True, loss=loss)
+                               return_func=False, flatten=True, loss=loss,
+                               gamma=gamma)
 
         if z0 is None:
             f0 = np.zeros(n_atoms * n_times_valid)

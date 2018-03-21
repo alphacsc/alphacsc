@@ -12,8 +12,10 @@ from numba import jit
 from scipy import optimize
 
 from .utils import check_random_state
-from .utils import construct_X_multi, construct_X_multi_uv
-from .utils.convolution import numpy_convolve_uv, tensordot_convolve
+from .utils.convolution import numpy_convolve_uv
+
+from .loss_and_gradient import compute_objective, compute_X_and_objective_multi
+from .loss_and_gradient import gradient_uv, gradient_d
 
 
 def _dense_transpose_convolve(Z, residual):
@@ -33,44 +35,6 @@ def _dense_transpose_convolve(Z, residual):
                      for res_ip in res_i]                       # n_chan
                     for zik, res_i in zip(zk, residual)]        # n_trials
                    for zk in Z], axis=1)                        # n_atoms
-
-
-def _gradient_d(D, X=None, Z=None, constants=None, uv=None, n_chan=None):
-    if constants:
-        if D is None:
-            assert uv is not None
-            g = numpy_convolve_uv(constants['ZtZ'], uv)
-        else:
-            g = tensordot_convolve(constants['ZtZ'], D)
-        return g - constants['ZtX']
-    else:
-        if D is None:
-            assert uv is not None and n_chan is not None
-            residual = construct_X_multi_uv(Z, uv, n_chan) - X
-        else:
-            assert uv is None
-            residual = construct_X_multi(Z, D) - X
-        return _dense_transpose_convolve(Z, residual)
-
-
-def _gradient_uv(uv, X=None, Z=None, constants=None):
-    if constants:
-        n_chan = constants['n_chan']
-    else:
-        assert X is not None
-        assert Z is not None
-        n_chan = X.shape[1]
-    grad_d = _gradient_d(None, X, Z, constants, uv=uv, n_chan=n_chan)
-    grad_u = (grad_d * uv[:, None, n_chan:]).sum(axis=2)
-    grad_v = (grad_d * uv[:, :n_chan, None]).sum(axis=1)
-    return np.c_[grad_u, grad_v]
-
-
-def _shifted_objective_uv(uv, constants):
-    n_chan = constants['n_chan']
-    grad_d = .5 * numpy_convolve_uv(constants['ZtZ'], uv) - constants['ZtX']
-    cost = (grad_d * uv[:, None, n_chan:]).sum(axis=2)
-    return np.dot(cost.ravel(), uv[:, :n_chan].ravel())
 
 
 def prox_uv(uv, uv_constraint='joint', n_chan=None, return_norm=False):
@@ -212,7 +176,7 @@ def fista(f_obj, f_grad, f_prox, step_size, x0, max_iter, verbose=0,
 
 def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
               solver_d='alternate', momentum=False, uv_constraint='separate',
-              verbose=0):
+              loss='l2', gamma=.1, verbose=0):
     """Learn d's in time domain.
 
     Parameters
@@ -239,6 +203,8 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
         If 'alternate', the solver alternates between u then v
         If 'joint', the solver jointly optimize uv with a line search
         If 'lbfgs', the solver uses lbfgs with box constraints
+    loss : str in {'l2' | 'dtw'}
+        The data-fit loss
     verbose : int
         Verbosity level.
 
@@ -257,19 +223,23 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
         msg = "alternate solver should be used with separate constraints"
         assert uv_constraint == 'separate', msg
 
-    constants = _get_d_update_constants(X, Z)
+    if loss == 'l2':
+        constants = _get_d_update_constants(X, Z)
+    else:
+        constants = None
 
     def objective(uv, full=False):
-        cost = _shifted_objective_uv(uv, constants)
-        if full:
-            cost += np.sum(X * X) / 2
-        return cost
+        if loss == 'l2':
+            return compute_objective(uv=uv, constants=constants)
+        return compute_X_and_objective_multi(X, Z, uv_hat=uv, loss=loss,
+                                             gamma=gamma)
 
     if solver_d == 'joint':
         # use FISTA on joint [u, v], with an adaptive step size
 
         def grad(uv):
-            return _gradient_uv(uv, constants=constants)
+            return gradient_uv(uv=uv, X=X, Z=Z, constants=constants, loss=loss,
+                               gamma=gamma)
 
         def prox(uv):
             return prox_uv(uv, uv_constraint=uv_constraint, n_chan=n_chan)
@@ -301,8 +271,8 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
 
             def grad_u(u):
                 uv = np.c_[u, v_hat]
-                grad_d = _gradient_d(None, constants=constants, uv=uv,
-                                     n_chan=n_chan)
+                grad_d = gradient_d(X=X, Z=Z, uv=uv, constants=constants,
+                                    loss=loss, gamma=gamma)
                 return (grad_d * uv[:, None, n_chan:]).sum(axis=2)
 
             if adaptive_step_size:
@@ -325,8 +295,8 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
 
             def grad_v(v):
                 uv = np.c_[u_hat, v]
-                grad_d = _gradient_d(None, constants=constants, uv=uv,
-                                     n_chan=n_chan)
+                grad_d = gradient_d(uv=uv, X=X, Z=Z, constants=constants,
+                                    loss=loss, gamma=gamma)
                 return (grad_d * uv[:, :n_chan, None]).sum(axis=1)
 
             if adaptive_step_size:
@@ -350,13 +320,12 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
             return objective(uv)
 
         def grad(uv):
-            uv = np.reshape(uv, uv_hat0.shape)
-            return _gradient_uv(uv, constants=constants).ravel()
+            return gradient_uv(uv, constants=constants, flatten=True)
 
         def callback(uv):
             import matplotlib.pyplot as plt
             uv = np.reshape(uv, uv_hat0.shape)
-            plt.figure(0)
+            plt.figure('lbfgs')
             ax = plt.gca()
             if ax.lines == []:
                 plt.plot(uv[:, n_chan:].T)
@@ -405,6 +374,7 @@ def _get_d_update_constants(X, Z):
     ZtZ = compute_ZtZ(Z, n_times_atom)
     constants['ZtZ'] = ZtZ
     constants['n_chan'] = n_chan
+    constants['XtX'] = np.sum(X * X)
     return constants
 
 

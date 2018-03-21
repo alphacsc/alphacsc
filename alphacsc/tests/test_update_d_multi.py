@@ -2,14 +2,15 @@ import pytest
 import numpy as np
 from scipy import optimize, signal
 
-from alphacsc.update_d_multi import _gradient_d, _gradient_uv
-from alphacsc.update_d_multi import _shifted_objective_uv, fista
+from alphacsc.loss_and_gradient import compute_objective
+from alphacsc.loss_and_gradient import gradient_d, gradient_uv
+from alphacsc.update_d_multi import fista
 from alphacsc.update_d_multi import update_uv, prox_uv, _get_d_update_constants
 from alphacsc.utils import construct_X_multi, construct_X_multi_uv
 from alphacsc.update_z import power_iteration
 
 
-DEBUG = False
+DEBUG = True
 
 
 def test_simple():
@@ -35,88 +36,101 @@ def test_simple():
     assert error < 1e-4, "Gradient is false: {:.4e}".format(error)
 
 
-def test_gradient_d():
+@pytest.mark.parametrize('loss', ['l2', 'dtw'])
+def test_gradient_d(loss):
     # Generate synchronous D
     n_times_atom, n_times = 10, 100
     n_chan = 5
     n_atoms = 2
     n_trials = 3
 
+    # Constant for the DTW loss
+    gamma = 1
+
     rng = np.random.RandomState()
     X = rng.normal(size=(n_trials, n_chan, n_times))
     Z = rng.normal(size=(n_atoms, n_trials, n_times - n_times_atom + 1))
-    D = rng.normal(size=(n_atoms, n_chan, n_times_atom))
+    d = rng.normal(size=(n_atoms, n_chan, n_times_atom)).ravel()
 
     def func(d0):
         D0 = d0.reshape(n_atoms, n_chan, n_times_atom)
         X_hat = construct_X_multi(Z, D0)
-        res = X - X_hat
-        return .5 * np.sum(res * res)
+        return compute_objective(X, X_hat, loss=loss, gamma=gamma)
 
     def grad(d0):
-        D0 = d0.reshape(n_atoms, n_chan, n_times_atom)
-        return _gradient_d(D0, X, Z).ravel()
+        return gradient_d(D=d0, X=X, Z=Z, loss=loss, gamma=gamma, flatten=True)
 
-    if DEBUG:
-        grad_approx = optimize.approx_fprime(D.ravel(), func, 2e-8)
-        grad_d = grad(D.ravel())
+    error = optimize.check_grad(func, grad, d, epsilon=2e-8)
+    grad_d = grad(d)
+    n_grad = np.sqrt(np.dot(grad_d, grad_d))
+    try:
+        assert error < 1e-5 * n_grad, "Gradient is false: {:.4e}".format(error)
+    except AssertionError:
+        if DEBUG:
+            grad_approx = optimize.approx_fprime(d, func, 2e-8)
 
-        import matplotlib.pyplot as plt
-        plt.semilogy(abs(grad_approx - grad_d))
-        plt.figure()
-        plt.plot(grad_approx, label="approx")
-        plt.plot(grad_d, '--', label="grad")
-        plt.legend()
-        plt.show()
-
-    error = optimize.check_grad(func, grad, D.ravel(), epsilon=2e-8)
-    assert error < 1e-3, "Gradient is false: {:.4e}".format(error)
+            import matplotlib.pyplot as plt
+            plt.semilogy(abs(grad_approx - grad_d))
+            plt.figure()
+            plt.plot(grad_approx, label="approx")
+            plt.plot(grad_d, '--', label="grad")
+            plt.legend()
+            plt.show()
+        raise
 
 
-def test_gradient_uv():
+@pytest.mark.parametrize('loss', ['l2', 'dtw'])
+def test_gradient_uv(loss):
     # Generate synchronous D
     n_times_atom, n_times = 10, 100
     n_chan = 5
     n_atoms = 2
     n_trials = 3
+    gamma = 1
 
     rng = np.random.RandomState()
     X = rng.normal(size=(n_trials, n_chan, n_times))
     Z = rng.normal(size=(n_atoms, n_trials, n_times - n_times_atom + 1))
-    uv = rng.normal(size=(n_atoms, n_chan + n_times_atom))
+    uv = rng.normal(size=(n_atoms, n_chan + n_times_atom)).ravel()
 
     def func(uv0):
         uv0 = uv0.reshape(n_atoms, n_chan + n_times_atom)
         X_hat = construct_X_multi_uv(Z, uv0, n_chan)
-        res = X - X_hat
-        return .5 * np.sum(res * res)
+        return compute_objective(X, X_hat, loss=loss, gamma=gamma)
 
     def grad(uv0):
-        uv0 = uv0.reshape(n_atoms, n_chan + n_times_atom)
-        return _gradient_uv(uv0, X, Z).ravel()
-
-    if DEBUG:
-        grad_approx = optimize.approx_fprime(uv.ravel(), func, 2e-8)
-        grad_d = grad(uv.ravel())
-
-        import matplotlib.pyplot as plt
-        plt.semilogy(abs(grad_approx - grad_d))
-        plt.figure()
-        plt.plot(grad_approx, label="approx")
-        plt.plot(grad_d, '--', label="grad")
-        plt.legend()
-        plt.show()
+        return gradient_uv(uv=uv0, X=X, Z=Z, flatten=True, loss=loss,
+                           gamma=gamma)
 
     error = optimize.check_grad(func, grad, uv.ravel(), epsilon=2e-8)
-    assert error < 1e-3, "Gradient is false: {:.4e}".format(error)
+    grad_uv = grad(uv)
+    n_grad = np.sqrt(np.dot(grad_uv, grad_uv))
+    try:
+        assert error < 1e-5 * n_grad, "Gradient is false: {:.4e}".format(error)
+    except AssertionError:
 
-    constants = _get_d_update_constants(X, Z)
-    msg = "Wrong value for Zt*X"
-    assert np.allclose(_gradient_uv(0 * uv, X, Z),
-                       _gradient_uv(0 * uv, constants=constants)), msg
-    msg = "Wrong value for Zt*Z"
-    assert np.allclose(_gradient_uv(uv, X, Z),
-                       _gradient_uv(uv, constants=constants)), msg
+        if DEBUG:
+            grad_approx = optimize.approx_fprime(uv, func, 2e-8)
+
+            import matplotlib.pyplot as plt
+            plt.semilogy(abs(grad_approx - grad_uv))
+            plt.figure()
+            plt.plot(grad_approx, label="approx")
+            plt.plot(grad_uv, '--', label="grad")
+            plt.legend()
+            plt.show()
+        raise
+
+    if loss == 'l2':
+        constants = _get_d_update_constants(X, Z)
+        msg = "Wrong value for Zt*X"
+        assert np.allclose(
+            gradient_uv(0 * uv, X=X, Z=Z, flatten=True),
+            gradient_uv(0 * uv, constants=constants, flatten=True)), msg
+        msg = "Wrong value for Zt*Z"
+        assert np.allclose(
+            gradient_uv(uv, X=X, Z=Z, flatten=True),
+            gradient_uv(uv, constants=constants, flatten=True)), msg
 
 
 @pytest.mark.parametrize('solver_d, uv_constraint', [
@@ -141,8 +155,7 @@ def test_update_uv(solver_d, uv_constraint):
 
     def objective(uv):
         X_hat = construct_X_multi_uv(Z, uv, n_chan)
-        res = X - X_hat
-        return .5 * np.sum(res * res)
+        return compute_objective(X, X_hat, loss='l2')
 
     # Ensure that the known optimal point is stable
     uv = update_uv(X, Z, uv0, max_iter=1000, verbose=0)
@@ -174,10 +187,10 @@ def test_update_uv(solver_d, uv_constraint):
 def test_fast_cost():
     """Test that _shifted_objective_uv compute the right thing"""
     # Generate synchronous D
-    n_times_atom, n_times = 10, 100
-    n_chan = 5
+    n_times_atom, n_times = 10, 40
+    n_chan = 3
     n_atoms = 2
-    n_trials = 3
+    n_trials = 4
 
     rng = np.random.RandomState()
     X = rng.normal(size=(n_trials, n_chan, n_times))
@@ -190,11 +203,10 @@ def test_fast_cost():
         res = X - X_hat
         return .5 * np.sum(res * res)
 
-    for _ in range(10):
+    for _ in range(5):
         uv = rng.normal(size=(n_atoms, n_chan + n_times_atom))
 
-        nX = np.sum(X * X)
-        cost_fast = _shifted_objective_uv(uv, constants) + .5 * nX
+        cost_fast = compute_objective(uv=uv, constants=constants)
         cost_full = objective(uv)
         assert np.isclose(cost_full, cost_fast)
 

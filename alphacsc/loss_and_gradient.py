@@ -8,14 +8,35 @@ from sdtw.distance import SquaredEuclidean
 
 from .utils import construct_X_multi, construct_X_multi_uv
 from .utils.convolution import _choose_convolve_multi_uv, numpy_convolve_uv
-from .update_d_multi import prox_uv
 
 
-def compute_objective(X, X_hat, Z_hat=None, reg=None, loss='l2'):
+def compute_objective(X=None, X_hat=None, Z_hat=None, uv=None, constants=None,
+                      reg=None, loss='l2', gamma=None):
+    """Compute the value of the objective function
+
+    Parameters
+    ----------
+    X : array, shape (n_trials, n_channels, n_times)
+        The data on which to perform CSC.
+    X_hat : array, shape (n_trials, n_channels, n_times)
+        The current reconstructed signal.
+    Z_hat : array, shape (n_atoms, n_trial, n_times_valid)
+        The current activation signals for the regularization.
+    constants : dict
+        Constant to accelerate the computation when updating uv.
+    reg : float
+        The regularization parameters. If None, no regularization is added.
+        The regularization constant
+    loss : str in {'l2' | 'dtw'}
+        Loss function for the data-fit
+    gamma : float
+        Parameter for the soft-DTW loss
+    """
     if loss == 'l2':
-        obj = _l2_objective(X, X_hat)
+        obj = _l2_objective(X=X, X_hat=X_hat, uv=uv, constants=constants)
     elif loss == 'dtw':
-        obj = _dtw_objective(X, X_hat, gamma=1)
+        assert gamma is not None
+        obj = _dtw_objective(X, X_hat, gamma=gamma)
     else:
         raise NotImplementedError("loss '{}' is not implemented".format(loss))
     if reg:
@@ -25,7 +46,7 @@ def compute_objective(X, X_hat, Z_hat=None, reg=None, loss='l2'):
 
 
 def compute_X_and_objective_multi(X, Z_hat, uv_hat, reg=None, loss='l2',
-                                  feasible_evaluation=True,
+                                  gamma=None, feasible_evaluation=True,
                                   uv_constraint='joint'):
     """Compute X and return the value of the objective function
 
@@ -55,6 +76,7 @@ def compute_X_and_objective_multi(X, Z_hat, uv_hat, reg=None, loss='l2',
         Z_hat = Z_hat.copy()
         uv_hat = uv_hat.copy()
         # project to unit norm
+        from .update_d_multi import prox_uv
         uv_hat, norm_uv = prox_uv(uv_hat, uv_constraint=uv_constraint,
                                   n_chan=n_channels, return_norm=True)
         # update z in the opposite way
@@ -62,11 +84,11 @@ def compute_X_and_objective_multi(X, Z_hat, uv_hat, reg=None, loss='l2',
 
     X_hat = construct_X_multi_uv(Z_hat, uv_hat, n_channels)
 
-    return compute_objective(X, X_hat, Z_hat, reg, loss=loss)
+    return compute_objective(X, X_hat, Z_hat, reg, loss=loss, gamma=gamma)
 
 
 def gradient_uv(uv, X=None, Z=None, constants=None, reg=None, loss='l2',
-                return_func=False, flatten=False):
+                gamma=None, return_func=False, flatten=False):
     """Compute the gradient of the reconstruction loss relative to uv.
 
     Parameters
@@ -82,6 +104,9 @@ def gradient_uv(uv, X=None, Z=None, constants=None, reg=None, loss='l2',
     reg : float or None
         The regularization constant
     loss : str in {'l2' | 'dtw'}
+        Loss function for the data-fit
+    gamma : float
+        Parameter for the soft-DTW loss
     return_func : boolean
         Returns also the objective function, used to speed up LBFGS solver
     flatten : boolean
@@ -95,33 +120,41 @@ def gradient_uv(uv, X=None, Z=None, constants=None, reg=None, loss='l2',
     grad : array, shape (n_atoms * n_times_valid)
         The gradient
     """
-    if constants:
-        n_chan = constants['n_chan']
-    else:
+    if Z is not None:
         assert X is not None
-        assert Z is not None
-        n_chan = X.shape[1]
+        n_atoms = Z.shape[0]
+        n_channels = X.shape[1]
+    else:
+        n_atoms = constants['ZtZ'].shape[0]
+        n_channels = constants['n_chan']
+
+    if flatten:
+        uv = uv.reshape((n_atoms, -1))
+
     if loss == 'l2':
-        cost, grad_d = _l2_gradient_d(None, X, Z, constants, uv=uv,
-                                      n_chan=n_chan)
+        cost, grad_d = _l2_gradient_d(uv=uv, X=X, Z=Z, constants=constants)
     elif loss == 'dtw':
-        assert 'gamma' in constants
-        cost, grad_d = _dtw_gradient_d(X, Z, uv, gamma=constants['gamma'])
+        assert gamma is not None, "Loss DTW require the parameter gamma"
+        cost, grad_d = _dtw_gradient_d(X=X, Z=Z, uv=uv, gamma=gamma)
     else:
         raise NotImplementedError("loss {} is not implemented.".format(loss))
-    grad_u = (grad_d * uv[:, None, n_chan:]).sum(axis=2)
-    grad_v = (grad_d * uv[:, :n_chan, None]).sum(axis=1)
+    grad_u = (grad_d * uv[:, None, n_channels:]).sum(axis=2)
+    grad_v = (grad_d * uv[:, :n_channels, None]).sum(axis=1)
+    grad = np.c_[grad_u, grad_v]
+
+    if flatten:
+        grad = grad.ravel()
 
     if return_func:
         if reg is not None:
             cost += reg * Z.sum()
-        return cost, np.c_[grad_u, grad_v]
+        return cost, grad
 
-    return np.c_[grad_u, grad_v]
+    return grad
 
 
 def gradient_zi(uv, zi, Xi, constants=None, reg=None, loss='l2',
-                return_func=False, flatten=False):
+                gamma=None, return_func=False, flatten=False):
     n_atoms, _ = uv.shape
     if flatten:
         zi = zi.reshape((n_atoms, -1))
@@ -129,8 +162,8 @@ def gradient_zi(uv, zi, Xi, constants=None, reg=None, loss='l2',
     if loss == 'l2':
         cost, grad = _l2_gradient_zi(uv, zi, Xi, return_func=return_func)
     elif loss == 'dtw':
-        assert 'gamma' in constants
-        cost, grad = _dtw_gradient_zi(Xi, zi, uv, gamma=constants['gamma'])
+        assert gamma is not None
+        cost, grad = _dtw_gradient_zi(Xi, zi, uv, gamma=gamma)
     else:
         raise NotImplementedError("loss {} is not implemented.".format(loss))
 
@@ -148,7 +181,65 @@ def gradient_zi(uv, zi, Xi, constants=None, reg=None, loss='l2',
     return grad
 
 
-def _dtw_objective(X, X_hat, gamma=1.):
+def gradient_d(D=None, uv=None, X=None, Z=None, constants=None, reg=None,
+               loss='l2', gamma=None, return_func=False, flatten=False):
+    """Compute the gradient of the reconstruction loss relative to d.
+
+    Parameters
+    ----------
+    uv : array, shape (n_atoms, n_channels + n_times_atom)
+        The spatial and temporal atoms
+    X : array, shape (n_trials, n_channels, n_times) or None
+        The data array
+    Z : array, shape (n_atoms, n_trials, n_times_valid) or None
+        The activations
+    constants : dict or None
+        Constant to accelerate the computation of the gradient
+    reg : float or None
+        The regularization constant
+    loss : str in {'l2' | 'dtw'}
+        Loss function for the data-fit
+    gamma : float
+        Parameter for the soft-DTW loss
+    return_func : boolean
+        Returns also the objective function, used to speed up LBFGS solver
+    flatten : boolean
+        If flatten is True, takes a flatten uv input and return the gradient
+        as a flatten array.
+
+    Returns
+    -------
+    (func) : float
+        The objective function
+    grad : array, shape (n_atoms * n_times_valid)
+        The gradient
+    """
+    if flatten:
+        n_atoms = Z.shape[0]
+        n_channels = X.shape[1]
+        D = D.reshape((n_atoms, n_channels, -1))
+    if loss == 'l2':
+        cost, grad_d = _l2_gradient_d(D=D, uv=uv, X=X, Z=Z,
+                                      constants=constants)
+    elif loss == 'dtw':
+        assert gamma is not None
+        cost, grad_d = _dtw_gradient_d(D=D, X=X, Z=Z, uv=uv,
+                                       gamma=gamma)
+    else:
+        raise NotImplementedError("loss {} is not implemented.".format(loss))
+
+    if flatten:
+        grad_d = grad_d.ravel()
+    
+    if return_func:
+        if reg is not None:
+            cost += reg * Z.sum()
+        return cost, grad_d
+
+    return grad_d
+
+
+def _dtw_objective(X, X_hat, gamma=.1):
     n_trials = X.shape[0]
     cost = 0
     for idx in range(n_trials):
@@ -159,9 +250,12 @@ def _dtw_objective(X, X_hat, gamma=1.):
     return cost
 
 
-def _dtw_gradient(X, Z_hat, uv_hat, gamma=0.1):
+def _dtw_gradient(X, Z, uv=None, D=None, gamma=.1):
     n_trials, n_channels, n_times = X.shape
-    X_hat = construct_X_multi_uv(Z_hat, uv_hat, n_channels)
+    if uv is not None:
+        X_hat = construct_X_multi_uv(Z, uv, n_channels)
+    else:
+        X_hat = construct_X_multi(Z, D)
     grad = np.zeros(X_hat.shape)
     cost = 0
     for idx in range(n_trials):
@@ -174,20 +268,21 @@ def _dtw_gradient(X, Z_hat, uv_hat, gamma=0.1):
     return cost, grad
 
 
-def _dtw_gradient_d(X, Z_hat, uv_hat, gamma=0.1):
-    cost, grad_X_hat = _dtw_gradient(X, Z_hat, uv_hat, gamma=gamma)
+def _dtw_gradient_d(X=None, Z=None, uv=None, D=None, gamma=.1):
+    cost, grad_X_hat = _dtw_gradient(X, Z, uv=uv, D=D, gamma=gamma)
 
-    return cost, _dense_transpose_convolve(Z_hat, grad_X_hat)
+    return cost, _dense_transpose_convolve(Z, grad_X_hat)
 
 
-def _dtw_gradient_zi(Xi, Zi, uv, gamma=0.1):
+def _dtw_gradient_zi(Xi, Zi, uv, gamma=.1):
     n_channels = Xi.shape[0]
     cost_i, grad_Xi_hat = _dtw_gradient(Xi[None], Zi[:, None], uv, gamma=gamma)
 
     return cost_i, _dense_transpose_convolve_uv(uv, grad_Xi_hat[0], n_channels)
 
 
-def _l2_gradient_d(D, X=None, Z=None, constants=None, uv=None, n_chan=None):
+def _l2_gradient_d(D=None, uv=None, X=None, Z=None, constants=None):
+
     if constants:
         if D is None:
             assert uv is not None
@@ -197,15 +292,29 @@ def _l2_gradient_d(D, X=None, Z=None, constants=None, uv=None, n_chan=None):
         return None, g - constants['ZtX']
     else:
         if D is None:
-            assert uv is not None and n_chan is not None
-            residual = construct_X_multi_uv(Z, uv, n_chan) - X
+            n_channels = X.shape[1]
+            assert uv is not None
+            residual = construct_X_multi_uv(Z, uv, n_channels) - X
         else:
             assert uv is None
             residual = construct_X_multi(Z, D) - X
         return None, _dense_transpose_convolve(Z, residual)
 
 
-def _l2_objective(X, X_hat):
+def _l2_objective(X=None, X_hat=None, uv=None, constants=None):
+
+    if constants:
+        # Fast compute the l2 objective when updating uv
+        assert uv is not None
+        n_chan = constants['n_chan']
+        grad_d = .5 * numpy_convolve_uv(constants['ZtZ'], uv) - constants['ZtX']
+        cost = (grad_d * uv[:, None, n_chan:]).sum(axis=2)
+        cost = np.dot(cost.ravel(), uv[:, :n_chan].ravel())
+        cost += .5 * constants['XtX']
+        return cost
+
+    # else, compute the l2 norm of the residual
+    assert X is not None and X_hat is not None
     residual = X - X_hat
     return 0.5 * np.dot(residual.ravel(), residual.ravel())
 
