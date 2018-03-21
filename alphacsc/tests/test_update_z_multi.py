@@ -4,8 +4,7 @@ import numpy as np
 from alphacsc.update_z_multi import update_z_multi
 from alphacsc.update_z_multi import _compute_DtD, _coordinate_descent_idx
 from alphacsc.loss_and_gradient import compute_X_and_objective_multi
-from alphacsc.utils import construct_X_multi
-from alphacsc.utils.dictionary import _get_D
+from alphacsc.utils import construct_X_multi, get_D
 
 
 @pytest.mark.parametrize('loss', ['l2', 'dtw'])
@@ -99,7 +98,7 @@ def test_cd():
     Z[Z < 2] = 0
     Z0[Z0 < 2] = 0
 
-    D0 = _get_D(uv, n_channels)
+    D0 = get_D(uv, n_channels)
     X = construct_X_multi(Z0, D0)
 
     loss_0 = compute_X_and_objective_multi(X=X, Z_hat=Z0, uv_hat=uv, reg=reg,

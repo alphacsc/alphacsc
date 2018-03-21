@@ -6,7 +6,7 @@ from alphacsc.utils.convolution import _sparse_convolve, _dense_convolve
 from alphacsc.utils.convolution import _choose_convolve
 from alphacsc.utils import check_random_state
 from alphacsc.utils import construct_X_multi, construct_X_multi_uv
-from alphacsc.utils.dictionary import _get_D, _get_uv
+from alphacsc.utils.dictionary import get_D, get_uv
 
 from alphacsc.update_d_multi import prox_uv
 
@@ -40,7 +40,7 @@ def test_construct_X():
                        random_state=rng).toarray().reshape(
                            (n_atoms, n_trials, n_times_valid))
     uv = rng.randn(n_atoms, n_channels + n_times_atoms)
-    ds = _get_D(uv, n_channels)
+    ds = get_D(uv, n_channels)
 
     X_uv = construct_X_multi_uv(zi, uv, n_channels)
     X_ds = construct_X_multi(zi, ds)
@@ -56,8 +56,8 @@ def test_uv_D():
 
     uv = rng.randn(n_atoms, n_channels + n_times_atoms)
     uv = prox_uv(uv, uv_constraint='separate', n_chan=n_channels)
-    ds = _get_D(uv, n_channels)
-    uv_hat = _get_uv(ds)
+    ds = get_D(uv, n_channels)
+    uv_hat = get_uv(ds)
 
     assert_allclose(abs(uv / uv_hat), 1)
 

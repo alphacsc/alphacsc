@@ -4,7 +4,7 @@ import numpy as np
 from .convolution import construct_X_multi_uv
 
 
-def _get_D(uv_hat, n_chan):
+def get_D(uv_hat, n_chan):
     """Compute the rank 1 dictionary associated with the given uv
 
     Parameter
@@ -21,7 +21,7 @@ def _get_D(uv_hat, n_chan):
     return uv_hat[:, :n_chan, None] * uv_hat[:, None, n_chan:]
 
 
-def _get_uv(D):
+def get_uv(D):
     """Project D on the space of rank 1 dictionaries
 
     Parameter

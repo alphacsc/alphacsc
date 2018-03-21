@@ -7,7 +7,7 @@ from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 
 from .utils import check_random_state
-from .utils.dictionary import _get_uv, _patch_reconstruction_error
+from .utils.dictionary import get_uv, _patch_reconstruction_error
 from .update_d_multi import prox_uv
 from .other.k_medoids import KMedoids
 from .other.kmc2 import custom_distances
@@ -61,7 +61,7 @@ def init_uv(X, n_atoms, n_times_atom, uv_init=None, uv_constraint='separate',
             i_trial = rng.randint(n_trials)
             t0 = rng.randint(n_times - n_times_atom)
             D_hat[i_atom] = X[i_trial, :, t0:t0 + n_times_atom]
-        uv_hat = _get_uv(D_hat)
+        uv_hat = get_uv(D_hat)
 
     elif uv_init == "kmeans":
         u_hat = rng.randn(n_atoms, n_channels)
@@ -282,4 +282,4 @@ def get_max_error_dict(X, Z, uv):
 
     d0 = X[n0, :, t0:t0 + n_times_atom][None]
 
-    return _get_uv(d0)
+    return get_uv(d0)
