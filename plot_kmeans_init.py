@@ -53,22 +53,28 @@ all_func = [
     partial(init_uv, uv_init='random'),
     partial(init_uv, uv_init='chunk'),
     partial(init_uv, uv_init='kmeans', kmeans_params=dict(
-        max_iter=0, use_custom_distances=False)),
+        max_iter=0, distances='euclidean')),
     partial(init_uv, uv_init='kmeans', kmeans_params=dict(
-        max_iter=100, use_custom_distances=False)),
+        max_iter=100, distances='euclidean')),
     partial(init_uv, uv_init='kmeans', kmeans_params=dict(
-        max_iter=0, use_custom_distances=True)),
+        max_iter=0, distances='roll_inv')),
     partial(init_uv, uv_init='kmeans', kmeans_params=dict(
-        max_iter=100, use_custom_distances=True)),
+        max_iter=100, distances='roll_inv')),
+    partial(init_uv, uv_init='kmeans', kmeans_params=dict(
+        max_iter=0, distances='trans_inv')),
+    partial(init_uv, uv_init='kmeans', kmeans_params=dict(
+        max_iter=100, distances='trans_inv')),
 ]
 
 labels = [
     'random',
     'chunk',
-    'kmeans_0',
-    'kmeans_100',
-    'kmedoid_0',
-    'kmedoid_100',
+    'kmeans_eucl_0',
+    'kmeans_eucl_100',
+    'kmeans_roll_0',
+    'kmeans_roll_100',
+    'kmeans_trans_0',
+    'kmeans_trans_100',
 ]
 
 X = load_data()

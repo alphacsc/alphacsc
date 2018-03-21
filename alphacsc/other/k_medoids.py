@@ -114,8 +114,7 @@ class KMedoids(BaseEstimator, ClusterMixin, TransformerMixin):
         # Check init
         init_methods = ['random', 'heuristic']
         if isinstance(self.init, str) and self.init not in init_methods:
-            raise ValueError("init needs to be one of " +
-                             "the following: " +
+            raise ValueError("init needs to be one of " + "the following: " +
                              "%s" % init_methods)
         if isinstance(self.init, np.ndarray):
             assert self.init.size == self.n_clusters
@@ -140,33 +139,45 @@ class KMedoids(BaseEstimator, ClusterMixin, TransformerMixin):
         X = check_array(X, accept_sparse=['csr', 'csc'])
         if self.n_clusters > X.shape[0]:
             raise ValueError("The number of medoids %d must be less "
-                             "than the number of samples %d."
-                             % (self.n_clusters, X.shape[0]))
+                             "than the number of samples %d." %
+                             (self.n_clusters, X.shape[0]))
 
+        # if not isinstance(self.init, np.ndarray):
         if callable(self.distance_metric):
             distances = self.distance_metric(X)
         else:
             distances = pairwise_distances(X, metric=self.distance_metric)
+        # else:
+        #     distances = None
 
         medoid_idxs = self._get_initial_medoid_indices(distances,
                                                        self.n_clusters)
-        labels = np.argmin(distances[medoid_idxs, :], axis=0)
+        if distances is not None:
+            this = distances[medoid_idxs, :]
+        else:
+            this = self.distance_metric(X, np.atleast_2d(X[medoid_idxs])).T
+        labels = np.argmin(this, axis=0)
 
         # Old medoids will be stored here for reference
-        old_medoid_idxs = np.zeros((self.n_clusters,))
+        old_medoid_idxs = np.zeros((self.n_clusters, ))
 
         # Continue the algorithm as long as
         # the medoids keep changing and the maximum number
         # of iterations is not exceeded
         self.n_iter_ = 0
         while (not np.all(old_medoid_idxs == medoid_idxs) and
-                self.n_iter_ < self.max_iter):
+               self.n_iter_ < self.max_iter):
             self.n_iter_ += 1
             old_medoid_idxs = np.copy(medoid_idxs)
-            labels = np.argmin(distances[medoid_idxs, :], axis=0)
+            if distances is not None:
+                this = distances[medoid_idxs, :]
+            else:
+                this = self.distance_metric(X, np.atleast_2d(X[medoid_idxs])).T
+            labels = np.argmin(this, axis=0)
 
             # Update medoids with the new cluster indices
-            self._update_medoid_idxs_in_place(distances, labels, medoid_idxs)
+            self._update_medoid_idxs_in_place(X, distances, labels,
+                                              medoid_idxs)
 
         # Expose labels_ which are the assignments of
         # the training data to clusters
@@ -177,7 +188,7 @@ class KMedoids(BaseEstimator, ClusterMixin, TransformerMixin):
         # Return self to enable method chaining
         return self
 
-    def _update_medoid_idxs_in_place(self, distances, cluster_idxs,
+    def _update_medoid_idxs_in_place(self, X, distances, cluster_idxs,
                                      medoid_idxs):
         """In-place update of the medoid indices"""
 
@@ -191,15 +202,26 @@ class KMedoids(BaseEstimator, ClusterMixin, TransformerMixin):
             # Extract the distance matrix between the data points
             # inside the cluster k
             cluster_k_idxs = np.where(cluster_idxs == k)[0]
-            in_cluster_distances = distances[np.ix_(cluster_k_idxs,
-                                                    cluster_k_idxs)]
+            if distances is not None:
+                in_cluster_distances = distances[np.ix_(
+                    cluster_k_idxs, cluster_k_idxs)]
+            else:
+                in_cluster_distances = self.distance_metric(
+                    np.atleast_2d(X[cluster_k_idxs]))
 
             # Calculate all costs from each point to all others in the cluster
             in_cluster_all_costs = np.sum(in_cluster_distances, axis=1)
 
             min_cost_idx = np.argmin(in_cluster_all_costs)
             min_cost = in_cluster_all_costs[min_cost_idx]
-            curr_cost = np.sum(distances[medoid_idxs[k], cluster_k_idxs])
+
+            if distances is not None:
+                curr_cost = np.sum(distances[medoid_idxs[k], cluster_k_idxs])
+            else:
+                curr_cost = np.sum(
+                    self.distance_metric(
+                        np.atleast_2d(X[cluster_k_idxs]),
+                        np.atleast_2d(X[medoid_idxs[k]])).T)
 
             # If the minimum cost is smaller than that
             # exhibited by the currently used medoid,
@@ -295,7 +317,7 @@ class KMedoids(BaseEstimator, ClusterMixin, TransformerMixin):
         elif isinstance(self.init, np.ndarray):
             medoids = self.init
         else:
-            raise ValueError("Initialization not implemented for method: '%s'"
-                             % self.init)
+            raise ValueError(
+                "Initialization not implemented for method: '%s'" % self.init)
 
         return medoids

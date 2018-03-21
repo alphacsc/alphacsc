@@ -27,8 +27,6 @@ def roll_invariant_euclidean_distances(X, Y=None, squared=False):
     distances : array, shape (n_samples_1, n_samples_2)
 
     """
-    X = np.atleast_2d(X)
-    Y = np.atleast_2d(Y)
     X, Y = check_pairwise_arrays(X, Y)
     n_samples_1, n_features = X.shape
     n_samples_2, n_features = Y.shape
@@ -48,11 +46,67 @@ def roll_invariant_euclidean_distances(X, Y=None, squared=False):
     # distances = X_norm[:, None] + Y_norm[None, :] - 2 * XY
 
     distances = np.zeros((n_samples_1, n_samples_2))
-    for i in range(n_samples_1):
-        for j in range(n_samples_2):
-            XY = irfft(X_hat[i] * Y_hat[j], n_fft).max()
-            distances[i, j] = X_norm[i] + Y_norm[j] - 2 * XY
+    print('RIED on %s samples' % (distances.shape, ))
+    for ii in range(n_samples_1):
+        for jj in range(n_samples_2):
+            XY = irfft(X_hat[ii] * Y_hat[jj], n_fft).max()
+            distances[ii, jj] = X_norm[ii] + Y_norm[jj] - 2 * XY
 
     distances += 1e-12
+
+    return distances
+
+
+def translation_invariant_euclidean_distances(X, Y=None, squared=False,
+                                              symmetric=False):
+    """
+    Considering the rows of X (and Y=X) as vectors, compute the
+    distance matrix between each pair of vectors.
+    The distance is the minimum of the euclidean distance over a set of
+    translations:
+
+        dist(x, y) = min_{i, j}(||x(i:i+T) - y(j:j+T)||^2)
+
+    where T = n_features / 2, and 1 <= i, j <= n_features / 2
+
+    Parameters
+    ----------
+    X : array, shape (n_samples_1, n_features)
+
+    Y : array, shape (n_samples_2, n_features)
+
+    squared : boolean
+        Not used. Only for API compatibility.
+
+    symmetric : boolean
+        If False, the distance is not symmetric anymore, since we keep indice
+        j fixed at `n_features / 4`.
+
+    Returns
+    -------
+    distances : array, shape (n_samples_1, n_samples_2)
+
+    """
+    X, Y = check_pairwise_arrays(X, Y)
+    n_samples_1, n_features = X.shape
+    n_samples_2, n_features = Y.shape
+
+    distances = np.zeros((n_samples_1, n_samples_2))
+    print('TIED on %s samples' % (distances.shape, ))
+    for nn in range(n_samples_1):
+        for mm in range(n_samples_2):
+            XY = (X[nn, :, None] - Y[mm, None, :]) ** 2
+
+            if symmetric:
+                jj_range = np.arange(n_features // 2)
+            else:
+                jj_range = [n_features // 4]
+
+            dist = np.zeros((n_features // 2, len(jj_range)))
+            for ii in range(n_features // 2):
+                for jj, kk in enumerate(jj_range):
+                    xy = XY[ii:ii + n_features // 2, kk:kk + n_features // 2]
+                    dist[ii, jj] = xy.trace(axis1=0, axis2=1)
+            distances[nn, mm] = dist.min()
 
     return distances

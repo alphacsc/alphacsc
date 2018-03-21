@@ -51,10 +51,11 @@ cimport numpy as np
 cimport cython
 
 from custom_distances import roll_invariant_euclidean_distances
+from custom_distances import translation_invariant_euclidean_distances
 
 
 def kmc2(X, k, chain_length=200, afkmc2=True, random_state=None, weights=None,
-         use_custom_distances=False):
+         distances='euclidean'):
     """Cython implementation of k-MC2 and AFK-MC2 seeding
 
     Args:
@@ -64,8 +65,7 @@ def kmc2(X, k, chain_length=200, afkmc2=True, random_state=None, weights=None,
       afkmc2: Whether to run AFK-MC2 (if True) or vanilla K-MC2 (if False)
       random_state: numpy.random.RandomState instance or integer to be used as seed
       weights: n-sized np.ndarray with weights of data points (default: uniform weights)
-      use_custom_distances: use roll_invariant_euclidean_distances instead of
-            euclidean_distances
+      distances: in {'euclidean', 'roll_inv', 'trans_inv'}
 
     Returns:
       centers: (k, d)-shaped numpy.ndarray with cluster centers
@@ -83,10 +83,14 @@ def kmc2(X, k, chain_length=200, afkmc2=True, random_state=None, weights=None,
         weights = np.ones(X.shape[0], dtype=np.float64)
     random_state = check_random_state(random_state)
 
-    if use_custom_distances:
-        distances = roll_invariant_euclidean_distances
-    else:
+    if distances == 'euclidean':
         distances = euclidean_distances
+    elif distances == 'roll_inv':
+        distances = roll_invariant_euclidean_distances
+    elif distances == 'trans_inv':
+        distances = translation_invariant_euclidean_distances
+    else:
+        raise ValueError('Unknown distances: "%s".' % (distances, ))
 
     # Initialize result
     centers_indices = np.zeros((k, ), np.intp)

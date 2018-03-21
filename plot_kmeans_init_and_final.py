@@ -101,9 +101,9 @@ n_trials, n_channels, n_times = X.shape
 all_methods_ = [
     ('chunk', partial(_run, uv_init='chunk')),
     ('kmedoid_0', partial(_run, uv_init='kmeans', kmeans_params=dict(
-        max_iter=0, use_custom_distances=True))),
+        max_iter=0, distances='roll_inv'))),
     ('kmedoid_100', partial(_run, uv_init='kmeans', kmeans_params=dict(
-        max_iter=100, use_custom_distances=True))),
+        max_iter=100, distances='roll_inv'))),
 ]
 
 for method in all_methods_:
