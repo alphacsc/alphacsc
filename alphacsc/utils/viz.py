@@ -161,7 +161,7 @@ def plot_data(X, plot_types=None):
 
 
 def plot_callback(X, info, n_atoms, layout=None):
-    n_trials, n_chan = X.shape[:2]
+    n_trials, n_chan, n_times = X.shape
 
     n_atoms_plot = min(15, n_atoms)
 
@@ -192,6 +192,10 @@ def plot_callback(X, info, n_atoms, layout=None):
         layout = mne.channels.find_layout(info)
 
     def callback(X, uv_hat, Z_hat, reg):
+        n_times_valid = Z_hat.shape[-1]
+        n_times_atom = uv_hat.shape[1] - n_chan
+        times_Z = np.arange(n_times_valid) / info['sfreq']
+        times_v = np.arange(n_times_atom) / info['sfreq']
 
         this_info = cp.deepcopy(info)
         this_info['sfreq'] = 1.
@@ -203,7 +207,7 @@ def plot_callback(X, info, n_atoms, layout=None):
 
         if axes[0].lines == []:
             for k in range(n_atoms):
-                axes[k].plot(uv_hat[k, n_chan:].T)
+                axes[k].plot(times_v, uv_hat[k, n_chan:].T)
                 axes[k].grid(True)
         else:
             for ax, uv in zip(axes, uv_hat):
@@ -213,7 +217,7 @@ def plot_callback(X, info, n_atoms, layout=None):
         if n_trials == 1:
             if axes_Z[0].lines == []:
                 for k in range(n_atoms):
-                    axes_Z[k].plot(Z_hat[k, 0])
+                    axes_Z[k].plot(times_Z, Z_hat[k, 0])
                     axes_Z[k].grid(True)
             else:
                 for ax, z in zip(axes_Z, Z_hat[:, 0]):
