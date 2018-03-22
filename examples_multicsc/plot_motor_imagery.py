@@ -1,17 +1,15 @@
 from scipy.signal import tukey
 
-import copy as cp
-
 import numpy as np
 import matplotlib.pyplot as plt
 
-import mne
 from mne import Epochs, pick_types, find_events
 from mne.channels import read_layout
 from mne.io import concatenate_raws, read_raw_edf
 from mne.datasets import eegbci
 
 from alphacsc.learn_d_z_multi import learn_d_z_multi
+from alphacsc.utils import plot_callback
 
 n_atoms = 5
 
@@ -40,7 +38,7 @@ epochs = Epochs(raw, events, event_id, tmin, tmax, proj=True, picks=picks,
                 baseline=None, preload=True)
 # epochs_train = epochs.copy().crop(tmin=1., tmax=2.)
 
-n_times_atom = round(int(0.3 * raw.info['sfreq']))
+n_times_atom = int(round(0.3 * raw.info['sfreq']))
 X = epochs.get_data()
 n_trials, n_chan, n_times = X.shape
 X *= tukey(n_times, alpha=0.1)[None, None, :]
@@ -48,52 +46,7 @@ X /= np.std(X)
 
 
 plt.close('all')
-fig, axes = plt.subplots(nrows=n_atoms, num='atoms', figsize=(10, 8))
-fig_Z, axes_Z = plt.subplots(nrows=1, num='Z', figsize=(10, 8),
-                             sharex=True, sharey=True)
-fig_topo, axes_topo = plt.subplots(1, n_atoms, figsize=(12, 3))
-if n_atoms == 1:
-    axes_topo, axes = [axes_topo], [axes]
-
-from mpl_toolkits.axes_grid1 import AxesGrid
-
-fig_Z.axes[0].axis('off')
-grid = AxesGrid(fig_Z, (0.1, 0.1, 0.8, 0.8),
-                nrows_ncols=(n_atoms, 1),
-                axes_pad=0.1,
-                share_all=True,
-                label_mode="L",
-                cbar_location="right",
-                cbar_mode="single",
-                cbar_size="2%"
-                )
-
-
-def callback(X, uv_hat, Z_hat, reg):
-
-    info = cp.deepcopy(epochs.info)
-    info['sfreq'] = 1.
-    patterns = mne.EvokedArray(uv_hat[:, :n_chan].T, info, tmin=0)
-    patterns.plot_topomap(times=np.arange(n_atoms),
-                          layout=layout, axes=axes_topo, scaling_time=1,
-                          time_format='Atom%01d', show=False)
-    if axes[0].lines == []:
-        for k in range(n_atoms):
-            axes[k].plot(uv_hat[k, n_chan:].T)
-            axes[k].grid(True)
-    else:
-        for ax, uv in zip(axes, uv_hat):
-            ax.lines[0].set_ydata(uv[n_chan:])
-            ax.relim()  # make sure all the data fits
-            ax.autoscale_view(True, True, True)
-    for k in range(n_atoms):
-        im = grid[k].imshow(Z_hat[k], cmap='hot',
-                            clim=(0.0, Z_hat.max()))
-    grid.cbar_axes[0].colorbar(im)
-    fig.canvas.draw()
-    fig_topo.canvas.draw()
-    fig_Z.canvas.draw()
-    plt.pause(.001)
+callback = plot_callback(X, epochs.info, n_atoms, layout=layout)
 
 
 pobj, times, uv_hat, Z_hat = learn_d_z_multi(

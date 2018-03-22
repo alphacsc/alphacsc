@@ -1,5 +1,8 @@
 import itertools
 
+import copy as cp
+from mpl_toolkits.axes_grid1 import AxesGrid
+
 import mne
 import numpy as np
 import matplotlib.pyplot as plt
@@ -157,21 +160,47 @@ def plot_data(X, plot_types=None):
     plt.show()
 
 
-def plot_callback(X, info, n_atoms):
-    n_chan = X.shape[1]
+def plot_callback(X, info, n_atoms, layout=None):
+    n_trials, n_chan = X.shape[:2]
+
+    n_atoms_plot = min(15, n_atoms)
 
     fig, axes = plt.subplots(nrows=n_atoms, num='atoms', figsize=(10, 8))
-    fig_Z, axes_Z = plt.subplots(nrows=n_atoms, num='Z', figsize=(10, 8),
+    nrows = 1 if n_trials > 1 else n_atoms
+    fig_Z, axes_Z = plt.subplots(nrows=nrows, num='Z', figsize=(10, 8),
                                  sharex=True, sharey=True)
-    fig_topo, axes_topo = plt.subplots(1, n_atoms, figsize=(12, 3))
+    fig_topo, axes_topo = plt.subplots(1, n_atoms_plot, figsize=(12, 3))
+
+    if n_trials > 1:
+        fig_Z.axes[0].axis('off')
+        grid = AxesGrid(fig_Z, (0.1, 0.1, 0.8, 0.8),
+                        nrows_ncols=(n_atoms, 1),
+                        axes_pad=0.1,
+                        share_all=True,
+                        label_mode="L",
+                        cbar_location="right",
+                        cbar_mode="single",
+                        cbar_size="2%"
+                        )
+
     if n_atoms == 1:
-        axes_topo, axes, axes_Z = [axes_topo], [axes], [axes_Z]
+        axes_topo, axes = [axes_topo], [axes]
+        if n_trials == 1:
+            axes_Z = [axes_Z]
+
+    if layout is None:
+        layout = mne.channels.find_layout(info)
 
     def callback(X, uv_hat, Z_hat, reg):
-        for idx in range(n_atoms):
-            mne.viz.plot_topomap(uv_hat[idx, :n_chan], info,
-                                 axes=axes_topo[idx], show=False)
-            axes_topo[idx].set_title('atom %d' % idx)
+
+        this_info = cp.deepcopy(info)
+        this_info['sfreq'] = 1.
+        patterns = mne.EvokedArray(uv_hat[:n_atoms_plot, :n_chan].T,
+                                   this_info, tmin=0)
+        patterns.plot_topomap(times=np.arange(n_atoms_plot),
+                              layout=layout, axes=axes_topo, scaling_time=1,
+                              time_format='Atom%01d', show=False)
+
         if axes[0].lines == []:
             for k in range(n_atoms):
                 axes[k].plot(uv_hat[k, n_chan:].T)
@@ -181,15 +210,22 @@ def plot_callback(X, info, n_atoms):
                 ax.lines[0].set_ydata(uv[n_chan:])
                 ax.relim()  # make sure all the data fits
                 ax.autoscale_view(True, True, True)
-        if axes_Z[0].lines == []:
-            for k in range(n_atoms):
-                axes_Z[k].plot(Z_hat[k, 0])
-                axes_Z[k].grid(True)
+        if n_trials == 1:
+            if axes_Z[0].lines == []:
+                for k in range(n_atoms):
+                    axes_Z[k].plot(Z_hat[k, 0])
+                    axes_Z[k].grid(True)
+            else:
+                for ax, z in zip(axes_Z, Z_hat[:, 0]):
+                    ax.lines[0].set_ydata(z)
+                    ax.relim()  # make sure all the data fits
+                    ax.autoscale_view(True, True, True)
         else:
-            for ax, z in zip(axes_Z, Z_hat[:, 0]):
-                ax.lines[0].set_ydata(z)
-                ax.relim()  # make sure all the data fits
-                ax.autoscale_view(True, True, True)
+            for k in range(n_atoms):
+                im = grid[k].imshow(Z_hat[k], cmap='hot',
+                                    clim=(0.0, Z_hat.max()))
+                grid.cbar_axes[0].colorbar(im)
+
         fig.canvas.draw()
         fig_topo.canvas.draw()
         fig_Z.canvas.draw()
