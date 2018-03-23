@@ -27,6 +27,9 @@ def roll_invariant_euclidean_distances(X, Y=None, squared=False):
     distances : array, shape (n_samples_1, n_samples_2)
 
     """
+    X = np.atleast_2d(X)
+    if Y is not None:
+        Y = np.atleast_2d(Y)
     X, Y = check_pairwise_arrays(X, Y)
     n_samples_1, n_features = X.shape
     n_samples_2, n_features = Y.shape
@@ -46,7 +49,8 @@ def roll_invariant_euclidean_distances(X, Y=None, squared=False):
     # distances = X_norm[:, None] + Y_norm[None, :] - 2 * XY
 
     distances = np.zeros((n_samples_1, n_samples_2))
-    print('RIED on %s samples' % (distances.shape, ))
+    if n_samples_1 > 1:
+        print('RIED on %s samples' % (distances.shape, ))
     for ii in range(n_samples_1):
         for jj in range(n_samples_2):
             XY = irfft(X_hat[ii] * Y_hat[jj], n_fft).max()
@@ -87,12 +91,16 @@ def translation_invariant_euclidean_distances(X, Y=None, squared=False,
     distances : array, shape (n_samples_1, n_samples_2)
 
     """
+    X = np.atleast_2d(X)
+    if Y is not None:
+        Y = np.atleast_2d(Y)
     X, Y = check_pairwise_arrays(X, Y)
     n_samples_1, n_features = X.shape
     n_samples_2, n_features = Y.shape
 
     distances = np.zeros((n_samples_1, n_samples_2))
-    print('TIED on %s samples' % (distances.shape, ))
+    if n_samples_1 > 1:
+        print('TIED on %s samples' % (distances.shape, ))
     for nn in range(n_samples_1):
         for mm in range(n_samples_2):
             XY = (X[nn, :, None] - Y[mm, None, :]) ** 2

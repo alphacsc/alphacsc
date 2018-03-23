@@ -1,8 +1,10 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
 import kmc2
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
 
 from .utils import check_random_state
 from .utils.dictionary import _get_uv, _patch_reconstruction_error
@@ -83,12 +85,12 @@ def init_uv(X, n_atoms, n_times_atom, uv_init=None, uv_constraint='separate',
 
 
 def kmeans_init(X, n_atoms, n_times_atom, max_iter=0, random_state=None,
-                non_uniform=True, distances='euclidean'):
+                non_uniform=True, distances='euclidean', tsne=False):
     """Return an initial temporal dictionary for the signals X
 
     Parameter
     ---------
-    X: array, shape (n_trials, n_channels, n_times)
+    X : array, shape (n_trials, n_channels, n_times)
         The data on which to perform CSC.
     n_atoms : int
         The number of atoms to learn.
@@ -108,6 +110,7 @@ def kmeans_init(X, n_atoms, n_times_atom, max_iter=0, random_state=None,
     uv: array shape (n_atoms, n_channels + n_times_atom)
         The initial atoms to learn from the data.
     """
+    n_trials, n_channels, n_times = X.shape
     if distances != 'euclidean':
         # Only take the strongest channels, otherwise X is too big
         n_strong_channels = 1
@@ -137,6 +140,8 @@ def kmeans_init(X, n_atoms, n_times_atom, max_iter=0, random_state=None,
     # perform the kmeans, or use the seeding if max_iter == 0
     if max_iter == 0:
         v_init = seeding
+        labels = None
+        distance_metric = 'euclidean'
 
     elif distances != 'euclidean':
         if distances == 'trans_inv':
@@ -150,14 +155,54 @@ def kmeans_init(X, n_atoms, n_times_atom, max_iter=0, random_state=None,
                          max_iter=max_iter, distance_metric=distance_metric,
                          random_state=random_state).fit(X_embed)
         v_init = model.cluster_centers_
+        labels = model.labels_
 
     else:
+        distance_metric = 'euclidean'
         model = MiniBatchKMeans(n_clusters=n_atoms, init=seeding, n_init=1,
                                 max_iter=max_iter,
                                 random_state=random_state).fit(X_embed)
         v_init = model.cluster_centers_
+        labels = model.labels_
+
+    if tsne:
+        if distances == 'euclidean':
+            X_embed = X_embed[::n_channels]
+            if labels is not None:
+                labels = labels[::n_channels]
+        plot_tsne(X_embed, v_init, labels=labels, metric=distance_metric,
+                  random_state=random_state)
 
     return v_init
+
+
+def plot_tsne(X_embed, X_centers, labels=None, metric='euclidean',
+              random_state=None):
+
+    tsne = TSNE(n_components=2, random_state=random_state, perplexity=15,
+                metric=metric, verbose=2)
+    pca = PCA(n_components=min(50, X_embed.shape[1]))
+    X = np.concatenate([X_embed, X_centers])
+    n_centers = X_centers.shape[0]
+    X_pca = pca.fit_transform(X)
+    X_tsne = tsne.fit_transform(X_pca)
+
+    if labels is not None:
+        labels = np.r_[labels, np.arange(n_centers)]
+        colors = [
+            "#4C72B0", "#55A868", "#C44E52", "#8172B2", "#CCB974", "#64B5CD"
+        ]
+        colors = np.array(colors)[labels]
+    else:
+        colors = None
+
+    fig = plt.figure('tsne')
+    cc = colors[:-n_centers] if colors is not None else None
+    plt.scatter(X_tsne[:-n_centers, 0], X_tsne[:-n_centers, 1], c=cc,
+                marker='.')
+    cc = colors[-n_centers:] if colors is not None else None
+    plt.scatter(X_tsne[-n_centers:, 0], X_tsne[-n_centers:, 1], c=cc,
+                marker='*')
 
 
 def ssa_init(X, n_atoms, n_times_atom, random_state=None):
