@@ -4,9 +4,10 @@ from sklearn.metrics.pairwise import euclidean_distances
 
 from .soft_dtw_fast import _jacobian_product_sq_euc
 
+
 class SquaredEuclidean(object):
 
-    def __init__(self, X, Y):
+    def __init__(self, X, Y, sakoe_chiba_band=-1):
         """
         Parameters
         ----------
@@ -18,6 +19,10 @@ class SquaredEuclidean(object):
         """
         self.X = X.astype(np.float64)
         self.Y = Y.astype(np.float64)
+        self.sakoe_chiba_band = sakoe_chiba_band
+
+        if sakoe_chiba_band >= 0:
+            assert X.shape[0] == Y.shape[0]
 
     def compute(self):
         """
@@ -48,6 +53,7 @@ class SquaredEuclidean(object):
         """
         G = np.zeros_like(self.X)
 
-        _jacobian_product_sq_euc(self.X, self.Y, E, G)
+        _jacobian_product_sq_euc(self.X, self.Y, E, G,
+                                 sakoe_chiba_band=self.sakoe_chiba_band)
 
         return G

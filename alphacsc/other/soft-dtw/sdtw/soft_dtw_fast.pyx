@@ -133,12 +133,22 @@ def _soft_dtw_grad(np.ndarray[double, ndim=2] D,
 def _jacobian_product_sq_euc(np.ndarray[double, ndim=2] X,
                              np.ndarray[double, ndim=2] Y,
                              np.ndarray[double, ndim=2] E,
-                             np.ndarray[double, ndim=2] G):
+                             np.ndarray[double, ndim=2] G,
+                             int sakoe_chiba_band=-1):
     cdef int m = X.shape[0]
     cdef int n = Y.shape[0]
     cdef int d = X.shape[1]
+    cdef int i, j, k
+    cdef int is_in_band
 
     for i in range(m):
         for j in range(n):
+
+            # restrict the wrapping to a band around the diagonal
+            is_in_band = (j >= i - sakoe_chiba_band and
+                          j <= i + sakoe_chiba_band)
+            if sakoe_chiba_band >= 0 and not is_in_band:
+                continue
+
             for k in range(d):
                 G[i, k] += E[i,j] * 2 * (X[i, k] - Y[j, k])
