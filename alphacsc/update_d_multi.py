@@ -176,7 +176,7 @@ def fista(f_obj, f_grad, f_prox, step_size, x0, max_iter, verbose=0,
 
 def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
               solver_d='alternate', momentum=False, uv_constraint='separate',
-              loss='l2', gamma=.1, verbose=0):
+              loss='l2', loss_params=dict(), verbose=0):
     """Learn d's in time domain.
 
     Parameters
@@ -204,7 +204,9 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
         If 'joint', the solver jointly optimize uv with a line search
         If 'lbfgs', the solver uses lbfgs with box constraints
     loss : str in {'l2' | 'dtw'}
-        The data-fit loss
+        The data-fit
+    loss_params : dict
+        Parameters of the loss
     verbose : int
         Verbosity level.
 
@@ -232,14 +234,14 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
         if loss == 'l2':
             return compute_objective(uv=uv, constants=constants)
         return compute_X_and_objective_multi(X, Z, uv_hat=uv, loss=loss,
-                                             gamma=gamma)
+                                             loss_params=loss_params)
 
     if solver_d == 'joint':
         # use FISTA on joint [u, v], with an adaptive step size
 
         def grad(uv):
             return gradient_uv(uv=uv, X=X, Z=Z, constants=constants, loss=loss,
-                               gamma=gamma)
+                               loss_params=loss_params)
 
         def prox(uv):
             return prox_uv(uv, uv_constraint=uv_constraint, n_chan=n_chan)
@@ -272,7 +274,7 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
             def grad_u(u):
                 uv = np.c_[u, v_hat]
                 grad_d = gradient_d(X=X, Z=Z, uv=uv, constants=constants,
-                                    loss=loss, gamma=gamma)
+                                    loss=loss, loss_params=loss_params)
                 return (grad_d * uv[:, None, n_chan:]).sum(axis=2)
 
             if adaptive_step_size:
@@ -296,7 +298,7 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
             def grad_v(v):
                 uv = np.c_[u_hat, v]
                 grad_d = gradient_d(uv=uv, X=X, Z=Z, constants=constants,
-                                    loss=loss, gamma=gamma)
+                                    loss=loss, loss_params=loss_params)
                 return (grad_d * uv[:, :n_chan, None]).sum(axis=1)
 
             if adaptive_step_size:

@@ -26,8 +26,10 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
                     solver_d='alternate', solver_d_kwargs=dict(),
                     uv_constraint='separate', eps=1e-10,
                     uv_init=None, kmeans_params=dict(), stopping_pobj=None,
-                    algorithm='batch', loss='l2', gamma=.1, lmbd_max='fixed',
-                    verbose=10, callback=None, random_state=None):
+                    algorithm='batch', loss='l2',
+                    loss_params=dict(gamma=.1, sakoe_chiba_band=10),
+                    lmbd_max='fixed', verbose=10, callback=None,
+                    random_state=None):
     """Learn atoms and activations using Convolutional Sparse Coding.
 
     Parameters
@@ -70,8 +72,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
         Dictionary learning algorithm.
     loss : 'l2' | 'dtw'
         Loss for the data-fit term. Either the norm l2 or the soft-DTW.
-    gamma : float
-        Parameter of the soft-DTW loss
+    loss_params : dict
+        Parameters of the loss
     lmbd_max : 'fixed' | 'per_atom' | 'shared'
         If not fixed, adapt the regularization rate as a ratio of lambda_max.
     verbose : int
@@ -122,12 +124,13 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
     def compute_z_func(X, Z_hat, uv_hat, reg=None, parallel=None):
         return update_z_multi(X, uv_hat, reg=reg, z0=Z_hat, parallel=parallel,
                               solver=solver_z, solver_kwargs=z_kwargs,
-                              loss=loss, gamma=gamma)
+                              loss=loss, loss_params=loss_params)
 
     def obj_func(X, Z_hat, uv_hat, reg=None):
         return compute_X_and_objective_multi(X, Z_hat, uv_hat, reg=reg,
                                              uv_constraint=uv_constraint,
-                                             loss=loss, gamma=gamma)
+                                             loss=loss,
+                                             loss_params=loss_params)
 
     d_kwargs = dict(verbose=verbose, eps=1e-8)
     d_kwargs.update(solver_d_kwargs)
@@ -135,7 +138,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
     def compute_d_func(X, Z_hat, uv_hat):
         return update_uv(X, Z_hat, uv_hat0=uv_hat, b_hat_0=b_hat_0,
                          solver_d=solver_d, uv_constraint=uv_constraint,
-                         loss=loss, gamma=gamma, **d_kwargs)
+                         loss=loss, loss_params=loss_params, **d_kwargs)
 
     end_iter_func = get_iteration_func(reg, eps, stopping_pobj, callback,
                                        lmbd_max)
@@ -162,7 +165,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
         Z_hat = update_z_multi(
             X, uv_hat, reg=0, z0=Z_hat, parallel=parallel, solver=solver_z,
             solver_kwargs=solver_z_kwargs, freeze_support=True, loss=loss,
-            gamma=gamma)
+            loss_params=loss_params)
 
     return pobj, times, uv_hat, Z_hat
 

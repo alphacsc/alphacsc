@@ -14,14 +14,14 @@ def test_gradient_correctness(loss):
     n_times_atom, n_atoms = 10, 4
     n_times_valid = n_times - n_times_atom + 1
     reg = 0
-    gamma = 1
+    loss_params = dict(gamma=1, sakoe_chiba_band=n_times_atom // 2)
 
     X = np.random.randn(n_trials, n_channels, n_times)
     uv = np.random.randn(n_atoms, n_channels + n_times_atom)
     z = np.random.randn(n_atoms, n_trials, n_times_valid)
 
     update_z_multi(X, uv, reg, z0=z, solver='l_bfgs', debug=True, loss=loss,
-                   gamma=gamma)
+                   loss_params=loss_params)
 
 
 @pytest.mark.parametrize('loss', ['l2', 'dtw'])
@@ -30,7 +30,7 @@ def test_update_z_multi_decrease_cost_function(loss):
     n_times_atom, n_atoms = 10, 4
     n_times_valid = n_times - n_times_atom + 1
     reg = 0
-    gamma = 1
+    loss_params = dict(gamma=1, sakoe_chiba_band=n_times_atom // 2)
 
     X = np.random.randn(n_trials, n_channels, n_times)
     uv = np.random.randn(n_atoms, n_channels + n_times_atom)
@@ -38,14 +38,14 @@ def test_update_z_multi_decrease_cost_function(loss):
 
     loss_0 = compute_X_and_objective_multi(X=X, Z_hat=z, uv_hat=uv, reg=reg,
                                            feasible_evaluation=False,
-                                           loss=loss, gamma=gamma)
+                                           loss=loss, loss_params=loss_params)
 
     z_hat = update_z_multi(X, uv, reg, z0=z, solver='l_bfgs', loss=loss,
-                           gamma=gamma)
+                           loss_params=loss_params)
 
     loss_1 = compute_X_and_objective_multi(X=X, Z_hat=z_hat, uv_hat=uv,
                                            reg=reg, feasible_evaluation=False,
-                                           loss=loss, gamma=gamma)
+                                           loss=loss, loss_params=loss_params)
     assert loss_1 < loss_0
 
 

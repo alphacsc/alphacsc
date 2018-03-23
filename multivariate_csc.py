@@ -83,7 +83,7 @@ for random_state in range(n_states):
         solver_z_kwargs={'factr': 10e11},
         # uv_init='ssa',
         # lmbd_max=True,
-        loss='dtw', gamma=0.005)
+        loss='dtw', loss_params=dict(gamma=0.005, sakoe_chiba_band=10),)
     pobjs.append(pobj[-1])
     uv_hats.append(uv_hat)
 

@@ -45,7 +45,8 @@ if __name__ == "__main__":
         random_state=42, n_iter=50, reg=.5, eps=1e-3,
         solver_z="gcd", solver_z_kwargs={'max_iter': 1000},
         solver_d='alternate_adaptive', solver_d_kwargs={'max_iter': 100},
-        uv_init='ssa', uv_constraint='separate', loss='l2', gamma=.005,
+        uv_init='ssa', uv_constraint='separate', loss='l2',
+        loss_params=dict(gamma=0.005, sakoe_chiba_band=10),
         algorithm='batch', lmbd_max='shared'
     )
 

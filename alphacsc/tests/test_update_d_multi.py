@@ -45,7 +45,7 @@ def test_gradient_d(loss):
     n_trials = 3
 
     # Constant for the DTW loss
-    gamma = 1
+    loss_params = dict(gamma=1, sakoe_chiba_band=n_times_atom // 2)
 
     rng = np.random.RandomState()
     X = rng.normal(size=(n_trials, n_chan, n_times))
@@ -55,10 +55,11 @@ def test_gradient_d(loss):
     def func(d0):
         D0 = d0.reshape(n_atoms, n_chan, n_times_atom)
         X_hat = construct_X_multi(Z, D0)
-        return compute_objective(X, X_hat, loss=loss, gamma=gamma)
+        return compute_objective(X, X_hat, loss=loss, loss_params=loss_params)
 
     def grad(d0):
-        return gradient_d(D=d0, X=X, Z=Z, loss=loss, gamma=gamma, flatten=True)
+        return gradient_d(D=d0, X=X, Z=Z, loss=loss, loss_params=loss_params,
+                          flatten=True)
 
     error = optimize.check_grad(func, grad, d, epsilon=2e-8)
     grad_d = grad(d)
@@ -86,7 +87,7 @@ def test_gradient_uv(loss):
     n_chan = 5
     n_atoms = 2
     n_trials = 3
-    gamma = 1
+    loss_params = dict(gamma=1, sakoe_chiba_band=n_times_atom // 2)
 
     rng = np.random.RandomState()
     X = rng.normal(size=(n_trials, n_chan, n_times))
@@ -96,11 +97,11 @@ def test_gradient_uv(loss):
     def func(uv0):
         uv0 = uv0.reshape(n_atoms, n_chan + n_times_atom)
         X_hat = construct_X_multi_uv(Z, uv0, n_chan)
-        return compute_objective(X, X_hat, loss=loss, gamma=gamma)
+        return compute_objective(X, X_hat, loss=loss, loss_params=loss_params)
 
     def grad(uv0):
         return gradient_uv(uv=uv0, X=X, Z=Z, flatten=True, loss=loss,
-                           gamma=gamma)
+                           loss_params=loss_params)
 
     error = optimize.check_grad(func, grad, uv.ravel(), epsilon=2e-8)
     grad_uv = grad(uv)
