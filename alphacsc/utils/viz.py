@@ -18,6 +18,11 @@ from .tools import get_calling_script, positive_hash
 
 colors = ["#4C72B0", "#55A868", "#C44E52", "#8172B2", "#CCB974", "#64B5CD"]
 
+DEFAULT_CB = {
+    'atom': {},
+    'Zhat': {}
+}
+
 
 def kde_sklearn(x, x_grid, bandwidth, **kwargs):
     """Kernel Density Estimation with Scikit-learn"""
@@ -244,7 +249,30 @@ def plot_callback(X, info, n_atoms, layout=None):
     return callback
 
 
-def get_callback_csc(csc_kwargs, sfreq=1, plot_topo=None):
+def plot_or_replot(axes, data, sfreq=1):
+    """Given a list of axes and the ydata of each axis, cleanly update the plot
+
+    Parameters
+    ----------
+    axes : list of Axes
+        Axes to update.
+    data : list of ydata
+        Data to plot, or to update the axes lines.
+    sfreq : float
+        Value to compute the xlabel.
+    """
+    if axes[0].lines == []:
+        for ax, xk in zip(axes, data):
+            ax.plot(np.arange(xk.shape[-1]) / sfreq, xk)
+            ax.grid(True)
+    else:
+        for ax, xk in zip(axes, data):
+            ax.lines[0].set_ydata(xk)
+            ax.relim()  # make sure all the data fits
+            ax.autoscale_view(True, True, True)
+
+
+def get_callback_csc(csc_kwargs, sfreq=1, config=DEFAULT_CB):
     """Setup and return a callback for csc scripts
 
     Parameters
@@ -257,6 +285,11 @@ def get_callback_csc(csc_kwargs, sfreq=1, plot_topo=None):
     plot_topo : Epoch.info or None
         If this parameter is used, plot the activation map of the learned
         dictionary.
+    config : dict
+        The key should be in {'atom', 'Xhat', 'Zhat', 'topo'}. and the value
+        should be a configuration dictionary. The considered config are:
+            'share': If True, share X and Y axis for all the axes.
+            'info': Required for 'topo', should be the epoch.info.
 
     Return
     ------
@@ -287,20 +320,21 @@ def get_callback_csc(csc_kwargs, sfreq=1, plot_topo=None):
     ncols = int(np.ceil(n_atoms / 5.))
     nrows = min(5, n_atoms)
 
-    fig, axes = plt.subplots(nrows=nrows, ncols=ncols, num='atoms',
-                             figsize=(10, 8), sharex=True, sharey=True)
-    fig_Z, axes_Z = plt.subplots(nrows=nrows, ncols=ncols, num='Zhat',
-                                 figsize=(10, 8), sharex=True, sharey=True)
-    fig_Xk, axes_Xk = plt.subplots(nrows=nrows, ncols=ncols, num="rec0",
-                                   figsize=(15, 10))
-    figs = [fig, fig_Xk, fig_Z]
+    figs = {}
+    for name, conf in config.items():
+        assert name in ['atom', 'Zhat', 'Xhat', 'topo']
 
-    if plot_topo is not None:
-        fig_topo, axes_topo = plt.subplots(nrows=ncols, ncols=nrows,
-                                           num='topo', figsize=(12, 3 * ncols))
-        figs += [fig_topo]
+        fname = "{} - {}".format(name, os.getpid())
+        shared_axes = conf.get('share', True)
+        width = 5
+        if name == 'topo':
+            assert 'info' in conf, "topo cb require info args in its config"
+            width = 3
+        figs[name] = plt.subplots(nrows=nrows, ncols=ncols, num=fname,
+                                  figsize=(width * ncols, 10),
+                                  sharex=shared_axes, sharey=shared_axes)
 
-    for f in figs:
+    for f, _ in figs.values():
         f.tight_layout()
         f.canvas.draw()
     plt.pause(.001)
@@ -309,45 +343,35 @@ def get_callback_csc(csc_kwargs, sfreq=1, plot_topo=None):
 
         n_channels = X.shape[1]
 
-        if plot_topo is not None:
-            for idx, ax in enumerate(axes_topo.ravel()):
+        if 'topo' in figs:
+            axes = figs['topo'][1]
+            plot_topo = config['topo']['info']
+            for idx, ax in enumerate(axes.ravel()):
                 ax.clear()
                 mne.viz.plot_topomap(uv_hat[idx, :n_channels], plot_topo,
                                      axes=ax, show=False)
                 ax.set_title('atom %d' % idx)
 
-        if axes[0, 0].lines == []:
-            for k, ax in enumerate(axes.ravel()):
-                ax.plot(np.arange(n_times_atom) / sfreq,
-                        uv_hat[k, n_channels:].T)
-                ax.grid(True)
-        else:
-            for ax, uv in zip(axes.ravel(), uv_hat):
-                ax.lines[0].set_ydata(uv[n_channels:])
-                ax.relim()  # make sure all the data fits
-                ax.autoscale_view(True, True, True)
-        plot_activations_density(Z_hat, n_times_atom, sfreq=sfreq,
-                                 plot_activations=False, axes=axes_Z,
-                                 bandwidth='auto')
+        if 'atom' in figs:
+            axes = figs['atom'][1].ravel()
+            plot_or_replot(axes, uv_hat[:, n_channels:], sfreq)
 
-        X_hat = [np.convolve(Zk, uvk[n_channels:])
-                 for Zk, uvk in zip(Z_hat[:, 0], uv_hat)]
-        if axes_Xk[0, 0].lines == []:
-            for k, ax in enumerate(axes_Xk.flatten()):
-                ax.plot(np.arange(X_hat[k].shape[-1]) / sfreq,
-                        X_hat[k])
-                ax.grid(True)
-        else:
-            for ax, x in zip(axes_Xk.flatten(), X_hat):
-                ax.lines[0].set_ydata(x)
-                ax.relim()  # make sure all the data fits
-                ax.autoscale_view(True, True, True)
+        if 'Xhat' in figs:
+            X_hat = [np.convolve(Zk, uvk[n_channels:])
+                     for Zk, uvk in zip(Z_hat[:, 0], uv_hat)]
+            axes = figs['Xhat'][1].ravel()
+            plot_or_replot(axes, X_hat)
+
+        if 'Zhat' in figs:
+            axes = figs['Zhat'][1]
+            plot_activations_density(Z_hat, n_times_atom, sfreq=sfreq,
+                                     plot_activations=False, axes=axes,
+                                     bandwidth='auto')
 
         # Update and save the figures
-        for f in figs:
+        for fig_name, (f, _) in figs.items():
             f.canvas.draw()
-            fig_name = f.canvas.get_window_title()
-            fig.savefig('{}/{}_{}.png'.format(save_dir, csc_name, fig_name))
+            f.savefig('{}/{}_{}.png'.format(save_dir, csc_name, fig_name))
         plt.pause(.001)
 
     return callback

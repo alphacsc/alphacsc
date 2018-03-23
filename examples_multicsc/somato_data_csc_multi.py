@@ -13,10 +13,16 @@ from alphacsc.datasets.somato import load_data
 mem = Memory(cachedir='.', verbose=0)
 
 
-def run_one(X, csc_kwargs, topo):
+def run_one(X, csc_kwargs, sfreq, topo_info=None):
+    config = {
+        'atom': {},
+        'Zhat': {}
+    }
+    if topo_info is not None:
+        config['topo'] = dict(share=False, info=topo_info)
     return learn_d_z_multi(
         X, n_jobs=1,
-        callback=get_callback_csc(csc_kwargs, sfreq, plot_topo=topo),
+        callback=get_callback_csc(csc_kwargs, sfreq, config=config),
         **csc_kwargs)
 
 
@@ -36,9 +42,9 @@ if __name__ == "__main__":
 
     sfreq = 300
 
-    X, plot_topo = load_data(sfreq=sfreq)
+    X, topo_info = load_data(sfreq=sfreq)
     if not args.topo:
-        plot_topo = None
+        topo_info = None
 
     default_kwargs = dict(
         n_atoms=25, n_times_atom=int(sfreq * .2),
@@ -51,7 +57,7 @@ if __name__ == "__main__":
     )
 
     grid = dict(
-        n_atoms=[10, 20, 30],
+        n_atoms=[10, 20, 30]
         n_times_atom=[int(sfreq * r) for r in [.05, .1, .15, .2, .3]],
         reg=[.7, .5, .4, .3, .2, .1]
     )
@@ -63,7 +69,8 @@ if __name__ == "__main__":
 
     with Parallel(n_jobs=args.njobs) as parallel:
         delayed_run_one = delayed(_run_one_cached)
-        res = parallel(delayed_run_one(X, csc_kwargs, plot_topo)
+        res = parallel(delayed_run_one(X, csc_kwargs, sfreq=sfreq,
+                                       topo_info=topo_info)
                        for csc_kwargs in kwargs_grid)
 
     IPython.embed()
