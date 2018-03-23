@@ -1,17 +1,14 @@
 import argparse
-import cProfile
 import numpy as np
 import matplotlib.pyplot as plt
 
 from alphacsc.simulate import get_atoms, get_activations
-from alphacsc.utils import construct_X_multi_uv, _get_D
+from alphacsc.utils import construct_X_multi_uv, get_D
 from alphacsc.learn_d_z_multi import learn_d_z_multi
 from alphacsc.update_d_multi import prox_uv
 
 
 parser = argparse.ArgumentParser('Programme to launch experiment on multi csc')
-parser.add_argument('--profile', action='store_true',
-                    help='Print profiling of the function')
 parser.add_argument('--momentum', action='store_true',
                     help='Use the momentum for d updates')
 parser.add_argument('--n_iter', type=int, default=400,
@@ -28,7 +25,11 @@ n_states = 7
 n_trials = 30
 n_iter = 400
 
-reg = n_chan * 1e-4
+lmbd_max = 'fixed'
+if lmbd_max != 'fixed':
+    reg = .8
+else:
+    reg = n_chan * 1e-4
 
 v0 = get_atoms('triangle', n_times_atom)  # temporal atoms
 v1 = get_atoms('square', n_times_atom)
@@ -39,7 +40,7 @@ u1 = get_atoms('cos', n_chan)
 # Build D and scale atoms
 uv = np.array([np.r_[u0, v0], np.r_[u1, v1]])
 uv = prox_uv(uv, 'separate', n_chan)
-D = _get_D(uv, n_chan)
+D = get_D(uv, n_chan)
 
 # add atoms
 rng = np.random.RandomState(27)
@@ -73,33 +74,18 @@ X = construct_X_multi_uv(Z, uv, n_chan)
 
 pobjs, uv_hats = list(), list()
 
-if args.profile:
-    callback = None
-    n_states = 1
-    n_iter = 20
-    pr = cProfile.Profile()
-    pr.enable()
 for random_state in range(n_states):
     pobj, times, uv_hat, Z_hat = learn_d_z_multi(
         X, n_atoms, n_times_atom, random_state=random_state, callback=callback,
         n_iter=n_iter, n_jobs=1, reg=reg, uv_constraint='separate',
-        solver_d='alternate', solver_z="gcd",
-        solver_d_kwargs={'momentum': args.momentum, 'max_iter': 1000},
-        solver_z_kwargs={'max_iter': 10000, 'tol': 1e-3})
+        solver_d='alternate_adaptive', solver_z="l_bfgs",
+        solver_d_kwargs={'max_iter': 50},
+        solver_z_kwargs={'factr': 10e11},
+        # uv_init='ssa',
+        # lmbd_max=True,
+        loss='dtw', gamma=0.005)
     pobjs.append(pobj[-1])
     uv_hats.append(uv_hat)
-
-if args.profile:
-    pr.disable()
-    pr.dump_stats('.profile')
-
-    # s = io.StringIO()
-    # sortby = 'cumulative'
-    # ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-    # ps.print_stats('alphacsc/*')
-    # print(s.getvalue())
-    import sys
-    sys.exit(0)
 
 best_state = np.argmin(pobjs)
 
@@ -115,7 +101,7 @@ plt.plot(uv_hats[best_state][:, n_chan:].T, 'r')
 plt.plot(uv[:, n_chan:].T, 'k--')
 
 plt.figure("D")
-D_hat = _get_D(uv_hats[best_state], n_chan)
+D_hat = get_D(uv_hats[best_state], n_chan)
 for i, d_hat in enumerate(D_hat):
     plt.subplot(2, 1, i + 1)
     plt.plot(d_hat.T, 'r')
