@@ -3,12 +3,18 @@ import itertools
 import copy as cp
 from mpl_toolkits.axes_grid1 import AxesGrid
 
+import os
 import mne
+import json
 import numpy as np
+from datetime import datetime
 import matplotlib.pyplot as plt
 
 from sklearn.neighbors import KernelDensity
 from sklearn.model_selection import GridSearchCV
+
+
+from .tools import get_calling_script, positive_hash
 
 colors = ["#4C72B0", "#55A868", "#C44E52", "#8172B2", "#CCB974", "#64B5CD"]
 
@@ -233,6 +239,114 @@ def plot_callback(X, info, n_atoms, layout=None):
         fig.canvas.draw()
         fig_topo.canvas.draw()
         fig_Z.canvas.draw()
+        plt.pause(.001)
+
+    return callback
+
+
+def get_callback_csc(csc_kwargs, sfreq=1, plot_topo=None):
+    """Setup and return a callback for csc scripts
+
+    Parameters
+    ----------
+    csc_kwargs : dict
+        Parameters used to run the csc experiment. It will be hashed and used
+        in the name of the files.
+    sfreq : float
+        Sampling frequency of the data, to correctly disply the time.
+    plot_topo : Epoch.info or None
+        If this parameter is used, plot the activation map of the learned
+        dictionary.
+
+    Return
+    ------
+    callback : callable
+        A callback function that can be used to periodically plot and save
+        the csc results.
+    """
+    csc_hash = positive_hash(json.dumps(csc_kwargs, sort_keys=True))
+    csc_time = datetime.now().strftime('%d_%m_%y_%Hh%M')
+    csc_script = get_calling_script()
+
+    csc_name = "{}_csc_{}".format(csc_time, csc_hash)
+
+    if not os.path.exists('save_exp'):
+        os.mkdir('save_exp')
+    save_dir = 'save_exp/{}'.format(csc_script)
+    if not os.path.exists(save_dir):
+        os.mkdir(save_dir)
+
+    # Dump the arguments in a json to easily find introspect them
+    with open('{}/{}.json'.format(save_dir, csc_name), 'w') as f:
+        json.dump(csc_kwargs, f, sort_keys=True)
+
+    n_atoms = csc_kwargs.get('n_atoms')
+    n_times_atom = csc_kwargs.get('n_times_atom')
+
+    # Compute the shape of the subplot
+    ncols = int(np.ceil(n_atoms / 5.))
+    nrows = min(5, n_atoms)
+
+    fig, axes = plt.subplots(nrows=nrows, ncols=ncols, num='atoms',
+                             figsize=(10, 8), sharex=True, sharey=True)
+    fig_Z, axes_Z = plt.subplots(nrows=nrows, ncols=ncols, num='Zhat',
+                                 figsize=(10, 8), sharex=True, sharey=True)
+    fig_Xk, axes_Xk = plt.subplots(nrows=nrows, ncols=ncols, num="rec0",
+                                   figsize=(15, 10))
+    figs = [fig, fig_Xk, fig_Z]
+
+    if plot_topo is not None:
+        fig_topo, axes_topo = plt.subplots(nrows=nrows, ncols=ncols,
+                                           num='topo', figsize=(12, 3))
+        figs += [fig_topo]
+
+    for f in figs:
+        f.tight_layout()
+        f.canvas.draw()
+    plt.pause(.001)
+
+    def callback(X, uv_hat, Z_hat, reg):
+
+        n_channels = X.shape[1]
+
+        if plot_topo is not None:
+            for idx in range(n_atoms):
+                mne.viz.plot_topomap(uv_hat[idx, :n_channels], plot_topo,
+                                     axes=axes_topo[idx], show=False)
+                axes_topo[idx].set_title('atom %d' % idx)
+
+        if axes[0, 0].lines == []:
+            for k, ax in enumerate(axes.ravel()):
+                ax.plot(np.arange(n_times_atom) / sfreq,
+                        uv_hat[k, n_channels:].T)
+                ax.grid(True)
+        else:
+            for ax, uv in zip(axes.ravel(), uv_hat):
+                ax.lines[0].set_ydata(uv[n_channels:])
+                ax.relim()  # make sure all the data fits
+                ax.autoscale_view(True, True, True)
+        plot_activations_density(Z_hat, n_times_atom, sfreq=sfreq,
+                                 plot_activations=False, axes=axes_Z,
+                                 bandwidth='auto')
+
+        X_hat = [np.convolve(Zk, uvk[n_channels:])
+                 for Zk, uvk in zip(Z_hat[:, 0], uv_hat)]
+        if axes_Xk[0, 0].lines == []:
+            for k, ax in enumerate(axes_Xk.flatten()):
+                ax.plot(np.arange(X_hat[k].shape[-1]) / sfreq,
+                        X_hat[k])
+                ax.grid(True)
+        else:
+            for ax, x in zip(axes_Xk.flatten(), X_hat):
+                ax.lines[0].set_ydata(x)
+                ax.relim()  # make sure all the data fits
+                ax.autoscale_view(True, True, True)
+
+        # Update and save the figures
+        for f in figs:
+            f.canvas.draw()
+            fig_name = f.canvas.get_window_title()
+            fig.savefig('{}/{}_{}.png'.format(save_dir, csc_name, fig_name))
         plt.pause(.001)
 
     return callback
