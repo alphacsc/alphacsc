@@ -36,7 +36,9 @@ if __name__ == "__main__":
 
     sfreq = 300
 
-    X = load_data(sfreq=sfreq)
+    X, plot_topo = load_data(sfreq=sfreq)
+    if not args.topo:
+        plot_topo = None
 
     default_kwargs = dict(
         n_atoms=25, n_times_atom=int(sfreq * .2),
@@ -60,7 +62,7 @@ if __name__ == "__main__":
 
     with Parallel(n_jobs=args.njobs) as parallel:
         delayed_run_one = delayed(_run_one_cached)
-        res = parallel(delayed_run_one(X, csc_kwargs, args.topo)
+        res = parallel(delayed_run_one(X, csc_kwargs, plot_topo)
                        for csc_kwargs in kwargs_grid)
 
     IPython.embed()

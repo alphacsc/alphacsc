@@ -36,4 +36,4 @@ def load_data(sfreq, n_jobs=1):
     n_trials, n_chan, n_times = X.shape
     X *= tukey(n_times, alpha=0.1)[None, None, :]
     X /= np.std(X)
-    return X
+    return X, epochs.info

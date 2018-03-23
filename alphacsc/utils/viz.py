@@ -296,8 +296,8 @@ def get_callback_csc(csc_kwargs, sfreq=1, plot_topo=None):
     figs = [fig, fig_Xk, fig_Z]
 
     if plot_topo is not None:
-        fig_topo, axes_topo = plt.subplots(nrows=nrows, ncols=ncols,
-                                           num='topo', figsize=(12, 3))
+        fig_topo, axes_topo = plt.subplots(nrows=ncols, ncols=nrows,
+                                           num='topo', figsize=(12, 3 * ncols))
         figs += [fig_topo]
 
     for f in figs:
@@ -310,10 +310,11 @@ def get_callback_csc(csc_kwargs, sfreq=1, plot_topo=None):
         n_channels = X.shape[1]
 
         if plot_topo is not None:
-            for idx in range(n_atoms):
+            for idx, ax in enumerate(axes_topo.ravel()):
+                ax.clear()
                 mne.viz.plot_topomap(uv_hat[idx, :n_channels], plot_topo,
-                                     axes=axes_topo[idx], show=False)
-                axes_topo[idx].set_title('atom %d' % idx)
+                                     axes=ax, show=False)
+                ax.set_title('atom %d' % idx)
 
         if axes[0, 0].lines == []:
             for k, ax in enumerate(axes.ravel()):
