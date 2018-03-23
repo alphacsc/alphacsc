@@ -18,7 +18,7 @@ from .loss_and_gradient import compute_X_and_objective_multi
 from .update_z_multi import update_z_multi
 from .update_d_multi import update_uv
 from .init_dict import init_uv, get_max_error_dict
-from .profile_this import profile_this  # noqa
+from .utils.profile_this import profile_this  # noqa
 
 
 def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,

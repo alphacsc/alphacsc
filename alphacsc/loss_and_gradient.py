@@ -1,6 +1,4 @@
 import numpy as np
-from numpy import convolve
-
 
 from sdtw import SoftDTW
 from sdtw.distance import SquaredEuclidean
@@ -8,6 +6,7 @@ from sdtw.distance import SquaredEuclidean
 
 from .utils import construct_X_multi, construct_X_multi_uv
 from .utils.convolution import _choose_convolve_multi_uv, numpy_convolve_uv
+from .utils.convolution import tensordot_convolve
 
 
 def compute_objective(X=None, X_hat=None, Z_hat=None, uv=None, constants=None,
@@ -310,7 +309,8 @@ def _l2_objective(X=None, X_hat=None, uv=None, constants=None):
         # Fast compute the l2 objective when updating uv
         assert uv is not None
         n_chan = constants['n_chan']
-        grad_d = .5 * numpy_convolve_uv(constants['ZtZ'], uv) - constants['ZtX']
+        grad_d = .5 * numpy_convolve_uv(constants['ZtZ'], uv)
+        grad_d -= constants['ZtX']
         cost = (grad_d * uv[:, None, n_chan:]).sum(axis=2)
         cost = np.dot(cost.ravel(), uv[:, :n_chan].ravel())
         cost += .5 * constants['XtX']
@@ -362,31 +362,6 @@ def _l2_gradient_zi(uv, zi, Xi, return_func=False):
     return None, grad
 
 
-def tensordot_convolve(ZtZ, D):
-    """Compute the multivariate (valid) convolution of ZtZ and D
-
-    Parameters
-    ----------
-    ZtZ: array, shape = (n_atoms, n_atoms, 2 * n_times_atom - 1)
-        Activations
-    D: array, shape = (n_atoms, n_channels, n_times_atom)
-        Dictionnary
-
-    Returns
-    -------
-    G : array, shape = (n_atoms, n_channels, n_times_atom)
-        Gradient
-    """
-    n_atoms, n_channels, n_times_atom = D.shape
-    D_revert = D[:, :, ::-1]
-
-    G = np.zeros(D.shape)
-    for t in range(n_times_atom):
-        G[:, :, t] = np.tensordot(ZtZ[:, :, t:t + n_times_atom], D_revert,
-                                  axes=([1, 2], [0, 2]))
-    return G
-
-
 def _dense_transpose_convolve(Z, residual):
     """Convolve residual[i] with the transpose for each atom k, and return the sum
 
@@ -400,7 +375,8 @@ def _dense_transpose_convolve(Z, residual):
     grad_D : array, shape (n_atoms, n_chan, n_times_atom)
 
     """
-    return np.sum([[[convolve(res_ip, zik[::-1], mode='valid')  # n_times_atom
+    return np.sum([[[np.convolve(res_ip, zik[::-1],
+                                 mode='valid')  # n_times_atom
                      for res_ip in res_i]                       # n_chan
                     for zik, res_i in zip(zk, residual)]        # n_trials
                    for zk in Z], axis=1)                        # n_atoms

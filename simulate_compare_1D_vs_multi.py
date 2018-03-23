@@ -34,13 +34,15 @@ X += 0.01 * rng.randn(*X.shape)
 reg = 0.01
 random_state = 60
 
+print('Multivariate:')
 pobj, times, uv_hat, Z_hat = learn_d_z_multi(
     X, n_atoms, n_times_atom, random_state=random_state, callback=None,
     n_iter=n_iter, n_jobs=1, reg=reg, uv_constraint='separate',
-    solver_d='alternate',
+    solver_d='alternate', verbose=1,
     solver_d_kwargs={'momentum': False, 'max_iter': 1000})
 
 select_ch = [10]
+print('Univariate:')
 pobj, times, d_hat, Z_hat = learn_d_z(
     X[:, select_ch, :].squeeze(), n_atoms, n_times_atom,
     reg=reg, n_iter=n_iter,
