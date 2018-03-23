@@ -24,7 +24,7 @@ n_times_atom = int(round(sfreq * 1.0))  # 1000. ms
 reg_list = np.arange(5, 33, 3)
 
 n_atoms = 4
-n_iter = 200
+n_iter = 100
 n_states = 1
 n_jobs = 10
 
@@ -78,6 +78,8 @@ def _run(random_state, reg, **kwargs):
         solver_d='alternate_adaptive',
         solver_z_kwargs={'factr': 1e12},
         solver_d_kwargs={'max_iter': 300},
+        loss='stdw',
+        loss_params=dict(gamma=0.005, sakoe_chiba_band=10),
         verbose=verbose,
         random_state=random_state,
         n_jobs=1,
