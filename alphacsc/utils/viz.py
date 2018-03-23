@@ -7,6 +7,7 @@ import os
 import mne
 import json
 import numpy as np
+import matplotlib as mpl
 from datetime import datetime
 import matplotlib.pyplot as plt
 
@@ -18,6 +19,13 @@ DEFAULT_CB = {
     'atom': {},
     'Zhat': {}
 }
+PRINT_KWARGS = {
+    'n_atoms': 'K',
+    'n_times_atom': 'L',
+    'reg': '$\lambda$'
+}
+
+mpl.rc('mathtext', fontset='cm')
 
 
 def kde_sklearn(x, x_grid, bandwidth):
@@ -303,6 +311,9 @@ def get_callback_csc(csc_kwargs, sfreq=1, config=DEFAULT_CB):
     ncols = int(np.ceil(n_atoms / 5.))
     nrows = min(5, n_atoms)
 
+    # Clean previous figures
+    plt.close('all')
+
     figs = {}
     for name, conf in config.items():
         assert name in ['atom', 'Zhat', 'Xhat', 'topo']
@@ -313,12 +324,18 @@ def get_callback_csc(csc_kwargs, sfreq=1, config=DEFAULT_CB):
         if name == 'topo':
             assert 'info' in conf, "topo cb require info args in its config"
             width = 3
-        figs[name] = plt.subplots(nrows=nrows, ncols=ncols, num=fname,
-                                  figsize=(width * ncols, 10),
-                                  sharex=shared_axes, sharey=shared_axes)
+        f, axes = plt.subplots(nrows=nrows, ncols=ncols, num=fname,
+                               figsize=(width * ncols, 10),
+                               sharex=shared_axes, sharey=shared_axes)
+        text = ["{}: {}".format(PRINT_KWARGS[k], v)
+                for k, v in csc_kwargs.items() if k in PRINT_KWARGS]
+        text = "\t".join(text)
+        f.suptitle(text, fontsize=18, wrap=True)
 
+        figs[name] = (f, axes)
     for f, _ in figs.values():
         f.tight_layout()
+        f.subplots_adjust(top=.9)
         f.canvas.draw()
     plt.pause(.001)
 
