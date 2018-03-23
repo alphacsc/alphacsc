@@ -8,5 +8,5 @@ __pycache__
 *.profile
 joblib/
 figures/
-*/build/
-*/save_exp/
+*build/
+/save_exp/
