@@ -26,7 +26,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
                     solver_d='alternate', solver_d_kwargs=dict(),
                     uv_constraint='separate', eps=1e-10,
                     uv_init=None, kmeans_params=dict(), stopping_pobj=None,
-                    algorithm='batch', loss='l2', gamma=.1, lmbd_max=False,
+                    algorithm='batch', loss='l2', gamma=.1, lmbd_max='fixed',
                     verbose=10, callback=None, random_state=None):
     """Learn atoms and activations using Convolutional Sparse Coding.
 

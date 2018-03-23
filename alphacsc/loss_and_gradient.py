@@ -259,7 +259,7 @@ def _dtw_objective(X, X_hat, gamma=None):
     for idx in range(n_trials):
         D = SquaredEuclidean(X_hat[idx].T, X[idx].T)
         sdtw = SoftDTW(D, gamma=gamma)
-        cost += np.exp(sdtw.compute())
+        cost += sdtw.compute()
 
     return cost
 
