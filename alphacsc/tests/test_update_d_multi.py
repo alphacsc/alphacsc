@@ -4,10 +4,10 @@ from scipy import optimize, signal
 
 from alphacsc.loss_and_gradient import compute_objective
 from alphacsc.loss_and_gradient import gradient_d, gradient_uv
-from alphacsc.update_d_multi import fista
 from alphacsc.update_d_multi import update_uv, prox_uv, _get_d_update_constants
-from alphacsc.utils import construct_X_multi, construct_X_multi_uv
+from alphacsc.utils.optim import fista
 from alphacsc.update_z import power_iteration
+from alphacsc.utils import construct_X_multi, construct_X_multi_uv
 
 
 DEBUG = True

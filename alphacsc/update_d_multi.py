@@ -12,6 +12,7 @@ from numba import jit
 from scipy import optimize
 
 from .utils import check_random_state
+from .utils.optim import fista
 from .utils.convolution import numpy_convolve_uv
 
 from .loss_and_gradient import compute_objective, compute_X_and_objective_multi
@@ -66,112 +67,6 @@ def prox_uv(uv, uv_constraint='joint', n_chan=None, return_norm=False):
         return uv, norm_uv
     else:
         return uv
-
-
-def fista(f_obj, f_grad, f_prox, step_size, x0, max_iter, verbose=0,
-          momentum=False, eps=None, adaptive_step_size=False, debug=False,
-          scipy_line_search=True):
-    """ISTA and FISTA algorithm
-
-    Parameters
-    ----------
-    f_obj : callable
-        Objective function. Used only if debug or adaptive_step_size.
-    f_grad : callable
-        Gradient of the objective function
-    f_prox : callable
-        Proximal operator
-    step_size : float or None
-        Step size of each update. Can be None if adaptive_step_size.
-    x0 : array
-        Initial point of the optimization
-    max_iter : int
-        Maximum number of iterations
-    verbose : int
-        Verbosity level
-    momentum : boolean
-        If True, use FISTA instead of ISTA
-    eps : float or None
-        Tolerance for the stopping criterion
-    adaptive_step_size : boolean
-        If True, the step size is adapted at each step
-    debug : boolean
-        If true, compute the objective function at each step and return the
-        list at the end.
-
-    Returns
-    -------
-    x_hat : array
-        The final point after optimization
-    """
-
-    if debug:
-        pobj = list()
-    if step_size is None:
-        step_size = 1.
-    if eps is None:
-        eps = np.finfo(np.float32).eps
-    obj_uv = None
-
-    tk = 1
-    x_hat = x0.copy()
-    x_hat_aux = x_hat.copy()
-    grad = np.empty(x_hat.shape)
-    diff = np.empty(x_hat.shape)
-    for ii in range(max_iter):
-        grad[:] = f_grad(x_hat_aux)
-
-        if adaptive_step_size:
-            if scipy_line_search:
-
-                def f_obj_(x_hat):
-                    x_hat = np.reshape(x_hat, x0.shape)
-                    return f_obj(f_prox(x_hat))
-
-                step_size, _, obj_uv = optimize.linesearch.line_search_armijo(
-                    f_obj_, x_hat.ravel(), -grad.ravel(), grad.ravel(), obj_uv,
-                    c1=1e-4, alpha0=step_size)
-                if step_size is None:
-                    step_size = 0
-                x_hat_aux -= step_size * grad
-                x_hat_aux = f_prox(x_hat_aux)
-
-            else:
-
-                def f(step_size):
-                    x_hat = f_prox(x_hat_aux - step_size * grad)
-                    pobj = f_obj(x_hat)
-                    return pobj, x_hat
-
-                obj_uv, x_hat_aux, step_size = _adaptive_step_size(
-                    f, obj_uv, alpha=step_size)
-
-        else:
-            x_hat_aux -= step_size * grad
-            x_hat_aux = f_prox(x_hat_aux)
-
-        diff[:] = x_hat_aux - x_hat
-        x_hat[:] = x_hat_aux
-        if momentum:
-            tk_new = (1 + np.sqrt(1 + 4 * tk * tk)) / 2
-            x_hat_aux += (tk - 1) / tk_new * diff
-            tk = tk_new
-        if debug:
-            pobj.append(f_obj(x_hat, full=True))
-        f = np.sum(abs(diff))
-        if f <= eps:
-            break
-        if f > 1e50:
-            raise RuntimeError("The D update have diverged.")
-    else:
-        if verbose > 1:
-            print('update [fista] did not converge')
-    if verbose > 1:
-        print('ISTA: %d iterations' % (ii + 1))
-
-    if debug:
-        return x_hat, pobj
-    return x_hat
 
 
 def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
