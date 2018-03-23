@@ -29,7 +29,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
                     algorithm='batch', loss='l2',
                     loss_params=dict(gamma=.1, sakoe_chiba_band=10),
                     lmbd_max='fixed', verbose=10, callback=None,
-                    random_state=None):
+                    random_state=None, name="DL"):
     """Learn atoms and activations using Convolutional Sparse Coding.
 
     Parameters
@@ -149,7 +149,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
                 X, uv_hat, Z_hat, compute_z_func, compute_d_func, obj_func,
                 end_iter_func, n_iter=n_iter, n_jobs=n_jobs, verbose=verbose,
                 random_state=random_state, parallel=parallel, reg=reg,
-                lmbd_max=lmbd_max
+                lmbd_max=lmbd_max, name=name
             )
         elif algorithm == "greedy":
             raise NotImplementedError(
@@ -172,7 +172,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
 
 def _batch_learn(X, uv_hat, Z_hat, compute_z_func, compute_d_func,
                  obj_func, end_iter_func, n_iter=100, n_jobs=1, verbose=0,
-                 random_state=None, parallel=None, lmbd_max=False, reg=None):
+                 random_state=None, parallel=None, lmbd_max=False, reg=None,
+                 name="batch"):
 
     pobj = list()
     times = list()
@@ -188,8 +189,7 @@ def _batch_learn(X, uv_hat, Z_hat, compute_z_func, compute_d_func,
             print('.', end='')
             sys.stdout.flush()
         if verbose > 1:
-            print('Coordinate descent loop %d / %d [n_jobs=%d]' %
-                  (ii, n_iter, n_jobs))
+            print('[{}] CD iterations {} / {}'.format(name, ii, n_iter))
 
         if lmbd_max == 'per_atom':
             reg_ = reg * np.max([[
@@ -202,8 +202,8 @@ def _batch_learn(X, uv_hat, Z_hat, compute_z_func, compute_d_func,
                             uv_k[:n_channels - 1:-1], mode='valid')
                 for uv_k in uv_hat] for X_i in X])
 
-        if verbose > 1:
-            print('lambda = {:.3e}'.format(np.mean(reg_)))
+        if verbose > 5:
+            print('[{}] lambda = {:.3e}'.format(name, np.mean(reg_)))
 
         start = time.time()
         Z_hat = compute_z_func(X, Z_hat, uv_hat, reg=reg_, parallel=parallel)
@@ -216,14 +216,14 @@ def _batch_learn(X, uv_hat, Z_hat, compute_z_func, compute_d_func,
                           " been learned.", UserWarning)
             break
 
-        if verbose > 1:
-            print("sparsity:", np.sum(Z_hat != 0) / Z_hat.size)
+        if verbose > 5:
+            print("[{}] sparsity: {:.3e}".format(
+                name, np.sum(Z_hat != 0) / Z_hat.size))
 
         # monitor cost function
         pobj.append(obj_func(X, Z_hat, uv_hat, reg=reg_))
-        if verbose > 1:
-            print('[seed %s] Objective (Z) : %0.4e' % (random_state,
-                                                       pobj[-1]))
+        if verbose > 5:
+            print('[{}] Objective (Z) : {:.3e}'.format(name, pobj[-1]))
 
         start = time.time()
 
@@ -237,11 +237,10 @@ def _batch_learn(X, uv_hat, Z_hat, compute_z_func, compute_d_func,
             k0 = null_atom_indices[0]
             uv_hat[k0] = get_max_error_dict(X, Z_hat, uv_hat)[0]
             if verbose > 1:
-                print('[seed %s] Resampled atom %d' % (random_state, k0))
+                print('[{}] Resampled atom {}'.format(name, k0))
 
-        if verbose > 1:
-            print('[seed %s] Objective (d) : %0.4e' % (random_state,
-                                                       pobj[-1]))
+        if verbose > 5:
+            print('[{}] Objective (d) : {:.3e}'.format(name, pobj[-1]))
 
         if end_iter_func(X, Z_hat, uv_hat, pobj):
             break

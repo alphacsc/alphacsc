@@ -143,7 +143,7 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
 
         uv_hat = fista(objective, grad, prox, None, uv_hat0, max_iter,
                        verbose=verbose, momentum=momentum, eps=eps,
-                       adaptive_step_size=True, debug=debug)
+                       adaptive_step_size=True, debug=debug, name="Update uv")
         if debug:
             uv_hat, pobj = uv_hat
 
@@ -180,7 +180,8 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
 
             u_hat = fista(obj, grad_u, prox, 0.99 / Lu, u_hat, max_iter,
                           verbose=verbose, momentum=momentum, eps=eps,
-                          adaptive_step_size=adaptive_step_size)
+                          adaptive_step_size=adaptive_step_size,
+                          name="Update u")
             uv_hat = np.c_[u_hat, v_hat]
             if debug:
                 pobj.append(objective(uv_hat, full=True))
@@ -204,7 +205,8 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
 
             v_hat = fista(obj, grad_v, prox, 0.99 / Lv, v_hat, max_iter,
                           verbose=verbose, momentum=momentum, eps=eps,
-                          adaptive_step_size=adaptive_step_size)
+                          adaptive_step_size=adaptive_step_size,
+                          name="Update v")
             uv_hat = np.c_[u_hat, v_hat]
             if debug:
                 pobj.append(objective(uv_hat, full=True))
@@ -377,41 +379,3 @@ def power_iteration(lin_op, n_points, b_hat_0=None, max_iter=1000, tol=1e-7,
         np.copyto(b_hat_0, b_hat)
 
     return mu_hat
-
-
-def _adaptive_step_size(f, f0=None, alpha=None, tau=2):
-    """
-    Parameters
-    ----------
-    f : callable
-        Optimized function, take only the step size as argument
-    f0 : float
-        value of f at current point, i.e. step size = 0
-    alpha : float
-        Initial step size
-    tau : float
-        Multiplication factor of the step size during the adaptation
-    """
-
-    if alpha is None:
-        alpha = 1
-
-    if f0 is None:
-        f0, _ = f(0)
-    f_alpha, x_alpha = f(alpha)
-    f_alpha_down, x_alpha_down = f(alpha / tau)
-    f_alpha_up, x_alpha_up = f(alpha * tau)
-
-    alphas = [0, alpha / tau, alpha, alpha * tau]
-    fs = [f0, f_alpha_down, f_alpha, f_alpha_up]
-    xs = [None, x_alpha_down, x_alpha, x_alpha_up]
-    i = np.argmin(fs)
-    if i == 0:
-        alpha /= tau * tau
-        f_alpha, x_alpha = f(alpha)
-        while f0 <= f_alpha and alpha > 1e-20:
-            alpha /= tau
-            f_alpha, x_alpha = f(alpha)
-        return f_alpha, x_alpha, alpha
-    else:
-        return fs[i], xs[i], alphas[i]

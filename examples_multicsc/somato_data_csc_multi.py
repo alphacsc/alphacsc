@@ -13,7 +13,7 @@ from alphacsc.datasets.somato import load_data
 mem = Memory(cachedir='.', verbose=0)
 
 
-def run_one(X, csc_kwargs, sfreq, topo_info=None):
+def run_one(X, csc_kwargs, sfreq, topo_info=None, run=0):
     config = {
         'atom': {},
         'Zhat': {}
@@ -21,7 +21,7 @@ def run_one(X, csc_kwargs, sfreq, topo_info=None):
     if topo_info is not None:
         config['topo'] = dict(share=False, info=topo_info)
     return learn_d_z_multi(
-        X, n_jobs=1,
+        X, n_jobs=1, name="Run{}".format(run), verbose=5,
         callback=get_callback_csc(csc_kwargs, sfreq, config=config),
         **csc_kwargs)
 
@@ -57,7 +57,7 @@ if __name__ == "__main__":
     )
 
     grid = dict(
-        n_atoms=[10, 20, 30]
+        n_atoms=[10, 20, 30],
         n_times_atom=[int(sfreq * r) for r in [.05, .1, .15, .2, .3]],
         reg=[.7, .5, .4, .3, .2, .1]
     )
@@ -70,7 +70,7 @@ if __name__ == "__main__":
     with Parallel(n_jobs=args.njobs) as parallel:
         delayed_run_one = delayed(_run_one_cached)
         res = parallel(delayed_run_one(X, csc_kwargs, sfreq=sfreq,
-                                       topo_info=topo_info)
-                       for csc_kwargs in kwargs_grid)
+                                       topo_info=topo_info, run=run)
+                       for run, csc_kwargs in enumerate(kwargs_grid))
 
     IPython.embed()

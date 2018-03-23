@@ -42,7 +42,7 @@ def _support_least_square(X, uv, Z, debug=False):
 
 def fista(f_obj, f_grad, f_prox, step_size, x0, max_iter, verbose=0,
           momentum=False, eps=None, adaptive_step_size=False, debug=False,
-          scipy_line_search=True):
+          scipy_line_search=True, name='ISTA'):
     """ISTA and FISTA algorithm
 
     Parameters
@@ -137,10 +137,48 @@ def fista(f_obj, f_grad, f_prox, step_size, x0, max_iter, verbose=0,
             raise RuntimeError("The D update have diverged.")
     else:
         if verbose > 1:
-            print('update [fista] did not converge')
-    if verbose > 1:
-        print('ISTA: %d iterations' % (ii + 1))
+            print('[{}] update did not converge'.format(name))
+    if verbose > 5:
+        print('[{}]: {} iterations'.format(name, ii + 1))
 
     if debug:
         return x_hat, pobj
     return x_hat
+
+
+def _adaptive_step_size(f, f0=None, alpha=None, tau=2):
+    """
+    Parameters
+    ----------
+    f : callable
+        Optimized function, take only the step size as argument
+    f0 : float
+        value of f at current point, i.e. step size = 0
+    alpha : float
+        Initial step size
+    tau : float
+        Multiplication factor of the step size during the adaptation
+    """
+
+    if alpha is None:
+        alpha = 1
+
+    if f0 is None:
+        f0, _ = f(0)
+    f_alpha, x_alpha = f(alpha)
+    f_alpha_down, x_alpha_down = f(alpha / tau)
+    f_alpha_up, x_alpha_up = f(alpha * tau)
+
+    alphas = [0, alpha / tau, alpha, alpha * tau]
+    fs = [f0, f_alpha_down, f_alpha, f_alpha_up]
+    xs = [None, x_alpha_down, x_alpha, x_alpha_up]
+    i = np.argmin(fs)
+    if i == 0:
+        alpha /= tau * tau
+        f_alpha, x_alpha = f(alpha)
+        while f0 <= f_alpha and alpha > 1e-20:
+            alpha /= tau
+            f_alpha, x_alpha = f(alpha)
+        return f_alpha, x_alpha, alpha
+    else:
+        return fs[i], xs[i], alphas[i]
