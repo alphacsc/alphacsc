@@ -38,8 +38,12 @@ def compute_objective(X=None, X_hat=None, Z_hat=None, uv=None, constants=None,
         obj = _dtw_objective(X, X_hat, gamma=gamma)
     else:
         raise NotImplementedError("loss '{}' is not implemented".format(loss))
-    if reg:
-        obj += reg * Z_hat.sum()
+
+    if reg is not None:
+        if isinstance(reg, float):
+            obj += reg * Z_hat.sum()
+        else:
+            obj += np.sum(reg * Z_hat.sum(axis=(1, 2)))
 
     return obj
 
@@ -147,7 +151,10 @@ def gradient_uv(uv, X=None, Z=None, constants=None, reg=None, loss='l2',
 
     if return_func:
         if reg is not None:
-            cost += reg * Z.sum()
+            if isinstance(reg, float):
+                cost += reg * Z.sum()
+            else:
+                cost += np.sum(reg * Z.sum(axis=(1, 2)))
         return cost, grad
 
     return grad
@@ -170,7 +177,10 @@ def gradient_zi(uv, zi, Xi, constants=None, reg=None, loss='l2',
     if reg is not None:
         grad += reg
         if return_func:
-            cost += reg * zi.sum()
+            if isinstance(reg, float):
+                cost += reg * zi.sum()
+            else:
+                cost += np.sum(reg * zi.sum(axis=1))
 
     if flatten:
         grad = grad.ravel()
@@ -233,7 +243,10 @@ def gradient_d(D=None, uv=None, X=None, Z=None, constants=None, reg=None,
 
     if return_func:
         if reg is not None:
-            cost += reg * Z.sum()
+            if isinstance(reg, float):
+                cost += reg * Z.sum()
+            else:
+                cost += np.dot(reg, Z.sum(axis=(1, 2)))
         return cost, grad_d
 
     return grad_d
@@ -246,7 +259,7 @@ def _dtw_objective(X, X_hat, gamma=None):
     for idx in range(n_trials):
         D = SquaredEuclidean(X_hat[idx].T, X[idx].T)
         sdtw = SoftDTW(D, gamma=gamma)
-        cost += sdtw.compute()
+        cost += np.exp(sdtw.compute())
 
     return cost
 

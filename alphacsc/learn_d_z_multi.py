@@ -26,7 +26,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
                     solver_d='alternate', solver_d_kwargs=dict(),
                     uv_constraint='separate', eps=1e-10,
                     uv_init=None, kmeans_params=dict(), stopping_pobj=None,
-                    algorithm='batch', loss='l2', gamma=.1,
+                    algorithm='batch', loss='l2', gamma=.1, lmbd_max=False,
                     verbose=10, callback=None, random_state=None):
     """Learn atoms and activations using Convolutional Sparse Coding.
 
@@ -72,6 +72,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
         Loss for the data-fit term. Either the norm l2 or the soft-DTW.
     gamma : float
         Parameter of the soft-DTW loss
+    lmbd_max : 'fixed' | 'per_atom' | 'shared'
+        If not fixed, adapt the regularization rate as a ratio of lambda_max.
     verbose : int
         The verbosity level.
     callback : func
@@ -91,6 +93,11 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
     Z_hat : array, shape (n_atoms, n_trials, n_times_valid)
         The sparse activation matrix.
     """
+
+    assert lmbd_max in ['fixed', 'per_atom', 'shared'], (
+        "lmbd_max should be in {'fixed', 'per_atom', 'shared'}"
+    )
+
     n_trials, n_chan, n_times = X.shape
     n_times_valid = n_times - n_times_atom + 1
 
@@ -112,13 +119,13 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
     z_kwargs = dict(verbose=verbose)
     z_kwargs.update(solver_z_kwargs)
 
-    def compute_z_func(X, Z_hat, uv_hat, parallel=None):
+    def compute_z_func(X, Z_hat, uv_hat, reg=None, parallel=None):
         return update_z_multi(X, uv_hat, reg=reg, z0=Z_hat, parallel=parallel,
                               solver=solver_z, solver_kwargs=z_kwargs,
                               loss=loss, gamma=gamma)
 
-    def obj_func(X, Z_hat, uv_hat):
-        return compute_X_and_objective_multi(X, Z_hat, uv_hat, reg,
+    def obj_func(X, Z_hat, uv_hat, reg=None):
+        return compute_X_and_objective_multi(X, Z_hat, uv_hat, reg=reg,
                                              uv_constraint=uv_constraint,
                                              loss=loss, gamma=gamma)
 
@@ -130,14 +137,16 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
                          solver_d=solver_d, uv_constraint=uv_constraint,
                          loss=loss, gamma=gamma, **d_kwargs)
 
-    end_iter_func = get_iteration_func(reg, eps, stopping_pobj, callback)
+    end_iter_func = get_iteration_func(reg, eps, stopping_pobj, callback,
+                                       lmbd_max)
 
     with Parallel(n_jobs=n_jobs) as parallel:
         if algorithm == 'batch':
             pobj, times, uv_hat, Z_hat = _batch_learn(
                 X, uv_hat, Z_hat, compute_z_func, compute_d_func, obj_func,
                 end_iter_func, n_iter=n_iter, n_jobs=n_jobs, verbose=verbose,
-                random_state=random_state, parallel=parallel,
+                random_state=random_state, parallel=parallel, reg=reg,
+                lmbd_max=lmbd_max
             )
         elif algorithm == "greedy":
             raise NotImplementedError(
@@ -160,13 +169,16 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
 
 def _batch_learn(X, uv_hat, Z_hat, compute_z_func, compute_d_func,
                  obj_func, end_iter_func, n_iter=100, n_jobs=1, verbose=0,
-                 random_state=None, parallel=None):
+                 random_state=None, parallel=None, lmbd_max=False, reg=None):
 
     pobj = list()
     times = list()
 
     # monitor cost function
     pobj.append(obj_func(X, Z_hat, uv_hat))
+
+    n_channels = X.shape[1]
+    reg_ = reg
 
     for ii in range(n_iter):  # outer loop of coordinate descent
         if verbose == 1:
@@ -176,8 +188,22 @@ def _batch_learn(X, uv_hat, Z_hat, compute_z_func, compute_d_func,
             print('Coordinate descent loop %d / %d [n_jobs=%d]' %
                   (ii, n_iter, n_jobs))
 
+        if lmbd_max == 'per_atom':
+            reg_ = reg * np.max([[
+                np.convolve(np.dot(uv_k[:n_channels], X_i),
+                            uv_k[:n_channels - 1:-1], mode='valid')
+                for uv_k in uv_hat] for X_i in X], axis=(0, -1))[:, None]
+        elif lmbd_max == 'shared':
+            reg_ = reg * np.max([[
+                np.convolve(np.dot(uv_k[:n_channels], X_i),
+                            uv_k[:n_channels - 1:-1], mode='valid')
+                for uv_k in uv_hat] for X_i in X])
+
+        if verbose > 1:
+            print('lambda = {:.3e}'.format(np.mean(reg_)))
+
         start = time.time()
-        Z_hat = compute_z_func(X, Z_hat, uv_hat, parallel=parallel)
+        Z_hat = compute_z_func(X, Z_hat, uv_hat, reg=reg_, parallel=parallel)
         times.append(time.time() - start)
 
         if len(Z_hat.nonzero()[0]) == 0:
@@ -191,7 +217,7 @@ def _batch_learn(X, uv_hat, Z_hat, compute_z_func, compute_d_func,
             print("sparsity:", np.sum(Z_hat != 0) / Z_hat.size)
 
         # monitor cost function
-        pobj.append(obj_func(X, Z_hat, uv_hat))
+        pobj.append(obj_func(X, Z_hat, uv_hat, reg=reg_))
         if verbose > 1:
             print('[seed %s] Objective (Z) : %0.4e' % (random_state,
                                                        pobj[-1]))
@@ -201,7 +227,7 @@ def _batch_learn(X, uv_hat, Z_hat, compute_z_func, compute_d_func,
         uv_hat = compute_d_func(X, Z_hat, uv_hat)
         times.append(time.time() - start)
 
-        pobj.append(obj_func(X, Z_hat, uv_hat))
+        pobj.append(obj_func(X, Z_hat, uv_hat, reg=reg_))
 
         null_atom_indices = np.where(abs(Z_hat).sum(axis=(1, 2)) == 0)[0]
         if len(null_atom_indices) > 0:
@@ -220,13 +246,16 @@ def _batch_learn(X, uv_hat, Z_hat, compute_z_func, compute_d_func,
     return pobj, times, uv_hat, Z_hat
 
 
-def get_iteration_func(reg, eps, stopping_pobj, callback):
+def get_iteration_func(reg, eps, stopping_pobj, callback, lmbd_max):
     def end_iteration(X, Z_hat, uv_hat, pobj):
         if callable(callback):
             callback(X, uv_hat, Z_hat, reg)
 
+        # Only check that the cost is always going down when the regularization
+        # parameter is fixed.
         if (pobj[-3] - pobj[-2] < eps * pobj[-1] and
-                pobj[-2] - pobj[-1] < eps * pobj[-1]):
+                pobj[-2] - pobj[-1] < eps * pobj[-1] and
+                lmbd_max == 'fixed'):
             if pobj[-3] - pobj[-2] < -eps:
                 raise RuntimeError(
                     "The z update have increased the objective value.")
