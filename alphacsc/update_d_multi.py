@@ -8,11 +8,11 @@
 
 import numpy as np
 from numpy import convolve
-from numba import jit
 from scipy import optimize
 
-from .utils import check_random_state
+from .utils.compat import jit
 from .utils.optim import fista
+from .utils import check_random_state
 from .utils.convolution import numpy_convolve_uv
 
 from .loss_and_gradient import compute_objective, compute_X_and_objective_multi

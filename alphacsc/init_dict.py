@@ -64,15 +64,12 @@ def init_uv(X, n_atoms, n_times_atom, uv_init=None, uv_constraint='separate',
         uv_hat = get_uv(D_hat)
 
     elif uv_init == "kmeans":
-        u_hat = rng.randn(n_atoms, n_channels)
-        v_hat = kmeans_init(X, n_atoms, n_times_atom, random_state=rng,
-                            **kmeans_params)
-        uv_hat = np.c_[u_hat, v_hat]
+        uv_hat = kmeans_init(X, n_atoms, n_times_atom, random_state=rng,
+                             **kmeans_params)
 
     elif uv_init == "ssa":
         u_hat = rng.randn(n_atoms, n_channels)
-        v_hat = ssa_init(X, n_atoms, n_times_atom, random_state=rng,
-                         **kmeans_params)
+        v_hat = ssa_init(X, n_atoms, n_times_atom, random_state=rng)
         uv_hat = np.c_[u_hat, v_hat]
     elif uv_init == 'greedy':
         raise NotImplementedError()
@@ -110,7 +107,10 @@ def kmeans_init(X, n_atoms, n_times_atom, max_iter=0, random_state=None,
     uv: array shape (n_atoms, n_channels + n_times_atom)
         The initial atoms to learn from the data.
     """
+    rng = check_random_state(random_state)
+
     n_trials, n_channels, n_times = X.shape
+    X_original = X
     if distances != 'euclidean':
         # Only take the strongest channels, otherwise X is too big
         n_strong_channels = 1
@@ -134,8 +134,7 @@ def kmeans_init(X, n_atoms, n_times_atom, max_iter=0, random_state=None,
 
     # init the kmeans centers with KMC2
     seeding, indices = kmc2.kmc2(X_embed, k=n_atoms, weights=weights,
-                                 random_state=random_state,
-                                 distances=distances)
+                                 random_state=rng, distances=distances)
 
     # perform the kmeans, or use the seeding if max_iter == 0
     if max_iter == 0:
@@ -153,16 +152,18 @@ def kmeans_init(X, n_atoms, n_times_atom, max_iter=0, random_state=None,
 
         model = KMedoids(n_clusters=n_atoms, init=np.int_(indices),
                          max_iter=max_iter, distance_metric=distance_metric,
-                         random_state=random_state).fit(X_embed)
-        v_init = model.cluster_centers_
+                         random_state=rng).fit(X_embed)
+        indices = model.medoid_idxs_
         labels = model.labels_
 
     else:
         distance_metric = 'euclidean'
         model = MiniBatchKMeans(n_clusters=n_atoms, init=seeding, n_init=1,
-                                max_iter=max_iter,
-                                random_state=random_state).fit(X_embed)
+                                max_iter=max_iter, random_state=rng
+                                ).fit(X_embed)
         v_init = model.cluster_centers_
+        u_init = rng.randn(n_atoms, n_channels)
+        uv_init = np.c_[u_init, v_init]
         labels = model.labels_
 
     if tsne:
@@ -171,9 +172,21 @@ def kmeans_init(X, n_atoms, n_times_atom, max_iter=0, random_state=None,
             if labels is not None:
                 labels = labels[::n_channels]
         plot_tsne(X_embed, v_init, labels=labels, metric=distance_metric,
-                  random_state=random_state)
+                  random_state=rng)
 
-    return v_init
+    if not (distances == 'euclidean' and max_iter > 0):
+        indices = np.array(indices)
+        if distances == 'euclidean':
+            n_window = X_embed.shape[0] // (n_trials * n_channels)
+        else:
+            n_window = X_embed.shape[0] // n_trials
+        medoid_i = (indices // n_window) // n_channels
+        medoid_t = (indices % n_window) * step
+        D = np.array([X_original[i, :, t:t + n_times_atom]
+                      for i, t in zip(medoid_i, medoid_t)])
+        uv_init = get_uv(D)
+
+    return uv_init
 
 
 def plot_tsne(X_embed, X_centers, labels=None, metric='euclidean',

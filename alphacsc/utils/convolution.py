@@ -7,7 +7,8 @@
 #          Alexandre Gramfort <alexandre.gramfort@telecom-paristech.fr>
 
 import numpy as np
-from numba import jit
+
+from .compat import jit
 
 
 def construct_X(Z, ds):

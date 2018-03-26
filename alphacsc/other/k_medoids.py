@@ -182,6 +182,7 @@ class KMedoids(BaseEstimator, ClusterMixin, TransformerMixin):
         # Expose labels_ which are the assignments of
         # the training data to clusters
         self.labels_ = labels
+        self.medoid_idxs_ = medoid_idxs
         self.cluster_centers_ = X[medoid_idxs]
         self.inertia_ = self._compute_inertia(X)
 
