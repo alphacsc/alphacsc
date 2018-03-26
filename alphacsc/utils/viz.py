@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 
 from .tools import get_calling_script, positive_hash
 
-colors = ["#4C72B0", "#55A868", "#C44E52", "#8172B2", "#CCB974", "#64B5CD"]
+COLORS = ["#4C72B0", "#55A868", "#C44E52", "#8172B2", "#CCB974", "#64B5CD"]
 
 DEFAULT_CB = {
     'atom': {},
@@ -71,7 +71,7 @@ def plot_activations_density(Z_hat, n_times_atom, sfreq=1., threshold=0.01,
         fig, axes = plt.subplots(n_atoms, num='density',
                                  figsize=(8, 2 + n_atoms * 3))
 
-    color_cycle = itertools.cycle(colors)
+    color_cycle = itertools.cycle(COLORS)
     for ax, activations, color in zip(axes.ravel(), Z_hat_sum, color_cycle):
         ax.clear()
         time_instants = np.arange(n_times_valid) / float(sfreq)
@@ -253,8 +253,9 @@ def plot_or_replot(axes, data, sfreq=1):
         Value to compute the xlabel.
     """
     if axes[0].lines == []:
-        for ax, xk in zip(axes, data):
-            ax.plot(np.arange(xk.shape[-1]) / sfreq, xk)
+        color_cycle = itertools.cycle(COLORS)
+        for ax, xk, color in zip(axes, data, color_cycle):
+            ax.plot(np.arange(xk.shape[-1]) / sfreq, xk, c=color)
             ax.grid(True)
     else:
         for ax, xk in zip(axes, data):
