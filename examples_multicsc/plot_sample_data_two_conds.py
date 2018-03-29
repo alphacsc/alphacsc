@@ -11,9 +11,12 @@ from alphacsc.learn_d_z_multi import learn_d_z_multi
 from alphacsc.utils import (construct_X_multi_uv, _choose_convolve,
                             plot_callback)
 
+# Trying to do something like:
+# https://martinos.org/mne/stable/auto_examples/decoding/plot_ems_filtering.html#sphx-glr-auto-examples-decoding-plot-ems-filtering-py
+
 dataset = 'sample'
 
-n_atoms = 25
+n_atoms = 10
 # reject = dict(mag=5e-12)
 
 decim = 3
@@ -60,19 +63,25 @@ X = raw[:][0]
 
 # define n_chan, n_times, n_trials
 n_chan, n_times = X.shape
-n_times_atom = int(round(raw.info['sfreq'] * 0.4))  # 400. ms
+n_times_atom = int(round(raw.info['sfreq'] * 0.1))  # 100. ms
+
+epochs = mne.Epochs(raw, events, event_id=event_id, tmin=-0.3, tmax=0.7,
+                    reject=dict(grad=4000e-13))
+epochs = epochs[['Auditory/Left', 'Visual/Left']]
 
 # make windows
-X = X[None, ...]
+# X = X[None, ...]
+X = epochs.get_data()
+n_trials, n_chan, n_times = X.shape
 X *= tukey(n_times, alpha=0.1)[None, None, :]
-X /= np.linalg.norm(X, axis=-1, keepdims=True)
+X /= np.std(X)
 
 plt.close('all')
 callback = plot_callback(X, raw.info, n_atoms)
 
 pobj, times, uv_hat, Z_hat = learn_d_z_multi(
-    X, n_atoms, n_times_atom, random_state=42, n_iter=60, n_jobs=1, reg=1e-2,
-    eps=1e-3, solver_z_kwargs={'factr': 1e12},
+    X, n_atoms, n_times_atom, random_state=42, n_iter=60, n_jobs=1, reg=5e-2,
+    eps=1e-10, solver_z_kwargs={'factr': 1e12},
     solver_d_kwargs={'max_iter': 300}, uv_constraint='separate',
     solver_d='alternate_adaptive', callback=callback)
 
@@ -91,13 +100,17 @@ for k in range(n_atoms):
                                   uv_hat[k, n_chan:][None, :])
 ch_names = ['atom %d' % ii for ii in range(n_atoms)]
 info = mne.create_info(ch_names, sfreq=raw.info['sfreq'])
-raw_atoms = mne.io.RawArray(X_hat_k, info, first_samp=raw.first_samp)
 
-events = events[(events[:, 2] == 3) | (events[:, 2] == 4)]
-raw_atoms.plot(scalings=dict(misc='auto'), events=events)
+evoked_aud = epochs['Auditory/Left'].average()
+evoked_aud.plot_topomap(times=0.093)  # peak at 93 ms
 
-plot_idx = 8
-plt.figure('spatial map')
-mne.viz.plot_topomap(uv_hat[plot_idx, :n_chan], raw.info)
-plt.figure('temporal atom')
-plt.plot(uv_hat[plot_idx, n_chan:])
+evoked_vis = epochs['Visual/Left'].average()
+evoked_vis.plot_topomap(times=[0.093, 0.186])  # peaks at 93 ms and 186 ms
+
+# raw_atoms = mne.io.RawArray(X_hat_k, info, first_samp=raw.first_samp)
+
+# plot_idx = 8
+# plt.figure('spatial map')
+# mne.viz.plot_topomap(uv_hat[plot_idx, :n_chan], raw.info)
+# plt.figure('temporal atom')
+# plt.plot(uv_hat[plot_idx, n_chan:])

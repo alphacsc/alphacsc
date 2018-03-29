@@ -168,22 +168,9 @@ def plot_callback(X, info, n_atoms, layout=None):
     n_atoms_plot = min(15, n_atoms)
 
     fig, axes = plt.subplots(nrows=n_atoms, num='atoms', figsize=(10, 8))
-    nrows = 1 if n_trials > 1 else n_atoms
-    fig_Z, axes_Z = plt.subplots(nrows=nrows, num='Z', figsize=(10, 8),
+    fig_Z, axes_Z = plt.subplots(nrows=n_atoms, num='Z', figsize=(10, 8),
                                  sharex=True, sharey=True)
     fig_topo, axes_topo = plt.subplots(1, n_atoms_plot, figsize=(12, 3))
-
-    if n_trials > 1:
-        fig_Z.axes[0].axis('off')
-        grid = AxesGrid(fig_Z, (0.1, 0.1, 0.8, 0.8),
-                        nrows_ncols=(n_atoms, 1),
-                        axes_pad=0.1,
-                        share_all=True,
-                        label_mode="L",
-                        cbar_location="right",
-                        cbar_mode="single",
-                        cbar_size="2%"
-                        )
 
     if n_atoms == 1:
         axes_topo, axes = [axes_topo], [axes]
@@ -227,10 +214,14 @@ def plot_callback(X, info, n_atoms, layout=None):
                     ax.relim()  # make sure all the data fits
                     ax.autoscale_view(True, True, True)
         else:
+            extent = [times_Z[0], times_Z[-1], 1, len(Z_hat[0])]
             for k in range(n_atoms):
-                im = grid[k].imshow(Z_hat[k], cmap='hot',
-                                    clim=(0.0, Z_hat.max()))
-                grid.cbar_axes[0].colorbar(im)
+                im = axes_Z[k].imshow(Z_hat[k], cmap='hot', origin='lower',
+                                      extent=extent,
+                                      clim=(0.0, Z_hat.max()), aspect='auto')
+            fig_Z.subplots_adjust(right=0.8)
+            cbar_ax = fig_Z.add_axes([0.86, 0.10, 0.03, 0.8])
+            fig_Z.colorbar(im, ax=None, cax=cbar_ax)
 
         fig.canvas.draw()
         fig_topo.canvas.draw()
