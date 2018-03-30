@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from sklearn.externals.joblib import Memory, Parallel, delayed
 from scipy.signal import tukey
 
-from alphacsc.init_dict import init_uv
+from alphacsc.init_dictionaryict import init_dictionary
 
 figure_path = 'figures'
 mem = Memory(cachedir='.', verbose=0)
@@ -50,19 +50,19 @@ def load_data(sfreq=sfreq):
 
 
 all_func = [
-    partial(init_uv, uv_init='random'),
-    partial(init_uv, uv_init='chunk'),
-    partial(init_uv, uv_init='kmeans', kmeans_params=dict(
+    partial(init_dictionary, D_init='random'),
+    partial(init_dictionary, D_init='chunk'),
+    partial(init_dictionary, D_init='kmeans', kmeans_params=dict(
         max_iter=0, distances='euclidean')),
-    partial(init_uv, uv_init='kmeans', kmeans_params=dict(
+    partial(init_dictionary, D_init='kmeans', kmeans_params=dict(
         max_iter=100, distances='euclidean')),
-    partial(init_uv, uv_init='kmeans', kmeans_params=dict(
+    partial(init_dictionary, D_init='kmeans', kmeans_params=dict(
         max_iter=0, distances='roll_inv')),
-    partial(init_uv, uv_init='kmeans', kmeans_params=dict(
+    partial(init_dictionary, D_init='kmeans', kmeans_params=dict(
         max_iter=100, distances='roll_inv')),
-    partial(init_uv, uv_init='kmeans', kmeans_params=dict(
+    partial(init_dictionary, D_init='kmeans', kmeans_params=dict(
         max_iter=0, distances='trans_inv')),
-    partial(init_uv, uv_init='kmeans', kmeans_params=dict(
+    partial(init_dictionary, D_init='kmeans', kmeans_params=dict(
         max_iter=100, distances='trans_inv')),
 ]
 
@@ -99,8 +99,8 @@ fig, axes = plt.subplots(
     len(results), n_atoms, sharex=True, sharey=True,
     figsize=(2 + n_atoms * 3, len(results) * 3))
 axes = np.atleast_1d(axes).reshape(len(results), n_atoms)
-for i_func, (label, uv_init) in enumerate(zip(labels, results)):
-    v_init = uv_init[:, n_channels:]
+for i_func, (label, D_init) in enumerate(zip(labels, results)):
+    v_init = D_init[:, n_channels:]
     for i_atom in range(n_atoms):
         ax = axes[i_func, i_atom]
         ax.plot(

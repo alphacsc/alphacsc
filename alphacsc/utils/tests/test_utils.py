@@ -5,7 +5,7 @@ from numpy.testing import assert_allclose
 from alphacsc.utils.convolution import _sparse_convolve, _dense_convolve
 from alphacsc.utils.convolution import _choose_convolve
 from alphacsc.utils import check_random_state
-from alphacsc.utils import construct_X_multi, construct_X_multi_uv
+from alphacsc.utils import construct_X_multi
 from alphacsc.utils.dictionary import get_D, get_uv
 
 from alphacsc.update_d_multi import prox_uv
@@ -42,8 +42,8 @@ def test_construct_X():
     uv = rng.randn(n_atoms, n_channels + n_times_atoms)
     ds = get_D(uv, n_channels)
 
-    X_uv = construct_X_multi_uv(zi, uv, n_channels)
-    X_ds = construct_X_multi(zi, ds)
+    X_uv = construct_X_multi(zi, D=uv, n_channels=n_channels)
+    X_ds = construct_X_multi(zi, D=ds)
 
     assert_allclose(X_uv, X_ds, atol=1e-16)
 
@@ -74,7 +74,7 @@ def test_patch_reconstruction_error():
                           (n_atoms, n_trials, n_times_valid))
     uv = rng.randn(n_atoms, n_channels + n_times_atoms)
 
-    X = construct_X_multi_uv(Z, uv, n_channels)
+    X = construct_X_multi(Z, D=uv, n_channels=n_channels)
 
     from alphacsc.utils.dictionary import _patch_reconstruction_error
 
@@ -84,7 +84,7 @@ def test_patch_reconstruction_error():
 
     uv = rng.randn(n_atoms, n_channels + n_times_atoms)
     rec = _patch_reconstruction_error(X, Z, uv)
-    X_hat = construct_X_multi_uv(Z, uv, n_channels)
+    X_hat = construct_X_multi(Z, D=uv, n_channels=n_channels)
 
     for i in range(10):
         for j in range(10):

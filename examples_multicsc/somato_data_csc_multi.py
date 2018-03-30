@@ -6,23 +6,20 @@ from sklearn.externals.joblib import Memory, Parallel, delayed
 
 
 from alphacsc.learn_d_z_multi import learn_d_z_multi
-from alphacsc.utils.viz import get_callback_csc
+from alphacsc.utils.viz import get_callback_csc, DEFAULT_CB
 from alphacsc.datasets.somato import load_data
 
 
 mem = Memory(cachedir='.', verbose=0)
 
 
-def run_one(X, csc_kwargs, sfreq, topo_info=None, run=0):
-    config = {
-        'atom': {},
-        'Zhat': {}
-    }
-    if topo_info is not None:
-        config['topo'] = dict(share=False, info=topo_info)
+def run_one(X, csc_kwargs, topo=False, info={}, run=0):
+    config = DEFAULT_CD
+    if topo is not None:
+        config['topo'] = dict(share=False)
     return learn_d_z_multi(
         X, n_jobs=1, name="Run{}".format(run), verbose=5,
-        callback=get_callback_csc(csc_kwargs, sfreq, config=config),
+        callback=get_callback_csc(csc_kwargs, info=info, config=config),
         **csc_kwargs)
 
 
@@ -41,17 +38,14 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     sfreq = 300
-
-    X, topo_info = load_data(sfreq=sfreq)
-    if not args.topo:
-        topo_info = None
+    X, info = load_data(sfreq=sfreq)
 
     default_kwargs = dict(
         n_atoms=25, n_times_atom=int(sfreq * .2),
         random_state=42, n_iter=50, reg=.5, eps=1e-3,
         solver_z="gcd", solver_z_kwargs={'max_iter': 1000},
         solver_d='alternate_adaptive', solver_d_kwargs={'max_iter': 100},
-        uv_init='chunk', uv_constraint='separate', loss='l2',
+        D_init='chunk', uv_constraint='separate', loss='l2',
         loss_params=dict(gamma=0.005, sakoe_chiba_band=10),
         algorithm='batch', lmbd_max='shared'
     )
@@ -69,8 +63,8 @@ if __name__ == "__main__":
 
     with Parallel(n_jobs=args.njobs) as parallel:
         delayed_run_one = delayed(_run_one_cached)
-        res = parallel(delayed_run_one(X, csc_kwargs, sfreq=sfreq,
-                                       topo_info=topo_info, run=run)
+        res = parallel(delayed_run_one(X, csc_kwargs, info=info,
+                                       topo=args.topo, run=run)
                        for run, csc_kwargs in enumerate(kwargs_grid))
 
     IPython.embed()

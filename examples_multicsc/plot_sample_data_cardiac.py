@@ -6,7 +6,7 @@ from scipy.signal import tukey
 
 import mne
 from alphacsc.learn_d_z_multi import learn_d_z_multi
-from alphacsc.utils import construct_X_multi_uv, plot_callback
+from alphacsc.utils import construct_X_multi, plot_callback
 
 
 parser = argparse.ArgumentParser('Programme to launch experiment on multi csc')
@@ -31,7 +31,7 @@ raw.pick_types(meg='mag')
 X = raw[:][0]
 
 # define n_chan, n_times, n_trials
-n_chan, n_times = X.shape
+n_channels, n_times = X.shape
 n_times_atom = int(round(raw.info['sfreq'] * 0.4))  # 400. ms
 
 # make windows
@@ -58,9 +58,9 @@ if args.profile:
     pr.dump_stats('.profile')
 
 plt.figure("Final atom")
-plt.plot(uv_hat[0, n_chan:])
+plt.plot(uv_hat[0, n_channels:])
 
-X_hat = construct_X_multi_uv(Z_hat, uv_hat, n_chan)
+X_hat = construct_X_multi(Z_hat, uv_hat, n_channels=n_channels)
 
 plt.figure("X")
 plt.plot(X.mean(axis=1)[0])

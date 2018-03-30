@@ -85,10 +85,10 @@ def _run(random_state, reg, **kwargs):
         n_jobs=1,
         **kwargs, )
 
-    _, _, uv_init, _ = learn_d_z_multi(n_iter=0, **params)
+    _, _, D_init, _ = learn_d_z_multi(n_iter=0, **params)
     pobj, times, uv_hat, Z_hat = learn_d_z_multi(n_iter=n_iter, **params)
 
-    return pobj, times, uv_hat, Z_hat, uv_init
+    return pobj, times, uv_hat, Z_hat, D_init
 
 
 def one_run(method, random_state, reg):
@@ -101,10 +101,10 @@ X, epochs_info = load_data()
 n_trials, n_channels, n_times = X.shape
 
 all_methods_ = [
-    ('chunk', partial(_run, uv_init='chunk')),
-    ('kmedoid_0', partial(_run, uv_init='kmeans', kmeans_params=dict(
+    ('chunk', partial(_run, D_init='chunk')),
+    ('kmedoid_0', partial(_run, D_init='kmeans', kmeans_params=dict(
         max_iter=0, distances='roll_inv'))),
-    ('kmedoid_100', partial(_run, uv_init='kmeans', kmeans_params=dict(
+    ('kmedoid_100', partial(_run, D_init='kmeans', kmeans_params=dict(
         max_iter=100, distances='roll_inv'))),
 ]
 
@@ -134,8 +134,8 @@ for method in all_methods_:
             figsize=(2 + n_atoms * 3, len(results) * 3))
         axes = np.atleast_1d(axes).reshape(len(results), n_atoms)
         for i_func, (label, res) in enumerate(zip(labels, results)):
-            pobj, times, uv_hat, Z_hat, uv_init = res
-            v_init = uv_init[:, n_channels:]
+            pobj, times, uv_hat, Z_hat, D_init = res
+            v_init = D_init[:, n_channels:]
             for i_atom in range(n_atoms):
                 ax = axes[i_func, i_atom]
                 ax.plot(
@@ -154,7 +154,7 @@ for method in all_methods_:
             figsize=(2 + n_atoms * 3, len(results) * 3))
         axes = np.atleast_1d(axes).reshape(len(results), n_atoms)
         for i_func, (label, res) in enumerate(zip(labels, results)):
-            pobj, times, uv_hat, Z_hat, uv_init = res
+            pobj, times, uv_hat, Z_hat, D_init = res
             v_hat = uv_hat[:, n_channels:]
             for i_atom in range(n_atoms):
                 ax = axes[i_func, i_atom]
@@ -175,7 +175,7 @@ for method in all_methods_:
         i_method = 0
         label = labels[i_method]
         res = results[i_method]
-        pobj, times, uv_hat, Z_hat, uv_init = res
+        pobj, times, uv_hat, Z_hat, D_init = res
         v_hat = uv_hat[:, n_channels:]
         for i_atom in range(n_atoms):
             ax = axes[i_atom]
@@ -191,7 +191,7 @@ for method in all_methods_:
         # ------------ compute the best pobj over all methods
         best_pobj = np.inf
         for label, res in zip(labels, results):
-            pobj, times, uv_hat, Z_hat, uv_init = res
+            pobj, times, uv_hat, Z_hat, D_init = res
             pobj_min = np.array(pobj).min()
             if pobj_min < best_pobj:
                 best_pobj = pobj_min
@@ -205,7 +205,7 @@ for method in all_methods_:
         # ]
         method_colors = [c for c in colors for _ in range(n_states)]
         for label, res, color in zip(labels, results, method_colors):
-            pobj, times, uv_hat, Z_hat, uv_init = res
+            pobj, times, uv_hat, Z_hat, D_init = res
             plt.semilogx(
                 np.cumsum(times)[::2], pobj[::2], '.-', alpha=0.5, label=label,
                 color=color)
@@ -222,7 +222,7 @@ for method in all_methods_:
     if False:
         # ------------ plot the activations of one method
         i_method = 0
-        pobj, times, uv_hat, Z_hat, uv_init = results[i_method]
+        pobj, times, uv_hat, Z_hat, D_init = results[i_method]
         n_trials_plot = min(24, Z_hat.shape[1])
         n_trials, n_channels, n_times = X.shape
         fig, axs = plt.subplots(-(-n_trials_plot // 3), 3, sharex=True,
@@ -248,7 +248,7 @@ for method in all_methods_:
                                                          len(results) * 3))
         axes = np.atleast_1d(axes).reshape(len(results), n_atoms)
         for i_func, (label, res) in enumerate(zip(labels, results)):
-            pobj, times, uv_hat, Z_hat, uv_init = res
+            pobj, times, uv_hat, Z_hat, D_init = res
             for i_atom in range(n_atoms):
                 ax = axes[i_func, i_atom]
                 for i_trial in range(n_trials_plot):
@@ -268,7 +268,7 @@ for method in all_methods_:
             figsize=(2 + n_atoms * 3, len(results) * 3))
         axes = np.atleast_1d(axes).reshape(len(results), n_atoms)
         for i_func, (label, res) in enumerate(zip(labels, results)):
-            pobj, times, uv_hat, Z_hat, uv_init = res
+            pobj, times, uv_hat, Z_hat, D_init = res
             plot_activations_density(Z_hat, n_times_atom, sfreq=sfreq,
                                      axes=axes[i_func], plot_activations=False)
             axes[i_func][0].set_title(label)
@@ -281,7 +281,7 @@ for method in all_methods_:
         axes = np.atleast_1d(axes).reshape(len(results), n_atoms)
 
         for i_func, (label, res) in enumerate(zip(labels, results)):
-            pobj, times, uv_hat, Z_hat, uv_init = res
+            pobj, times, uv_hat, Z_hat, D_init = res
             for i_atom in range(n_atoms):
                 ax = axes[i_func, i_atom]
                 uv_hat[i_atom, :n_channels]

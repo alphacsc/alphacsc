@@ -116,12 +116,12 @@ def run_lbfgs(X, ds_init, reg, n_iter, random_state, label, stopping_pobj,
 def run_multichannel_joint(X, ds_init, reg, n_iter, random_state, label,
                            stopping_pobj):
     n_atoms, n_times_atom = ds_init.shape
-    uv_init = np.c_[np.ones((n_atoms, 1)), ds_init]
+    D_init = np.c_[np.ones((n_atoms, 1)), ds_init]
     pobj, times, d_hat, z_hat = learn_d_z_multi(
         X[:, None, :], n_atoms, n_times_atom,
         solver_d='joint', uv_constraint='separate', solver_z_kwargs=dict(
             factr=1e15), reg=reg, solver_d_kwargs=dict(max_iter=10),
-        n_iter=n_iter, random_state=random_state, uv_init=uv_init, n_jobs=1,
+        n_iter=n_iter, random_state=random_state, D_init=D_init, n_jobs=1,
         stopping_pobj=stopping_pobj, verbose=verbose)
 
     return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
@@ -130,13 +130,13 @@ def run_multichannel_joint(X, ds_init, reg, n_iter, random_state, label,
 def run_multichannel_joint_cd(X, ds_init, reg, n_iter, random_state, label,
                               stopping_pobj):
     n_atoms, n_times_atom = ds_init.shape
-    uv_init = np.c_[np.ones((n_atoms, 1)), ds_init]
+    D_init = np.c_[np.ones((n_atoms, 1)), ds_init]
     pobj, times, d_hat, z_hat = learn_d_z_multi(
         X[:, None, :], n_atoms, n_times_atom,
         solver_d='joint', solver_z='gcd', uv_constraint='joint',
         solver_z_kwargs={'max_iter': 200, 'tol': 1e-5},
         reg=reg, solver_d_kwargs=dict(max_iter=50),
-        n_iter=n_iter, random_state=random_state, uv_init=uv_init, n_jobs=1,
+        n_iter=n_iter, random_state=random_state, D_init=D_init, n_jobs=1,
         stopping_pobj=stopping_pobj, verbose=verbose)
 
     return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
@@ -145,12 +145,12 @@ def run_multichannel_joint_cd(X, ds_init, reg, n_iter, random_state, label,
 def run_multichannel_alternate(X, ds_init, reg, n_iter, random_state, label,
                                stopping_pobj):
     n_atoms, n_times_atom = ds_init.shape
-    uv_init = np.c_[np.ones((n_atoms, 1)), ds_init]
+    D_init = np.c_[np.ones((n_atoms, 1)), ds_init]
     pobj, times, d_hat, z_hat = learn_d_z_multi(
         X[:, None, :], n_atoms, n_times_atom,
         solver_d='alternate', uv_constraint='separate', solver_z_kwargs=dict(
             factr=1e15), reg=reg, solver_d_kwargs=dict(max_iter=10),
-        n_iter=n_iter, random_state=random_state, uv_init=uv_init, n_jobs=1,
+        n_iter=n_iter, random_state=random_state, D_init=D_init, n_jobs=1,
         stopping_pobj=stopping_pobj, verbose=verbose)
 
     return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
@@ -159,12 +159,12 @@ def run_multichannel_alternate(X, ds_init, reg, n_iter, random_state, label,
 def run_multichannel_alternate_adaptive(X, ds_init, reg, n_iter, random_state,
                                         label, stopping_pobj):
     n_atoms, n_times_atom = ds_init.shape
-    uv_init = np.c_[np.ones((n_atoms, 1)), ds_init]
+    D_init = np.c_[np.ones((n_atoms, 1)), ds_init]
     pobj, times, d_hat, z_hat = learn_d_z_multi(
         X[:, None, :], n_atoms, n_times_atom, solver_d='alternate_adaptive',
         uv_constraint='separate', solver_z_kwargs=dict(
             factr=1e15), reg=reg, solver_d_kwargs=dict(max_iter=10),
-        n_iter=n_iter, random_state=random_state, uv_init=uv_init, n_jobs=1,
+        n_iter=n_iter, random_state=random_state, D_init=D_init, n_jobs=1,
         stopping_pobj=stopping_pobj, verbose=verbose)
 
     return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat

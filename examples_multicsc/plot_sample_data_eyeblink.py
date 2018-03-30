@@ -9,7 +9,7 @@ from mne.utils import _reject_data_segments
 from mne.preprocessing import ICA, create_eog_epochs
 
 from alphacsc.learn_d_z_multi import learn_d_z_multi
-from alphacsc.utils import construct_X_multi_uv, _choose_convolve
+from alphacsc.utils import construct_X_multi, _choose_convolve
 from alphacsc.utils import plot_callback
 
 parser = argparse.ArgumentParser('Programme to launch experiment on multi csc')
@@ -58,7 +58,7 @@ X, _ = _reject_data_segments(X, reject, flat=None, decim=None,
                              info=raw.info, tstep=0.3)
 
 # define n_chan, n_times, n_trials
-n_chan, n_times = X.shape
+n_channels, n_times = X.shape
 n_times_atom = int(round(raw.info['sfreq'] * 0.4))  # 400. ms
 
 # make windows
@@ -84,7 +84,7 @@ if args.profile:
     pr.disable()
     pr.dump_stats('.profile')
 
-X_hat = construct_X_multi_uv(Z_hat, uv_hat, n_chan)
+X_hat = construct_X_multi(Z_hat, uv_hat, n_channels=n_channels)
 
 plt.figure("X")
 plt.plot(X.mean(axis=1)[0])
@@ -96,7 +96,7 @@ plt.show()
 X_hat_k = np.zeros((n_atoms, n_times))
 for k in range(n_atoms):
     X_hat_k[k] = _choose_convolve(Z_hat[k, 0, :][None, :],
-                                  uv_hat[k, n_chan:][None, :])
+                                  uv_hat[k, n_channels:][None, :])
 ch_names = ['atom %d' % ii for ii in range(n_atoms)]
 info = mne.create_info(ch_names, sfreq=raw.info['sfreq'])
 raw_atoms = mne.io.RawArray(X_hat_k, info, first_samp=raw.first_samp)
@@ -104,9 +104,9 @@ raw_atoms.plot(scalings=dict(misc='auto'))
 
 eog_idx = 18
 plt.figure('EOG spatial map')
-mne.viz.plot_topomap(uv_hat[eog_idx, :n_chan], raw.info)
+mne.viz.plot_topomap(uv_hat[eog_idx, :n_channels], raw.info)
 plt.figure('EOG temporal atom')
-plt.plot(uv_hat[eog_idx, n_chan:])
+plt.plot(uv_hat[eog_idx, n_channels:])
 
 ica.plot_properties(raw, picks=eog_inds, psd_args={'fmax': 35.},
                     image_args={'sigma': 1.})

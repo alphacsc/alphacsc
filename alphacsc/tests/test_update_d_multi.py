@@ -7,7 +7,7 @@ from alphacsc.loss_and_gradient import gradient_d, gradient_uv
 from alphacsc.update_d_multi import update_uv, prox_uv, _get_d_update_constants
 from alphacsc.utils.optim import fista
 from alphacsc.update_z import power_iteration
-from alphacsc.utils import construct_X_multi, construct_X_multi_uv
+from alphacsc.utils import construct_X_multi
 
 
 DEBUG = True
@@ -40,7 +40,7 @@ def test_simple():
 def test_gradient_d(loss):
     # Generate synchronous D
     n_times_atom, n_times = 10, 100
-    n_chan = 5
+    n_channels = 5
     n_atoms = 2
     n_trials = 3
 
@@ -48,13 +48,13 @@ def test_gradient_d(loss):
     loss_params = dict(gamma=1, sakoe_chiba_band=n_times_atom // 2)
 
     rng = np.random.RandomState()
-    X = rng.normal(size=(n_trials, n_chan, n_times))
+    X = rng.normal(size=(n_trials, n_channels, n_times))
     Z = rng.normal(size=(n_atoms, n_trials, n_times - n_times_atom + 1))
-    d = rng.normal(size=(n_atoms, n_chan, n_times_atom)).ravel()
+    d = rng.normal(size=(n_atoms, n_channels, n_times_atom)).ravel()
 
     def func(d0):
-        D0 = d0.reshape(n_atoms, n_chan, n_times_atom)
-        X_hat = construct_X_multi(Z, D0)
+        D0 = d0.reshape(n_atoms, n_channels, n_times_atom)
+        X_hat = construct_X_multi(Z, D=D0)
         return compute_objective(X, X_hat, loss=loss, loss_params=loss_params)
 
     def grad(d0):
@@ -84,19 +84,19 @@ def test_gradient_d(loss):
 def test_gradient_uv(loss):
     # Generate synchronous D
     n_times_atom, n_times = 10, 100
-    n_chan = 5
+    n_channels = 5
     n_atoms = 2
     n_trials = 3
     loss_params = dict(gamma=1, sakoe_chiba_band=n_times_atom // 2)
 
     rng = np.random.RandomState()
-    X = rng.normal(size=(n_trials, n_chan, n_times))
+    X = rng.normal(size=(n_trials, n_channels, n_times))
     Z = rng.normal(size=(n_atoms, n_trials, n_times - n_times_atom + 1))
-    uv = rng.normal(size=(n_atoms, n_chan + n_times_atom)).ravel()
+    uv = rng.normal(size=(n_atoms, n_channels + n_times_atom)).ravel()
 
     def func(uv0):
-        uv0 = uv0.reshape(n_atoms, n_chan + n_times_atom)
-        X_hat = construct_X_multi_uv(Z, uv0, n_chan)
+        uv0 = uv0.reshape(n_atoms, n_channels + n_times_atom)
+        X_hat = construct_X_multi(Z, D=uv0, n_channels=n_channels)
         return compute_objective(X, X_hat, loss=loss, loss_params=loss_params)
 
     def grad(uv0):
@@ -140,22 +140,22 @@ def test_gradient_uv(loss):
 def test_update_uv(solver_d, uv_constraint):
     # Generate synchronous D
     n_times_atom, n_times = 10, 100
-    n_chan = 5
+    n_channels = 5
     n_atoms = 2
     n_trials = 3
 
     rng = np.random.RandomState()
     Z = rng.normal(size=(n_atoms, n_trials, n_times - n_times_atom + 1))
-    uv0 = rng.normal(size=(n_atoms, n_chan + n_times_atom))
-    uv1 = rng.normal(size=(n_atoms, n_chan + n_times_atom))
+    uv0 = rng.normal(size=(n_atoms, n_channels + n_times_atom))
+    uv1 = rng.normal(size=(n_atoms, n_channels + n_times_atom))
 
     uv0 = prox_uv(uv0)
     uv1 = prox_uv(uv1)
 
-    X = construct_X_multi_uv(Z, uv0, n_chan)
+    X = construct_X_multi(Z, D=uv0, n_channels=n_channels)
 
     def objective(uv):
-        X_hat = construct_X_multi_uv(Z, uv, n_chan)
+        X_hat = construct_X_multi(Z, D=uv, n_channels=n_channels)
         return compute_objective(X, X_hat, loss='l2')
 
     # Ensure that the known optimal point is stable
@@ -189,25 +189,25 @@ def test_fast_cost():
     """Test that _shifted_objective_uv compute the right thing"""
     # Generate synchronous D
     n_times_atom, n_times = 10, 40
-    n_chan = 3
+    n_channels = 3
     n_atoms = 2
     n_trials = 4
 
     rng = np.random.RandomState()
-    X = rng.normal(size=(n_trials, n_chan, n_times))
+    X = rng.normal(size=(n_trials, n_channels, n_times))
     Z = rng.normal(size=(n_atoms, n_trials, n_times - n_times_atom + 1))
 
     constants = _get_d_update_constants(X, Z)
 
     def objective(uv):
-        X_hat = construct_X_multi_uv(Z, uv, n_chan)
+        X_hat = construct_X_multi(Z, D=uv, n_channels=n_channels)
         res = X - X_hat
         return .5 * np.sum(res * res)
 
     for _ in range(5):
-        uv = rng.normal(size=(n_atoms, n_chan + n_times_atom))
+        uv = rng.normal(size=(n_atoms, n_channels + n_times_atom))
 
-        cost_fast = compute_objective(uv=uv, constants=constants)
+        cost_fast = compute_objective(D=uv, constants=constants)
         cost_full = objective(uv)
         assert np.isclose(cost_full, cost_fast)
 
@@ -244,12 +244,12 @@ def test_constants_d():
     """Test that _shifted_objective_uv compute the right thing"""
     # Generate synchronous D
     n_times_atom, n_times = 10, 100
-    n_chan = 5
+    n_channels = 5
     n_atoms = 2
     n_trials = 3
 
     rng = np.random.RandomState()
-    X = rng.normal(size=(n_trials, n_chan, n_times))
+    X = rng.normal(size=(n_trials, n_channels, n_times))
     Z = rng.normal(size=(n_atoms, n_trials, n_times - n_times_atom + 1))
 
     from alphacsc.update_d_multi import _get_d_update_constants

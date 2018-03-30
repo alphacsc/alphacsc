@@ -16,16 +16,17 @@ from joblib import Parallel
 from .utils import check_random_state
 from .loss_and_gradient import compute_X_and_objective_multi
 from .update_z_multi import update_z_multi
-from .update_d_multi import update_uv
-from .init_dict import init_uv, get_max_error_dict
+from .update_d_multi import update_uv, update_d
+from .init_dict import init_dictionary, get_max_error_dict
 from .utils.profile_this import profile_this  # noqa
+from .utils.dictionary import get_lambda_max
 
 
 def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
                     solver_z='l_bfgs', solver_z_kwargs=dict(),
                     solver_d='alternate', solver_d_kwargs=dict(),
-                    uv_constraint='separate', eps=1e-10,
-                    uv_init=None, kmeans_params=dict(), stopping_pobj=None,
+                    rank1=True, uv_constraint='separate', eps=1e-10,
+                    D_init=None, kmeans_params=dict(), stopping_pobj=None,
                     algorithm='batch', loss='l2',
                     loss_params=dict(gamma=.1, sakoe_chiba_band=10),
                     lmbd_max='fixed', verbose=10, callback=None,
@@ -56,6 +57,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
         'alternate' (default) | 'joint' | 'lbfgs'
     solver_d_kwargs : dict
         Additional keyword arguments to provide to update_d
+    rank1 : boolean
+        If set to True, learn rank 1 dictionary atoms.
     uv_constraint : str in {'joint', 'separate', 'box'}
         The kind of norm constraint on the atoms:
         If 'joint', the constraint is norm_2([u, v]) <= 1
@@ -64,8 +67,10 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
     eps : float
         Stopping criterion. If the cost descent after a uv and a z update is
         smaller than eps, return.
-    uv_init : array, shape (n_atoms, n_channels + n_times_atoms)
-        The initial atoms.
+    D_init : str or array, shape (n_atoms, n_channels + n_times_atoms) or
+                           shape (n_atoms, n_channels, n_times_atom)
+        The initial atoms or an initialization scheme in {'kmeans' | 'ssa' |
+        'chunks' | 'random'}.
     kmeans_params : dict
         Dictionnary of parameters for the kmeans init method.
     algorithm : 'batch' | 'greedy' | 'online'
@@ -110,9 +115,9 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
     start = time.time()
     rng = check_random_state(random_state)
 
-    uv_hat = init_uv(X, n_atoms, n_times_atom, uv_init=uv_init,
-                     uv_constraint=uv_constraint, random_state=rng,
-                     kmeans_params=kmeans_params)
+    D_hat = init_dictionary(X, n_atoms, n_times_atom, D_init=D_init,
+                            rank1=rank1, uv_constraint=uv_constraint,
+                            kmeans_params=kmeans_params, random_state=rng)
     b_hat_0 = rng.randn(n_atoms * (n_chan + n_times_atom))
     times.append(time.time() - start)
 
@@ -121,13 +126,13 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
     z_kwargs = dict(verbose=verbose)
     z_kwargs.update(solver_z_kwargs)
 
-    def compute_z_func(X, Z_hat, uv_hat, reg=None, parallel=None):
-        return update_z_multi(X, uv_hat, reg=reg, z0=Z_hat, parallel=parallel,
+    def compute_z_func(X, Z_hat, D_hat, reg=None, parallel=None):
+        return update_z_multi(X, D_hat, reg=reg, z0=Z_hat, parallel=parallel,
                               solver=solver_z, solver_kwargs=z_kwargs,
                               loss=loss, loss_params=loss_params)
 
-    def obj_func(X, Z_hat, uv_hat, reg=None):
-        return compute_X_and_objective_multi(X, Z_hat, uv_hat, reg=reg,
+    def obj_func(X, Z_hat, D_hat, reg=None):
+        return compute_X_and_objective_multi(X, Z_hat, D_hat, reg=reg,
                                              uv_constraint=uv_constraint,
                                              loss=loss,
                                              loss_params=loss_params)
@@ -135,18 +140,22 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
     d_kwargs = dict(verbose=verbose, eps=1e-8)
     d_kwargs.update(solver_d_kwargs)
 
-    def compute_d_func(X, Z_hat, uv_hat):
-        return update_uv(X, Z_hat, uv_hat0=uv_hat, b_hat_0=b_hat_0,
-                         solver_d=solver_d, uv_constraint=uv_constraint,
-                         loss=loss, loss_params=loss_params, **d_kwargs)
+    def compute_d_func(X, Z_hat, D_hat):
+        if rank1:
+            return update_uv(X, Z_hat, uv_hat0=D_hat, b_hat_0=b_hat_0,
+                             solver_d=solver_d, uv_constraint=uv_constraint,
+                             loss=loss, loss_params=loss_params, **d_kwargs)
+        else:
+            return update_d(X, Z_hat, D_hat0=D_hat, b_hat_0=b_hat_0,
+                            solver_d=solver_d, uv_constraint=uv_constraint,
+                            loss=loss, loss_params=loss_params, **d_kwargs)
 
-    end_iter_func = get_iteration_func(reg, eps, stopping_pobj, callback,
-                                       lmbd_max)
+    end_iter_func = get_iteration_func(eps, stopping_pobj, callback, lmbd_max)
 
     with Parallel(n_jobs=n_jobs) as parallel:
         if algorithm == 'batch':
-            pobj, times, uv_hat, Z_hat = _batch_learn(
-                X, uv_hat, Z_hat, compute_z_func, compute_d_func, obj_func,
+            pobj, times, D_hat, Z_hat = _batch_learn(
+                X, D_hat, Z_hat, compute_z_func, compute_d_func, obj_func,
                 end_iter_func, n_iter=n_iter, n_jobs=n_jobs, verbose=verbose,
                 random_state=random_state, parallel=parallel, reg=reg,
                 lmbd_max=lmbd_max, name=name
@@ -163,14 +172,14 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
 
         # recompute Z_hat with no regularization and keeping the support fixed
         Z_hat = update_z_multi(
-            X, uv_hat, reg=0, z0=Z_hat, parallel=parallel, solver=solver_z,
+            X, D_hat, reg=0, z0=Z_hat, parallel=parallel, solver=solver_z,
             solver_kwargs=solver_z_kwargs, freeze_support=True, loss=loss,
             loss_params=loss_params)
 
-    return pobj, times, uv_hat, Z_hat
+    return pobj, times, D_hat, Z_hat
 
 
-def _batch_learn(X, uv_hat, Z_hat, compute_z_func, compute_d_func,
+def _batch_learn(X, D_hat, Z_hat, compute_z_func, compute_d_func,
                  obj_func, end_iter_func, n_iter=100, n_jobs=1, verbose=0,
                  random_state=None, parallel=None, lmbd_max=False, reg=None,
                  name="batch"):
@@ -179,9 +188,7 @@ def _batch_learn(X, uv_hat, Z_hat, compute_z_func, compute_d_func,
     times = list()
 
     # monitor cost function
-    pobj.append(obj_func(X, Z_hat, uv_hat))
-
-    n_channels = X.shape[1]
+    pobj.append(obj_func(X, Z_hat, D_hat))
     reg_ = reg
 
     for ii in range(n_iter):  # outer loop of coordinate descent
@@ -191,22 +198,16 @@ def _batch_learn(X, uv_hat, Z_hat, compute_z_func, compute_d_func,
         if verbose > 1:
             print('[{}] CD iterations {} / {}'.format(name, ii, n_iter))
 
-        if lmbd_max == 'per_atom':
-            reg_ = reg * np.max([[
-                np.convolve(np.dot(uv_k[:n_channels], X_i),
-                            uv_k[:n_channels - 1:-1], mode='valid')
-                for uv_k in uv_hat] for X_i in X], axis=(0, -1))[:, None]
-        elif lmbd_max == 'shared':
-            reg_ = reg * np.max([[
-                np.convolve(np.dot(uv_k[:n_channels], X_i),
-                            uv_k[:n_channels - 1:-1], mode='valid')
-                for uv_k in uv_hat] for X_i in X])
+        if lmbd_max != 'fixed':
+            reg_ = reg * get_lambda_max(X, D_hat)
+            if lmbd_max == 'shared':
+                reg_ = reg_.max()
 
         if verbose > 5:
             print('[{}] lambda = {:.3e}'.format(name, np.mean(reg_)))
 
         start = time.time()
-        Z_hat = compute_z_func(X, Z_hat, uv_hat, reg=reg_, parallel=parallel)
+        Z_hat = compute_z_func(X, Z_hat, D_hat, reg=reg_, parallel=parallel)
         times.append(time.time() - start)
 
         if len(Z_hat.nonzero()[0]) == 0:
@@ -221,37 +222,37 @@ def _batch_learn(X, uv_hat, Z_hat, compute_z_func, compute_d_func,
                 name, np.sum(Z_hat != 0) / Z_hat.size))
 
         # monitor cost function
-        pobj.append(obj_func(X, Z_hat, uv_hat, reg=reg_))
+        pobj.append(obj_func(X, Z_hat, D_hat, reg=reg_))
         if verbose > 5:
             print('[{}] Objective (Z) : {:.3e}'.format(name, pobj[-1]))
 
         start = time.time()
 
-        uv_hat = compute_d_func(X, Z_hat, uv_hat)
+        D_hat = compute_d_func(X, Z_hat, D_hat)
         times.append(time.time() - start)
 
-        pobj.append(obj_func(X, Z_hat, uv_hat, reg=reg_))
+        pobj.append(obj_func(X, Z_hat, D_hat, reg=reg_))
 
         null_atom_indices = np.where(abs(Z_hat).sum(axis=(1, 2)) == 0)[0]
         if len(null_atom_indices) > 0:
             k0 = null_atom_indices[0]
-            uv_hat[k0] = get_max_error_dict(X, Z_hat, uv_hat)[0]
+            D_hat[k0] = get_max_error_dict(X, Z_hat, D_hat)[0]
             if verbose > 1:
                 print('[{}] Resampled atom {}'.format(name, k0))
 
         if verbose > 5:
             print('[{}] Objective (d) : {:.3e}'.format(name, pobj[-1]))
 
-        if end_iter_func(X, Z_hat, uv_hat, pobj):
+        if end_iter_func(X, Z_hat, D_hat, pobj):
             break
 
-    return pobj, times, uv_hat, Z_hat
+    return pobj, times, D_hat, Z_hat
 
 
-def get_iteration_func(reg, eps, stopping_pobj, callback, lmbd_max):
-    def end_iteration(X, Z_hat, uv_hat, pobj):
+def get_iteration_func(eps, stopping_pobj, callback, lmbd_max):
+    def end_iteration(X, Z_hat, D_hat, pobj):
         if callable(callback):
-            callback(X, uv_hat, Z_hat, reg)
+            callback(X, D_hat, Z_hat, pobj)
 
         # Only check that the cost is always going down when the regularization
         # parameter is fixed.

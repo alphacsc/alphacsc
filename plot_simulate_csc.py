@@ -57,7 +57,7 @@ reg_ = reg
 
 rng = check_random_state(random_state)
 ds_init = rng.randn(n_atoms, n_times_atom)
-uv_init = np.hstack([np.ones((n_atoms, 1)), ds_init])
+D_init = np.hstack([np.ones((n_atoms, 1)), ds_init])
 
 if True:
     pobj, times, uv_hat, Z_hat = learn_d_z_multi(

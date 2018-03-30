@@ -17,7 +17,8 @@ COLORS = ["#4C72B0", "#55A868", "#C44E52", "#8172B2", "#CCB974", "#64B5CD"]
 
 DEFAULT_CB = {
     'atom': {},
-    'Zhat': {}
+    'Zhat': {},
+    'pobj': {}
 }
 PRINT_KWARGS = {
     'n_atoms': 'K',
@@ -39,7 +40,7 @@ def kde_sklearn(x, x_grid, bandwidth):
 
 
 def plot_activations_density(Z_hat, n_times_atom, sfreq=1., threshold=0.01,
-                             bandwidth='auto', axes=None,
+                             bandwidth='auto', axes=None, t_min=0,
                              plot_activations=False):
     """
     Parameters
@@ -56,6 +57,8 @@ def plot_activations_density(Z_hat, n_times_atom, sfreq=1., threshold=0.01,
         Bandwidth (in sec) of the kernel
     axes : array of axes, or None
         Axes to plot into
+    t_min : float
+        Time offset for the xlabel display
     plot_activations : boolean
         If True, the significant activations are plotted as black dots
     """
@@ -74,7 +77,7 @@ def plot_activations_density(Z_hat, n_times_atom, sfreq=1., threshold=0.01,
     color_cycle = itertools.cycle(COLORS)
     for ax, activations, color in zip(axes.ravel(), Z_hat_sum, color_cycle):
         ax.clear()
-        time_instants = np.arange(n_times_valid) / float(sfreq)
+        time_instants = np.arange(n_times_valid) / float(sfreq) + t_min
         selection = activations > threshold * Z_hat_sum.max()
         n_elements = selection.sum()
 
@@ -250,12 +253,13 @@ def plot_or_replot(axes, data, sfreq=1):
             ax.grid(True)
     else:
         for ax, xk in zip(axes, data):
+            ax.lines[0].set_xdata(np.arange(xk.shape[-1]) / sfreq)
             ax.lines[0].set_ydata(xk)
             ax.relim()  # make sure all the data fits
             ax.autoscale_view(True, True, True)
 
 
-def get_callback_csc(csc_kwargs, sfreq=1, config=DEFAULT_CB):
+def get_callback_csc(csc_kwargs, config=DEFAULT_CB, info={}):
     """Setup and return a callback for csc scripts
 
     Parameters
@@ -263,11 +267,8 @@ def get_callback_csc(csc_kwargs, sfreq=1, config=DEFAULT_CB):
     csc_kwargs : dict
         Parameters used to run the csc experiment. It will be hashed and used
         in the name of the files.
-    sfreq : float
-        Sampling frequency of the data, to correctly disply the time.
-    plot_topo : Epoch.info or None
-        If this parameter is used, plot the activation map of the learned
-        dictionary.
+    info : dict
+        Information on the signal.
     config : dict
         The key should be in {'atom', 'Xhat', 'Zhat', 'topo'}. and the value
         should be a configuration dictionary. The considered config are:
@@ -299,6 +300,10 @@ def get_callback_csc(csc_kwargs, sfreq=1, config=DEFAULT_CB):
     n_atoms = csc_kwargs.get('n_atoms')
     n_times_atom = csc_kwargs.get('n_times_atom')
 
+    # Extract plot information
+    sfreq = info.get('sfreq', 1)
+    t_min = info.get('t_min', 0)
+
     # Compute the shape of the subplot
     ncols = int(np.ceil(n_atoms / 5.))
     nrows = min(5, n_atoms)
@@ -308,21 +313,29 @@ def get_callback_csc(csc_kwargs, sfreq=1, config=DEFAULT_CB):
 
     figs = {}
     for name, conf in config.items():
-        assert name in ['atom', 'Zhat', 'Xhat', 'topo']
+        assert name in ['atom', 'Zhat', 'Xhat', 'topo', 'pobj']
 
         fname = "{} - {}".format(name, os.getpid())
         shared_axes = conf.get('share', True)
         width = 5
+        nc, nr = ncols, nrows
         if name == 'topo':
-            assert 'info' in conf, "topo cb require info args in its config"
             width = 3
-        f, axes = plt.subplots(nrows=nrows, ncols=ncols, num=fname,
-                               figsize=(width * ncols, 10),
+        if name == 'pobj':
+            nc = nr = 1
+            width = 10
+        f, axes = plt.subplots(nrows=nr, ncols=nc, num=fname,
+                               figsize=(width * nc, 10), squeeze=False,
                                sharex=shared_axes, sharey=shared_axes)
+
         text = ["{}: {}".format(PRINT_KWARGS[k], v)
                 for k, v in csc_kwargs.items() if k in PRINT_KWARGS]
         text = "\t".join(text)
         f.suptitle(text, fontsize=18, wrap=True)
+
+        if name == 'pobj':
+            axes[0, 0].set_xscale('log')
+            axes[0, 0].set_yscale('log')
 
         figs[name] = (f, axes)
     for f, _ in figs.values():
@@ -331,22 +344,26 @@ def get_callback_csc(csc_kwargs, sfreq=1, config=DEFAULT_CB):
         f.canvas.draw()
     plt.pause(.001)
 
-    def callback(X, uv_hat, Z_hat, reg):
+    def callback(X, uv_hat, Z_hat, pobj):
 
         n_channels = X.shape[1]
 
         if 'topo' in figs:
             axes = figs['topo'][1]
-            plot_topo = config['topo']['info']
             for idx, ax in enumerate(axes.ravel()):
                 ax.clear()
-                mne.viz.plot_topomap(uv_hat[idx, :n_channels], plot_topo,
+                mne.viz.plot_topomap(uv_hat[idx, :n_channels], info,
                                      axes=ax, show=False)
                 ax.set_title('atom %d' % idx)
 
         if 'atom' in figs:
             axes = figs['atom'][1].ravel()
-            plot_or_replot(axes, uv_hat[:, n_channels:], sfreq)
+            if config['atom'].get('rank1', True):
+                plot_or_replot(axes, uv_hat[:, n_channels:], sfreq)
+            else:
+                i0 = uv_hat.std(axis=-1).argmax(axis=-1)
+                plot_or_replot(
+                    axes, [uv_hat[k, i0[k]] for k in range(n_atoms)])
 
         if 'Xhat' in figs:
             X_hat = [np.convolve(Zk, uvk[n_channels:])
@@ -358,7 +375,12 @@ def get_callback_csc(csc_kwargs, sfreq=1, config=DEFAULT_CB):
             axes = figs['Zhat'][1]
             plot_activations_density(Z_hat, n_times_atom, sfreq=sfreq,
                                      plot_activations=False, axes=axes,
-                                     bandwidth='auto')
+                                     bandwidth='auto', t_min=t_min)
+
+        if 'pobj' in figs:
+            axes = figs['pobj'][1].ravel()
+            cost = np.array([pobj])
+            plot_or_replot(axes, cost - np.min(cost) + 1e-6)
 
         # Update and save the figures
         for fig_name, (f, _) in figs.items():

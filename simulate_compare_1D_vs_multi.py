@@ -2,14 +2,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from alphacsc.simulate import get_atoms, get_activations
-from alphacsc.utils import construct_X_multi_uv
+from alphacsc.utils import construct_X_multi
 from alphacsc.update_d_multi import prox_uv
 from alphacsc.learn_d_z_multi import learn_d_z_multi
 from alphacsc.learn_d_z import learn_d_z
 
 # Generate synchronous D
 n_times_atom, n_times = 64, 512
-n_chan = 100
+n_channels = 100
 n_atoms = 2
 n_trials = 100
 n_iter = 100
@@ -17,18 +17,18 @@ n_iter = 100
 v0 = get_atoms('triangle', n_times_atom)  # temporal atoms
 v1 = get_atoms('square', n_times_atom)
 
-u0 = get_atoms('sin', n_chan)  # spatial maps
-u1 = get_atoms('cos', n_chan)
+u0 = get_atoms('sin', n_channels)  # spatial maps
+u1 = get_atoms('cos', n_channels)
 
 uv = np.array([np.r_[u0, v0], np.r_[u1, v1]])
-uv = prox_uv(uv, 'separate', n_chan)
+uv = prox_uv(uv, 'separate', n_channels)
 
 # add atoms
 rng = np.random.RandomState(27)
 shape_Z = (n_atoms, n_trials, n_times_atom)
 Z = get_activations(rng, shape_Z)
 
-X = construct_X_multi_uv(Z, uv, n_chan)
+X = construct_X_multi(Z, uv, n_channels=n_channels)
 X += 0.01 * rng.randn(*X.shape)
 
 reg = 0.01
@@ -49,8 +49,8 @@ pobj, times, d_hat, Z_hat = learn_d_z(
     solver_d_kwargs=dict(factr=100), random_state=random_state,
     n_jobs=1, verbose=1)
 
-plt.plot(uv_hat[:, n_chan:].T, 'g', label='Multivariate')
+plt.plot(uv_hat[:, n_channels:].T, 'g', label='Multivariate')
 plt.plot(d_hat.T, 'r', label='1D')
-plt.plot(uv[:, n_chan:].T, 'k--', label='ground truth')
+plt.plot(uv[:, n_channels:].T, 'k--', label='ground truth')
 plt.legend()
 plt.show()

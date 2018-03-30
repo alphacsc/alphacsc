@@ -4,7 +4,7 @@ import numpy as np
 from alphacsc.update_z_multi import update_z_multi
 from alphacsc.update_z_multi import _compute_DtD, _coordinate_descent_idx
 from alphacsc.loss_and_gradient import compute_X_and_objective_multi
-from alphacsc.utils import construct_X_multi, get_D
+from alphacsc.utils import construct_X_multi
 
 
 @pytest.mark.parametrize('loss', ['l2', 'dtw'])
@@ -36,14 +36,14 @@ def test_update_z_multi_decrease_cost_function(loss):
     uv = np.random.randn(n_atoms, n_channels + n_times_atom)
     z = np.random.randn(n_atoms, n_trials, n_times_valid)
 
-    loss_0 = compute_X_and_objective_multi(X=X, Z_hat=z, uv_hat=uv, reg=reg,
+    loss_0 = compute_X_and_objective_multi(X=X, Z_hat=z, D_hat=uv, reg=reg,
                                            feasible_evaluation=False,
                                            loss=loss, loss_params=loss_params)
 
     z_hat = update_z_multi(X, uv, reg, z0=z, solver='l_bfgs', loss=loss,
                            loss_params=loss_params)
 
-    loss_1 = compute_X_and_objective_multi(X=X, Z_hat=z_hat, uv_hat=uv,
+    loss_1 = compute_X_and_objective_multi(X=X, Z_hat=z_hat, D_hat=uv,
                                            reg=reg, feasible_evaluation=False,
                                            loss=loss, loss_params=loss_params)
     assert loss_1 < loss_0
@@ -60,13 +60,13 @@ def test_support_least_square():
     z = np.random.randn(n_atoms, n_trials, n_times_valid)
 
     # The initial loss should be high
-    loss_0 = compute_X_and_objective_multi(X, z, uv, reg,
+    loss_0 = compute_X_and_objective_multi(X, Z_hat=z, D_hat=uv, reg=reg,
                                            feasible_evaluation=False)
 
     # The loss after updating z should be lower
     z_hat = update_z_multi(X, uv, reg, z0=z, solver='l_bfgs',
                            solver_kwargs={'factr': 1e7})
-    loss_1 = compute_X_and_objective_multi(X, z_hat, uv, reg,
+    loss_1 = compute_X_and_objective_multi(X, Z_hat=z_hat, D_hat=uv, reg=reg,
                                            feasible_evaluation=False)
     assert loss_1 < loss_0
 
@@ -98,10 +98,9 @@ def test_cd():
     Z[Z < 2] = 0
     Z0[Z0 < 2] = 0
 
-    D0 = get_D(uv, n_channels)
-    X = construct_X_multi(Z0, D0)
+    X = construct_X_multi(Z0, D=uv, n_channels=n_channels)
 
-    loss_0 = compute_X_and_objective_multi(X=X, Z_hat=Z0, uv_hat=uv, reg=reg,
+    loss_0 = compute_X_and_objective_multi(X=X, Z_hat=Z0, D_hat=uv, reg=reg,
                                            loss='l2',
                                            feasible_evaluation=False)
 
@@ -116,13 +115,13 @@ def test_cd():
 
     # Ensure that the initialization is good, by using a nearly optimal point
     # and verifying that the cost does not goes up.
-    z_hat = update_z_multi(X, uv, reg, z0=Z0,
+    z_hat = update_z_multi(X, D=uv, reg=reg, z0=Z0,
                            solver='gcd',
                            solver_kwargs={
                                'max_iter': 3, 'tol': 1e-5}
                            )
 
-    loss_1 = compute_X_and_objective_multi(X=X, Z_hat=z_hat, uv_hat=uv,
+    loss_1 = compute_X_and_objective_multi(X=X, Z_hat=z_hat, D_hat=uv,
                                            reg=reg, loss='l2',
                                            feasible_evaluation=False)
     assert loss_1 <= loss_0, "Bad initialization in greedy CD."

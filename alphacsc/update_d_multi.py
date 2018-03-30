@@ -7,35 +7,15 @@
 #          Thomas Moreau <thomas.moreau@inria.fr>
 
 import numpy as np
-from numpy import convolve
 from scipy import optimize
 
-from .utils.compat import jit
 from .utils.optim import fista
 from .utils import check_random_state
 from .utils.convolution import numpy_convolve_uv
+from .utils.compute_constants import compute_ZtZ
 
 from .loss_and_gradient import compute_objective, compute_X_and_objective_multi
 from .loss_and_gradient import gradient_uv, gradient_d
-
-
-def _dense_transpose_convolve(Z, residual):
-    """Convolve residual[i] with the transpose for each atom k, and return the sum
-
-    Parameters
-    ----------
-    Z : array, shape (n_atoms, n_trials, n_times_valid)
-    residual : array, shape (n_trials, n_chan, n_times)
-
-    Return
-    ------
-    grad_D : array, shape (n_atoms, n_chan, n_times_atom)
-
-    """
-    return np.sum([[[convolve(res_ip, zik[::-1], mode='valid')  # n_times_atom
-                     for res_ip in res_i]                       # n_chan
-                    for zik, res_i in zip(zk, residual)]        # n_trials
-                   for zk in Z], axis=1)                        # n_atoms
 
 
 def prox_uv(uv, uv_constraint='joint', n_chan=None, return_norm=False):
@@ -67,6 +47,16 @@ def prox_uv(uv, uv_constraint='joint', n_chan=None, return_norm=False):
         return uv, norm_uv
     else:
         return uv
+
+
+def prox_d(D, return_norm=False):
+    norm_d = np.maximum(1, np.linalg.norm(D, axis=(1, 2)))
+    D /= norm_d[:, None, None]
+
+    if return_norm:
+        return D, norm_d
+    else:
+        return D
 
 
 def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
@@ -127,8 +117,8 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
 
     def objective(uv, full=False):
         if loss == 'l2':
-            return compute_objective(uv=uv, constants=constants)
-        return compute_X_and_objective_multi(X, Z, uv_hat=uv, loss=loss,
+            return compute_objective(D=uv, constants=constants)
+        return compute_X_and_objective_multi(X, Z, D_hat=uv, loss=loss,
                                              loss_params=loss_params)
 
     if solver_d == 'joint':
@@ -168,7 +158,7 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
 
             def grad_u(u):
                 uv = np.c_[u, v_hat]
-                grad_d = gradient_d(X=X, Z=Z, uv=uv, constants=constants,
+                grad_d = gradient_d(uv, X=X, Z=Z, constants=constants,
                                     loss=loss, loss_params=loss_params)
                 return (grad_d * uv[:, None, n_chan:]).sum(axis=2)
 
@@ -193,7 +183,7 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
 
             def grad_v(v):
                 uv = np.c_[u_hat, v]
-                grad_d = gradient_d(uv=uv, X=X, Z=Z, constants=constants,
+                grad_d = gradient_d(uv, X=X, Z=Z, constants=constants,
                                     loss=loss, loss_params=loss_params)
                 return (grad_d * uv[:, :n_chan, None]).sum(axis=1)
 
@@ -255,6 +245,98 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
     return uv_hat
 
 
+def update_d(X, Z, D_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
+             solver_d='alternate', momentum=False, uv_constraint='separate',
+             loss='l2', loss_params=dict(), verbose=0):
+    """Learn d's in time domain.
+
+    Parameters
+    ----------
+    X : array, shape (n_trials, n_times)
+        The data for sparse coding
+    Z : array, shape (n_atoms, n_trials, n_times - n_times_atom + 1)
+        The code for which to learn the atoms
+    D_hat0 : array, shape (n_atoms, n_channels, n_times_atom)
+        The initial atoms.
+    b_hat_0 : array, shape (n_atoms * (n_channels + n_times_atom))
+        Init eigen-vector vector used in power_iteration, used in warm start.
+    debug : bool
+        If True, return the cost at each iteration.
+    momentum : bool
+        If True, use an accelerated version of the proximal gradient descent.
+    solver_d : str in {'fista', 'lbfgs'}
+        The type of solver to update d:
+        If 'fista', the solver optimize D with fista and line search
+        If 'lbfgs', the solver uses lbfgs with box constraints
+    loss : str in {'l2' | 'dtw'}
+        The data-fit
+    loss_params : dict
+        Parameters of the loss
+    verbose : int
+        Verbosity level.
+
+    Returns
+    -------
+    D_hat : array, shape (n_atoms, n_channels, n_times_atom)
+        The atoms to learn from the data.
+    """
+    n_atoms, n_trials, n_times_valid = Z.shape
+    _, n_chan, n_times = X.shape
+
+    if loss == 'l2':
+        constants = _get_d_update_constants(X, Z)
+    else:
+        constants = None
+
+    def objective(D, full=False):
+        if loss == 'l2':
+            return compute_objective(D=D, constants=constants)
+        return compute_X_and_objective_multi(X, Z, D_hat=D, loss=loss,
+                                             loss_params=loss_params)
+
+    if solver_d == 'fista':
+        # use FISTA on joint [u, v], with an adaptive step size
+
+        def grad(D):
+            return gradient_d(D=D, X=X, Z=Z, constants=constants, loss=loss,
+                              loss_params=loss_params)
+
+        def prox(D):
+            return prox_d(D)
+
+        D_hat = fista(objective, grad, prox, None, D_hat0, max_iter,
+                      verbose=verbose, momentum=momentum, eps=eps,
+                      adaptive_step_size=True, debug=debug, name="Update D")
+
+    elif solver_d == 'lbfgs':
+        # use L-BFGS on joint [u, v] with a box constraint (L_inf norm <= 1)
+
+        def func(D):
+            D = np.reshape(D, D_hat0.shape)
+            return objective(D)
+
+        def grad(D):
+            return gradient_d(D, constants=constants, flatten=True)
+
+        bounds = [(-1, 1) for idx in range(0, D_hat0.size)]
+        if debug:
+            assert optimize.check_grad(func, grad, D_hat0.ravel()) < 1e-5
+            pobj = [objective(D_hat0)]
+        D_hat, _, _ = optimize.fmin_l_bfgs_b(func, x0=D_hat0.ravel(),
+                                             fprime=grad, bounds=bounds,
+                                             factr=1e7)
+        D_hat = np.reshape(D_hat, D_hat0.shape)
+        if debug:
+            pobj.append(objective(D_hat))
+
+    else:
+        raise ValueError('Unknown solver_d: %s' % (solver_d, ))
+
+    if debug:
+        return D_hat, pobj
+    return D_hat
+
+
 def _get_d_update_constants(X, Z):
     # Get shapes
     n_atoms, n_trials, n_times_valid = Z.shape
@@ -309,31 +391,6 @@ def compute_lipschitz(uv0, constants, variable, b_hat_0=None):
         n_points = n_atoms * n_times_atom
         L = power_iteration(op_Hv, n_points, b_hat_0=b_hat_v0)
     return L
-
-
-@jit()
-def compute_ZtZ(Z, n_times_atom):
-    """
-    ZtZ.shape = n_atoms, n_atoms, 2 * n_times_atom - 1
-    Z.shape = n_atoms, n_trials, n_times - n_times_atom + 1)
-    """
-    # TODO: benchmark the cross correlate function of numpy
-    n_atoms, n_trials, n_times_valid = Z.shape
-
-    ZtZ = np.zeros(shape=(n_atoms, n_atoms, 2 * n_times_atom - 1))
-    t0 = n_times_atom - 1
-    for k0 in range(n_atoms):
-        for k in range(n_atoms):
-            for i in range(n_trials):
-                for t in range(n_times_atom):
-                    if t == 0:
-                        ZtZ[k0, k, t0] += (Z[k0, i] * Z[k, i]).sum()
-                    else:
-                        ZtZ[k0, k, t0 + t] += (
-                            Z[k0, i, :-t] * Z[k, i, t:]).sum()
-                        ZtZ[k0, k, t0 - t] += (
-                            Z[k0, i, t:] * Z[k, i, :-t]).sum()
-    return ZtZ
 
 
 def power_iteration(lin_op, n_points, b_hat_0=None, max_iter=1000, tol=1e-7,

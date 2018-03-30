@@ -10,12 +10,12 @@ import numpy as np
 from scipy import optimize
 from joblib import Parallel, delayed
 
-from .utils.convolution import _choose_convolve_multi_uv
+from .utils.convolution import _choose_convolve_multi
 from .utils.compute_constants import _compute_DtD
 from .loss_and_gradient import gradient_zi
 
 
-def update_z_multi(X, uv, reg, z0=None, debug=False, parallel=None,
+def update_z_multi(X, D, reg, z0=None, debug=False, parallel=None,
                    solver='l_bfgs', solver_kwargs=dict(), loss='l2',
                    loss_params=dict(), freeze_support=False):
     """Update Z using L-BFGS with positivity constraints
@@ -24,8 +24,10 @@ def update_z_multi(X, uv, reg, z0=None, debug=False, parallel=None,
     ----------
     X : array, shape (n_trials, n_channels, n_times)
         The data array
-    uv : array, shape (n_atoms, n_channels + n_times_atom)
-        The spatial and temporal atoms.
+    D : array, shape (n_atoms, n_channels + n_times_atom)
+        The dictionary used to encode the signal X. Can be either in the form
+        f a full rank dictionary D (n_atoms, n_channels, n_times_atom) or with
+        the spatial and temporal atoms uv (n_atoms, n_channels + n_times_atom).
     reg : float
         The regularization constant
     z0 : None | array, shape (n_atoms, n_trials, n_times_valid)
@@ -51,8 +53,11 @@ def update_z_multi(X, uv, reg, z0=None, debug=False, parallel=None,
         The true codes.
     """
     n_trials, n_channels, n_times = X.shape
-    n_atoms, n_channels_n_times_atom = uv.shape
-    n_times_atom = n_channels_n_times_atom - n_channels
+    if D.ndim == 2:
+        n_atoms, n_channels_n_times_atom = D.shape
+        n_times_atom = n_channels_n_times_atom - n_channels
+    else:
+        n_atoms, n_channels, n_times_atom = D.shape
     n_times_valid = n_times - n_times_atom + 1
 
     # now estimate the codes
@@ -61,7 +66,7 @@ def update_z_multi(X, uv, reg, z0=None, debug=False, parallel=None,
         parallel = Parallel(n_jobs=1)
 
     zhats = parallel(
-        my_update_z(X, uv, reg, z0, i, debug, solver, solver_kwargs,
+        my_update_z(X, D, reg, z0, i, debug, solver, solver_kwargs,
                     freeze_support, loss, loss_params=loss_params)
         for i in np.array_split(np.arange(n_trials), parallel.n_jobs))
     z_hat = np.vstack(zhats)
@@ -72,12 +77,15 @@ def update_z_multi(X, uv, reg, z0=None, debug=False, parallel=None,
     return z_hat2
 
 
-def _update_z_multi_idx(X, uv, reg, z0, idxs, debug, solver="l_bfgs",
+def _update_z_multi_idx(X, D, reg, z0, idxs, debug, solver="l_bfgs",
                         solver_kwargs=dict(), freeze_support=False, loss='l2',
                         loss_params=dict()):
     n_trials, n_channels, n_times = X.shape
-    n_atoms, n_channels_n_times_atom = uv.shape
-    n_times_atom = n_channels_n_times_atom - n_channels
+    if D.ndim == 2:
+        n_atoms, n_channels_n_times_atom = D.shape
+        n_times_atom = n_channels_n_times_atom - n_channels
+    else:
+        n_atoms, n_channels, n_times_atom = D.shape
     n_times_valid = n_times - n_times_atom + 1
 
     assert not (freeze_support and z0 is None), 'Impossible !'
@@ -86,19 +94,19 @@ def _update_z_multi_idx(X, uv, reg, z0, idxs, debug, solver="l_bfgs",
     zhats = []
 
     if solver == "gcd":
-        constants['DtD'] = _compute_DtD(uv, n_channels)
+        constants['DtD'] = _compute_DtD(D=D, n_channels=n_channels)
 
     for i in idxs:
 
         def func_and_grad(zi):
-            return gradient_zi(uv, zi, X[i], constants=constants, reg=reg,
-                               return_func=True, flatten=True, loss=loss,
-                               loss_params=loss_params)
+            return gradient_zi(Xi=X[i], zi=zi, D=D, constants=constants,            
+                               reg=reg, return_func=True, flatten=True,
+                               loss=loss, loss_params=loss_params)
 
         def grad_noreg(zi):
-            return gradient_zi(uv, zi, Xi=X[i], constants=constants, reg=None,
-                               return_func=False, flatten=True, loss=loss,
-                               loss_params=loss_params)
+            return gradient_zi(Xi=X[i], zi=zi, D=D, constants=constants,
+                               reg=None, return_func=False, flatten=True,
+                               loss=loss, loss_params=loss_params)
 
         if z0 is None:
             f0 = np.zeros(n_atoms * n_times_valid)
@@ -132,7 +140,7 @@ def _update_z_multi_idx(X, uv, reg, z0, idxs, debug, solver="l_bfgs",
             raise NotImplementedError('Not adapted yet for n_channels')
         elif solver == "gcd":
             f0 = f0.reshape(n_atoms, n_times_valid)
-            zhat = _coordinate_descent_idx(X[i], uv, constants, reg=reg, z0=f0,
+            zhat = _coordinate_descent_idx(X[i], D, constants, reg=reg, z0=f0,
                                            **solver_kwargs)
             # raise NotImplementedError('Not implemented yet!')
         else:
@@ -143,7 +151,7 @@ def _update_z_multi_idx(X, uv, reg, z0, idxs, debug, solver="l_bfgs",
     return np.vstack(zhats)
 
 
-def _coordinate_descent_idx(Xi, uv, constants, reg, z0=None, max_iter=1000,
+def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
                             tol=1e-5, strategy='greedy', n_seg='auto',
                             debug=False, verbose=0):
     """Compute the coding signal associated to Xi with coordinate descent.
@@ -152,6 +160,10 @@ def _coordinate_descent_idx(Xi, uv, constants, reg, z0=None, max_iter=1000,
     ----------
     Xi : array, shape (n_channels, n_times)
         The signal to encode.
+    D : array
+        The atoms. Can either be full rank with shape shape
+        (n_atoms, n_channels, n_times_atom) or rank 1 with
+        shape shape (n_atoms, n_channels + n_times_atom)
     constants : dict
         Constants containing DtD to speedup computation
     z0 : array, shape (n_atoms, n_time_valid)
@@ -166,9 +178,12 @@ def _coordinate_descent_idx(Xi, uv, constants, reg, z0=None, max_iter=1000,
         Number of segments used to divide the coding signal. The updates are
         performed successively on each of these segments.
     """
-    n_chan, n_times = Xi.shape
-    n_atoms, n_times_atom = uv.shape
-    n_times_atom -= n_chan
+    n_channels, n_times = Xi.shape
+    if D.ndim == 2:
+        n_atoms, n_times_atom = D.shape
+        n_times_atom -= n_channels
+    else:
+        n_atoms, n_channels, n_times_atom = D.shape
     n_times_valid = n_times - n_times_atom + 1
     t0 = n_times_atom - 1
 
@@ -183,22 +198,22 @@ def _coordinate_descent_idx(Xi, uv, constants, reg, z0=None, max_iter=1000,
     n_times_seg = n_times_valid // n_seg + 1
 
     def objective(zi):
-        Dzi = _choose_convolve_multi_uv(zi, uv, n_chan)
+        Dzi = _choose_convolve_multi(zi, D=D, n_channels=n_channels)
         Dzi -= Xi
         func = 0.5 * np.dot(Dzi.ravel(), Dzi.ravel())
         func += reg * zi.sum()
         return func
 
     DtD = constants["DtD"]
-    norm_Dk = np.array([DtD[k, k, t0] for k in range(n_atoms)]).reshape(-1, 1)
+    norm_Dk = np.array([DtD[k, k, t0] for k in range(n_atoms)])[:, None]
     if debug:
         pobj = [objective(z_hat)]
 
     # Init beta with -DtX
     # beta = _fprime(uv, z_hat.ravel(), Xi=Xi, reg=None, return_func=False)
     # beta = beta.reshape(n_atoms, n_times_valid)
-    beta = gradient_zi(uv, z_hat, Xi, reg=None, loss='l2', return_func=False,
-                       constants=constants)
+    beta = gradient_zi(Xi, z_hat, D=D, reg=None, loss='l2',
+                       return_func=False, constants=constants)
     for k, t in zip(*z_hat.nonzero()):
         beta[k, t] -= z_hat[k, t] * norm_Dk[k]  # np.sum(DtD[k, k, t0])
     z_opt = np.maximum(-beta - reg, 0) / norm_Dk

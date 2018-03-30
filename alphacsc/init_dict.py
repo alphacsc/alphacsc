@@ -7,17 +7,18 @@ from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 
 from .utils import check_random_state
-from .utils.dictionary import get_uv, _patch_reconstruction_error
-from .update_d_multi import prox_uv
 from .other.k_medoids import KMedoids
 from .other.kmc2 import custom_distances
+from .update_d_multi import prox_uv, prox_d
+from .utils.dictionary import get_uv, get_D, _patch_reconstruction_error
 
 ried = custom_distances.roll_invariant_euclidean_distances
 tied = custom_distances.translation_invariant_euclidean_distances
 
 
-def init_uv(X, n_atoms, n_times_atom, uv_init=None, uv_constraint='separate',
-            random_state=None, kmeans_params=dict()):
+def init_dictionary(X, n_atoms, n_times_atom, D_init=None, rank1=True,
+                    uv_constraint='separate', kmeans_params=dict(),
+                    random_state=None):
     """Return an initial dictionary for the signals X
 
     Parameter
@@ -28,57 +29,77 @@ def init_uv(X, n_atoms, n_times_atom, uv_init=None, uv_constraint='separate',
         The number of atoms to learn.
     n_times_atom : int
         The support of the atom.
-    uv_init : array, shape (n_atoms, n_channels + n_times_atoms)
-        The initial atoms.
+    D_init : array or {'kmeans' | 'ssa' | 'chunks' | 'random'}
+        The initialization scheme for the dictionary or the initial
+        atoms. The shape should match the required dictionary shape, ie if
+        rank1 is TRue, (n_atoms, n_channels + n_times_atom) and else
+        (n_atoms, n_channels, n_times_atom)
+    rank1 : boolean
+        If set to True, use a rank 1 dictionary.
     uv_constraint : str in {'joint', 'separate', 'box'}
         The kind of norm constraint on the atoms:
         If 'joint', the constraint is norm_2([u, v]) <= 1
         If 'separate', the constraint is norm_2(u) <= 1 and norm_2(v) <= 1
         If 'box', the constraint is norm_inf([u, v]) <= 1
-    random_state : int | None
-        The random state.
     kmeans_params : dict
         Dictionnary of parameters for the kmeans init method.
+    random_state : int | None
+        The random state.
 
     Return
     ------
-    uv: array shape (n_atoms, n_channels + n_times_atom)
+    D : array shape (n_atoms, n_channels + n_times_atom) or
+              shape (n_atoms, n_channels, n_times_atom)
         The initial atoms to learn from the data.
     """
     n_trials, n_channels, n_times = X.shape
     rng = check_random_state(random_state)
 
-    if isinstance(uv_init, np.ndarray):
-        uv_hat = uv_init.copy()
-        assert uv_hat.shape == (n_atoms, n_channels + n_times_atom)
+    D_shape = (n_atoms, n_channels, n_times_atom)
+    if rank1:
+        D_shape = (n_atoms, n_channels + n_times_atom)
 
-    elif uv_init is None or uv_init == "random":
-        uv_hat = rng.randn(n_atoms, n_channels + n_times_atom)
+    if isinstance(D_init, np.ndarray):
+        D_hat = D_init.copy()
+        assert D_hat.shape == D_shape
 
-    elif uv_init == 'chunk':
+    elif D_init is None or D_init == "random":
+        D_hat = rng.randn(*D_shape)
+
+    elif D_init == 'chunk':
         D_hat = np.zeros((n_atoms, n_channels, n_times_atom))
         for i_atom in range(n_atoms):
             i_trial = rng.randint(n_trials)
             t0 = rng.randint(n_times - n_times_atom)
             D_hat[i_atom] = X[i_trial, :, t0:t0 + n_times_atom]
-        uv_hat = get_uv(D_hat)
+        if rank1:
+            D_hat = get_uv(D_hat)
 
-    elif uv_init == "kmeans":
-        uv_hat = kmeans_init(X, n_atoms, n_times_atom, random_state=rng,
-                             **kmeans_params)
+    elif D_init == "kmeans":
+        D_hat = kmeans_init(X, n_atoms, n_times_atom, random_state=rng,
+                            **kmeans_params)
+        if not rank1:
+            D_hat = get_D(D_hat, n_channels)
 
-    elif uv_init == "ssa":
+    elif D_init == "ssa":
         u_hat = rng.randn(n_atoms, n_channels)
         v_hat = ssa_init(X, n_atoms, n_times_atom, random_state=rng)
-        uv_hat = np.c_[u_hat, v_hat]
-    elif uv_init == 'greedy':
+        D_hat = np.c_[u_hat, v_hat]
+        if not rank1:
+            D_hat = get_D(D_hat, n_channels)
+
+    elif D_init == 'greedy':
         raise NotImplementedError()
+
     else:
         raise NotImplementedError('It is not possible to initialize uv with'
-                                  ' parameter {}.'.format(uv_init))
+                                  ' parameter {}.'.format(D_init))
 
-    uv_hat = prox_uv(uv_hat, uv_constraint=uv_constraint, n_chan=n_channels)
-    return uv_hat
+    if rank1:
+        D_hat = prox_uv(D_hat, uv_constraint=uv_constraint, n_chan=n_channels)
+    else:
+        D_hat = prox_d(D_hat)
+    return D_hat
 
 
 def kmeans_init(X, n_atoms, n_times_atom, max_iter=0, random_state=None,
@@ -163,7 +184,7 @@ def kmeans_init(X, n_atoms, n_times_atom, max_iter=0, random_state=None,
                                 ).fit(X_embed)
         v_init = model.cluster_centers_
         u_init = rng.randn(n_atoms, n_channels)
-        uv_init = np.c_[u_init, v_init]
+        D_init = np.c_[u_init, v_init]
         labels = model.labels_
 
     if tsne:
@@ -184,9 +205,9 @@ def kmeans_init(X, n_atoms, n_times_atom, max_iter=0, random_state=None,
         medoid_t = (indices % n_window) * step
         D = np.array([X_original[i, :, t:t + n_times_atom]
                       for i, t in zip(medoid_i, medoid_t)])
-        uv_init = get_uv(D)
+        D_init = get_uv(D)
 
-    return uv_init
+    return D_init
 
 
 def plot_tsne(X_embed, X_centers, labels=None, metric='euclidean',
@@ -209,7 +230,7 @@ def plot_tsne(X_embed, X_centers, labels=None, metric='euclidean',
     else:
         colors = None
 
-    fig = plt.figure('tsne')
+    plt.figure('tsne')
     cc = colors[:-n_centers] if colors is not None else None
     plt.scatter(X_tsne[:-n_centers, 0], X_tsne[:-n_centers, 1], c=cc,
                 marker='.')
@@ -264,7 +285,7 @@ def _embed(x, dim, lag=1):
     return X.T
 
 
-def get_max_error_dict(X, Z, uv):
+def get_max_error_dict(X, Z, D):
     """Get the maximal reconstruction error patch from the data as a new atom
 
     This idea is used for instance in [Yellin2017]
@@ -288,11 +309,16 @@ def get_max_error_dict(X, Z, uv):
     IMAGING BY CONVOLUTIONAL SPARSE DICTIONARY LEARNING AND CODING.
     """
     n_trials, n_channels, n_times = X.shape
-    n_times_atom = uv.shape[1] - n_channels
-    patch_rec_error = _patch_reconstruction_error(X, Z, uv)
+    if D.ndim == 2:
+        n_times_atom = D.shape[1] - n_channels
+    else:
+        n_times_atom = D.shape[2]
+    patch_rec_error = _patch_reconstruction_error(X, Z, D)
     i0 = patch_rec_error.argmax()
     n0, t0 = np.unravel_index(i0, Z.shape[1:])
 
     d0 = X[n0, :, t0:t0 + n_times_atom][None]
 
-    return get_uv(d0)
+    if D.ndim == 2:
+        return get_uv(d0)
+    return d0
