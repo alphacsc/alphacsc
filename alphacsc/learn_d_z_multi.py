@@ -24,7 +24,7 @@ from .utils.dictionary import get_lambda_max
 
 def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
                     solver_z='l_bfgs', solver_z_kwargs=dict(),
-                    solver_d='alternate', solver_d_kwargs=dict(),
+                    solver_d='alternate_adaptive', solver_d_kwargs=dict(),
                     rank1=True, uv_constraint='separate', eps=1e-10,
                     D_init=None, kmeans_params=dict(), stopping_pobj=None,
                     algorithm='batch', loss='l2',
@@ -54,7 +54,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
         Additional keyword arguments to pass to update_z_multi
     solver_d : str
         The solver to use for the d update. Options are
-        'alternate' (default) | 'joint' | 'lbfgs'
+        'alternate' | 'alternate_adaptive' (default) | 'joint' | 'lbfgs'
     solver_d_kwargs : dict
         Additional keyword arguments to provide to update_d
     rank1 : boolean
@@ -108,9 +108,6 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
     n_trials, n_chan, n_times = X.shape
     n_times_valid = n_times - n_times_atom + 1
 
-    pobj = list()
-    times = list()
-
     # initialization
     start = time.time()
     rng = check_random_state(random_state)
@@ -119,7 +116,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
                             rank1=rank1, uv_constraint=uv_constraint,
                             kmeans_params=kmeans_params, random_state=rng)
     b_hat_0 = rng.randn(n_atoms * (n_chan + n_times_atom))
-    times.append(time.time() - start)
+    init_duration = time.time() - start
 
     Z_hat = np.zeros((n_atoms, n_trials, n_times_valid))
 
@@ -176,6 +173,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
             solver_kwargs=solver_z_kwargs, freeze_support=True, loss=loss,
             loss_params=loss_params)
 
+    times[0] += init_duration
+
     return pobj, times, D_hat, Z_hat
 
 
@@ -188,6 +187,7 @@ def _batch_learn(X, D_hat, Z_hat, compute_z_func, compute_d_func,
     times = list()
 
     # monitor cost function
+    times.append(0)
     pobj.append(obj_func(X, Z_hat, D_hat))
     reg_ = reg
 

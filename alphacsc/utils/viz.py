@@ -1,7 +1,6 @@
 import itertools
 
 import copy as cp
-from mpl_toolkits.axes_grid1 import AxesGrid
 
 import os
 import mne
@@ -41,7 +40,7 @@ def kde_sklearn(x, x_grid, bandwidth):
 
 def plot_activations_density(Z_hat, n_times_atom, sfreq=1., threshold=0.01,
                              bandwidth='auto', axes=None, t_min=0,
-                             plot_activations=False):
+                             plot_activations=False, colors=None):
     """
     Parameters
     ----------
@@ -61,6 +60,8 @@ def plot_activations_density(Z_hat, n_times_atom, sfreq=1., threshold=0.01,
         Time offset for the xlabel display
     plot_activations : boolean
         If True, the significant activations are plotted as black dots
+    colors : list of matplotlib compatible colors
+        Colors of the plots
     """
     n_atoms, n_trials, n_times_valid = Z_hat.shape
 
@@ -73,9 +74,11 @@ def plot_activations_density(Z_hat, n_times_atom, sfreq=1., threshold=0.01,
     if axes is None:
         fig, axes = plt.subplots(n_atoms, num='density',
                                  figsize=(8, 2 + n_atoms * 3))
+    axes = np.atleast_1d(axes)
 
-    color_cycle = itertools.cycle(COLORS)
-    for ax, activations, color in zip(axes.ravel(), Z_hat_sum, color_cycle):
+    if colors is None:
+        colors = itertools.cycle(COLORS)
+    for ax, activations, color in zip(axes.ravel(), Z_hat_sum, colors):
         ax.clear()
         time_instants = np.arange(n_times_valid) / float(sfreq) + t_min
         selection = activations > threshold * Z_hat_sum.max()
