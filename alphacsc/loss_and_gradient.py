@@ -80,11 +80,11 @@ def compute_X_and_objective_multi(X, Z_hat, D_hat=None, reg=None, loss='l2',
     if feasible_evaluation:
         Z_hat = Z_hat.copy()
         if D_hat.ndim == 2:
-            uv_hat = D_hat.copy()
+            D_hat = D_hat.copy()
             # project to unit norm
             from .update_d_multi import prox_uv
-            uv_hat, norm = prox_uv(D_hat, uv_constraint=uv_constraint,
-                                   n_chan=n_channels, return_norm=True)
+            D_hat, norm = prox_uv(D_hat, uv_constraint=uv_constraint,
+                                  n_chan=n_channels, return_norm=True)
         else:
             D_hat = D_hat.copy()
             # project to unit norm
