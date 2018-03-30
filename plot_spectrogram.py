@@ -61,7 +61,7 @@ def spectro_mean(X_n):
 X = load_data()
 
 # plot the PSD of each trial
-if True:
+if False:
     # pip install git+https://github.com/pactools/pactools.git#egg=pactools
     from pactools.utils.spectrum import Spectrum
     sp = Spectrum(fs=sfreq)
@@ -84,11 +84,14 @@ t = t[10:-10]
 
 # plot it
 plt.pcolormesh(t, f, Sxx)
-plt.show()
+mean = Sxx[:, :int(sfreq)].mean(axis=1)[:, None]
+std = Sxx[:, :int(sfreq)].std(axis=1)[:, None]
 
 # plot the spectrogram variations (normalized frequency by frequency)
-Sxx_normed = (Sxx - Sxx.mean(axis=1)[:, None]) / Sxx.std(axis=1)[:, None]
+Sxx_normed = (Sxx - mean) / std
 vmax = abs(Sxx_normed).max()
+
+plt.figure()
 plt.pcolormesh(t, f, Sxx_normed,
                cmap='RdBu_r', vmin=-vmax, vmax=vmax)
 plt.colorbar()

@@ -13,7 +13,7 @@ from sklearn.externals.joblib import Memory, Parallel, delayed
 from scipy.signal import tukey
 
 from alphacsc.learn_d_z_multi import learn_d_z_multi
-from alphacsc.viz import plot_activations_density
+from alphacsc.utils.viz import plot_activations_density
 
 figure_path = 'figures'
 mem = Memory(cachedir='.', verbose=0)
@@ -21,14 +21,14 @@ colors = ["#4C72B0", "#55A868", "#C44E52", "#8172B2", "#CCB974", "#64B5CD"]
 
 sfreq = 150.
 n_times_atom = int(round(sfreq * 1.0))  # 1000. ms
-reg_list = np.arange(5, 33, 3)
+reg_list = np.arange(5, 35, 3)
 
-n_atoms = 4
-n_iter = 100
+n_atoms = 40
+n_iter = 300
 n_states = 1
 n_jobs = 10
 
-verbose = 1
+verbose = 2
 
 
 @mem.cache()
@@ -36,7 +36,7 @@ def load_data(sfreq=sfreq):
     data_path = os.path.join(mne.datasets.somato.data_path(), 'MEG', 'somato')
     raw = mne.io.read_raw_fif(
         os.path.join(data_path, 'sef_raw_sss.fif'), preload=True)
-    raw.filter(2., 90., n_jobs=n_jobs)
+    raw.filter(2, 90., n_jobs=n_jobs)
     raw.notch_filter(np.arange(50, 101, 50), n_jobs=n_jobs)
 
     events = mne.find_events(raw, stim_channel='STI 014')
@@ -78,8 +78,7 @@ def _run(random_state, reg, **kwargs):
         solver_d='alternate_adaptive',
         solver_z_kwargs={'factr': 1e12},
         solver_d_kwargs={'max_iter': 300},
-        loss='stdw',
-        loss_params=dict(gamma=0.005, sakoe_chiba_band=10),
+        loss='l2',
         verbose=verbose,
         random_state=random_state,
         n_jobs=1,

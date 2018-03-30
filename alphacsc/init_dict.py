@@ -1,3 +1,5 @@
+import itertools
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -7,6 +9,7 @@ from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 
 from .utils import check_random_state
+from .utils.viz import COLORS
 from .other.k_medoids import KMedoids
 from .other.kmc2 import custom_distances
 from .update_d_multi import prox_uv, prox_d
@@ -139,9 +142,10 @@ def kmeans_init(X, n_atoms, n_times_atom, max_iter=0, random_state=None,
         X = X[:, strongest_channels[-n_strong_channels:], :]
 
     X = X.reshape(-1, X.shape[-1])
+    n_trials, n_times = X.shape
 
     # Time step between two windows
-    step = max(1, n_times_atom)
+    step = max(1, n_times_atom // 3)
 
     # embed all windows of length n_times_atom in X
     X_embed = np.concatenate(
@@ -189,9 +193,9 @@ def kmeans_init(X, n_atoms, n_times_atom, max_iter=0, random_state=None,
 
     if tsne:
         if distances == 'euclidean':
-            X_embed = X_embed[::n_channels]
+            X_embed = X_embed[::100]
             if labels is not None:
-                labels = labels[::n_channels]
+                labels = labels[::100]
         plot_tsne(X_embed, v_init, labels=labels, metric=distance_metric,
                   random_state=rng)
 
@@ -213,9 +217,9 @@ def kmeans_init(X, n_atoms, n_times_atom, max_iter=0, random_state=None,
 def plot_tsne(X_embed, X_centers, labels=None, metric='euclidean',
               random_state=None):
 
-    tsne = TSNE(n_components=2, random_state=random_state, perplexity=15,
+    tsne = TSNE(n_components=2, random_state=random_state, perplexity=5,
                 metric=metric, verbose=2)
-    pca = PCA(n_components=min(50, X_embed.shape[1]))
+    pca = PCA(n_components=min(10, X_embed.shape[1]))
     X = np.concatenate([X_embed, X_centers])
     n_centers = X_centers.shape[0]
     X_pca = pca.fit_transform(X)
@@ -223,9 +227,8 @@ def plot_tsne(X_embed, X_centers, labels=None, metric='euclidean',
 
     if labels is not None:
         labels = np.r_[labels, np.arange(n_centers)]
-        colors = [
-            "#4C72B0", "#55A868", "#C44E52", "#8172B2", "#CCB974", "#64B5CD"
-        ]
+        colors = [c for c, l in zip(itertools.cycle(COLORS),
+                                    np.unique(labels))]
         colors = np.array(colors)[labels]
     else:
         colors = None
@@ -236,7 +239,7 @@ def plot_tsne(X_embed, X_centers, labels=None, metric='euclidean',
                 marker='.')
     cc = colors[-n_centers:] if colors is not None else None
     plt.scatter(X_tsne[-n_centers:, 0], X_tsne[-n_centers:, 1], c=cc,
-                marker='*')
+                marker='*', s=4)
 
 
 def ssa_init(X, n_atoms, n_times_atom, random_state=None):
