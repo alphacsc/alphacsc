@@ -30,18 +30,18 @@ def load_data(sfreq, epoch=True, n_jobs=1):
         os.path.join(data_path, 'sef_raw_sss.fif'), preload=True)
     raw.notch_filter(np.arange(50, 101, 50), n_jobs=n_jobs)
     raw.filter(2., None, n_jobs=n_jobs)
+    events = mne.find_events(raw, stim_channel='STI 014')
+    event_id, t_min, t_max = 1, -2., 4.
 
     if epoch:
-        events = mne.find_events(raw, stim_channel='STI 014')
 
-        event_id, t_min, t_max = 1, -2., 4.
         baseline = (None, 0)
         picks = mne.pick_types(raw.info, meg='grad', eeg=False, eog=True,
                                stim=False)
 
         epochs = mne.Epochs(raw, events, event_id, t_min, t_max,
                             picks=picks, baseline=baseline, reject=dict(
-                                grad=4000e-13, eog=350e-6), preload=True)
+                            grad=4000e-13, eog=350e-6), preload=True)
         epochs.pick_types(meg='grad', eog=False)
         epochs.resample(sfreq, npad='auto')
         X = epochs.get_data()
@@ -56,9 +56,11 @@ def load_data(sfreq, epoch=True, n_jobs=1):
         X = np.array([X[:, i * n_times:(i + 1) * n_times]
                       for i in range(10)])
         info = raw.info
-        t_min = 0
 
+    events[:, 0] -= raw.first_samp
     info['t_min'] = t_min
+    info['event_id'] = event_id
+    info['events'] = events
     # define n_chan, n_trials, n_times
     n_trials, n_chan, n_times = X.shape
     X *= tukey(n_times, alpha=0.1)[None, None, :]
