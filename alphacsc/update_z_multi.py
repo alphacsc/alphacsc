@@ -263,7 +263,7 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
         i_seg += 1
         t_start_seg += n_times_seg
         t_end_seg += n_times_seg
-        if i_seg >= n_seg:
+        if t_start_seg >= n_times_valid:
             i_seg = 0
             t_start_seg = 0
             t_end_seg = n_times_seg
