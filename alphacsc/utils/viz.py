@@ -237,18 +237,22 @@ def plot_callback(X, info, n_atoms, layout=None):
     return callback
 
 
-def plot_or_replot(axes, data, sfreq=1):
+def plot_or_replot(data, axes=None, sfreq=1):
     """Given a list of axes and the ydata of each axis, cleanly update the plot
 
     Parameters
     ----------
-    axes : list of Axes
-        Axes to update.
     data : list of ydata
         Data to plot, or to update the axes lines.
-    sfreq : float
+    axes : list of Axes or None
+        Axes to update.
+    sfreq : float or None
         Value to compute the xlabel.
     """
+    if axes is None:
+        K = len(data)
+        n_rows, n_cols = min(K, 5), max(1, K // 5)
+        fig, axes = plt.subplots(n_rows, n_cols, squeeze=False).ravel()
     if axes[0].lines == []:
         color_cycle = itertools.cycle(COLORS)
         for ax, xk, color in zip(axes, data, color_cycle):
@@ -361,18 +365,18 @@ def get_callback_csc(csc_kwargs, config=DEFAULT_CB, info={}):
 
         if 'atom' in figs:
             axes = figs['atom'][1].ravel()
-            if config['atom'].get('rank1', True):
-                plot_or_replot(axes, uv_hat[:, n_channels:], sfreq)
+            if csc_kwargs.get('rank1', True):
+                plot_or_replot(uv_hat[:, n_channels:], axes, sfreq=sfreq)
             else:
                 i0 = uv_hat.std(axis=-1).argmax(axis=-1)
                 plot_or_replot(
-                    axes, [uv_hat[k, i0[k]] for k in range(n_atoms)])
+                    [uv_hat[k, i0[k]] for k in range(n_atoms)], axes)
 
         if 'Xhat' in figs:
             X_hat = [np.convolve(Zk, uvk[n_channels:])
                      for Zk, uvk in zip(Z_hat[:, 0], uv_hat)]
             axes = figs['Xhat'][1].ravel()
-            plot_or_replot(axes, X_hat)
+            plot_or_replot(X_hat, axes)
 
         if 'Zhat' in figs:
             axes = figs['Zhat'][1]
@@ -383,7 +387,7 @@ def get_callback_csc(csc_kwargs, config=DEFAULT_CB, info={}):
         if 'pobj' in figs:
             axes = figs['pobj'][1].ravel()
             cost = np.array([pobj])
-            plot_or_replot(axes, cost - np.min(cost) + 1e-6)
+            plot_or_replot(cost - np.min(cost) + 1e-6, axes)
 
         # Update and save the figures
         for fig_name, (f, _) in figs.items():

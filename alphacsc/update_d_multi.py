@@ -121,7 +121,7 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
         return compute_X_and_objective_multi(X, Z, D_hat=uv, loss=loss,
                                              loss_params=loss_params)
 
-    if solver_d == 'joint':
+    if solver_d in ['joint', 'fista']:
         # use FISTA on joint [u, v], with an adaptive step size
 
         def grad(uv):

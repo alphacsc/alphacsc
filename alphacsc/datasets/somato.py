@@ -10,7 +10,7 @@ from sklearn.externals.joblib import Memory
 mem = Memory(cachedir='.', verbose=0)
 
 
-@mem.cache()
+@mem.cache(ignore=['n_jobs'])
 def load_data(sfreq, epoch=True, n_jobs=1):
     """Load and prepare the somato dataset for multiCSC
 
@@ -56,6 +56,7 @@ def load_data(sfreq, epoch=True, n_jobs=1):
         X = np.array([X[:, i * n_times:(i + 1) * n_times]
                       for i in range(10)])
         info = raw.info
+        t_min = 0
 
     info['t_min'] = t_min
     # define n_chan, n_trials, n_times
