@@ -5,7 +5,7 @@ from functools import partial
 import matplotlib.pyplot as plt
 
 from .signal import make_epochs
-from .viz import plot_activations_density, COLORS, PRINT_KWARGS
+from .viz import COLORS, PRINT_KWARGS
 
 
 def _check_mne_and_info(info):
@@ -57,6 +57,41 @@ def _plot_atom(Dk, info, ax, color, plot="atom"):
         ax.set_xlim(0, 30)
     else:
         raise NotImplementedError("No plot '{}' for atom".format(plot))
+
+
+def _plot_activation(Zk, info, ax, color, n_times_atom, t_min=0,
+                     plot="density"):
+    sfreq = int(info.get('sfreq', 1))
+    Zk = Zk.mean(axis=0)  # Average over the epochs
+    t = np.arange(len(Zk)) / sfreq + t_min
+    if plot == "density":
+        blob = np.blackman(n_times_atom)  # bandwidth of n_times_atom
+        Zk_smooth = np.convolve(Zk, blob, mode='same')
+        ax.fill_between(t, Zk_smooth, color=color, alpha=.5)
+    elif plot == "logratio":
+        eps = 1e-4
+        baseline = Zk[:sfreq]  # Take the first second a a baseline
+        mean_baseline = max(baseline.mean(), eps)
+
+        patch = np.ones(sfreq)
+        energy = np.maximum(np.convolve(Zk, patch, mode='same'), eps)
+        logratio = np.log10(energy / mean_baseline)
+        # logratio /= np.std(logratio[:sfreq])
+        ax.plot(t[sfreq // 2:-sfreq // 2], logratio[sfreq // 2:-sfreq // 2])
+    elif plot == "whiskers":
+        # Take 1s at the beginning of the epochs as a baseline
+        # Take 1s starting from stim as evoked
+        # Take 1s starting 1s after the stim as induced
+        baseline = Zk[:sfreq]
+        evoked = Zk[(0 < t) * (t < 1)]
+        induced = Zk[(1 < t) * (t < 2)]
+
+        ax.boxplot([baseline, evoked, induced], sym='',
+                   labels=["baseline", "evoked", "induced"])
+
+        # raise NotImplementedError("Not yet!")
+    else:
+        raise NotImplementedError("No plot '{}' for activations".format(plot))
 
 
 def _create_fig(n_cols, n_rows, figname, wrap_col=5, w_plot=5, h_plot=3):
@@ -111,20 +146,23 @@ def plot_dictionary(data, info, dirname, name='D_hat', plot="atom"):
     fig.savefig(figname, dpi=150)
 
 
-def plot_activation(data, info, dirname, name):
+def plot_activation(data, info, dirname, name, plot="density"):
     n_cols = len(data[0][1][name])  # n_atoms
     n_rows = len(data)
-    fig, axes = _create_fig(n_cols, n_rows, name)
+    figname = "{}_{}".format(name, plot)
+    fig, axes = _create_fig(n_cols, n_rows, figname)
 
-    sfreq = info.get('sfreq', 1)
+    t_min = info.get('t_min', 0)
     for row_ax, (arg, res) in zip(axes, data):
         try:
             Z = make_epochs(res[name], info, arg['n_times_atom'])
         except BaseException:
             Z = res[name]
-        t_min = info.get('t_min', 0)
-        plot_activations_density(Z, n_times_atom=arg['n_times_atom'],
-                                 sfreq=sfreq, axes=row_ax, t_min=t_min)
+        color_cycle = itertools.cycle(COLORS)
+        for color, ax, Zk in zip(color_cycle, row_ax, Z):
+            _plot_activation(Zk, info, ax, color,
+                             n_times_atom=arg['n_times_atom'], t_min=t_min,
+                             plot=plot)
         row_ax[0].set_ylabel(get_label(info['grid_key'], arg),
                              fontsize=24, labelpad=10, rotation="horizontal",
                              horizontalalignment="right",
@@ -133,15 +171,16 @@ def plot_activation(data, info, dirname, name):
     # fig.subplots_adjust(left=.025, bottom=.025)
     plt.pause(.001)
     fig.tight_layout()
-    figname = "{}/{}.png".format(dirname, name)
+    figname = "{}/{}.png".format(dirname, figname)
     fig.savefig(figname, dpi=150)
 
 
 def plot_convergence_curve(data, info, dirname):
     # plot the convergence curve
+    eps = 1e-4
 
     # compute the best pobj over all methods
-    best_pobj = np.min([np.min(r['pobj']) for _, r in data]) - 1e-6
+    best_pobj = np.min([np.min(r['pobj']) for _, r in data])
 
     fig = plt.figure("convergence", figsize=(12, 12))
     plt.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
@@ -149,13 +188,14 @@ def plot_convergence_curve(data, info, dirname):
     color_cycle = itertools.cycle(COLORS)
     for (args, res), color in zip(data, color_cycle):
         times = list(np.cumsum(res['times']))
-        plt.semilogx(
-            times, res['pobj'] - best_pobj, '.-', alpha=0.5,
-            label=get_label(info['grid_key'], args), color=color)
-    plt.xlabel('Time (s)')
-    plt.ylabel('Objective value')
+        plt.loglog(
+            times, (res['pobj'] - best_pobj) / best_pobj + eps, '.-',
+            label=get_label(info['grid_key'], args), color=color,
+            linewidth=2)
+    plt.xlabel('Time (s)', fontsize=24)
+    plt.ylabel('Objective value', fontsize=24)
     ncol = int(np.ceil(len(data) / 10))
-    plt.legend(ncol=ncol)
+    plt.legend(ncol=ncol, fontsize=24)
 
     plt.gca().tick_params(axis='x', which='both', bottom=False, top=False)
     plt.gca().tick_params(axis='y', which='both', left=False, right=False)
@@ -167,19 +207,25 @@ def plot_convergence_curve(data, info, dirname):
 
 PLOTS = {
     'convergence': plot_convergence_curve,
+    'Z_init': partial(plot_activation, name='Z_init'),
+    'Z_hat': partial(plot_activation, name='Z_hat'),
+    'Z_hat_whiskers': partial(plot_activation, name='Z_hat', plot='whiskers'),
+    'Z_init_whiskers': partial(plot_activation, name='Z_init',
+                               plot='whiskers'),
+    'Z_hat_logratio': partial(plot_activation, name='Z_hat', plot='logratio'),
+    'Z_init_logratio': partial(plot_activation, name='Z_init',
+                               plot='logratio'),
     'D_init': partial(plot_dictionary, name='D_init'),
     'D_hat': partial(plot_dictionary, name='D_hat'),
     'D_init_psd': partial(plot_dictionary, name='D_init', plot="psd"),
     'D_hat_psd': partial(plot_dictionary, name='D_hat', plot="psd"),
     'D_init_topo': partial(plot_dictionary, name='D_init', plot="topo"),
     'D_hat_topo': partial(plot_dictionary, name='D_hat', plot="topo"),
-    'Z_init': partial(plot_activation, name='Z_init'),
-    'Z_hat': partial(plot_activation, name='Z_hat'),
 }
 
 
 DEFAULT_OUTPUT = [
     'convergence',
-    'D_init_topo', 'D_hat_topo', 'D_init_psd', 'D_hat_psd', 'D_hat', 'D_init',
-    'Z_init', 'Z_hat'
+    'D_hat_psd', 'D_hat', 'D_init',
+    'Z_hat', 'Z_hat_whiskers'
 ]

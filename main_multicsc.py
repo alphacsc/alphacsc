@@ -118,11 +118,16 @@ if __name__ == "__main__":
         kwargs_grid = [exp.default_kwargs]
         info['grid_key'] = ['reg']
 
-    print("Plotting output")
-
     try:
-        plt.close('all')
         data = [(args, d) for args, d in zip(kwargs_grid, res)]
+
+        print("Save the results")
+        import pickle
+        with open("{}/data.pkl".format(dirname), "wb") as f:
+            pickle.dump(data, f)
+
+        print("Plotting output")
+        plt.close('all')
         for key, plot in PLOTS.items():
             if key in output_config:
                 plot(data, info, dirname)
