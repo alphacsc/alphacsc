@@ -140,8 +140,15 @@ def _update_z_multi_idx(X, D, reg, z0, idxs, debug, solver="l_bfgs",
             raise NotImplementedError('Not adapted yet for n_channels')
         elif solver == "gcd":
             f0 = f0.reshape(n_atoms, n_times_valid)
+            # Default values
+            tol = solver_kwargs.get('tol', 1e-1)
+            n_seg = solver_kwargs.get('n_seg', 'auto')
+            max_iter = solver_kwargs.get('max_iter', 1e15)
+            strategy = solver_kwargs.get('strategy', 'greedy')
             zhat = _coordinate_descent_idx(X[i], D, constants, reg=reg, z0=f0,
-                                           **solver_kwargs)
+                                           freeze_support=freeze_support,
+                                           tol=tol, max_iter=max_iter,
+                                           n_seg=n_seg, strategy=strategy)
             # raise NotImplementedError('Not implemented yet!')
         else:
             raise ValueError("Unrecognized solver %s. Must be 'ista', 'fista',"
@@ -152,8 +159,8 @@ def _update_z_multi_idx(X, D, reg, z0, idxs, debug, solver="l_bfgs",
 
 
 def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
-                            tol=1e-5, strategy='greedy', n_seg='auto',
-                            debug=False, verbose=0):
+                            tol=1e-1, strategy='greedy', n_seg='auto',
+                            freeze_support=False, debug=False, verbose=0):
     """Compute the coding signal associated to Xi with coordinate descent.
 
     Parameters
@@ -177,6 +184,8 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
     n_seg : int or 'auto'
         Number of segments used to divide the coding signal. The updates are
         performed successively on each of these segments.
+    freeze_support : boolean
+        If set to True, only update the coefficient that are non-zero in z0.
     """
     n_channels, n_times = Xi.shape
     if D.ndim == 2:
@@ -194,6 +203,9 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
 
     if n_seg == 'auto':
         n_seg = max(n_times_valid // (2 * n_times_atom), 1)
+        # n_s    eg = max(n_times_valid // n_times_atom, 1)
+
+    max_iter *= n_seg
 
     n_times_seg = n_times_valid // n_seg + 1
 
@@ -216,9 +228,12 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
                        return_func=False, constants=constants)
     for k, t in zip(*z_hat.nonzero()):
         beta[k, t] -= z_hat[k, t] * norm_Dk[k]  # np.sum(DtD[k, k, t0])
-    z_opt = np.maximum(-beta - reg, 0) / norm_Dk
+    dz_opt = np.maximum(-beta - reg, 0) / norm_Dk - z_hat
+    if freeze_support:
+        dz_opt[z0 == 0] = 0
 
     dZs = 2 * tol * np.ones(n_seg)
+    active_segs = np.array([True] * n_seg)
     i_seg, t_start_seg = 0, 0
     t_end_seg = n_times_seg
     for ii in range(max_iter):
@@ -226,33 +241,49 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
         if strategy == 'random':
             raise NotImplementedError()
         elif strategy == 'greedy':
-            i0 = 0
-            i0 = np.argmax(np.abs(z_hat[:, t_start_seg:t_end_seg] -
-                                  z_opt[:, t_start_seg:t_end_seg]))
-            n_times_current = min(n_times_seg, n_times_valid - t_start_seg)
+            # if dZs[i_seg] > tol:
+            if active_segs[i_seg]:
+                i0 = np.argmax(np.abs(dz_opt[:, t_start_seg:t_end_seg]))
+                n_times_current = min(n_times_seg, n_times_valid - t_start_seg)
+                k0, t0 = np.unravel_index(i0, (n_atoms, n_times_current))
+                t0 += t_start_seg
+                dz = dz_opt[k0, t0]
+                dZs[i_seg] = abs(dz)
+            else:
+                dz = tol
         else:
             raise ValueError('The coordinate selection method should be in '
                              "{'greedy' | 'random'}. Got {}.".format(strategy))
 
-        k0, t0 = np.unravel_index(i0, (n_atoms, n_times_current))
-        t0 += t_start_seg
-        dz = z_hat[k0, t0] - z_opt[k0, t0]
-        dZs[i_seg] = abs(dz)
-
         # Update the selected coordinate and beta if the update is greater than
         # the convergence tolerance.
         if abs(dz) > tol:
-            z_hat[k0, t0] = z_opt[k0, t0]
+            z_hat[k0, t0] += dz
 
             beta_i0 = beta[k0, t0]
             offset = max(0, n_times_atom - t0 - 1)
             t_start = max(0, t0 - n_times_atom + 1)
-            ll = min(t0 + n_times_atom, n_times_valid) - t_start
-            beta[:, t_start:t0 + n_times_atom] -= \
-                DtD[:, k0, offset:offset + ll] * dz
+            t_end = min(t0 + n_times_atom, n_times_valid)
+            ll = t_end - t_start
+            beta[:, t_start:t_end] += DtD[:, k0, offset:offset + ll] * dz
             beta[k0, t0] = beta_i0
-            z_opt[:, t_start:t0 + n_times_atom] = np.maximum(
-                -beta[:, t_start:t0 + n_times_atom] - reg, 0) / norm_Dk
+            dz_opt[:, t_start:t_end] = (
+                np.maximum(-beta[:, t_start:t_end] - reg, 0) / norm_Dk
+                - z_hat[:, t_start:t_end])
+            dz_opt[k0, t0] = 0
+            if t_start < t_start_seg and dZs[i_seg - 1] <= tol:
+                dZs[i_seg - 1] = 2 * tol
+                active_segs[i_seg - 1] = True
+            if t_end > t_end_seg and dZs[i_seg + 1] <= tol:
+                dZs[i_seg + 1] = 2 * tol
+                active_segs[i_seg + 1] = True
+            if freeze_support:
+                dz_opt[:, t_start:t_end][z0[:, t_start:t_end] == 0] = 0
+                nnz_z0 = list(zip(*z0[:, t_start:t_end].nonzero()))
+                nnz_dz = list(zip(*dz_opt[:, t_start:t_end].nonzero()))
+                assert all([nnz in nnz_z0 for nnz in nnz_dz])
+        else:
+            active_segs[i_seg] = False
 
         if debug:
             pobj.append(objective(z_hat))
@@ -264,15 +295,16 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
         t_start_seg += n_times_seg
         t_end_seg += n_times_seg
         if t_start_seg >= n_times_valid:
+            dZs[i_seg:] = 0  # Make sure that we do not miss some segments
             i_seg = 0
             t_start_seg = 0
             t_end_seg = n_times_seg
 
     else:
         if verbose > 10:
-            print('update z [cd] did not converge')
+            print('[CD] update z did not converge')
     if verbose > 10:
-        print('[CD] computed %d iterations' % (ii + 1))
+        print('[CD] update z computed %d iterations' % (ii + 1))
 
     if debug:
         return z_hat, pobj
