@@ -7,7 +7,7 @@ import itertools
 import importlib
 from datetime import datetime
 import matplotlib.pyplot as plt
-from sklearn.externals.joblib import Memory, Parallel, delayed
+from joblib import Memory, Parallel, delayed
 
 from alphacsc.learn_d_z_multi import learn_d_z_multi
 from alphacsc.utils.viz import get_callback_csc, DEFAULT_CB
@@ -18,21 +18,26 @@ from alphacsc.datasets import DATASETS
 mem = Memory(cachedir='.', verbose=0)
 
 
-def run_one(X, csc_kwargs, n_jobs=1, info={}, config=DEFAULT_CB, run=0):
-    callback = get_callback_csc(csc_kwargs, info=info, config=config)
+def run_one(X, csc_kwargs, n_jobs=1, info={}, callback_config=DEFAULT_CB,
+            verbose=0, run=0):
+    name = "Run{}".format(run)
+    print('------------- running %s %.2f----------------' % (
+        name, csc_kwargs['reg']))
+    callback = get_callback_csc(csc_kwargs, info=info, config=callback_config)
     n_iter = csc_kwargs.pop('n_iter', 50)
     _, _, D_init, Z_init = learn_d_z_multi(X, n_jobs=n_jobs, n_iter=0,
-                                           **csc_kwargs)
+                                           name=name, **csc_kwargs)
     pobj, times, D_hat, Z_hat = learn_d_z_multi(
-        X, n_jobs=n_jobs, n_iter=n_iter, name="Run{}".format(run),
-        verbose=5, callback=callback, **csc_kwargs)
+        X, n_jobs=n_jobs, n_iter=n_iter, name=name,
+        verbose=verbose, callback=callback, **csc_kwargs)
     return dict(
         pobj=pobj, times=times, D_hat=D_hat, Z_hat=Z_hat, D_init=D_init,
         Z_init=Z_init
     )
 
 
-run_one_cached = mem.cache(run_one, ignore=['config', 'run', 'n_jobs'])
+run_one_cached = mem.cache(run_one, ignore=['callback_config', 'run',
+                                            'info', 'n_jobs', 'verbose'])
 run_one_delayed = delayed(run_one_cached)
 
 
@@ -57,7 +62,7 @@ if __name__ == "__main__":
     dirname = exp.__file__.replace('.py', '')
     if not os.path.exists(dirname):
         os.mkdir(dirname)
-    csc_time = datetime.now().strftime('%d_%m_%y_%Hh%M')
+    csc_time = datetime.now().strftime('%y_%m_%d_%Hh%M')
     dirname = os.path.join(dirname, csc_time)
     os.mkdir(dirname)
 
@@ -84,32 +89,47 @@ if __name__ == "__main__":
 
     info['sfreq'] = sfreq
     info['n_channels'] = X.shape[1]
+
+    try:
+        default_kwargs = exp.default_kwargs
+    except AttributeError:
+        raise ValueError("default_kwargs should be defined in {}"
+                         .format(args.exp))
+
+    if args.debug:
+        default_kwargs['n_iter'] = 1
+
     if hasattr(exp, 'grid'):
-        kwargs_grid = [{**exp.default_kwargs, **dict(zip(exp.grid, val))}
+        kwargs_grid = [{**default_kwargs, **dict(zip(exp.grid, val))}
                        for val in itertools.product(*exp.grid.values())]
 
         with Parallel(n_jobs=args.n_jobs) as parallel:
-            res = parallel(run_one_delayed(X, csc_kwargs, info=info,
-                                           run=run, config=callback_config)
+            res = parallel(run_one_delayed(X, csc_kwargs, info=info, run=run,
+                                           callback_config=callback_config,
+                                           verbose=1)
                            for run, csc_kwargs in enumerate(kwargs_grid))
+
+        info['grid_key'] = list(exp.grid.keys())
 
     else:
         res = [run_one_cached(
-            X, exp.csc_kwargs, n_jobs=args.n_jobs, info=info,
-            config=callback_config)]
-        kwargs_grid = [exp.csc_kwargs]
+            X, default_kwargs, n_jobs=args.n_jobs, info=info,
+            callback_config=callback_config, verbose=1)]
+        kwargs_grid = [exp.default_kwargs]
+        info['grid_key'] = ['reg']
 
     print("Plotting output")
 
-    plt.close('all')
-    for key, plot in PLOTS.items():
-        if key in output_config:
-            data = [(args, d[key]) for args, d in zip(kwargs_grid, res)]
-            plot(data, info, dirname)
-
-    # Delete the directory if in debug mode
-    if args.debug:
-        shutil.rmtree(dirname)
+    try:
+        plt.close('all')
+        data = [(args, d) for args, d in zip(kwargs_grid, res)]
+        for key, plot in PLOTS.items():
+            if key in output_config:
+                plot(data, info, dirname)
+    finally:
+        # Delete the directory if in debug mode
+        if args.debug:
+            shutil.rmtree(dirname)
 
     # Display the outputs figures
     plt.show()

@@ -9,6 +9,7 @@ import numpy as np
 import matplotlib as mpl
 from datetime import datetime
 import matplotlib.pyplot as plt
+from collections import defaultdict
 
 from .tools import get_calling_script, positive_hash
 
@@ -20,10 +21,12 @@ DEFAULT_CB = {
     'pobj': {}
 }
 PRINT_KWARGS = {
-    'n_atoms': 'K',
-    'n_times_atom': 'L',
-    'reg': '$\lambda$'
+    'n_atoms': 'K = {}',
+    'n_times_atom': 'L={}',
+    'reg': '$\lambda$={}',
+    'solver_z': '{}'
 }
+
 
 mpl.rc('mathtext', fontset='cm')
 
@@ -335,7 +338,7 @@ def get_callback_csc(csc_kwargs, config=DEFAULT_CB, info={}):
                                figsize=(width * nc, 10), squeeze=False,
                                sharex=shared_axes, sharey=shared_axes)
 
-        text = ["{}: {}".format(PRINT_KWARGS[k], v)
+        text = [PRINT_KWARGS.get(k, "{}={{}}".format(k)).format(v)
                 for k, v in csc_kwargs.items() if k in PRINT_KWARGS]
         text = "\t".join(text)
         f.suptitle(text, fontsize=18, wrap=True)
