@@ -99,8 +99,8 @@ def translation_invariant_euclidean_distances(X, Y=None, squared=False,
     n_samples_2, n_features = Y.shape
 
     distances = np.zeros((n_samples_1, n_samples_2))
-    if n_samples_2 > 1:
-        print('TIED on %s samples, this might be slow' % (distances.shape, ))
+    # if n_samples_2 > 1:
+    #     print('TIED on %s samples, this might be slow' % (distances.shape, ))
     for nn in range(n_samples_1):
         for mm in range(n_samples_2):
             XY = (X[nn, :, None] - Y[mm, None, :]) ** 2

@@ -168,10 +168,14 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
                                       "dictionary atoms.".format(algorithm))
 
         # recompute Z_hat with no regularization and keeping the support fixed
+        t_start = time.time()
         Z_hat = update_z_multi(
             X, D_hat, reg=0, z0=Z_hat, parallel=parallel, solver=solver_z,
             solver_kwargs=solver_z_kwargs, freeze_support=True, loss=loss,
             loss_params=loss_params)
+        if verbose > 1:
+            print("[{}] Compute the final Z_hat with support freeze in {:.2f}s"
+                  .format(name, time.time() - t_start))
 
     times[0] += init_duration
 
@@ -208,7 +212,15 @@ def _batch_learn(X, D_hat, Z_hat, compute_z_func, compute_d_func,
 
         start = time.time()
         Z_hat = compute_z_func(X, Z_hat, D_hat, reg=reg_, parallel=parallel)
+
+        # monitor cost function
         times.append(time.time() - start)
+        pobj.append(obj_func(X, Z_hat, D_hat, reg=reg_))
+
+        if verbose > 5:
+            print("[{}] sparsity: {:.3e}".format(
+                name, np.sum(Z_hat != 0) / Z_hat.size))
+            print('[{}] Objective (Z) : {:.3e}'.format(name, pobj[-1]))
 
         if len(Z_hat.nonzero()[0]) == 0:
             import warnings
@@ -216,15 +228,6 @@ def _batch_learn(X, D_hat, Z_hat, compute_z_func, compute_d_func,
                           "and all the activations are zero. No atoms has"
                           " been learned.", UserWarning)
             break
-
-        if verbose > 5:
-            print("[{}] sparsity: {:.3e}".format(
-                name, np.sum(Z_hat != 0) / Z_hat.size))
-
-        # monitor cost function
-        pobj.append(obj_func(X, Z_hat, D_hat, reg=reg_))
-        if verbose > 5:
-            print('[{}] Objective (Z) : {:.3e}'.format(name, pobj[-1]))
 
         start = time.time()
 
