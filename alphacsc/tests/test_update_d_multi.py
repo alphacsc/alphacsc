@@ -5,6 +5,7 @@ from scipy import optimize, signal
 from alphacsc.loss_and_gradient import compute_objective
 from alphacsc.loss_and_gradient import gradient_d, gradient_uv
 from alphacsc.update_d_multi import update_uv, prox_uv, _get_d_update_constants
+from alphacsc.utils.whitening import whitening
 from alphacsc.utils.optim import fista
 from alphacsc.update_z import power_iteration
 from alphacsc.utils import construct_X_multi
@@ -36,7 +37,7 @@ def test_simple():
     assert error < 1e-4, "Gradient is false: {:.4e}".format(error)
 
 
-@pytest.mark.parametrize('loss', ['l2', 'dtw'])
+@pytest.mark.parametrize('loss', ['l2', 'dtw', 'whitening'])
 def test_gradient_d(loss):
     # Generate synchronous D
     n_times_atom, n_times = 10, 100
@@ -51,6 +52,9 @@ def test_gradient_d(loss):
     X = rng.normal(size=(n_trials, n_channels, n_times))
     Z = rng.normal(size=(n_atoms, n_trials, n_times - n_times_atom + 1))
     d = rng.normal(size=(n_atoms, n_channels, n_times_atom)).ravel()
+
+    if loss == 'whitening':
+        loss_params['ar_model'], X = whitening(X, ordar=10)
 
     def func(d0):
         D0 = d0.reshape(n_atoms, n_channels, n_times_atom)
@@ -80,7 +84,7 @@ def test_gradient_d(loss):
         raise
 
 
-@pytest.mark.parametrize('loss', ['l2', 'dtw'])
+@pytest.mark.parametrize('loss', ['l2', 'dtw', 'whitening'])
 def test_gradient_uv(loss):
     # Generate synchronous D
     n_times_atom, n_times = 10, 100
@@ -93,6 +97,9 @@ def test_gradient_uv(loss):
     X = rng.normal(size=(n_trials, n_channels, n_times))
     Z = rng.normal(size=(n_atoms, n_trials, n_times - n_times_atom + 1))
     uv = rng.normal(size=(n_atoms, n_channels + n_times_atom)).ravel()
+
+    if loss == 'whitening':
+        loss_params['ar_model'], X = whitening(X, ordar=10)
 
     def func(uv0):
         uv0 = uv0.reshape(n_atoms, n_channels + n_times_atom)

@@ -20,13 +20,13 @@ from .update_d_multi import update_uv, update_d
 from .init_dict import init_dictionary, get_max_error_dict
 from .utils.profile_this import profile_this  # noqa
 from .utils.dictionary import get_lambda_max
-from .utils.whitening import whitening, apply_whitening_d, apply_whitening_z
+from .utils.whitening import whitening
 
 
 def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
                     solver_z='l_bfgs', solver_z_kwargs=dict(),
                     solver_d='alternate_adaptive', solver_d_kwargs=dict(),
-                    rank1=True, whitening_order=0, uv_constraint='separate',
+                    rank1=True, uv_constraint='separate',
                     eps=1e-10, D_init=None, kmeans_params=dict(),
                     stopping_pobj=None, algorithm='batch', loss='l2',
                     loss_params=dict(gamma=.1, sakoe_chiba_band=10),
@@ -60,8 +60,6 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
         Additional keyword arguments to provide to update_d
     rank1 : boolean
         If set to True, learn rank 1 dictionary atoms.
-    whitening_order : int
-        If non-zero, learn the decomposition with a whitened loss
     uv_constraint : str in {'joint', 'separate', 'box'}
         The kind of norm constraint on the atoms:
         If 'joint', the constraint is norm_2([u, v]) <= 1
@@ -126,6 +124,11 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
     z_kwargs = dict(verbose=verbose)
     z_kwargs.update(solver_z_kwargs)
 
+    # Compute the coefficients to whiten X. TODO: add timing
+    if loss == 'whitening':
+        ordar = loss_params.get('ordar', 10)  # Default = 10
+        loss_params['ar_model'], X = whitening(X, ordar=ordar)
+
     def compute_z_func(X, Z_hat, D_hat, reg=None, parallel=None):
         return update_z_multi(X, D_hat, reg=reg, z0=Z_hat, parallel=parallel,
                               solver=solver_z, solver_kwargs=z_kwargs,
@@ -134,7 +137,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
     def obj_func(X, Z_hat, D_hat, reg=None, ar_model=None):
         return compute_X_and_objective_multi(X, Z_hat, D_hat, reg=reg,
                                              uv_constraint=uv_constraint,
-                                             ar_model=ar_model, loss=loss,
+                                             loss=loss,
                                              loss_params=loss_params)
 
     d_kwargs = dict(verbose=verbose, eps=1e-8)
@@ -159,8 +162,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
                 X, D_hat, Z_hat, compute_z_func, compute_d_func, obj_func,
                 end_iter_func, n_iter=n_iter, n_jobs=n_jobs, verbose=verbose,
                 random_state=random_state, parallel=parallel, reg=reg,
-                whitening_order=whitening_order, lmbd_max=lmbd_max,
-                name=name
+                lmbd_max=lmbd_max, name=name
             )
         elif algorithm == "greedy":
             raise NotImplementedError(
@@ -190,23 +192,14 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
 def _batch_learn(X, D_hat, Z_hat, compute_z_func, compute_d_func,
                  obj_func, end_iter_func, n_iter=100, n_jobs=1, verbose=0,
                  random_state=None, parallel=None, lmbd_max=False, reg=None,
-                 whitening_order=0, name="batch"):
+                 name="batch"):
 
-    n_channels = X.shape[1]
     pobj = list()
     times = list()
 
-    # If whitening order is not zero, compute the coefficients to whiten X
-    # TODO: timing
-    if whitening_order > 0:
-        ar_model, X = whitening(X, ordar=whitening_order)
-        Z_hat_not_whiten = Z_hat
-    else:
-        ar_model = None
-
     # monitor cost function
     times.append(0)
-    pobj.append(obj_func(X, Z_hat, D_hat, ar_model=ar_model))
+    pobj.append(obj_func(X, Z_hat, D_hat))
     reg_ = reg
 
     for ii in range(n_iter):  # outer loop of coordinate descent
@@ -225,18 +218,11 @@ def _batch_learn(X, D_hat, Z_hat, compute_z_func, compute_d_func,
             print('[{}] lambda = {:.3e}'.format(name, np.mean(reg_)))
 
         start = time.time()
-        if whitening_order > 0:
-            Z_hat = Z_hat_not_whiten
-            D_hat_not_whiten = D_hat
-            D_hat = apply_whitening_d(ar_model, D_hat, n_channels=n_channels)
-            assert D_hat.shape == D_hat_not_whiten.shape
         Z_hat = compute_z_func(X, Z_hat, D_hat, reg=reg_, parallel=parallel)
-        if whitening_order > 0:
-            D_hat = D_hat_not_whiten
 
         # monitor cost function
         times.append(time.time() - start)
-        pobj.append(obj_func(X, Z_hat, D_hat, reg=reg_, ar_model=ar_model))
+        pobj.append(obj_func(X, Z_hat, D_hat, reg=reg_))
 
         if verbose > 5:
             print("[{}] sparsity: {:.3e}".format(
@@ -251,18 +237,10 @@ def _batch_learn(X, D_hat, Z_hat, compute_z_func, compute_d_func,
             break
 
         start = time.time()
-
-        if whitening_order > 0:
-            D_hat = D_hat_not_whiten
-            Z_hat_not_whiten = Z_hat
-            Z_hat = apply_whitening_z(ar_model, Z_hat)
-            assert Z_hat.shape == Z_hat_not_whiten.shape
         D_hat = compute_d_func(X, Z_hat, D_hat)
-        if whitening_order > 0:
-            Z_hat = Z_hat_not_whiten
         times.append(time.time() - start)
 
-        pobj.append(obj_func(X, Z_hat, D_hat, reg=reg_, ar_model=ar_model))
+        pobj.append(obj_func(X, Z_hat, D_hat, reg=reg_))
 
         null_atom_indices = np.where(abs(Z_hat).sum(axis=(1, 2)) == 0)[0]
         if len(null_atom_indices) > 0:
@@ -276,9 +254,6 @@ def _batch_learn(X, D_hat, Z_hat, compute_z_func, compute_d_func,
 
         if end_iter_func(X, Z_hat, D_hat, pobj, ii):
             break
-
-    if whitening_order > 0:
-        Z_hat = Z_hat_not_whiten
 
     return pobj, times, D_hat, Z_hat
 

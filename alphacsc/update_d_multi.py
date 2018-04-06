@@ -88,7 +88,7 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
         If 'alternate', the solver alternates between u then v
         If 'joint', the solver jointly optimize uv with a line search
         If 'lbfgs', the solver uses lbfgs with box constraints
-    loss : str in {'l2' | 'dtw'}
+    loss : str in {'l2' | 'dtw' | 'whitening'}
         The data-fit
     loss_params : dict
         Parameters of the loss
@@ -268,7 +268,7 @@ def update_d(X, Z, D_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
         The type of solver to update d:
         If 'fista', the solver optimize D with fista and line search
         If 'lbfgs', the solver uses lbfgs with box constraints
-    loss : str in {'l2' | 'dtw'}
+    loss : str in {'l2' | 'dtw' | 'whitening'}
         The data-fit
     loss_params : dict
         Parameters of the loss

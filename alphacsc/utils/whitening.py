@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.signal import tukey
+from scipy import signal
 
 # pip install git+https://github.com/pactools/pactools.git#egg=pactools
 from pactools.utils.arma import Arma
@@ -27,7 +27,7 @@ def whitening(X, ordar=10, block_length=256, sfreq=1., zero_phase=True,
     assert X_white.shape == X.shape
 
     # removes edges
-    X_white *= tukey(n_times, alpha=3 / float(n_times))[None, None, :]
+    X_white *= signal.tukey(n_times, alpha=3 / float(n_times))[None, None, :]
 
     if plot:
         # plot the Power Spectral Density (PSD) before/after
@@ -42,13 +42,17 @@ def whitening(X, ordar=10, block_length=256, sfreq=1., zero_phase=True,
     return ar_model, X_white
 
 
-def apply_ar(ar_model, x, zero_phase=True):
+def apply_ar(ar_model, x, zero_phase=True, mode='same', reverse_ar=False):
     # TODO: speed-up with only one conv
-    # ar_coef = np.concatenate((np.ones(1), ar_model.AR_))
+    ar_coef = np.concatenate((np.ones(1), ar_model.AR_))
+    if reverse_ar:
+        ar_coef = ar_coef[::-1]
+
     if zero_phase:
-        return ar_model.inverse(ar_model.inverse(x)[::-1])[::-1]
+        tmp = signal.fftconvolve(x, ar_coef, mode)[::-1]
+        return signal.fftconvolve(tmp, ar_coef, mode)[::-1]
     else:
-        return ar_model.inverse(x)
+        return signal.fftconvolve(x, ar_coef, mode)
 
 
 def apply_whitening_d(ar_model, D, zero_phase=True, n_channels=None):
@@ -67,9 +71,11 @@ def apply_whitening_d(ar_model, D, zero_phase=True, n_channels=None):
         raise NotImplementedError("Should not be called!")
 
 
-def apply_whitening_z(ar_model, Z, zero_phase=True):
+def apply_whitening_z(ar_model, Z, zero_phase=True, mode='same',
+                      reverse_ar=False):
     return np.array([[
-        apply_ar(ar_model, Zkn, zero_phase=zero_phase) for Zkn in Zk]
+        apply_ar(ar_model, Zkn, zero_phase=zero_phase, mode=mode,
+                 reverse_ar=reverse_ar) for Zkn in Zk]
         for Zk in Z])
 
 

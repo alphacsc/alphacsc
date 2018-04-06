@@ -21,7 +21,7 @@ def compute_objective(X=None, X_hat=None, Z_hat=None, D=None,
         The data on which to perform CSC.
     X_hat : array, shape (n_trials, n_channels, n_times)
         The current reconstructed signal.
-    Z_hat : array, shape (n_atoms, n_trial, n_times_valid)
+    Z_hat : array, shape (n_atoms, n_trials, n_times_valid)
         The current activation signals for the regularization.
     constants : dict
         Constant to accelerate the computation when updating uv.
@@ -37,6 +37,10 @@ def compute_objective(X=None, X_hat=None, Z_hat=None, D=None,
         obj = _l2_objective(X=X, X_hat=X_hat, D=D, constants=constants)
     elif loss == 'dtw':
         obj = _dtw_objective(X, X_hat, loss_params=loss_params)
+    elif loss == 'whitening':
+        # X is assumed to be already whitened
+        X_hat = apply_whitening_z(loss_params['ar_model'], X_hat)
+        obj = _l2_objective(X=X, X_hat=X_hat, D=D, constants=constants)
     else:
         raise NotImplementedError("loss '{}' is not implemented".format(loss))
 
@@ -51,14 +55,14 @@ def compute_objective(X=None, X_hat=None, Z_hat=None, D=None,
 
 def compute_X_and_objective_multi(X, Z_hat, D_hat=None, reg=None, loss='l2',
                                   loss_params=dict(), feasible_evaluation=True,
-                                  uv_constraint='joint', ar_model=None):
+                                  uv_constraint='joint'):
     """Compute X and return the value of the objective function
 
     Parameters
     ----------
     X : array, shape (n_trials, n_channels, n_times)
         The data on which to perform CSC.
-    Z_hat : array, shape (n_atoms, n_times - n_times_atom + 1)
+    Z_hat : array, shape (n_atoms, n_trials, n_times - n_times_atom + 1)
         The sparse activation matrix.
     uv_hat : array, shape (n_atoms, n_channels + n_times_atom)
         The atoms to learn from the data.
@@ -75,8 +79,6 @@ def compute_X_and_objective_multi(X, Z_hat, D_hat=None, reg=None, loss='l2',
         The kind of norm constraint on the atoms:
         If 'joint', the constraint is norm([u, v]) <= 1
         If 'separate', the constraint is norm(u) <= 1 and norm(v) <= 1
-    ar_model : Arma instance or None
-        If not None, X_hat is whitened with this AR model.
     """
     n_channels = X.shape[1]
 
@@ -97,9 +99,6 @@ def compute_X_and_objective_multi(X, Z_hat, D_hat=None, reg=None, loss='l2',
         Z_hat *= norm[:, None, None]
 
     X_hat = construct_X_multi(Z_hat, D=D_hat, n_channels=n_channels)
-
-    if ar_model is not None:
-        X_hat = apply_whitening_z(ar_model, X_hat)
 
     return compute_objective(X=X, X_hat=X_hat, Z_hat=Z_hat, reg=reg, loss=loss,
                              loss_params=loss_params)
@@ -153,6 +152,9 @@ def gradient_uv(uv, X=None, Z=None, constants=None, reg=None, loss='l2',
         cost, grad_d = _l2_gradient_d(D=uv, X=X, Z=Z, constants=constants)
     elif loss == 'dtw':
         cost, grad_d = _dtw_gradient_d(D=uv, X=X, Z=Z, loss_params=loss_params)
+    elif loss == 'whitening':
+        cost, grad_d = _whitening_gradient_d(D=uv, X=X, Z=Z,
+                                             loss_params=loss_params)
     else:
         raise NotImplementedError("loss {} is not implemented.".format(loss))
     grad_u = (grad_d * uv[:, None, n_channels:]).sum(axis=2)
@@ -183,6 +185,10 @@ def gradient_zi(Xi, zi, D=None, constants=None, reg=None, loss='l2',
         cost, grad = _l2_gradient_zi(Xi, zi, D=D, return_func=return_func)
     elif loss == 'dtw':
         cost, grad = _dtw_gradient_zi(Xi, zi, D=D, loss_params=loss_params)
+    elif loss == 'whitening':
+        cost, grad = _whitening_gradient_zi(Xi, zi, D=D,
+                                            loss_params=loss_params,
+                                            return_func=return_func)
     else:
         raise NotImplementedError("loss {} is not implemented.".format(loss))
 
@@ -247,6 +253,9 @@ def gradient_d(D=None, X=None, Z=None, constants=None, reg=None,
         cost, grad_d = _l2_gradient_d(D=D, X=X, Z=Z, constants=constants)
     elif loss == 'dtw':
         cost, grad_d = _dtw_gradient_d(D=D, X=X, Z=Z, loss_params=loss_params)
+    elif loss == 'whitening':
+        cost, grad_d = _whitening_gradient_d(D=D, X=X, Z=Z,
+                                             loss_params=loss_params)
     else:
         raise NotImplementedError("loss {} is not implemented.".format(loss))
 
@@ -385,11 +394,47 @@ def _l2_gradient_zi(Xi, zi, D=None, return_func=False):
 
     if return_func:
         func = 0.5 * np.dot(Dzi.ravel(), Dzi.ravel())
+    else:
+        func = None
 
     grad = _dense_transpose_convolve_d(Dzi, D=D, n_channels=n_channels)
 
+    return func, grad
+
+
+def _whitening_gradient_zi(Xi, zi, D, loss_params, return_func=False):
+    n_channels, n_times = Xi.shape
+    ar_model = loss_params['ar_model']
+
+    # Xi is assumed to be already whitened
+    Xi_hat = construct_X_multi(zi[:, None, :], D=D, n_channels=n_channels)[0]
+    Xi_hat = apply_whitening_z(ar_model, Xi_hat[None, :, :])[0]
+    residual = Xi_hat - Xi
+
     if return_func:
-        return func, grad
+        func = 0.5 * np.dot(residual.ravel(), residual.ravel())
+    else:
+        func = None
+
+    hTh_res = apply_whitening_z(ar_model, residual[None, :, :],
+                                reverse_ar=True)[0]
+    grad = _dense_transpose_convolve_d(hTh_res, D=D, n_channels=n_channels)
+
+    return func, grad
+
+
+def _whitening_gradient_d(D, X, Z, loss_params):
+    n_channels = X.shape[1]
+    ar_model = loss_params['ar_model']
+
+    # Xi is assumed to be already whitened
+    X_hat = construct_X_multi(Z, D=D, n_channels=n_channels)
+    X_hat = apply_whitening_z(ar_model, X_hat)
+    residual = X_hat - X
+
+    hTh_res = apply_whitening_z(ar_model, residual, reverse_ar=True)
+    grad = _dense_transpose_convolve_z(hTh_res, Z)
+
     return None, grad
 
 

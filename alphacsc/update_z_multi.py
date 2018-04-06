@@ -40,7 +40,7 @@ def update_z_multi(X, D, reg, z0=None, debug=False, parallel=None,
         The solver to use.
     solver_kwargs : dict
         Parameters for the solver
-    loss : 'l2' | 'dtw'
+    loss : 'l2' | 'dtw' | 'whitening'
         The data fit loss, either classical l2 norm or the soft-DTW loss.
     loss_params : dict
         Parameters of the loss
@@ -126,7 +126,20 @@ def _update_z_multi_idx(X, D, reg, z0, idxs, debug, solver="l_bfgs",
             def fprime(zi):
                 return func_and_grad(zi)[1]
 
-            assert optimize.check_grad(pobj, fprime, f0) < 1e-2
+            try:
+                assert optimize.check_grad(pobj, fprime, f0) < 1e-2
+            except:
+                grad_approx = optimize.approx_fprime(f0, pobj, 2e-8)
+
+                import matplotlib.pyplot as plt
+                grad_z = fprime(f0)
+                plt.semilogy(abs(grad_approx - grad_z))
+                plt.figure()
+                plt.plot(grad_approx, label="approx")
+                plt.plot(grad_z, '--', label="grad")
+                plt.legend()
+                plt.show()
+                raise
 
         if solver == "l_bfgs":
             factr = solver_kwargs.get('factr', 1e15)  # default value
