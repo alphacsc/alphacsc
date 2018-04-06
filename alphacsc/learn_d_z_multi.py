@@ -192,6 +192,7 @@ def _batch_learn(X, D_hat, Z_hat, compute_z_func, compute_d_func,
                  random_state=None, parallel=None, lmbd_max=False, reg=None,
                  whitening_order=0, name="batch"):
 
+    n_channels = X.shape[1]
     pobj = list()
     times = list()
 
@@ -225,7 +226,8 @@ def _batch_learn(X, D_hat, Z_hat, compute_z_func, compute_d_func,
         if whitening_order > 0:
             Z_hat = Z_hat_not_whiten
             D_hat_not_whiten = D_hat
-            D_hat = apply_whitening_d(ar_model, D_hat)
+            D_hat = apply_whitening_d(ar_model, D_hat, n_channels=n_channels)
+            assert D_hat.shape == D_hat_not_whiten.shape
         Z_hat = compute_z_func(X, Z_hat, D_hat, reg=reg_, parallel=parallel)
 
         # monitor cost function
@@ -250,6 +252,7 @@ def _batch_learn(X, D_hat, Z_hat, compute_z_func, compute_d_func,
             D_hat = D_hat_not_whiten
             Z_hat_not_whiten = Z_hat
             Z_hat = apply_whitening_z(ar_model, Z_hat)
+            assert Z_hat.shape == Z_hat_not_whiten.shape
         D_hat = compute_d_func(X, Z_hat, D_hat)
         times.append(time.time() - start)
 

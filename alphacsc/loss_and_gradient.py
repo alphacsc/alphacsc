@@ -265,8 +265,7 @@ def _dtw_objective(X, X_hat, loss_params=dict()):
     n_trials = X.shape[0]
     cost = 0
     for idx in range(n_trials):
-        D_X = SquaredEuclidean(X_hat[idx].T, X[idx].T,
-                               sakoe_chiba_band=sakoe_chiba_band)
+        D_X = SquaredEuclidean(X_hat[idx].T, X[idx].T)
         sdtw = SoftDTW(D_X, gamma=gamma, sakoe_chiba_band=sakoe_chiba_band)
         cost += sdtw.compute()
 
@@ -282,8 +281,7 @@ def _dtw_gradient(X, Z, D=None, loss_params=dict()):
     grad = np.zeros(X_hat.shape)
     cost = 0
     for idx in range(n_trials):
-        D_X = SquaredEuclidean(X_hat[idx].T, X[idx].T,
-                               sakoe_chiba_band=sakoe_chiba_band)
+        D_X = SquaredEuclidean(X_hat[idx].T, X[idx].T)
         sdtw = SoftDTW(D_X, gamma=gamma, sakoe_chiba_band=sakoe_chiba_band)
 
         cost += sdtw.compute()

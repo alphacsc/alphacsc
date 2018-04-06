@@ -53,6 +53,8 @@ def apply_ar(ar_model, x, zero_phase=True):
 
 def apply_whitening_d(ar_model, D, zero_phase=True, n_channels=None):
     if D.ndim == 2:
+        msg = "For rank1 D, n_channels should be provided"
+        assert n_channels is not None, msg
         v = D[:, n_channels:]
         v_white = [apply_ar(ar_model, vk, zero_phase=zero_phase) for vk in v]
         return np.c_[D[:, :n_channels], v_white]
@@ -65,7 +67,7 @@ def apply_whitening_d(ar_model, D, zero_phase=True, n_channels=None):
         raise NotImplementedError("Should not be called!")
 
 
-def apply_whitening_z(ar_model, Z, zero_phase=True, n_channels=None):
+def apply_whitening_z(ar_model, Z, zero_phase=True):
     return np.array([[
         apply_ar(ar_model, Zkn, zero_phase=zero_phase) for Zkn in Zk]
         for Zk in Z])
