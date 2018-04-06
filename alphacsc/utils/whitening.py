@@ -19,13 +19,9 @@ def whitening(X, ordar=10, block_length=256, sfreq=1., zero_phase=True,
     ar_model.estimate()
 
     # apply the whitening twice (forward and backward) for zero-phase filtering
-    if zero_phase:
-        X_white = [[
-            ar_model.inverse(ar_model.inverse(X_np)[::-1])[::-1]
-            for X_np in X_n
-        ] for X_n in X]
-    else:
-        X_white = [[ar_model.inverse(X_np) for X_np in X_n] for X_n in X]
+    X_white = [[
+        apply_ar(ar_model, X_np, zero_phase=zero_phase) for X_np in X_n]
+        for X_n in X]
 
     X_white = np.array(X_white)
     assert X_white.shape == X.shape
@@ -44,6 +40,35 @@ def whitening(X, ordar=10, block_length=256, sfreq=1., zero_phase=True,
         plt.legend(loc='lower left')
 
     return ar_model, X_white
+
+
+def apply_ar(ar_model, x, zero_phase=True):
+    # TODO: speed-up with only one conv
+    # ar_coef = np.concatenate((np.ones(1), ar_model.AR_))
+    if zero_phase:
+        return ar_model.inverse(ar_model.inverse(x)[::-1])[::-1]
+    else:
+        return ar_model.inverse(x)
+
+
+def apply_whitening_d(ar_model, D, zero_phase=True, n_channels=None):
+    if D.ndim == 2:
+        v = D[:, n_channels:]
+        v_white = [apply_ar(ar_model, vk, zero_phase=zero_phase) for vk in v]
+        return np.c_[D[:, :n_channels], v_white]
+
+    elif D.ndim == 3:
+        return np.array([[
+            apply_ar(ar_model, Dkp, zero_phase=zero_phase) for Dkp in Dk]
+            for Dk in D])
+    else:
+        raise NotImplementedError("Should not be called!")
+
+
+def apply_whitening_z(ar_model, Z, zero_phase=True, n_channels=None):
+    return np.array([[
+        apply_ar(ar_model, Zkn, zero_phase=zero_phase) for Zkn in Zk]
+        for Zk in Z])
 
 
 def unwhitening(ar_model, X_white, estimate=True, zero_phase=True, plot=False):
@@ -116,10 +141,11 @@ if __name__ == '__main__':
     X_init /= X_init.std()
     X_init = X_init[None, None, :]
 
-    ar_model, X_white = whitening(X_init, sfreq, plot=True)
+    ar_model, X_white = whitening(X_init, sfreq=sfreq, plot=True)
     X_unwhite = unwhitening(ar_model, X_white, plot=True)
     plt.show()
 
+    plt.figure()
     X_unwhite /= X_unwhite.std()
 
     for x in [

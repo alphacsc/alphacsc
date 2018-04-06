@@ -177,7 +177,7 @@ def plot_activation(data, info, dirname, name, plot="density"):
 
 def plot_convergence_curve(data, info, dirname):
     # plot the convergence curve
-    eps = 1e-4
+    eps = 1e-6
 
     # compute the best pobj over all methods
     best_pobj = np.min([np.min(r['pobj']) for _, r in data])

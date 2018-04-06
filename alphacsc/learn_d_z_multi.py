@@ -20,14 +20,15 @@ from .update_d_multi import update_uv, update_d
 from .init_dict import init_dictionary, get_max_error_dict
 from .utils.profile_this import profile_this  # noqa
 from .utils.dictionary import get_lambda_max
+from .utils.whitening import whitening, apply_whitening_d, apply_whitening_z
 
 
 def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
                     solver_z='l_bfgs', solver_z_kwargs=dict(),
                     solver_d='alternate_adaptive', solver_d_kwargs=dict(),
-                    rank1=True, uv_constraint='separate', eps=1e-10,
-                    D_init=None, kmeans_params=dict(), stopping_pobj=None,
-                    algorithm='batch', loss='l2',
+                    rank1=True, whitening_order=0, uv_constraint='separate',
+                    eps=1e-10, D_init=None, kmeans_params=dict(),
+                    stopping_pobj=None, algorithm='batch', loss='l2',
                     loss_params=dict(gamma=.1, sakoe_chiba_band=10),
                     lmbd_max='fixed', verbose=10, callback=None,
                     random_state=None, name="DL"):
@@ -59,6 +60,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
         Additional keyword arguments to provide to update_d
     rank1 : boolean
         If set to True, learn rank 1 dictionary atoms.
+    whitening_order : int
+        If non-zero, learn the decomposition with a whitened loss
     uv_constraint : str in {'joint', 'separate', 'box'}
         The kind of norm constraint on the atoms:
         If 'joint', the constraint is norm_2([u, v]) <= 1
@@ -147,7 +150,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
                             solver_d=solver_d, uv_constraint=uv_constraint,
                             loss=loss, loss_params=loss_params, **d_kwargs)
 
-    end_iter_func = get_iteration_func(eps, stopping_pobj, callback, lmbd_max)
+    end_iter_func = get_iteration_func(eps, stopping_pobj, callback, lmbd_max,
+                                       name, verbose)
 
     with Parallel(n_jobs=n_jobs) as parallel:
         if algorithm == 'batch':
@@ -155,7 +159,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
                 X, D_hat, Z_hat, compute_z_func, compute_d_func, obj_func,
                 end_iter_func, n_iter=n_iter, n_jobs=n_jobs, verbose=verbose,
                 random_state=random_state, parallel=parallel, reg=reg,
-                lmbd_max=lmbd_max, name=name
+                whitening_order=whitening_order, lmbd_max=lmbd_max,
+                name=name
             )
         elif algorithm == "greedy":
             raise NotImplementedError(
@@ -185,10 +190,16 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
 def _batch_learn(X, D_hat, Z_hat, compute_z_func, compute_d_func,
                  obj_func, end_iter_func, n_iter=100, n_jobs=1, verbose=0,
                  random_state=None, parallel=None, lmbd_max=False, reg=None,
-                 name="batch"):
+                 whitening_order=0, name="batch"):
 
     pobj = list()
     times = list()
+
+    # If whitening order is not zero, compute the coefficients to whiten X
+    # TODO: timing
+    if whitening_order > 0:
+        ar_model, X = whitening(X, ordar=whitening_order)
+        Z_hat_not_whiten = Z_hat
 
     # monitor cost function
     times.append(0)
@@ -211,6 +222,10 @@ def _batch_learn(X, D_hat, Z_hat, compute_z_func, compute_d_func,
             print('[{}] lambda = {:.3e}'.format(name, np.mean(reg_)))
 
         start = time.time()
+        if whitening_order > 0:
+            Z_hat = Z_hat_not_whiten
+            D_hat_not_whiten = D_hat
+            D_hat = apply_whitening_d(ar_model, D_hat)
         Z_hat = compute_z_func(X, Z_hat, D_hat, reg=reg_, parallel=parallel)
 
         # monitor cost function
@@ -231,6 +246,10 @@ def _batch_learn(X, D_hat, Z_hat, compute_z_func, compute_d_func,
 
         start = time.time()
 
+        if whitening_order > 0:
+            D_hat = D_hat_not_whiten
+            Z_hat_not_whiten = Z_hat
+            Z_hat = apply_whitening_z(ar_model, Z_hat)
         D_hat = compute_d_func(X, Z_hat, D_hat)
         times.append(time.time() - start)
 
@@ -246,28 +265,33 @@ def _batch_learn(X, D_hat, Z_hat, compute_z_func, compute_d_func,
         if verbose > 5:
             print('[{}] Objective (d) : {:.3e}'.format(name, pobj[-1]))
 
-        if end_iter_func(X, Z_hat, D_hat, pobj):
+        if end_iter_func(X, Z_hat, D_hat, pobj, ii):
             break
+
+    if whitening_order > 0:
+        Z_hat = Z_hat_not_whiten
 
     return pobj, times, D_hat, Z_hat
 
 
-def get_iteration_func(eps, stopping_pobj, callback, lmbd_max):
-    def end_iteration(X, Z_hat, D_hat, pobj):
+def get_iteration_func(eps, stopping_pobj, callback, lmbd_max, name, verbose):
+    def end_iteration(X, Z_hat, D_hat, pobj, iteration):
         if callable(callback):
             callback(X, D_hat, Z_hat, pobj)
 
         # Only check that the cost is always going down when the regularization
         # parameter is fixed.
-        if (pobj[-3] - pobj[-2] < eps * pobj[-1] and
-                pobj[-2] - pobj[-1] < eps * pobj[-1] and
-                lmbd_max == 'fixed'):
-            if pobj[-3] - pobj[-2] < -eps:
+        dz = pobj[-3] - pobj[-2]
+        du = pobj[-2] - pobj[-1]
+        if (dz < eps and du < eps and lmbd_max == 'fixed'):
+            if dz < -eps:
                 raise RuntimeError(
                     "The z update have increased the objective value.")
-            if pobj[-2] - pobj[-1] < -eps:
+            if du < -eps:
                 raise RuntimeError(
                     "The d update have increased the objective value.")
+            print("[{}] Converged after {} iteration, dz, du ={:.3e}, {:.3e}"
+                  .format(name, iteration, dz, du))
             return True
 
         if stopping_pobj is not None and pobj[-1] < stopping_pobj:

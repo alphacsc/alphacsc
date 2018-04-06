@@ -26,7 +26,8 @@ def run_one(X, csc_kwargs, n_jobs=1, info={}, callback_config=DEFAULT_CB,
     callback = get_callback_csc(csc_kwargs, info=info, config=callback_config)
     n_iter = csc_kwargs.pop('n_iter', 50)
     _, _, D_init, Z_init = learn_d_z_multi(X, n_jobs=n_jobs, n_iter=0,
-                                           name=name, **csc_kwargs)
+                                           name=name, **csc_kwargs,
+                                           verbose=0)
     pobj, times, D_hat, Z_hat = learn_d_z_multi(
         X, n_jobs=n_jobs, n_iter=n_iter, name=name,
         verbose=verbose, callback=callback, **csc_kwargs)
