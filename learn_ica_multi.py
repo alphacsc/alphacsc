@@ -14,7 +14,7 @@ n_channels = 100
 n_atoms = 2
 n_states = 7
 n_trials = 30
-n_iter = 400
+n_iter = 100
 
 lmbd_max = 'fixed'
 if lmbd_max != 'fixed':
@@ -27,6 +27,8 @@ v1 = get_atoms('square', n_times_atom)
 
 u0 = get_atoms('sin', n_channels)  # spatial maps
 u1 = get_atoms('cos', n_channels)
+# u0 = np.random.randn(*u0.shape)
+# u1 = np.random.randn(*u1.shape)
 
 # Build D and scale atoms
 uv = np.array([np.r_[u0, v0], np.r_[u1, v1]])
@@ -41,15 +43,24 @@ Z = get_activations(rng, shape_Z)
 X = construct_X_multi(Z, uv, n_channels=n_channels)
 X = X.swapaxes(0, 1).reshape((n_channels, -1))
 
-random_state = 1
+X += np.random.randn(*X.shape) * 0.1 * X.std()
+
+random_state = 3
 
 ica = FastICA(n_components=n_atoms, random_state=random_state,
-              tol=1e-7)
-ica.fit(X)
-vZ = ica.components_
+              tol=1e-12)
+XT = ica.fit_transform(X.T)
+
+# plt.plot(XT)
+# plt.show()
+
+# plt.plot(ica.components_.T)
+# plt.show()
+# plt.plot(ica.mixing_)
+# plt.show()
 
 pobj, times, v_hat, Z_hat = learn_d_z(
-    vZ, n_atoms, n_times_atom, reg=reg, n_iter=n_iter,
+    XT[:, 0][None, :], 1, n_times_atom, reg=reg, n_iter=n_iter,
     solver_d_kwargs=dict(factr=100), random_state=random_state,
     n_jobs=1, verbose=1)
 
