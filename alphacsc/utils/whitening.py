@@ -109,16 +109,9 @@ def unwhitening(ar_model, X_white, estimate=True, zero_phase=True, plot=False):
     #     ar_model.AR_ = np.real(np.dot(coefs[None, :], poles_powered))[0]
 
     # apply the whitening twice (forward and backward) for zero-phase filtering
-    if zero_phase:
-        X_unwhite = [[
-            ar_model.inverse(ar_model.inverse(X_np)[::-1])[::-1]
-            for X_np in X_n
-        ] for X_n in X_white]
-    else:
-        X_unwhite = [[ar_model.inverse(X_np) for X_np in X_n]
-                     for X_n in X_white]
-
-    X_unwhite = np.array(X_unwhite)
+    X_unwhite = np.array([[
+        apply_ar(ar_model, X_np, zero_phase=zero_phase) for X_np in X_n]
+        for X_n in X_white])
     assert X_unwhite.shape == X_white.shape
 
     if plot:

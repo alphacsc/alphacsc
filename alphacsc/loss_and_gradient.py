@@ -7,6 +7,7 @@ from sdtw.distance import SquaredEuclidean
 from .utils.convolution import numpy_convolve_uv
 from .utils.convolution import tensordot_convolve
 from .utils.convolution import _choose_convolve_multi
+from .utils.whitening import apply_whitening_z
 from .utils import construct_X_multi
 
 
@@ -50,7 +51,7 @@ def compute_objective(X=None, X_hat=None, Z_hat=None, D=None,
 
 def compute_X_and_objective_multi(X, Z_hat, D_hat=None, reg=None, loss='l2',
                                   loss_params=dict(), feasible_evaluation=True,
-                                  uv_constraint='joint'):
+                                  uv_constraint='joint', ar_model=None):
     """Compute X and return the value of the objective function
 
     Parameters
@@ -74,6 +75,8 @@ def compute_X_and_objective_multi(X, Z_hat, D_hat=None, reg=None, loss='l2',
         The kind of norm constraint on the atoms:
         If 'joint', the constraint is norm([u, v]) <= 1
         If 'separate', the constraint is norm(u) <= 1 and norm(v) <= 1
+    ar_model : Arma instance or None
+        If not None, X_hat is whitened with this AR model.
     """
     n_channels = X.shape[1]
 
@@ -94,6 +97,9 @@ def compute_X_and_objective_multi(X, Z_hat, D_hat=None, reg=None, loss='l2',
         Z_hat *= norm[:, None, None]
 
     X_hat = construct_X_multi(Z_hat, D=D_hat, n_channels=n_channels)
+
+    if ar_model is not None:
+        X_hat = apply_whitening_z(ar_model, X_hat)
 
     return compute_objective(X=X, X_hat=X_hat, Z_hat=Z_hat, reg=reg, loss=loss,
                              loss_params=loss_params)

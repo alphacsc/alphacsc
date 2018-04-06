@@ -131,10 +131,10 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
                               solver=solver_z, solver_kwargs=z_kwargs,
                               loss=loss, loss_params=loss_params)
 
-    def obj_func(X, Z_hat, D_hat, reg=None):
+    def obj_func(X, Z_hat, D_hat, reg=None, ar_model=None):
         return compute_X_and_objective_multi(X, Z_hat, D_hat, reg=reg,
                                              uv_constraint=uv_constraint,
-                                             loss=loss,
+                                             ar_model=ar_model, loss=loss,
                                              loss_params=loss_params)
 
     d_kwargs = dict(verbose=verbose, eps=1e-8)
@@ -201,10 +201,12 @@ def _batch_learn(X, D_hat, Z_hat, compute_z_func, compute_d_func,
     if whitening_order > 0:
         ar_model, X = whitening(X, ordar=whitening_order)
         Z_hat_not_whiten = Z_hat
+    else:
+        ar_model = None
 
     # monitor cost function
     times.append(0)
-    pobj.append(obj_func(X, Z_hat, D_hat))
+    pobj.append(obj_func(X, Z_hat, D_hat, ar_model=ar_model))
     reg_ = reg
 
     for ii in range(n_iter):  # outer loop of coordinate descent
@@ -229,10 +231,12 @@ def _batch_learn(X, D_hat, Z_hat, compute_z_func, compute_d_func,
             D_hat = apply_whitening_d(ar_model, D_hat, n_channels=n_channels)
             assert D_hat.shape == D_hat_not_whiten.shape
         Z_hat = compute_z_func(X, Z_hat, D_hat, reg=reg_, parallel=parallel)
+        if whitening_order > 0:
+            D_hat = D_hat_not_whiten
 
         # monitor cost function
         times.append(time.time() - start)
-        pobj.append(obj_func(X, Z_hat, D_hat, reg=reg_))
+        pobj.append(obj_func(X, Z_hat, D_hat, reg=reg_, ar_model=ar_model))
 
         if verbose > 5:
             print("[{}] sparsity: {:.3e}".format(
@@ -254,9 +258,11 @@ def _batch_learn(X, D_hat, Z_hat, compute_z_func, compute_d_func,
             Z_hat = apply_whitening_z(ar_model, Z_hat)
             assert Z_hat.shape == Z_hat_not_whiten.shape
         D_hat = compute_d_func(X, Z_hat, D_hat)
+        if whitening_order > 0:
+            Z_hat = Z_hat_not_whiten
         times.append(time.time() - start)
 
-        pobj.append(obj_func(X, Z_hat, D_hat, reg=reg_))
+        pobj.append(obj_func(X, Z_hat, D_hat, reg=reg_, ar_model=ar_model))
 
         null_atom_indices = np.where(abs(Z_hat).sum(axis=(1, 2)) == 0)[0]
         if len(null_atom_indices) > 0:
