@@ -49,7 +49,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
         The number of parallel jobs.
     solver_z : str
         The solver to use for the z update. Options are
-        'l_bfgs' (default) | 'ista' | 'fista'
+        'l_bfgs' (default) | 'gcd'
     solver_z_kwargs : dict
         Additional keyword arguments to pass to update_z_multi
     solver_d : str

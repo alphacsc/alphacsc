@@ -29,6 +29,16 @@ n_jobs = 10
 
 verbose = 2
 
+event_id, tmin, tmax = 1, -2., 5.
+
+# debug
+if False:
+    reg_list = [5]
+    n_atoms = 2
+    n_iter = 1
+    n_states = 1
+    n_jobs = 1
+
 
 @mem.cache()
 def load_data(sfreq=sfreq):
@@ -47,7 +57,11 @@ def load_data(sfreq=sfreq):
     events[:, 0] -= raw.first_samp
 
     # pick channels and resample to sfreq sampling frequency
-    raw.pick_types(meg='grad', eog=False, stim=False, eeg=False,)
+    raw.pick_types(
+        meg='grad',
+        eog=False,
+        stim=False,
+        eeg=False, )
 
     # get a numpy array from the raw object
     X = raw.get_data()
@@ -81,7 +95,6 @@ def make_epochs(Z_hat, info, events, n_times_atom):
     # create trials around the events, using mne
     new_info = mne.create_info(ch_names=n_atoms, sfreq=info['sfreq'])
     rawarray = mne.io.RawArray(data=Z_hat, info=new_info)
-    event_id, tmin, tmax = 1, -2., 5.
     epochs = mne.Epochs(rawarray, events, event_id, tmin, tmax)
     Z_hat_epoched = np.swapaxes(epochs.get_data(), axis1=0, axis2=1)
     return Z_hat_epoched
@@ -130,6 +143,7 @@ n_trials, n_channels, n_times = X.shape
 
 all_methods_ = [
     ('chunk', partial(_run, D_init='chunk')),
+    ('ssa', partial(_run, D_init='ssa')),
     ('roll_inv_0', partial(_run, D_init='kmeans', kmeans_params=dict(
         max_iter=0, distances='roll_inv'))),
     ('trans_inv_0', partial(_run, D_init='kmeans', kmeans_params=dict(
@@ -212,7 +226,11 @@ for method in all_methods_:
         # method_colors = [
         #     c for c in COLORS for _ in range(n_states) for _ in reg_list
         # ]
-        method_colors = [c for c in COLORS for _ in range(n_states)]
+        method_colors = [
+            col
+            for col, _ in zip(results, itertools.cycler(COLORS))
+            for _ in range(n_states)
+        ]
         for label, res, color in zip(labels, results, method_colors):
             pobj, times, uv_hat, Z_hat, uv_init = res
             plt.semilogx(
@@ -316,6 +334,9 @@ for method in all_methods_:
             plot_activations_density(z_hat, n_times_atom, sfreq=sfreq,
                                      axes=[ax],
                                      colors=[COLORS[i_atom % len(COLORS)]])
+            ax.axvline(-tmin, c='k')
+            ax.axvline(-tmin + 0.5, c='k', ls='--')
+            ax.axvline(-tmin + 1.5, c='k', ls='--')
             ax.set(xlabel='Time (sec)', title='Activations final')
 
         all_plots = [

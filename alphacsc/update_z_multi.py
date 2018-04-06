@@ -36,7 +36,7 @@ def update_z_multi(X, D, reg, z0=None, debug=False, parallel=None,
         If True, check the grad.
     parallel : instance of Parallel
         Context manager for running joblibs in a loop.
-    solver : 'l_bfgs' | 'ista' | 'fista'
+    solver : 'l_bfgs' | 'gcd'
         The solver to use.
     solver_kwargs : dict
         Parameters for the solver
@@ -99,7 +99,7 @@ def _update_z_multi_idx(X, D, reg, z0, idxs, debug, solver="l_bfgs",
     for i in idxs:
 
         def func_and_grad(zi):
-            return gradient_zi(Xi=X[i], zi=zi, D=D, constants=constants,            
+            return gradient_zi(Xi=X[i], zi=zi, D=D, constants=constants,
                                reg=reg, return_func=True, flatten=True,
                                loss=loss, loss_params=loss_params)
 
