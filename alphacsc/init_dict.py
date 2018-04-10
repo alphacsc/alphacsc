@@ -201,10 +201,7 @@ def kmeans_init(X, n_atoms, n_times_atom, max_iter=0, random_state=None,
 
     if not (distances == 'euclidean' and max_iter > 0):
         indices = np.array(indices)
-        if distances == 'euclidean':
-            n_window = X_embed.shape[0] // (n_trials * n_channels)
-        else:
-            n_window = X_embed.shape[0] // n_trials
+        n_window = X_embed.shape[0] // n_trials
         medoid_i = (indices // n_window) // n_channels
         medoid_t = (indices % n_window) * step
         D = np.array([X_original[i, :, t:t + n_times_atom]

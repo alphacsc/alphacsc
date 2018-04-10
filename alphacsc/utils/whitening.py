@@ -18,12 +18,8 @@ def whitening(X, ordar=10, block_length=256, sfreq=1., zero_phase=True,
         ar_model.psd[-1] = np.sqrt(ar_model.psd[-1])
     ar_model.estimate()
 
-    # apply the whitening twice (forward and backward) for zero-phase filtering
-    X_white = [[
-        apply_ar(ar_model, X_np, zero_phase=zero_phase)
-        for X_np in X_n] for X_n in X]
-
-    X_white = np.array(X_white)
+    # apply the whitening for zero-phase filtering
+    X_white = apply_whitening(ar_model, X, zero_phase=zero_phase, mode='same')
     assert X_white.shape == X.shape
 
     # removes edges
