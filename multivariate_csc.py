@@ -83,7 +83,8 @@ for random_state in range(n_states):
         solver_z_kwargs={'factr': 10e11},
         # D_init='ssa',
         # lmbd_max=True,
-        loss='dtw', loss_params=dict(gamma=0.005, sakoe_chiba_band=10),)
+        loss='whitening',
+        loss_params=dict(gamma=0.005, sakoe_chiba_band=10, ordar=10),)
     pobjs.append(pobj[-1])
     uv_hats.append(uv_hat)
 

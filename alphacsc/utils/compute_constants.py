@@ -1,6 +1,6 @@
 import numpy as np
 
-from .compat import jit
+from .compat import numba, jit
 
 
 def _compute_DtD(D, n_channels=None):
@@ -12,14 +12,13 @@ def _compute_DtD(D, n_channels=None):
     return _compute_DtD_D(D)
 
 
-@jit
+@jit((numba.float64[:, ::1], numba.int64), nopython=True)
 def _compute_DtD_uv(uv, n_channels):
     # TODO: benchmark the cross correlate function of numpy
     n_atoms, n_times_atom = uv.shape
     n_times_atom -= n_channels
 
     u = uv[:, :n_channels]
-    v = uv[:, n_channels:]
 
     DtD = np.zeros(shape=(n_atoms, n_atoms, 2 * n_times_atom - 1))
     t0 = n_times_atom - 1
@@ -27,15 +26,18 @@ def _compute_DtD_uv(uv, n_channels):
         for k in range(n_atoms):
             for t in range(n_times_atom):
                 if t == 0:
-                    DtD[k0, k, t0] = np.dot(v[k0], v[k])
+                    DtD[k0, k, t0] = np.dot(uv[k0, n_channels:],
+                                            uv[k, n_channels:])
                 else:
-                    DtD[k0, k, t0 + t] = np.dot(v[k0, :-t], v[k, t:])
-                    DtD[k0, k, t0 - t] = np.dot(v[k0, t:], v[k, :-t])
-    DtD *= np.dot(u, u.T)[:, :, None]
+                    DtD[k0, k, t0 + t] = np.dot(uv[k0, n_channels:-t],
+                                                uv[k, n_channels + t:])
+                    DtD[k0, k, t0 - t] = np.dot(uv[k0, n_channels + t:],
+                                                uv[k, n_channels:-t])
+    DtD *= np.dot(u, u.T).reshape(n_atoms, n_atoms, 1)
     return DtD
 
 
-@jit
+@jit((numba.float64[:, :, :],))
 def _compute_DtD_D(D):
     # TODO: benchmark the cross correlate function of numpy
     n_atoms, n_channels, n_times_atom = D.shape
@@ -55,7 +57,7 @@ def _compute_DtD_D(D):
     return DtD
 
 
-@jit()
+@jit((numba.float64[:, :, :], numba.int64))
 def compute_ZtZ(Z, n_times_atom):
     """
     ZtZ.shape = n_atoms, n_atoms, 2 * n_times_atom - 1

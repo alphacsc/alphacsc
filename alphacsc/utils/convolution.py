@@ -8,7 +8,7 @@
 
 import numpy as np
 
-from .compat import jit
+from .compat import numba, jit
 
 
 def construct_X(Z, ds):
@@ -182,7 +182,7 @@ def _choose_convolve_multi(Zi, D=None, n_channels=None):
             return _dense_convolve_multi(Zi, D)
 
 
-@jit()
+@jit((numba.float64[:, :, :], numba.float64[:, :]))
 def numpy_convolve_uv(ZtZ, uv):
     """Compute the multivariate (valid) convolution of ZtZ and D
 

@@ -28,7 +28,7 @@ def whitening(X, ordar=10, block_length=256, sfreq=1., zero_phase=True,
                             alpha=3 / float(n_times_white))[None, None, :]
 
     if plot:
-        # plot the Power Spectral Density (PSD) before/after
+        # plot the Power Spectral Density (PSD) before/after
         ar_model.arma2psd(hold=True)
         ar_model.periodogram(
             X_white.reshape(-1, n_times), hold=True, mean_psd=True)
@@ -114,7 +114,7 @@ def unwhitening(ar_model, X_white, estimate=True, zero_phase=True, plot=False):
     assert X_unwhite.shape == X_white.shape
 
     if plot:
-        # plot the Power Spectral Density (PSD) before/after
+        # plot the Power Spectral Density (PSD) before/after
         ar_model.periodogram(
             X_white.reshape(-1, n_times), hold=False, mean_psd=True)
         ar_model.arma2psd(hold=True)
