@@ -7,7 +7,7 @@ from sdtw.distance import SquaredEuclidean
 from .utils.convolution import numpy_convolve_uv
 from .utils.convolution import tensordot_convolve
 from .utils.convolution import _choose_convolve_multi
-from .utils.whitening import apply_whitening_z
+from .utils.whitening import apply_whitening
 from .utils import construct_X_multi
 
 
@@ -38,8 +38,10 @@ def compute_objective(X=None, X_hat=None, Z_hat=None, D=None,
     elif loss == 'dtw':
         obj = _dtw_objective(X, X_hat, loss_params=loss_params)
     elif loss == 'whitening':
-        # X is assumed to be already whitened
-        X_hat = apply_whitening_z(loss_params['ar_model'], X_hat)
+        ar_model = loss_params['ar_model']
+        # X is assumed to be already whitened, just select the valid part
+        X = X[:, :, ar_model.ordar:-ar_model.ordar]
+        X_hat = apply_whitening(ar_model, X_hat, mode='valid')
         obj = _l2_objective(X=X, X_hat=X_hat, D=D, constants=constants)
     else:
         raise NotImplementedError("loss '{}' is not implemented".format(loss))
@@ -407,8 +409,11 @@ def _whitening_gradient_zi(Xi, zi, D, loss_params, return_func=False):
     ar_model = loss_params['ar_model']
 
     # Xi is assumed to be already whitened
+    Xi = Xi[:, ar_model.ordar:-ar_model.ordar]
+
+    # Construct Xi_hat and whitten it
     Xi_hat = construct_X_multi(zi[:, None, :], D=D, n_channels=n_channels)[0]
-    Xi_hat = apply_whitening_z(ar_model, Xi_hat[None, :, :])[0]
+    Xi_hat = apply_whitening(ar_model, Xi_hat[None], mode='valid')[0]
     residual = Xi_hat - Xi
 
     if return_func:
@@ -416,9 +421,11 @@ def _whitening_gradient_zi(Xi, zi, D, loss_params, return_func=False):
     else:
         func = None
 
-    hTh_res = apply_whitening_z(ar_model, residual[None, :, :],
-                                reverse_ar=True)[0]
+    hTh_res = apply_whitening(ar_model, residual[None], reverse_ar=True,
+                              mode='full')[0]
+
     grad = _dense_transpose_convolve_d(hTh_res, D=D, n_channels=n_channels)
+    assert grad.shape == zi.shape
 
     return func, grad
 
@@ -427,12 +434,15 @@ def _whitening_gradient_d(D, X, Z, loss_params):
     n_channels = X.shape[1]
     ar_model = loss_params['ar_model']
 
-    # Xi is assumed to be already whitened
+    # X is assumed to be already whitened
+    X = X[:, :, ar_model.ordar:-ar_model.ordar]
+
+    # Construct X_hat and whitten it
     X_hat = construct_X_multi(Z, D=D, n_channels=n_channels)
-    X_hat = apply_whitening_z(ar_model, X_hat)
+    X_hat = apply_whitening(ar_model, X_hat, mode='valid')
     residual = X_hat - X
 
-    hTh_res = apply_whitening_z(ar_model, residual, reverse_ar=True)
+    hTh_res = apply_whitening(ar_model, residual, reverse_ar=True, mode='full')
     grad = _dense_transpose_convolve_z(hTh_res, Z)
 
     return None, grad

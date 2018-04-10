@@ -20,14 +20,16 @@ def whitening(X, ordar=10, block_length=256, sfreq=1., zero_phase=True,
 
     # apply the whitening twice (forward and backward) for zero-phase filtering
     X_white = [[
-        apply_ar(ar_model, X_np, zero_phase=zero_phase) for X_np in X_n]
-        for X_n in X]
+        apply_ar(ar_model, X_np, zero_phase=zero_phase)
+        for X_np in X_n] for X_n in X]
 
     X_white = np.array(X_white)
     assert X_white.shape == X.shape
 
     # removes edges
-    X_white *= signal.tukey(n_times, alpha=3 / float(n_times))[None, None, :]
+    n_times_white = X_white.shape[-1]
+    X_white *= signal.tukey(n_times_white,
+                            alpha=3 / float(n_times_white))[None, None, :]
 
     if plot:
         # plot the Power Spectral Density (PSD) before/after
@@ -55,28 +57,23 @@ def apply_ar(ar_model, x, zero_phase=True, mode='same', reverse_ar=False):
         return signal.fftconvolve(x, ar_coef, mode)
 
 
-def apply_whitening_d(ar_model, D, zero_phase=True, n_channels=None):
-    if D.ndim == 2:
+def apply_whitening(ar_model, X, zero_phase=True, mode='same',
+                    reverse_ar=False, n_channels=None):
+    if X.ndim == 2:
         msg = "For rank1 D, n_channels should be provided"
         assert n_channels is not None, msg
-        v = D[:, n_channels:]
-        v_white = [apply_ar(ar_model, vk, zero_phase=zero_phase) for vk in v]
-        return np.c_[D[:, :n_channels], v_white]
+        v = X[:, n_channels:]
+        v_white = [apply_ar(ar_model, vk, zero_phase=zero_phase,
+                            mode=mode) for vk in v]
+        return np.c_[X[:, :n_channels], v_white]
 
-    elif D.ndim == 3:
+    elif X.ndim == 3:
         return np.array([[
-            apply_ar(ar_model, Dkp, zero_phase=zero_phase) for Dkp in Dk]
-            for Dk in D])
+            apply_ar(ar_model, Xij, zero_phase=zero_phase, mode=mode,
+                     reverse_ar=reverse_ar) for Xij in Xi]
+            for Xi in X])
     else:
         raise NotImplementedError("Should not be called!")
-
-
-def apply_whitening_z(ar_model, Z, zero_phase=True, mode='same',
-                      reverse_ar=False):
-    return np.array([[
-        apply_ar(ar_model, Zkn, zero_phase=zero_phase, mode=mode,
-                 reverse_ar=reverse_ar) for Zkn in Zk]
-        for Zk in Z])
 
 
 def unwhitening(ar_model, X_white, estimate=True, zero_phase=True, plot=False):
