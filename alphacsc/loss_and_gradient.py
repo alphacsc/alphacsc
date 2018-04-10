@@ -404,27 +404,36 @@ def _l2_gradient_zi(Xi, zi, D=None, return_func=False):
     return func, grad
 
 
-def _whitening_gradient_zi(Xi, zi, D, loss_params, return_func=False):
-    n_channels, n_times = Xi.shape
+def _whitening_gradient(X, X_hat, loss_params, return_func=False):
     ar_model = loss_params['ar_model']
 
-    # Xi is assumed to be already whitened
-    Xi = Xi[:, ar_model.ordar:-ar_model.ordar]
+    # Xi is assumed to be already whitened, select the valid part
+    X = X[:, :, ar_model.ordar:-ar_model.ordar]
 
-    # Construct Xi_hat and whitten it
-    Xi_hat = construct_X_multi(zi[:, None, :], D=D, n_channels=n_channels)[0]
-    Xi_hat = apply_whitening(ar_model, Xi_hat[None], mode='valid')[0]
-    residual = Xi_hat - Xi
+    # Construct X_hat and whitten it
+    X_hat = apply_whitening(ar_model, X_hat, mode='valid')
+    residual = X_hat - X
 
     if return_func:
         func = 0.5 * np.dot(residual.ravel(), residual.ravel())
     else:
         func = None
 
-    hTh_res = apply_whitening(ar_model, residual[None], reverse_ar=True,
-                              mode='full')[0]
+    hTh_res = apply_whitening(ar_model, residual, reverse_ar=True, mode='full')
 
-    grad = _dense_transpose_convolve_d(hTh_res, D=D, n_channels=n_channels)
+    return hTh_res, func
+
+
+def _whitening_gradient_zi(Xi, zi, D, loss_params, return_func=False):
+    n_channels, n_times = Xi.shape
+
+    # Construct Xi_hat and compute the gradient relatively to X_hat
+    Xi_hat = construct_X_multi(zi[:, None, :], D=D, n_channels=n_channels)
+    hTh_res, func = _whitening_gradient(Xi[None], Xi_hat, loss_params,
+                                        return_func=return_func)
+
+    # Use the chain rule to compute the gradient compared to zi
+    grad = _dense_transpose_convolve_d(hTh_res[0], D=D, n_channels=n_channels)
     assert grad.shape == zi.shape
 
     return func, grad
@@ -432,17 +441,13 @@ def _whitening_gradient_zi(Xi, zi, D, loss_params, return_func=False):
 
 def _whitening_gradient_d(D, X, Z, loss_params):
     n_channels = X.shape[1]
-    ar_model = loss_params['ar_model']
 
-    # X is assumed to be already whitened
-    X = X[:, :, ar_model.ordar:-ar_model.ordar]
-
-    # Construct X_hat and whitten it
+    # Construct Xi_hat and compute the gradient relatively to X_hat
     X_hat = construct_X_multi(Z, D=D, n_channels=n_channels)
-    X_hat = apply_whitening(ar_model, X_hat, mode='valid')
-    residual = X_hat - X
+    hTh_res, func = _whitening_gradient(X, X_hat, loss_params,
+                                        return_func=False)
 
-    hTh_res = apply_whitening(ar_model, residual, reverse_ar=True, mode='full')
+    # Use the chain rule to compute the gradient compared to D
     grad = _dense_transpose_convolve_z(hTh_res, Z)
 
     return None, grad
