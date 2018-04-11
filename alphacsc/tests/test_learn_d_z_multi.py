@@ -21,6 +21,7 @@ def test_learn_d_z_multi(loss, solver_d, uv_constraint):
     pobj, times, uv_hat, Z_hat = learn_d_z_multi(
         X, n_atoms, n_times_atom, uv_constraint=uv_constraint,
         solver_d=solver_d, random_state=0, n_iter=30,
+        solver_z="l_bfgs",
         loss=loss, loss_params=dict(gamma=1, sakoe_chiba_band=10))
 
     msg = "Cost function does not go down for uv_constraint {}".format(

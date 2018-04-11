@@ -1,7 +1,7 @@
 import numpy as np
 from scipy import optimize
 
-from .compute_constants import _compute_DtD
+from .compute_constants import compute_DtD
 
 
 def _support_least_square(X, uv, Z, debug=False):
@@ -11,7 +11,7 @@ def _support_least_square(X, uv, Z, debug=False):
     n_times_atom = n_times - n_times_valid + 1
 
     # Compute DtD
-    DtD = _compute_DtD(uv, n_chan)
+    DtD = compute_DtD(uv, n_chan)
     t0 = n_times_atom - 1
     Z_hat = np.zeros(Z.shape)
 

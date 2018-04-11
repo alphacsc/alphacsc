@@ -25,7 +25,7 @@ def compute_objective(X=None, X_hat=None, Z_hat=None, D=None,
         The current activation signals for the regularization.
     constants : dict
         Constant to accelerate the computation when updating uv.
-    reg : float
+    reg : float or array, shape (n_atoms, )
         The regularization parameters. If None, no regularization is added.
         The regularization constant
     loss : str in {'l2' | 'dtw'}
@@ -39,6 +39,7 @@ def compute_objective(X=None, X_hat=None, Z_hat=None, D=None,
         obj = _dtw_objective(X, X_hat, loss_params=loss_params)
     elif loss == 'whitening':
         ar_model = loss_params['ar_model']
+
         # X is assumed to be already whitened, just select the valid part
         X = X[:, :, ar_model.ordar:-ar_model.ordar]
         X_hat = apply_whitening(ar_model, X_hat, mode='valid')
@@ -419,7 +420,8 @@ def _whitening_gradient(X, X_hat, loss_params, return_func=False):
     else:
         func = None
 
-    hTh_res = apply_whitening(ar_model, residual, reverse_ar=True, mode='full')
+    hTh_res = apply_whitening(ar_model, residual, reverse_ar=True,
+                              mode='full')
 
     return hTh_res, func
 
@@ -428,7 +430,7 @@ def _whitening_gradient_zi(Xi, zi, D, loss_params, return_func=False):
     n_channels, n_times = Xi.shape
 
     # Construct Xi_hat and compute the gradient relatively to X_hat
-    Xi_hat = construct_X_multi(zi[:, None, :], D=D, n_channels=n_channels)
+    Xi_hat = construct_X_multi(zi[:, None], D=D, n_channels=n_channels)
     hTh_res, func = _whitening_gradient(Xi[None], Xi_hat, loss_params,
                                         return_func=return_func)
 

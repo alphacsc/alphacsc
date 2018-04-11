@@ -11,7 +11,7 @@ from scipy import optimize
 from joblib import Parallel, delayed
 
 from .utils.convolution import _choose_convolve_multi
-from .utils.compute_constants import _compute_DtD
+from .utils.compute_constants import compute_DtD
 from .loss_and_gradient import gradient_zi
 
 
@@ -94,7 +94,7 @@ def _update_z_multi_idx(X, D, reg, z0, idxs, debug, solver="l_bfgs",
     zhats = []
 
     if solver == "gcd":
-        constants['DtD'] = _compute_DtD(D=D, n_channels=n_channels)
+        constants['DtD'] = compute_DtD(D=D, n_channels=n_channels)
 
     for i in idxs:
 
@@ -128,17 +128,21 @@ def _update_z_multi_idx(X, D, reg, z0, idxs, debug, solver="l_bfgs",
 
             try:
                 assert optimize.check_grad(pobj, fprime, f0) < 1e-2
-            except:
+            except AssertionError:
                 grad_approx = optimize.approx_fprime(f0, pobj, 2e-8)
+                grad_z = fprime(f0)
+
+                import IPython
+                IPython.embed()
 
                 import matplotlib.pyplot as plt
-                grad_z = fprime(f0)
                 plt.semilogy(abs(grad_approx - grad_z))
                 plt.figure()
                 plt.plot(grad_approx, label="approx")
                 plt.plot(grad_z, '--', label="grad")
                 plt.legend()
                 plt.show()
+
                 raise
 
         if solver == "l_bfgs":

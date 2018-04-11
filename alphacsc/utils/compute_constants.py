@@ -3,7 +3,7 @@ import numpy as np
 from .compat import numba, jit
 
 
-def _compute_DtD(D, n_channels=None):
+def compute_DtD(D, n_channels=None):
     """Compute the DtD matrix
     """
     if D.ndim == 2:
