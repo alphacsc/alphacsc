@@ -30,6 +30,9 @@ def whitening(X, ordar=10, block_length=256, sfreq=1., zero_phase=True,
     if plot:
         # plot the Power Spectral Density (PSD) before/after
         ar_model.arma2psd(hold=True)
+        if zero_phase:
+            ar_model.psd[-2] **= 2
+            ar_model.psd[-1] **= 2
         ar_model.periodogram(
             X_white.reshape(-1, n_times), hold=True, mean_psd=True)
         ar_model.plot('periodogram before/after whitening',
@@ -82,30 +85,7 @@ def unwhitening(ar_model, X_white, estimate=True, zero_phase=True, plot=False):
         ar_model.arma2psd(hold=True)
         ar_model.psd[-1] = 1. / ar_model.psd[-1]
 
-        # ar_model.ordar *= 2
-
-        if zero_phase:
-            ar_model.psd[-1] = np.sqrt(ar_model.psd[-1])
         ar_model.estimate()
-
-    # else:
-    #     from numpy.polynomial.polynomial import polyfromroots
-    #     # XXX not correct
-    #     AR = np.hstack((np.ones(1), ar_model.AR_))
-    #     poles = np.roots(AR)
-    #
-    #     n_poles = len(poles)
-    #     reduced_polynomial = np.zeros((n_poles, n_poles), dtype='complex')
-    #     for i in range(n_poles):
-    #         idx_without_i = np.r_[np.arange(i), np.arange(i + 1, n_poles)]
-    #         reduced_polynomial[i] = polyfromroots(poles[idx_without_i])
-    #
-    #     # ones = np.dot(reduced_polynomial.T, coefs)
-    #     coefs = np.linalg.solve(reduced_polynomial.T, np.ones(n_poles))
-    #
-    #     ordar = 100
-    #     poles_powered = np.power(poles[:, None], np.arange(ordar)[None, :])
-    #     ar_model.AR_ = np.real(np.dot(coefs[None, :], poles_powered))[0]
 
     # apply the whitening twice (forward and backward) for zero-phase filtering
     X_unwhite = np.array([[
@@ -118,6 +98,8 @@ def unwhitening(ar_model, X_white, estimate=True, zero_phase=True, plot=False):
         ar_model.periodogram(
             X_white.reshape(-1, n_times), hold=False, mean_psd=True)
         ar_model.arma2psd(hold=True)
+        if zero_phase:
+            ar_model.psd[-1] **= 2
         ar_model.periodogram(
             X_unwhite.reshape(-1, n_times), hold=True, mean_psd=True)
         ar_model.plot('periodogram before/after unwhitening',

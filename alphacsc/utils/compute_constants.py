@@ -12,7 +12,7 @@ def _compute_DtD(D, n_channels=None):
     return _compute_DtD_D(D)
 
 
-@jit((numba.float64[:, ::1], numba.int64), nopython=True)
+@jit((numba.float64[:, :], numba.int64), nopython=True)
 def _compute_DtD_uv(uv, n_channels):
     # TODO: benchmark the cross correlate function of numpy
     n_atoms, n_times_atom = uv.shape

@@ -255,7 +255,8 @@ def plot_or_replot(data, axes=None, sfreq=1):
     if axes is None:
         K = len(data)
         n_rows, n_cols = min(K, 5), max(1, K // 5)
-        fig, axes = plt.subplots(n_rows, n_cols, squeeze=False).ravel()
+        fig, axes = plt.subplots(n_rows, n_cols, squeeze=False)
+        axes = axes.ravel()
     if axes[0].lines == []:
         color_cycle = itertools.cycle(COLORS)
         for ax, xk, color in zip(axes, data, color_cycle):

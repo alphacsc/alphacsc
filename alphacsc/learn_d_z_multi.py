@@ -29,7 +29,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
                     rank1=True, uv_constraint='separate',
                     eps=1e-10, D_init=None, kmeans_params=dict(),
                     stopping_pobj=None, algorithm='batch', loss='l2',
-                    loss_params=dict(gamma=.1, sakoe_chiba_band=10),
+                    loss_params=dict(gamma=.1, sakoe_chiba_band=10, ordar=10),
                     lmbd_max='fixed', verbose=10, callback=None,
                     random_state=None, name="DL"):
     """Learn atoms and activations using Convolutional Sparse Coding.
@@ -126,8 +126,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
 
     # Compute the coefficients to whiten X. TODO: add timing
     if loss == 'whitening':
-        ordar = loss_params.get('ordar', 10)  # Default = 10
-        loss_params['ar_model'], X = whitening(X, ordar=ordar)
+        loss_params['ar_model'], X = whitening(X, ordar=loss_params['ordar'])
 
     def compute_z_func(X, Z_hat, D_hat, reg=None, parallel=None):
         return update_z_multi(X, D_hat, reg=reg, z0=Z_hat, parallel=parallel,
