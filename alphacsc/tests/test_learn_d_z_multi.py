@@ -16,13 +16,15 @@ def test_learn_d_z_multi(loss, solver_d, uv_constraint):
     n_trials, n_channels, n_times = 2, 3, 100
     n_times_atom, n_atoms = 10, 4
 
+    loss_params = dict(gamma=1, sakoe_chiba_band=10, ordar=10)
+
     rng = check_random_state(42)
     X = rng.randn(n_trials, n_channels, n_times)
     pobj, times, uv_hat, Z_hat = learn_d_z_multi(
         X, n_atoms, n_times_atom, uv_constraint=uv_constraint,
         solver_d=solver_d, random_state=0, n_iter=30,
         solver_z="l_bfgs",
-        loss=loss, loss_params=dict(gamma=1, sakoe_chiba_band=10))
+        loss=loss, loss_params=loss_params)
 
     msg = "Cost function does not go down for uv_constraint {}".format(
         uv_constraint)

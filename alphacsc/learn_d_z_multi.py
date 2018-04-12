@@ -133,7 +133,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
                               solver=solver_z, solver_kwargs=z_kwargs,
                               loss=loss, loss_params=loss_params)
 
-    def obj_func(X, Z_hat, D_hat, reg=None, ar_model=None):
+    def obj_func(X, Z_hat, D_hat, reg=None):
         return compute_X_and_objective_multi(X, Z_hat, D_hat, reg=reg,
                                              uv_constraint=uv_constraint,
                                              loss=loss,
@@ -193,13 +193,11 @@ def _batch_learn(X, D_hat, Z_hat, compute_z_func, compute_d_func,
                  random_state=None, parallel=None, lmbd_max=False, reg=None,
                  name="batch"):
 
-    pobj = list()
-    times = list()
+    reg_ = reg
 
     # monitor cost function
-    times.append(0)
-    pobj.append(obj_func(X, Z_hat, D_hat))
-    reg_ = reg
+    times = [0]
+    pobj = [obj_func(X, Z_hat, D_hat, reg=reg_)]
 
     for ii in range(n_iter):  # outer loop of coordinate descent
         if verbose == 1:
@@ -216,6 +214,7 @@ def _batch_learn(X, D_hat, Z_hat, compute_z_func, compute_d_func,
         if verbose > 5:
             print('[{}] lambda = {:.3e}'.format(name, np.mean(reg_)))
 
+        # Compute Z update
         start = time.time()
         Z_hat = compute_z_func(X, Z_hat, D_hat, reg=reg_, parallel=parallel)
 
@@ -235,10 +234,12 @@ def _batch_learn(X, D_hat, Z_hat, compute_z_func, compute_d_func,
                           " been learned.", UserWarning)
             break
 
+        # Compute D update
         start = time.time()
         D_hat = compute_d_func(X, Z_hat, D_hat)
-        times.append(time.time() - start)
 
+        # monitor cost function
+        times.append(time.time() - start)
         pobj.append(obj_func(X, Z_hat, D_hat, reg=reg_))
 
         null_atom_indices = np.where(abs(Z_hat).sum(axis=(1, 2)) == 0)[0]
