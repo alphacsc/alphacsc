@@ -10,9 +10,10 @@ import numpy as np
 from scipy import optimize
 from joblib import Parallel, delayed
 
-from .utils.convolution import _choose_convolve_multi
-from .utils.compute_constants import compute_DtD
+from .utils.optim import power_iteration
 from .loss_and_gradient import gradient_zi
+from .utils.compute_constants import compute_DtD
+from .utils.convolution import _choose_convolve_multi
 
 
 def update_z_multi(X, D, reg, z0=None, debug=False, parallel=None,
@@ -131,9 +132,6 @@ def _update_z_multi_idx(X, D, reg, z0, idxs, debug, solver="l_bfgs",
             except AssertionError:
                 grad_approx = optimize.approx_fprime(f0, pobj, 2e-8)
                 grad_z = fprime(f0)
-
-                import IPython
-                IPython.embed()
 
                 import matplotlib.pyplot as plt
                 plt.semilogy(abs(grad_approx - grad_z))

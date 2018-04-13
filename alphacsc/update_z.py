@@ -10,8 +10,9 @@ from scipy import linalg
 from scipy import optimize, signal
 from joblib import Parallel, delayed
 
-from .utils import check_random_state, check_consistent_shape
 from .utils.convolution import _choose_convolve
+from .utils.optim import power_iteration
+from .utils import check_random_state, check_consistent_shape
 
 
 def update_z(X, ds, reg, z0=None, debug=False, parallel=None,
@@ -230,48 +231,6 @@ def _update_z_idx(X, ds, reg, z0, idxs, debug, solver="l_bfgs", b_hat_0=None,
 
         zhats.append(zhat)
     return np.vstack(zhats)
-
-
-def power_iteration(A, max_iter=1000, tol=1e-7, b_hat_0=None,
-                    random_state=None):
-    """Estimate dominant eigenvalue of matrix A.
-
-    Parameters
-    ----------
-    A : array, shape (n_points, n_points)
-        The matrix whose largest eigenvalue is to be found.
-    b_hat_0 : array, shape (n_points, )
-        init vector
-
-    Returns
-    -------
-    mu_hat : float
-        The largest eigenvalue
-    """
-    if b_hat_0 is None:
-        rng = check_random_state(random_state)
-        b_hat = rng.rand((A.shape[1]))
-    else:
-        b_hat = b_hat_0
-
-    Ab_hat = A.dot(b_hat)
-    mu_hat = np.nan
-    for ii in range(max_iter):
-        b_hat = A.dot(b_hat)
-        b_hat /= linalg.norm(b_hat)
-        Ab_hat = A.dot(b_hat)
-        mu_old = mu_hat
-        mu_hat = np.dot(b_hat, Ab_hat)
-        # note, we might exit the loop before b_hat converges
-        # since we care only about mu_hat converging
-        if (mu_hat - mu_old) / mu_old < tol:
-            break
-
-    if b_hat_0 is not None:
-        # copy inplace into b_hat_0 for next call to power_iteration
-        np.copyto(b_hat_0, b_hat)
-
-    return mu_hat
 
 
 def gram_block_circulant(ds, n_times_valid, method='full',

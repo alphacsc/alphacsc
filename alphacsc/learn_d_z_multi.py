@@ -134,10 +134,11 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
                               loss=loss, loss_params=loss_params)
 
     def obj_func(X, Z_hat, D_hat, reg=None):
-        return compute_X_and_objective_multi(X, Z_hat, D_hat, reg=reg,
+        return compute_X_and_objective_multi(X, Z_hat, D_hat,
+                                             reg=reg, loss=loss,
+                                             loss_params=loss_params,
                                              uv_constraint=uv_constraint,
-                                             loss=loss,
-                                             loss_params=loss_params)
+                                             feasible_evaluation=True)
 
     d_kwargs = dict(verbose=verbose, eps=1e-8)
     d_kwargs.update(solver_d_kwargs)
@@ -267,16 +268,17 @@ def get_iteration_func(eps, stopping_pobj, callback, lmbd_max, name, verbose):
         # parameter is fixed.
         dz = pobj[-3] - pobj[-2]
         du = pobj[-2] - pobj[-1]
-        if (dz < eps and du < eps and lmbd_max == 'fixed'):
-            if dz < -eps:
+        if ((dz < eps or du < eps) and lmbd_max == 'fixed'):
+            if dz < 0:
                 raise RuntimeError(
                     "The z update have increased the objective value.")
-            if du < -eps:
+            if du < 0:
                 raise RuntimeError(
                     "The d update have increased the objective value.")
-            print("[{}] Converged after {} iteration, dz, du ={:.3e}, {:.3e}"
-                  .format(name, iteration, dz, du))
-            return True
+            if dz < eps and du < eps:
+                print("[{}] Converged after {} iteration, dz, du "
+                      "={:.3e}, {:.3e}".format(name, iteration, dz, du))
+                return True
 
         if stopping_pobj is not None and pobj[-1] < stopping_pobj:
             return True

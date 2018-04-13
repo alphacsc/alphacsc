@@ -9,8 +9,8 @@
 import numpy as np
 from scipy import optimize
 
-from .utils.optim import fista
 from .utils import check_random_state
+from .utils.optim import fista, power_iteration
 from .utils.convolution import numpy_convolve_uv
 from .utils.compute_constants import compute_ZtZ
 
@@ -115,11 +115,12 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
     else:
         constants = None
 
-    def objective(uv, full=False):
+    def objective(uv):
         if loss == 'l2':
             return compute_objective(D=uv, constants=constants)
         return compute_X_and_objective_multi(X, Z, D_hat=uv, loss=loss,
-                                             loss_params=loss_params)
+                                             loss_params=loss_params,
+                                             feasible_evaluation=False)
 
     if solver_d in ['joint', 'fista']:
         # use FISTA on joint [u, v], with an adaptive step size
@@ -131,18 +132,16 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
         def prox(uv):
             return prox_uv(uv, uv_constraint=uv_constraint, n_chan=n_chan)
 
-        uv_hat = fista(objective, grad, prox, None, uv_hat0, max_iter,
-                       verbose=verbose, momentum=momentum, eps=eps,
-                       adaptive_step_size=True, debug=debug, name="Update uv")
-        if debug:
-            uv_hat, pobj = uv_hat
+        uv_hat, pobj = fista(objective, grad, prox, None, uv_hat0, max_iter,
+                             verbose=verbose, momentum=momentum, eps=eps,
+                             adaptive_step_size=True, debug=debug,
+                             name="Update uv")
 
     elif solver_d in ['alternate', 'alternate_adaptive']:
         # use FISTA on alternate u and v
 
         adaptive_step_size = (solver_d == 'alternate_adaptive')
 
-        pobj = list()
         uv_hat = uv_hat0.copy()
         u_hat, v_hat = uv_hat[:, :n_chan], uv_hat[:, n_chan:]
 
@@ -168,13 +167,11 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
                 Lu = compute_lipschitz(uv_hat, constants, 'u', b_hat_0)
             assert Lu > 0
 
-            u_hat = fista(obj, grad_u, prox, 0.99 / Lu, u_hat, max_iter,
-                          verbose=verbose, momentum=momentum, eps=eps,
-                          adaptive_step_size=adaptive_step_size,
-                          name="Update u")
+            u_hat, pobj = fista(obj, grad_u, prox, 0.99 / Lu, u_hat, max_iter,
+                                verbose=verbose, momentum=momentum, eps=eps,
+                                adaptive_step_size=adaptive_step_size,
+                                debug=debug, name="Update u")
             uv_hat = np.c_[u_hat, v_hat]
-            if debug:
-                pobj.append(objective(uv_hat, full=True))
 
             # ---------------- update v
             def obj(v):
@@ -193,13 +190,14 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
                 Lv = compute_lipschitz(uv_hat, constants, 'v', b_hat_0)
             assert Lv > 0
 
-            v_hat = fista(obj, grad_v, prox, 0.99 / Lv, v_hat, max_iter,
-                          verbose=verbose, momentum=momentum, eps=eps,
-                          adaptive_step_size=adaptive_step_size,
-                          name="Update v")
+            v_hat, pobj_v = fista(obj, grad_v, prox, 0.99 / Lv, v_hat,
+                                  max_iter, momentum=momentum, eps=eps,
+                                  adaptive_step_size=adaptive_step_size,
+                                  verbose=verbose, debug=debug,
+                                  name="Update v")
             uv_hat = np.c_[u_hat, v_hat]
             if debug:
-                pobj.append(objective(uv_hat, full=True))
+                pobj.extend(pobj_v)
 
     elif solver_d == 'lbfgs':
         # use L-BFGS on joint [u, v] with a box constraint (L_inf norm <= 1)
@@ -391,48 +389,3 @@ def compute_lipschitz(uv0, constants, variable, b_hat_0=None):
         n_points = n_atoms * n_times_atom
         L = power_iteration(op_Hv, n_points, b_hat_0=b_hat_v0)
     return L
-
-
-def power_iteration(lin_op, n_points, b_hat_0=None, max_iter=1000, tol=1e-7,
-                    random_state=None):
-    """Estimate dominant eigenvalue of linear operator A.
-
-    Parameters
-    ----------
-    lin_op : callable
-        Linear operator from which we estimate the largest eigenvalue.
-    n_points : tuple
-        Input shape of the linear operator `lin_op`.
-    b_hat_0 : array, shape (n_points, )
-        Init vector. The estimated eigen-vector is stored inplace in `b_hat_0`
-        to allow warm start of future call of this function with the same
-        variable.
-
-    Returns
-    -------
-    mu_hat : float
-        The largest eigenvalue
-    """
-    rng = check_random_state(random_state)
-    if b_hat_0 is None:
-        b_hat = rng.rand(n_points)
-    else:
-        b_hat = b_hat_0
-
-    mu_hat = np.nan
-    for ii in range(max_iter):
-        b_hat = lin_op(b_hat)
-        b_hat /= np.linalg.norm(b_hat)
-        fb_hat = lin_op(b_hat)
-        mu_old = mu_hat
-        mu_hat = np.dot(b_hat, fb_hat)
-        # note, we might exit the loop before b_hat converges
-        # since we care only about mu_hat converging
-        if (mu_hat - mu_old) / mu_old < tol:
-            break
-
-    if b_hat_0 is not None:
-        # copy inplace into b_hat_0 for next call to power_iteration
-        np.copyto(b_hat_0, b_hat)
-
-    return mu_hat

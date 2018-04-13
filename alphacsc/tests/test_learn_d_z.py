@@ -2,17 +2,19 @@ import unittest
 from functools import partial
 
 import numpy as np
+from scipy import linalg
 from numpy.testing import assert_allclose
 from nose.tools import assert_equal, assert_true
-from scipy import linalg
 
-from alphacsc.update_z import update_z, power_iteration, gram_block_circulant
-from alphacsc.update_d import update_d, update_d_block
-from alphacsc.update_d import solve_unit_norm_dual, solve_unit_norm_primal
 from alphacsc.learn_d_z import learn_d_z
+from alphacsc.utils.optim import power_iteration
+from alphacsc.update_d import update_d, update_d_block
+from alphacsc.update_z import update_z, gram_block_circulant
+from alphacsc.update_d import solve_unit_norm_dual, solve_unit_norm_primal
 
-from alphacsc.utils import construct_X, check_random_state
+
 from alphacsc.simulate import simulate_data
+from alphacsc.utils import construct_X, check_random_state
 
 _dummy = unittest.TestCase('__init__')
 assert_raises = _dummy.assertRaises
@@ -103,14 +105,6 @@ def test_solve_unit_norm():
     x[7] = 5
     x_hat, lambd_hat = solve_unit_norm_dual(lhs, rhs, np.array([5., 10.]))
     assert_true(linalg.norm(x_hat[:5]) - 1. < 1e-3)
-
-
-def test_power_iterations():
-    """Test power iteration."""
-    A = np.diag((1, 2, 3))
-    mu, b = np.linalg.eig(A)
-    mu_hat = power_iteration(A)
-    assert_allclose(mu_hat, mu.max())
 
 
 def test_linear_operator():

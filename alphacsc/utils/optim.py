@@ -2,6 +2,7 @@ import numpy as np
 from scipy import optimize
 
 from .compute_constants import compute_DtD
+from . import check_random_state
 
 
 def _support_least_square(X, uv, Z, debug=False):
@@ -75,8 +76,12 @@ def fista(f_obj, f_grad, f_prox, step_size, x0, max_iter, verbose=0,
     -------
     x_hat : array
         The final point after optimization
+    pobj : list or None
+        If debug is True, pobj contains the value of the cost function at each
+        iteration.
     """
 
+    pobj = None
     if debug:
         pobj = list()
     if step_size is None:
@@ -129,7 +134,7 @@ def fista(f_obj, f_grad, f_prox, step_size, x0, max_iter, verbose=0,
             x_hat_aux += (tk - 1) / tk_new * diff
             tk = tk_new
         if debug:
-            pobj.append(f_obj(x_hat, full=True))
+            pobj.append(f_obj(x_hat))
         f = np.sum(abs(diff))
         if f <= eps:
             break
@@ -141,9 +146,7 @@ def fista(f_obj, f_grad, f_prox, step_size, x0, max_iter, verbose=0,
     if verbose > 5:
         print('[{}]: {} iterations'.format(name, ii + 1))
 
-    if debug:
-        return x_hat, pobj
-    return x_hat
+    return x_hat, pobj
 
 
 def _adaptive_step_size(f, f0=None, alpha=None, tau=2):
@@ -182,3 +185,59 @@ def _adaptive_step_size(f, f0=None, alpha=None, tau=2):
         return f_alpha, x_alpha, alpha
     else:
         return fs[i], xs[i], alphas[i]
+
+
+def power_iteration(lin_op, n_points=None, b_hat_0=None, max_iter=1000,
+                    tol=1e-7, random_state=None):
+    """Estimate dominant eigenvalue of linear operator A.
+
+    Parameters
+    ----------
+    lin_op : callable or array
+        Linear operator from which we estimate the largest eigenvalue.
+    n_points : tuple
+        Input shape of the linear operator `lin_op`.
+    b_hat_0 : array, shape (n_points, )
+        Init vector. The estimated eigen-vector is stored inplace in `b_hat_0`
+        to allow warm start of future call of this function with the same
+        variable.
+
+    Returns
+    -------
+    mu_hat : float
+        The largest eigenvalue
+    """
+    if hasattr(lin_op, 'dot'):
+        n_points = lin_op.shape[1]
+        lin_op = lin_op.dot
+    elif callable(lin_op):
+        msg = ("power_iteration require n_points argument when lin_op is "
+               "callable")
+        assert n_points is not None, msg
+    else:
+        raise ValueError("lin_op should be a callable or a ndarray")
+
+
+    rng = check_random_state(random_state)
+    if b_hat_0 is None:
+        b_hat = rng.rand(n_points)
+    else:
+        b_hat = b_hat_0
+
+    mu_hat = np.nan
+    for ii in range(max_iter):
+        b_hat = lin_op(b_hat)
+        b_hat /= np.linalg.norm(b_hat)
+        fb_hat = lin_op(b_hat)
+        mu_old = mu_hat
+        mu_hat = np.dot(b_hat, fb_hat)
+        # note, we might exit the loop before b_hat converges
+        # since we care only about mu_hat converging
+        if (mu_hat - mu_old) / mu_old < tol:
+            break
+
+    if b_hat_0 is not None:
+        # copy inplace into b_hat_0 for next call to power_iteration
+        np.copyto(b_hat_0, b_hat)
+
+    return mu_hat

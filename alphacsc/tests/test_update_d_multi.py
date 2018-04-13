@@ -7,7 +7,6 @@ from alphacsc.loss_and_gradient import gradient_d, gradient_uv
 from alphacsc.update_d_multi import update_uv, prox_uv, _get_d_update_constants
 from alphacsc.utils.whitening import whitening
 from alphacsc.utils.optim import fista
-from alphacsc.update_z import power_iteration
 from alphacsc.utils import construct_X_multi
 
 
@@ -217,34 +216,6 @@ def test_fast_cost():
         cost_fast = compute_objective(D=uv, constants=constants)
         cost_full = objective(uv)
         assert np.isclose(cost_full, cost_fast)
-
-
-def test_ista():
-    """Test that objective goes down in ISTA for a simple problem."""
-
-    # || Ax - b ||_2^2
-    n, p = 100, 10
-    x = np.random.randn(p)
-    x /= np.linalg.norm(x)
-    A = np.random.randn(n, p)
-    b = np.dot(A, x)
-
-    def obj(x):
-        res = A.dot(x) - b
-        return 0.5 * np.dot(res.ravel(), res.ravel())
-
-    def grad(x):
-        return A.T.dot(A.dot(x) - b)
-
-    def prox(x):
-        return x / max(np.linalg.norm(x), 1.)
-
-    x0 = np.random.rand(p)
-    L = power_iteration(A.dot(A.T))
-    step_size = 0.99 / L
-    x_hat = fista(obj, grad, prox, step_size, x0, max_iter=600,
-                  verbose=0, momentum=False, eps=None)
-    np.testing.assert_array_almost_equal(x, x_hat)
 
 
 def test_constants_d():
