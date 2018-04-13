@@ -8,11 +8,25 @@ from pactools.utils.pink_noise import almost_pink_noise
 
 
 def whitening(X, ordar=10, block_length=256, sfreq=1., zero_phase=True,
-              plot=False):
+              plot=False, use_fooof=False):
     n_trials, n_channels, n_times = X.shape
 
     ar_model = Arma(ordar=ordar, ordma=0, fs=sfreq, block_length=block_length)
     ar_model.periodogram(X.reshape(-1, n_times), hold=False, mean_psd=True)
+
+    if use_fooof:
+        # Fit the psd with a 1/f^a background model plus a gaussian mixture.
+        # We keep only the background model
+        # (pip install fooof)
+        from fooof import FOOOF
+        fm = FOOOF(background_mode='fixed', verbose=False)
+        power_spectrum = ar_model.psd[-1][0]
+        freqs = np.linspace(0, sfreq / 2.0, len(power_spectrum))
+
+        fm.fit(freqs, power_spectrum, freq_range=None)
+        # repete first point, which is f_0
+        bg_fit = np.r_[fm._bg_fit[0], fm._bg_fit][None, :]
+        ar_model.psd.append(np.power(10, bg_fit))
 
     if zero_phase:
         ar_model.psd[-1] = np.sqrt(ar_model.psd[-1])
@@ -35,9 +49,11 @@ def whitening(X, ordar=10, block_length=256, sfreq=1., zero_phase=True,
             ar_model.psd[-1] **= 2
         ar_model.periodogram(
             X_white.reshape(-1, n_times), hold=True, mean_psd=True)
+        labels = ['signal', 'model AR', 'signal white']
+        if use_fooof:
+            labels = ['signal', 'FOOOF fit', 'model AR', 'signal white']
         ar_model.plot('periodogram before/after whitening',
-                      labels=['signal', 'model AR',
-                              'signal white'], fscale='lin')
+                      labels=labels, fscale='lin')
         plt.legend(loc='lower left')
 
     return ar_model, X_white
@@ -88,9 +104,7 @@ def unwhitening(ar_model, X_white, estimate=True, zero_phase=True, plot=False):
         ar_model.estimate()
 
     # apply the whitening twice (forward and backward) for zero-phase filtering
-    X_unwhite = np.array([[
-        apply_ar(ar_model, X_np, zero_phase=zero_phase) for X_np in X_n]
-        for X_n in X_white])
+    X_unwhite = apply_whitening(ar_model, X_white, zero_phase=zero_phase)
     assert X_unwhite.shape == X_white.shape
 
     if plot:

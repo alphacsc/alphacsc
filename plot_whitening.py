@@ -10,7 +10,7 @@ if True:
     from alphacsc.datasets.somato import load_data
     print('loading the data...')
     sfreq = 150.
-    X, info = load_data(sfreq=sfreq)
+    X, info = load_data(sfreq=sfreq, filt=[None, None])
     n_trials, n_channels, n_times = X.shape
 
     csc_kwargs = dict(n_times_atom=int(round(sfreq * 0.3)), n_atoms=10, reg=10)
@@ -34,7 +34,9 @@ else:
 ###############################################################################
 # whitening
 print('whitening...')
-ar_model, X_white = whitening(X, ordar=8, sfreq=sfreq, plot=True)
+use_fooof = True
+ar_model, X_white = whitening(X, ordar=8, sfreq=sfreq, plot=True,
+                              use_fooof=use_fooof)
 
 plt.figure()
 plt.subplot(211)

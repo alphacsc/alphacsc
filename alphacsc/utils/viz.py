@@ -9,7 +9,6 @@ import numpy as np
 import matplotlib as mpl
 from datetime import datetime
 import matplotlib.pyplot as plt
-from collections import defaultdict
 
 from .tools import get_calling_script, positive_hash
 

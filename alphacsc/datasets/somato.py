@@ -11,7 +11,7 @@ mem = Memory(cachedir='.', verbose=0)
 
 
 @mem.cache(ignore=['n_jobs'])
-def load_data(sfreq, epoch=True, n_jobs=1):
+def load_data(sfreq, epoch=True, n_jobs=1, filt=[2., None]):
     """Load and prepare the somato dataset for multiCSC
 
 
@@ -29,7 +29,7 @@ def load_data(sfreq, epoch=True, n_jobs=1):
     raw = mne.io.read_raw_fif(
         os.path.join(data_path, 'sef_raw_sss.fif'), preload=True)
     raw.notch_filter(np.arange(50, 101, 50), n_jobs=n_jobs)
-    raw.filter(2., None, n_jobs=n_jobs)
+    raw.filter(*filt, n_jobs=n_jobs)
     events = mne.find_events(raw, stim_channel='STI 014')
     event_id, t_min, t_max = 1, -2., 4.
 
@@ -41,7 +41,7 @@ def load_data(sfreq, epoch=True, n_jobs=1):
 
         epochs = mne.Epochs(raw, events, event_id, t_min, t_max,
                             picks=picks, baseline=baseline, reject=dict(
-                            grad=4000e-13, eog=350e-6), preload=True)
+                                grad=4000e-13, eog=350e-6), preload=True)
         epochs.pick_types(meg='grad', eog=False)
         epochs.resample(sfreq, npad='auto')
         X = epochs.get_data()
