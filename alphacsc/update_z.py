@@ -4,6 +4,7 @@
 #          Tom Dupre La Tour <tom.duprelatour@telecom-paristech.fr>
 #          Umut Simsekli <umut.simsekli@telecom-paristech.fr>
 #          Alexandre Gramfort <alexandre.gramfort@telecom-paristech.fr>
+import time
 
 import numpy as np
 from scipy import linalg
@@ -12,7 +13,7 @@ from joblib import Parallel, delayed
 
 from .utils.convolution import _choose_convolve
 from .utils.optim import power_iteration
-from .utils import check_random_state, check_consistent_shape
+from .utils import check_consistent_shape
 
 
 def update_z(X, ds, reg, z0=None, debug=False, parallel=None,
@@ -135,7 +136,7 @@ def _fprime(ds, zi, Xi=None, sample_weights=None, reg=None, return_func=False):
 
 
 def _update_z_idx(X, ds, reg, z0, idxs, debug, solver="l_bfgs", b_hat_0=None,
-                  solver_kwargs=dict(), sample_weights=None):
+                  solver_kwargs=dict(), sample_weights=None, timing=False):
 
     n_trials, n_times = X.shape
     n_atoms, n_times_atom = ds.shape
@@ -163,6 +164,11 @@ def _update_z_idx(X, ds, reg, z0, idxs, debug, solver="l_bfgs", b_hat_0=None,
         else:
             f0 = z0[:, i, :].reshape((n_atoms * n_times_valid))
 
+        if timing:
+            times = [0]
+            pobj = [func_and_grad(f0)[0]]
+            start = [time.time()]
+
         if debug:
 
             def pobj(zi):
@@ -174,10 +180,22 @@ def _update_z_idx(X, ds, reg, z0, idxs, debug, solver="l_bfgs", b_hat_0=None,
             assert optimize.check_grad(pobj, fprime, f0) < 1e-5
 
         if solver == "l_bfgs":
+            if timing:
+                def callback(xk):
+                    times.append(time.time() - start[0])
+                    pobj.append(func_and_grad(xk)[0])
+                    # use a reference to have access inside this function
+                    start[0] = time.time()
+
+            else:
+                callback = None
             factr = solver_kwargs.get('factr', 1e15)  # default value
+            maxiter = solver_kwargs.get('maxiter', 15000)  # default value
             zhat, f, d = optimize.fmin_l_bfgs_b(func_and_grad, f0, fprime=None,
                                                 args=(), approx_grad=False,
-                                                bounds=bounds, factr=factr)
+                                                bounds=bounds, factr=factr,
+                                                maxiter=maxiter,
+                                                callback=callback)
         elif solver == "ista":
             zhat = f0.copy()
             DTD = gram_block_circulant(ds, n_times_valid, 'custom',
@@ -190,6 +208,11 @@ def _update_z_idx(X, ds, reg, z0, idxs, debug, solver="l_bfgs", b_hat_0=None,
             for k in range(max_iter):  # run ISTA iterations
                 zhat -= step_size * grad_noreg(zhat)
                 zhat = np.maximum(zhat - reg * step_size, 0.)
+
+                if timing:
+                    times.append(time.time() - start[0])
+                    pobj.append(func_and_grad(zhat)[0])
+                    start[0] = time.time()
 
         elif solver == "fista":
             # init
@@ -224,12 +247,19 @@ def _update_z_idx(X, ds, reg, z0, idxs, debug, solver="l_bfgs", b_hat_0=None,
                 t_new = 0.5 * (1. + np.sqrt(1. + 4. * (t_old ** 2)))
                 y = x_new + ((t_old - 1.) / t_new) * (x_new - x_old)
 
+                if timing:
+                    times.append(time.time() - start[0])
+                    pobj.append(func_and_grad(x_new)[0])
+                    start[0] = time.time()
+
             zhat = x_new
         else:
             raise ValueError("Unrecognized solver %s. Must be 'ista', 'fista',"
                              " or 'l_bfgs'." % solver)
 
         zhats.append(zhat)
+    if timing:
+        return np.vstack(zhats), pobj, times
     return np.vstack(zhats)
 
 

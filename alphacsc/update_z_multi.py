@@ -5,13 +5,15 @@
 #          Umut Simsekli <umut.simsekli@telecom-paristech.fr>
 #          Alexandre Gramfort <alexandre.gramfort@inria.fr>
 #          Thomas Moreau <thomas.moreau@inria.fr>
+import time
 
 import numpy as np
 from scipy import optimize
 from joblib import Parallel, delayed
 
-from .utils.optim import power_iteration
+
 from .loss_and_gradient import gradient_zi
+from .utils.optim import fista
 from .utils.compute_constants import compute_DtD
 from .utils.convolution import _choose_convolve_multi
 
@@ -80,7 +82,8 @@ def update_z_multi(X, D, reg, z0=None, debug=False, parallel=None,
 
 def _update_z_multi_idx(X, D, reg, z0, idxs, debug, solver="l_bfgs",
                         solver_kwargs=dict(), freeze_support=False, loss='l2',
-                        loss_params=dict()):
+                        loss_params=dict(), timing=False):
+    start = time.time()
     n_trials, n_channels, n_times = X.shape
     if D.ndim == 2:
         n_atoms, n_channels_n_times_atom = D.shape
@@ -97,16 +100,16 @@ def _update_z_multi_idx(X, D, reg, z0, idxs, debug, solver="l_bfgs",
     if solver == "gcd":
         constants['DtD'] = compute_DtD(D=D, n_channels=n_channels)
 
+    if not freeze_support:
+        bounds = [(0, None) for idx in range(n_atoms * n_times_valid)]
+
+    init_timing = time.time() - start
+
     for i in idxs:
 
         def func_and_grad(zi):
             return gradient_zi(Xi=X[i], zi=zi, D=D, constants=constants,
                                reg=reg, return_func=True, flatten=True,
-                               loss=loss, loss_params=loss_params)
-
-        def grad_noreg(zi):
-            return gradient_zi(Xi=X[i], zi=zi, D=D, constants=constants,
-                               reg=None, return_func=False, flatten=True,
                                loss=loss, loss_params=loss_params)
 
         if z0 is None:
@@ -116,8 +119,11 @@ def _update_z_multi_idx(X, D, reg, z0, idxs, debug, solver="l_bfgs",
 
         if freeze_support:
             bounds = [(0, 0) if z == 0 else (0, None) for z in f0]
-        else:
-            bounds = [(0, None) for z in f0]
+
+        if timing:
+            times = [init_timing]
+            pobj = [func_and_grad(f0)[0]]
+            start = [time.time()]
 
         if debug:
 
@@ -144,15 +150,48 @@ def _update_z_multi_idx(X, D, reg, z0, idxs, debug, solver="l_bfgs",
                 raise
 
         if solver == "l_bfgs":
+            if timing:
+                def callback(xk):
+                    times.append(time.time() - start[0])
+                    pobj.append(func_and_grad(xk)[0])
+                    # use a reference to have access inside this function
+                    start[0] = time.time()
+
+            else:
+                callback = None
             factr = solver_kwargs.get('factr', 1e15)  # default value
+            maxiter = solver_kwargs.get('maxiter', 15000)  # default value
             zhat, f, d = optimize.fmin_l_bfgs_b(func_and_grad, f0, fprime=None,
                                                 args=(), approx_grad=False,
                                                 bounds=bounds, factr=factr,
-                                                maxiter=1e6)
-        elif solver == "ista":
-            raise NotImplementedError('Not adapted yet for n_channels')
-        elif solver == "fista":
-            raise NotImplementedError('Not adapted yet for n_channels')
+                                                maxiter=maxiter,
+                                                callback=callback)
+
+        elif solver in ("ista", "fista"):
+            max_iter = solver_kwargs.get('max_iter', 100)
+            eps = solver_kwargs.get('eps', None)
+            verbose = solver_kwargs.get('verbose', 0)
+            momentum = (solver == "fista")
+
+            def objective(zhat):
+                return func_and_grad(zhat)[0]
+
+            def grad(zhat):
+                return func_and_grad(zhat)[1]
+
+            def prox(zhat,):
+                return np.maximum(zhat, 0.)
+
+            output = fista(objective, grad, prox, None, f0, max_iter,
+                           verbose=verbose, momentum=momentum, eps=eps,
+                           adaptive_step_size=True, debug=debug,
+                           name="Update Z", timing=timing)
+            if timing:
+                zhat, pobj, times = output
+                times[0] += init_timing
+            else:
+                zhat, pobj = output
+
         elif solver == "gcd":
             f0 = f0.reshape(n_atoms, n_times_valid)
             # Default values
@@ -160,22 +199,30 @@ def _update_z_multi_idx(X, D, reg, z0, idxs, debug, solver="l_bfgs",
             n_seg = solver_kwargs.get('n_seg', 'auto')
             max_iter = solver_kwargs.get('max_iter', 1e15)
             strategy = solver_kwargs.get('strategy', 'greedy')
-            zhat = _coordinate_descent_idx(X[i], D, constants, reg=reg, z0=f0,
-                                           freeze_support=freeze_support,
-                                           tol=tol, max_iter=max_iter,
-                                           n_seg=n_seg, strategy=strategy)
-            # raise NotImplementedError('Not implemented yet!')
+            output = _coordinate_descent_idx(
+                X[i], D, constants, reg=reg, z0=f0,
+                freeze_support=freeze_support, tol=tol, max_iter=max_iter,
+                n_seg=n_seg, strategy=strategy, timing=timing)
+            if timing:
+                zhat, pobj, times = output
+                times[0] += init_timing
+            else:
+                zhat = output
         else:
             raise ValueError("Unrecognized solver %s. Must be 'ista', 'fista',"
                              " or 'l_bfgs'." % solver)
 
         zhats.append(zhat)
+
+    if timing:
+        return np.vstack(zhats), pobj, times
     return np.vstack(zhats)
 
 
 def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
                             tol=1e-1, strategy='greedy', n_seg='auto',
-                            freeze_support=False, debug=False, verbose=0):
+                            freeze_support=False, debug=False, timing=False,
+                            verbose=0):
     """Compute the coding signal associated to Xi with coordinate descent.
 
     Parameters
@@ -202,6 +249,8 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
     freeze_support : boolean
         If set to True, only update the coefficient that are non-zero in z0.
     """
+    if timing:
+        start = time.time()
     n_channels, n_times = Xi.shape
     if D.ndim == 2:
         n_atoms, n_times_atom = D.shape
@@ -218,7 +267,7 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
 
     if n_seg == 'auto':
         n_seg = max(n_times_valid // (2 * n_times_atom), 1)
-        # n_s    eg = max(n_times_valid // n_times_atom, 1)
+        # n_seg = max(n_times_valid // n_times_atom, 1)
 
     max_iter *= n_seg
 
@@ -236,6 +285,11 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
     if debug:
         pobj = [objective(z_hat)]
 
+    if timing:
+        times = [time.time() - start]
+        pobj = [objective(z_hat)]
+        start = time.time()
+
     # Init beta with -DtX
     # beta = _fprime(uv, z_hat.ravel(), Xi=Xi, reg=None, return_func=False)
     # beta = beta.reshape(n_atoms, n_times_valid)
@@ -251,7 +305,7 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
     active_segs = np.array([True] * n_seg)
     i_seg, t_start_seg = 0, 0
     t_end_seg = n_times_seg
-    for ii in range(max_iter):
+    for ii in range(int(max_iter)):
         # Pick a coordinate to update
         if strategy == 'random':
             raise NotImplementedError()
@@ -303,6 +357,11 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
         if debug:
             pobj.append(objective(z_hat))
 
+        if timing and (ii % max(100, n_seg // 100) == 0):
+            times.append(time.time() - start)
+            pobj.append(objective(z_hat))
+            start = time.time()
+
         if dZs.max() <= tol:
             break
 
@@ -323,4 +382,6 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
 
     if debug:
         return z_hat, pobj
+    if timing:
+        return z_hat, pobj, times
     return z_hat

@@ -1,3 +1,5 @@
+import time
+
 import numpy as np
 from scipy import optimize
 
@@ -43,7 +45,7 @@ def _support_least_square(X, uv, Z, debug=False):
 
 def fista(f_obj, f_grad, f_prox, step_size, x0, max_iter, verbose=0,
           momentum=False, eps=None, adaptive_step_size=False, debug=False,
-          scipy_line_search=True, name='ISTA'):
+          scipy_line_search=True, name='ISTA', timing=False):
     """ISTA and FISTA algorithm
 
     Parameters
@@ -69,8 +71,11 @@ def fista(f_obj, f_grad, f_prox, step_size, x0, max_iter, verbose=0,
     adaptive_step_size : boolean
         If True, the step size is adapted at each step
     debug : boolean
-        If true, compute the objective function at each step and return the
+        If True, compute the objective function at each step and return the
         list at the end.
+    timing : boolean
+        If True, compute the objective function at each step, and the duration
+        of each step, and return both lists at the end.
 
     Returns
     -------
@@ -80,10 +85,14 @@ def fista(f_obj, f_grad, f_prox, step_size, x0, max_iter, verbose=0,
         If debug is True, pobj contains the value of the cost function at each
         iteration.
     """
-
     pobj = None
     if debug:
         pobj = list()
+    if timing:
+        times = [0]
+        pobj = [f_obj(x0)]
+        start = time.time()
+
     if step_size is None:
         step_size = 1.
     if eps is None:
@@ -133,8 +142,14 @@ def fista(f_obj, f_grad, f_prox, step_size, x0, max_iter, verbose=0,
             tk_new = (1 + np.sqrt(1 + 4 * tk * tk)) / 2
             x_hat_aux += (tk - 1) / tk_new * diff
             tk = tk_new
+
         if debug:
             pobj.append(f_obj(x_hat))
+        if timing:
+            times.append(time.time() - start)
+            pobj.append(f_obj(x_hat))
+            start = time.time()
+
         f = np.sum(abs(diff))
         if f <= eps:
             break
@@ -146,6 +161,8 @@ def fista(f_obj, f_grad, f_prox, step_size, x0, max_iter, verbose=0,
     if verbose > 5:
         print('[{}]: {} iterations'.format(name, ii + 1))
 
+    if timing:
+        return x_hat, pobj, times
     return x_hat, pobj
 
 
@@ -216,7 +233,6 @@ def power_iteration(lin_op, n_points=None, b_hat_0=None, max_iter=1000,
         assert n_points is not None, msg
     else:
         raise ValueError("lin_op should be a callable or a ndarray")
-
 
     rng = check_random_state(random_state)
     if b_hat_0 is None:

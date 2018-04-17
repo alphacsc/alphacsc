@@ -9,7 +9,6 @@
 import numpy as np
 from scipy import optimize
 
-from .utils import check_random_state
 from .utils.optim import fista, power_iteration
 from .utils.convolution import numpy_convolve_uv
 from .utils.compute_constants import compute_ZtZ
