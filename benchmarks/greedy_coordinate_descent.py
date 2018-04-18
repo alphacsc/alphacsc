@@ -76,18 +76,18 @@ def ista(X, D, reg, n_iter):
 def fista(X, D, reg, n_iter):
     solver = 'fista'
     solver_kwargs = dict(power_iteration_tol=1e-4, max_iter=n_iter,
-                         restart=None)
+                         restart=30)
     return _other_solver(X, D, reg, n_iter, solver, solver_kwargs)
 
 
 # (func, max_iter)
 all_func = [
-    (cd, 100000),
-    (gcd, 100000),
-    (lgcd, 100000),
+    (cd, 500000),
+    (gcd, 20000),
+    (lgcd, 500000),
     (lbfgs, 200),
-    (ista, 100),
-    (fista, 100),
+    (ista, 200),
+    (fista, 200),
 ]
 
 
@@ -124,11 +124,12 @@ def plot_loss(reg_ratio):
 
     fig = plt.figure()
     for (func, max_iter), res in zip(all_func, results):
-        style = '-' if 'cd' in func.__name__ else '.--'
+        style = '-' if 'cd' in func.__name__ else '--'
         func_name, n_times, n_atoms, n_times_atom, reg, times, pobj = res
         plt.semilogy(times, pobj - best, style, label=func.__name__)
     plt.legend()
-    name = 'reg=%.3e_T=_K=_L=' % (reg_ratio, n_times, n_atoms, n_times_atom)
+    name = ('reg=%.3f_T=%s_K=%s_L=%s' % (reg_ratio, n_times, n_atoms,
+                                         n_times_atom))
     plt.title(name)
     plt.xlabel('Time (s)')
     plt.ylabel('loss function')
@@ -141,7 +142,7 @@ def benchmark():
 
 
 if __name__ == '__main__':
-    reg_list = np.logspace(np.log10(0.01), np.log10(0.9), 10)
+    reg_list = np.linspace(0.1, 0.9, 9)
     for reg_ratio in reg_list:
         plot_loss(reg_ratio)
     plt.show()

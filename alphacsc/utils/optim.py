@@ -45,7 +45,7 @@ def _support_least_square(X, uv, Z, debug=False):
 
 def fista(f_obj, f_grad, f_prox, step_size, x0, max_iter, verbose=0,
           momentum=False, eps=None, adaptive_step_size=False, debug=False,
-          scipy_line_search=True, name='ISTA', timing=False):
+          scipy_line_search=True, name='ISTA', timing=False, restart=None):
     """ISTA and FISTA algorithm
 
     Parameters
@@ -76,6 +76,8 @@ def fista(f_obj, f_grad, f_prox, step_size, x0, max_iter, verbose=0,
     timing : boolean
         If True, compute the objective function at each step, and the duration
         of each step, and return both lists at the end.
+    restart : int or None
+        If not None, restart the momentum every `restart` iterations.
 
     Returns
     -------
@@ -99,12 +101,17 @@ def fista(f_obj, f_grad, f_prox, step_size, x0, max_iter, verbose=0,
         eps = np.finfo(np.float32).eps
     obj_uv = None
 
-    tk = 1
+    tk = 1.0
     x_hat = x0.copy()
     x_hat_aux = x_hat.copy()
     grad = np.empty(x_hat.shape)
     diff = np.empty(x_hat.shape)
     for ii in range(max_iter):
+        # restart every n iterations
+        if restart is not None and ii > 0 and (ii % restart) == 0:
+            x_hat_aux = x_hat.copy()
+            tk = 1.0
+
         grad[:] = f_grad(x_hat_aux)
 
         if adaptive_step_size:

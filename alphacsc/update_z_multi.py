@@ -171,6 +171,7 @@ def _update_z_multi_idx(X, D, reg, z0, idxs, debug, solver="l_bfgs",
             max_iter = solver_kwargs.get('max_iter', 100)
             eps = solver_kwargs.get('eps', None)
             verbose = solver_kwargs.get('verbose', 0)
+            restart = solver_kwargs.get('restart', None)
             momentum = (solver == "fista")
 
             def objective(zhat):
@@ -185,7 +186,7 @@ def _update_z_multi_idx(X, D, reg, z0, idxs, debug, solver="l_bfgs",
             output = fista(objective, grad, prox, None, f0, max_iter,
                            verbose=verbose, momentum=momentum, eps=eps,
                            adaptive_step_size=True, debug=debug,
-                           name="Update Z", timing=timing)
+                           name="Update Z", timing=timing, restart=restart)
             if timing:
                 zhat, pobj, times = output
                 times[0] += init_timing
