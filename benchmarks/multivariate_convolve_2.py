@@ -2,9 +2,13 @@ import time
 
 import pandas as pd
 import numpy as np
+from scipy import sparse
 import matplotlib.pyplot as plt
 from sklearn.externals.joblib import Memory
 from scipy.stats.mstats import gmean
+
+from alphacsc.cython import _fast_sparse_convolve_multi
+from alphacsc.cython import _fast_sparse_convolve_multi_uv
 
 memory = Memory(cachedir='', verbose=0)
 
@@ -91,6 +95,8 @@ all_func = [
     _dense_convolve_multi_uv,
     _sparse_convolve_multi,
     _sparse_convolve_multi_uv,
+    _fast_sparse_convolve_multi,
+    _fast_sparse_convolve_multi_uv,
 ]
 
 
@@ -104,16 +110,21 @@ def test_equality():
     reference = all_func[0](Zi, D)
     for func in all_func:
         if 'uv' in func.__name__:
-            result = func(Zi, uv=np.hstack([u, v]), n_channels=n_channels)
+            kwargs = dict(uv=np.hstack([u, v]), n_channels=n_channels)
         else:
-            result = func(Zi, ds=D)
+            kwargs = dict(ds=D)
+
+        if 'fast' in func.__name__:
+            Zi = sparse.lil_matrix(Zi)
+
+        result = func(Zi, **kwargs)
         assert np.allclose(result, reference)
 
 
 @memory.cache
-def run_one(n_atoms, n_channels, n_times_atom, n_times_valid, func):
-    Zi = np.random.randn(n_atoms, n_times_valid)
-    Zi[Zi > 3] = 0  # sparsity 0.13%
+def run_one(n_atoms, sparsity, n_times_atom, n_times_valid, func):
+    n_channels = 4
+    Zi = sparse.random(n_atoms, n_times_valid, density=sparsity, format='lil')
 
     if 'uv' in func.__name__:
         uv = np.random.randn(n_atoms, n_channels + n_times_atom)
@@ -121,37 +132,40 @@ def run_one(n_atoms, n_channels, n_times_atom, n_times_valid, func):
     else:
         kwargs = dict(ds=np.random.randn(n_atoms, n_channels, n_times_atom))
 
+    if 'fast' not in func.__name__:
+        Zi = Zi.toarray()
+
     start = time.time()
     func(Zi, **kwargs)
     duration = time.time() - start
-    return (n_atoms, n_channels, n_times_atom, n_times_valid, func.__name__,
+    return (n_atoms, sparsity, n_times_atom, n_times_valid, func.__name__,
             duration)
 
 
 def benchmark():
-    n_atoms_range = [1, 4, 16]
-    n_channels_range = [1, 10, 100]
+    n_atoms_range = [1, 10, 100]
+    sparsity_range = np.logspace(-4, -1, 5)
     n_times_atom_range = [10, 40, 160]
     n_times_valid_range = [200, 800, 3200]
 
-    n_runs = (len(n_atoms_range) * len(n_channels_range) * len(
+    n_runs = (len(n_atoms_range) * len(sparsity_range) * len(
         n_times_atom_range) * len(n_times_valid_range) * len(all_func))
 
     k = 0
     results = []
     for n_atoms in n_atoms_range:
-        for n_channels in n_channels_range:
+        for sparsity in sparsity_range:
             for n_times_atom in n_times_atom_range:
                 for n_times_valid in n_times_valid_range:
                     for func in all_func:
                         print('%d/%d, %s' % (k, n_runs, func.__name__))
                         k += 1
                         results.append(
-                            run_one(n_atoms, n_channels, n_times_atom,
+                            run_one(n_atoms, sparsity, n_times_atom,
                                     n_times_valid, func))
 
     df = pd.DataFrame(results, columns=[
-        'n_atoms', 'n_channels', 'n_times_atom', 'n_times_valid', 'func',
+        'n_atoms', 'sparsity', 'n_times_atom', 'n_times_valid', 'func',
         'duration'
     ])
     fig, axes = plt.subplots(2, 2, figsize=(10, 8))
@@ -167,7 +181,7 @@ def benchmark():
 
     plot('n_atoms', axes[0])
     plot('n_times_atom', axes[1])
-    plot('n_channels', axes[2])
+    plot('sparsity', axes[2])
     plot('n_times_valid', axes[3])
     plt.tight_layout()
     plt.show()
