@@ -2,11 +2,13 @@ import time
 
 import pandas as pd
 import numpy as np
+from scipy import sparse
 import matplotlib.pyplot as plt
 from sklearn.externals.joblib import Memory
 from scipy.stats.mstats import gmean
 
-from numba import jit
+from alphacsc.utils.compat import numba, jit
+from alphacsc.cython import _fast_compute_ztz
 
 memory = Memory(cachedir='', verbose=0)
 
@@ -34,7 +36,7 @@ def naive_sum(Z, n_times_atom):
     return ZtZ
 
 
-@jit()
+@jit((numba.float64[:, :, :], numba.int64))
 def sum_numba(Z, n_times_atom):
     """
     ZtZ.shape = n_atoms, n_atoms, 2 * n_times_atom - 1
@@ -82,7 +84,12 @@ def tensordot(Z, n_times_atom):
     return ZtZ
 
 
-all_func = [naive_sum, sum_numba, tensordot]
+all_func = [
+    naive_sum,
+    sum_numba,
+    tensordot,
+    _fast_compute_ztz,
+]
 
 
 def test_equality():
@@ -91,12 +98,22 @@ def test_equality():
 
     reference = all_func[0](Z, n_times_atom)
     for func in all_func:
-        assert np.allclose(func(Z, n_times_atom), reference)
+
+        if 'fast' in func.__name__:
+            Z_ = [sparse.lil_matrix(zi) for zi in np.swapaxes(Z, 0, 1)]
+        else:
+            Z_ = Z
+
+        assert np.allclose(func(Z_, n_times_atom), reference)
 
 
 @memory.cache
 def run_one(n_atoms, n_trials, n_times_atom, n_times_valid, func):
-    Z = np.random.randn(n_atoms, n_trials, n_times_valid)
+    Z = sparse.random(n_atoms, n_trials * n_times_valid, density=0.01)
+    Z = Z.toarray().reshape(n_atoms, n_trials, n_times_valid)
+
+    if 'fast' in func.__name__:
+        Z = [sparse.lil_matrix(zi) for zi in np.swapaxes(Z, 0, 1)]
 
     start = time.time()
     func(Z, n_times_atom)
