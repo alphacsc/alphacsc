@@ -172,6 +172,7 @@ def _update_z_multi_idx(X, D, reg, z0, idxs, debug, solver="l_bfgs",
             eps = solver_kwargs.get('eps', None)
             verbose = solver_kwargs.get('verbose', 0)
             restart = solver_kwargs.get('restart', None)
+            scipy_line_search = solver_kwargs.get('scipy_line_search', False)
             momentum = (solver == "fista")
 
             def objective(zhat):
@@ -186,6 +187,7 @@ def _update_z_multi_idx(X, D, reg, z0, idxs, debug, solver="l_bfgs",
             output = fista(objective, grad, prox, None, f0, max_iter,
                            verbose=verbose, momentum=momentum, eps=eps,
                            adaptive_step_size=True, debug=debug,
+                           scipy_line_search=scipy_line_search,
                            name="Update Z", timing=timing, restart=restart)
             if timing:
                 zhat, pobj, times = output
@@ -267,11 +269,12 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
         z_hat = z0.copy()
 
     if n_seg == 'auto':
-        n_seg = max(n_times_valid // (2 * n_times_atom), 1)
-        # n_seg = max(n_times_valid // n_times_atom, 1)
+        if strategy == 'greedy':
+            n_seg = max(n_times_valid // (2 * n_times_atom), 1)
+        elif strategy in ('random', 'cyclic'):
+            n_seg = 1
 
     max_iter *= n_seg
-
     n_times_seg = n_times_valid // n_seg + 1
 
     def objective(zi):
@@ -305,11 +308,32 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
     dZs = 2 * tol * np.ones(n_seg)
     active_segs = np.array([True] * n_seg)
     i_seg, t_start_seg = 0, 0
+    t0, k0 = -1, 0
     t_end_seg = n_times_seg
     for ii in range(int(max_iter)):
         # Pick a coordinate to update
         if strategy == 'random':
-            raise NotImplementedError()
+            k0 = np.random.randint(n_atoms)
+            t0 = np.random.randint(n_times_valid)
+            dz = dz_opt[k0, t0]
+
+            if ii % (n_times_valid * n_atoms) == 0:
+                dZs[i_seg] = 0
+            dZs[i_seg] += abs(dz)
+
+        elif strategy == 'cyclic':
+            t0 += 1
+            if t0 >= n_times_valid:
+                t0 = 0
+                k0 += 1
+                if k0 >= n_atoms:
+                    k0 = 0
+            dz = dz_opt[k0, t0]
+
+            if ii % (n_times_valid * n_atoms) == 0:
+                dZs[i_seg] = 0
+            dZs[i_seg] += abs(dz)
+
         elif strategy == 'greedy':
             # if dZs[i_seg] > tol:
             if active_segs[i_seg]:
@@ -363,8 +387,13 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
             pobj.append(objective(z_hat))
             start = time.time()
 
-        if dZs.max() <= tol:
-            break
+        if strategy == 'greedy':
+            if dZs.max() <= tol:
+                break
+        else:
+            if (k0 == n_atoms - 1 and t0 == n_times_valid - 1
+                    and dZs.max() <= tol):
+                break
 
         i_seg += 1
         t_start_seg += n_times_seg
