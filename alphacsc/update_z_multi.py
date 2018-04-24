@@ -8,13 +8,13 @@
 import time
 
 import numpy as np
-from scipy import optimize
+from scipy import optimize, sparse
 from joblib import Parallel, delayed
 
 
 from .loss_and_gradient import gradient_zi
 from .utils.optim import fista
-from .utils.lil import is_list_of_lil
+from .utils.lil import is_list_of_lil, is_lil
 from .utils.compute_constants import compute_DtD
 from .utils.convolution import _choose_convolve_multi
 
@@ -85,7 +85,7 @@ def update_z_multi(X, D, reg, z0=None, debug=False, parallel=None,
         return z_hat2
     # When using the lil_matrices, return a list of lil_matrices
     else:
-        return zhats
+        return [zi for zis in zhats for zi in zis]
 
 
 def _update_z_multi_idx(X, D, reg, z0, idxs, debug, solver="l_bfgs",
@@ -204,7 +204,8 @@ def _update_z_multi_idx(X, D, reg, z0, idxs, debug, solver="l_bfgs",
                 zhat, pobj = output
 
         elif solver == "gcd":
-            f0 = f0.reshape(n_atoms, n_times_valid)
+            if not sparse.isspmatrix_lil(f0):
+                f0 = f0.reshape(n_atoms, n_times_valid)
             # Default values
             tol = solver_kwargs.get('tol', 1e-1)
             n_seg = solver_kwargs.get('n_seg', 'auto')
@@ -227,7 +228,10 @@ def _update_z_multi_idx(X, D, reg, z0, idxs, debug, solver="l_bfgs",
 
     if timing:
         return np.vstack(zhats), pobj, times
-    return np.vstack(zhats)
+    if isinstance(zhats, list) and sparse.isspmatrix_lil(zhats[0]):
+        return zhats
+    else:
+        return np.vstack(zhats)
 
 
 def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,

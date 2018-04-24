@@ -95,26 +95,31 @@ def test_support_least_square():
     assert loss_3 <= loss_2 or np.isclose(loss_3, loss_2)
 
 
-def test_cd():
+@pytest.mark.parametrize('use_sparse_lil', [True, False])
+def test_cd(use_sparse_lil):
     n_trials, n_channels, n_times = 5, 3, 100
     n_times_atom, n_atoms = 10, 4
     n_times_valid = n_times - n_times_atom + 1
     reg = 1
 
     uv = np.random.randn(n_atoms, n_channels + n_times_atom)
-    # Z = abs(np.random.randn(n_atoms, n_trials, n_times_valid))
-    # Z0 = abs(np.random.randn(n_atoms, n_trials, n_times_valid))
-    # Z[Z < 2] = 0
-    # Z0[Z0 < 2] = 0
-    density = .001
-    Z = [sparse.random(n_atoms, n_times_valid, format='lil', density=density)
-         for _ in range(n_trials)]
-    Z0 = [sparse.random(n_atoms, n_times_valid, format='lil', density=density)
-          for _ in range(n_trials)]
+    if use_sparse_lil:
+        density = .1
+        Z = [sparse.random(n_atoms, n_times_valid, format='lil',
+                           density=density) for _ in range(n_trials)]
+        Z_gen = [sparse.random(n_atoms, n_times_valid, format='lil',
+                               density=density) for _ in range(n_trials)]
+        Z0 = Z[0]
+    else:
+        Z = abs(np.random.randn(n_atoms, n_trials, n_times_valid))
+        Z_gen = abs(np.random.randn(n_atoms, n_trials, n_times_valid))
+        Z[Z < 1] = 0
+        Z_gen[Z_gen < 1] = 0
+        Z0 = Z[:, 0]
 
-    X = construct_X_multi(Z0, D=uv, n_channels=n_channels)
+    X = construct_X_multi(Z_gen, D=uv, n_channels=n_channels)
 
-    loss_0 = compute_X_and_objective_multi(X=X, Z_hat=Z0, D_hat=uv, reg=reg,
+    loss_0 = compute_X_and_objective_multi(X=X, Z_hat=Z_gen, D_hat=uv, reg=reg,
                                            loss='l2',
                                            feasible_evaluation=False)
 
@@ -122,17 +127,16 @@ def test_cd():
     constants['DtD'] = compute_DtD(uv, n_channels)
 
     z_hat, pobj = _coordinate_descent_idx(X[0], uv, constants, reg, debug=True,
-                                          z0=Z[0], max_iter=10000)
-    z_hat = z_hat[None]
+                                          z0=Z0, max_iter=10000)
 
     assert all([p1 >= p2 for p1, p2 in zip(pobj[:-1], pobj[1:])]), "oups"
 
     # Ensure that the initialization is good, by using a nearly optimal point
     # and verifying that the cost does not goes up.
-    z_hat = update_z_multi(X, D=uv, reg=reg, z0=Z0,
+    z_hat = update_z_multi(X, D=uv, reg=reg, z0=Z_gen,
                            solver='gcd',
                            solver_kwargs={
-                               'max_iter': 3, 'tol': 1e-5}
+                               'max_iter': 5, 'tol': 1e-5}
                            )
 
     loss_1 = compute_X_and_objective_multi(X=X, Z_hat=z_hat, D_hat=uv,
