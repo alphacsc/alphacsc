@@ -9,6 +9,7 @@ from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 
 from .utils import check_random_state
+from .utils.lil import get_Z_shape
 from .utils.viz import COLORS
 from .other.k_medoids import KMedoids
 from .other.kmc2 import custom_distances
@@ -315,7 +316,8 @@ def get_max_error_dict(X, Z, D):
         n_times_atom = D.shape[2]
     patch_rec_error = _patch_reconstruction_error(X, Z, D)
     i0 = patch_rec_error.argmax()
-    n0, t0 = np.unravel_index(i0, Z.shape[1:])
+    n_atoms, n_trials, n_times_valid = get_Z_shape(Z)
+    n0, t0 = np.unravel_index(i0, (n_trials, n_times_valid))
 
     d0 = X[n0, :, t0:t0 + n_times_atom][None]
 

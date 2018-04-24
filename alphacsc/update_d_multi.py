@@ -346,8 +346,8 @@ def _get_d_update_constants(X, Z):
     n_times_atom = n_times - n_times_valid + 1
 
     if is_list_of_lil(Z):
-        ZtX = _fast_compute_ZtX(Z, X)
-        ZtZ = _fast_compute_ZtZ(Z, n_times_atom)
+        ZtX = _fast_compute_ztx(Z, X)
+        ZtZ = _fast_compute_ztz(Z, n_times_atom)
     else:
         ZtX = compute_ZtX(Z, X)
         ZtZ = compute_ZtZ(Z, n_times_atom)

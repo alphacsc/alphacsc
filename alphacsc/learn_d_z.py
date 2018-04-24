@@ -142,6 +142,13 @@ def learn_d_z(X, n_atoms, n_times_atom, func_d=update_d_block, reg=0.1,
                 print('[seed %s] Objective (Z) : %0.8f' % (random_state,
                                                            pobj[-1]))
 
+            if len(Z_hat.nonzero()[0]) == 0:
+                import warnings
+                warnings.warn("Regularization parameter `reg` is too large "
+                              "and all the activations are zero. No atoms has"
+                              " been learned.", UserWarning)
+                break
+
             start = time.time()
             d_hat, lambd0 = func_d(X, Z_hat, n_times_atom, lambd0=lambd0,
                                    ds_init=d_hat, verbose=verbose,

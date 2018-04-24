@@ -250,7 +250,10 @@ def power_iteration(lin_op, n_points=None, b_hat_0=None, max_iter=1000,
     mu_hat = np.nan
     for ii in range(max_iter):
         b_hat = lin_op(b_hat)
-        b_hat /= np.linalg.norm(b_hat)
+        norm = np.linalg.norm(b_hat)
+        if norm == 0:
+            return 0
+        b_hat /= norm
         fb_hat = lin_op(b_hat)
         mu_old = mu_hat
         mu_hat = np.dot(b_hat, fb_hat)
@@ -258,6 +261,8 @@ def power_iteration(lin_op, n_points=None, b_hat_0=None, max_iter=1000,
         # since we care only about mu_hat converging
         if (mu_hat - mu_old) / mu_old < tol:
             break
+
+    assert not np.isnan(mu_hat)
 
     if b_hat_0 is not None:
         # copy inplace into b_hat_0 for next call to power_iteration

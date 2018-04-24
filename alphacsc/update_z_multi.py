@@ -102,6 +102,9 @@ def _update_z_multi_idx(X, D, reg, z0, idxs, debug, solver="l_bfgs",
 
     assert not (freeze_support and z0 is None), 'Impossible !'
 
+    if is_list_of_lil(z0) and solver != "gcd":
+        raise NotImplementedError()
+
     constants = {}
     zhats = []
 
@@ -206,6 +209,7 @@ def _update_z_multi_idx(X, D, reg, z0, idxs, debug, solver="l_bfgs",
         elif solver == "gcd":
             if not sparse.isspmatrix_lil(f0):
                 f0 = f0.reshape(n_atoms, n_times_valid)
+
             # Default values
             tol = solver_kwargs.get('tol', 1e-1)
             n_seg = solver_kwargs.get('n_seg', 'auto')
@@ -228,7 +232,7 @@ def _update_z_multi_idx(X, D, reg, z0, idxs, debug, solver="l_bfgs",
 
     if timing:
         return np.vstack(zhats), pobj, times
-    if isinstance(zhats, list) and sparse.isspmatrix_lil(zhats[0]):
+    if is_list_of_lil(zhats):
         return zhats
     else:
         return np.vstack(zhats)
@@ -315,7 +319,13 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
         beta[k, t] -= z_hat[k, t] * norm_Dk[k]  # np.sum(DtD[k, k, t0])
     dz_opt = np.maximum(-beta - reg, 0) / norm_Dk - z_hat
     if freeze_support:
-        dz_opt[z0 == 0] = 0
+        if is_lil(z0):
+            mask = z0 != 0
+            mask = mask.toarray()
+            mask = ~mask
+        else:
+            mask = z0 == 0
+        dz_opt[mask] = 0
 
     dZs = 2 * tol * np.ones(n_seg)
     active_segs = np.array([True] * n_seg)
@@ -384,7 +394,13 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
                 dZs[i_seg + 1] = 2 * tol
                 active_segs[i_seg + 1] = True
             if freeze_support:
-                dz_opt[:, t_start:t_end][z0[:, t_start:t_end] == 0] = 0
+                if is_lil(z0):
+                    mask = z0[:, t_start:t_end] != 0
+                    mask = mask.toarray()
+                    mask = ~mask
+                else:
+                    mask = z0[:, t_start:t_end] == 0
+                dz_opt[:, t_start:t_end][mask] = 0
                 nnz_z0 = list(zip(*z0[:, t_start:t_end].nonzero()))
                 nnz_dz = list(zip(*dz_opt[:, t_start:t_end].nonzero()))
                 assert all([nnz in nnz_z0 for nnz in nnz_dz])

@@ -124,7 +124,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
     init_duration = time.time() - start
 
     if use_sparse_z:
-        Z_hat = [sparse.lil_matrices((n_atoms, n_times_valid))
+        Z_hat = [sparse.lil_matrix((n_atoms, n_times_valid))
                  for _ in range(n_trials)]
     else:
         Z_hat = np.zeros((n_atoms, n_trials, n_times_valid))
@@ -244,7 +244,7 @@ def _batch_learn(X, D_hat, Z_hat, compute_z_func, compute_d_func,
                 name, Z_nnz.sum() / Z_size))
             print('[{}] Objective (Z) : {:.3e}'.format(name, pobj[-1]))
 
-        if Z_nnz == 0:
+        if np.all(Z_nnz == 0):
             import warnings
             warnings.warn("Regularization parameter `reg` is too large "
                           "and all the activations are zero. No atoms has"

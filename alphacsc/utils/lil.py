@@ -22,21 +22,11 @@ def get_Z_shape(Z):
 
 
 def is_list_of_lil(Z):
-    if isinstance(Z, list) and sparse.isspmatrix_lil(Z[0]):
-        return True
-    elif isinstance(Z, np.ndarray) and Z.ndim == 3:
-        return False
-    else:
-        raise TypeError("Please check the type of Z.")
+    return isinstance(Z, list) and sparse.isspmatrix_lil(Z[0])
 
 
 def is_lil(Z):
-    if sparse.isspmatrix_lil(Z):
-        return True
-    elif isinstance(Z, np.ndarray) and Z.ndim == 2:
-        return False
-    else:
-        raise TypeError("Please check the type of Z.")
+    return sparse.isspmatrix_lil(Z)
 
 
 def scale_Z_by_atom(Z, scale, copy=True):

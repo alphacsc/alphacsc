@@ -23,15 +23,15 @@ START = time.time()
 verbose = 1
 
 # n_jobs for the parallel running of single core methods
-n_jobs = 6
+n_jobs = 1
 # number of random states
-n_states = 5
+n_states = 1
 
 n_trials = 10  # N
 n_times_atom = 16  # L
 n_times = 2000  # T
 n_atoms = 2  # K
-reg = 1.0
+reg = 5.0
 
 # A method stops if its objective function reaches best_pobj * (1 + threshold)
 threshold = -1
@@ -113,76 +113,66 @@ def run_lbfgs(X, ds_init, reg, n_iter, random_state, label, stopping_pobj,
     return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
 
 
-def run_multichannel_joint(X, ds_init, reg, n_iter, random_state, label,
-                           stopping_pobj):
+def run_multichannel_alt_cd(X, ds_init, reg, n_iter, random_state, label,
+                            stopping_pobj):
     n_atoms, n_times_atom = ds_init.shape
     D_init = np.c_[np.ones((n_atoms, 1)), ds_init]
     pobj, times, d_hat, z_hat = learn_d_z_multi(
-        X[:, None, :], n_atoms, n_times_atom,
-        solver_d='joint', uv_constraint='separate', solver_z_kwargs=dict(
-            factr=1e15), reg=reg, solver_d_kwargs=dict(max_iter=10),
-        n_iter=n_iter, random_state=random_state, D_init=D_init, n_jobs=1,
-        stopping_pobj=stopping_pobj, verbose=verbose)
+        X[:, None, :], n_atoms, n_times_atom, solver_d='alternate_adaptive',
+        solver_z='gcd', uv_constraint='separate', solver_z_kwargs={
+            'max_iter': 200,
+            'tol': 1e-5
+        }, reg=reg, solver_d_kwargs=dict(
+            max_iter=50), n_iter=n_iter, random_state=random_state,
+        D_init=D_init, n_jobs=1, stopping_pobj=stopping_pobj, verbose=verbose)
 
     return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
 
 
-def run_multichannel_joint_cd(X, ds_init, reg, n_iter, random_state, label,
+def run_multichannel_alt_ista(X, ds_init, reg, n_iter, random_state, label,
                               stopping_pobj):
-    n_atoms, n_times_atom = ds_init.shape
-    D_init = np.c_[np.ones((n_atoms, 1)), ds_init]
-    pobj, times, d_hat, z_hat = learn_d_z_multi(
-        X[:, None, :], n_atoms, n_times_atom,
-        solver_d='joint', solver_z='gcd', uv_constraint='joint',
-        solver_z_kwargs={'max_iter': 200, 'tol': 1e-5},
-        reg=reg, solver_d_kwargs=dict(max_iter=50),
-        n_iter=n_iter, random_state=random_state, D_init=D_init, n_jobs=1,
-        stopping_pobj=stopping_pobj, verbose=verbose)
-
-    return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
-
-
-def run_multichannel_alternate(X, ds_init, reg, n_iter, random_state, label,
-                               stopping_pobj):
-    n_atoms, n_times_atom = ds_init.shape
-    D_init = np.c_[np.ones((n_atoms, 1)), ds_init]
-    pobj, times, d_hat, z_hat = learn_d_z_multi(
-        X[:, None, :], n_atoms, n_times_atom,
-        solver_d='alternate', uv_constraint='separate', solver_z_kwargs=dict(
-            factr=1e15), reg=reg, solver_d_kwargs=dict(max_iter=10),
-        n_iter=n_iter, random_state=random_state, D_init=D_init, n_jobs=1,
-        stopping_pobj=stopping_pobj, verbose=verbose)
-
-    return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
-
-
-def run_multichannel_alternate_adaptive(X, ds_init, reg, n_iter, random_state,
-                                        label, stopping_pobj):
     n_atoms, n_times_atom = ds_init.shape
     D_init = np.c_[np.ones((n_atoms, 1)), ds_init]
     pobj, times, d_hat, z_hat = learn_d_z_multi(
         X[:, None, :], n_atoms, n_times_atom, solver_d='alternate_adaptive',
         uv_constraint='separate', solver_z_kwargs=dict(
-            factr=1e15), reg=reg, solver_d_kwargs=dict(max_iter=10),
-        n_iter=n_iter, random_state=random_state, D_init=D_init, n_jobs=1,
+            factr=1e15), reg=reg, solver_d_kwargs=dict(
+                max_iter=10), n_iter=n_iter, random_state=random_state,
+        D_init=D_init, n_jobs=1, stopping_pobj=stopping_pobj, verbose=verbose)
+
+    return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
+
+
+def run_multichannel_alt_cd_sparse(X, ds_init, reg, n_iter, random_state,
+                                   label, stopping_pobj):
+    n_atoms, n_times_atom = ds_init.shape
+    D_init = np.c_[np.ones((n_atoms, 1)), ds_init]
+
+    solver_z_kwargs = dict(max_iter=200, tol=1e-5)
+    pobj, times, d_hat, z_hat = learn_d_z_multi(
+        X[:, None, :], n_atoms, n_times_atom, solver_d='alternate_adaptive',
+        uv_constraint='separate', solver_z='gcd',
+        solver_z_kwargs=solver_z_kwargs, reg=reg, solver_d_kwargs=dict(
+            max_iter=10), use_sparse_z=True, n_iter=n_iter,
+        random_state=random_state, D_init=D_init, n_jobs=1,
         stopping_pobj=stopping_pobj, verbose=verbose)
 
     return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
 
+
 n_iter = 100
 methods = [
-    [run_ista, 'vanilla_ista', n_iter],
-    [run_fista, 'vanilla_fista', n_iter],
-    [run_lbfgs, 'vanilla_lbfgsb ', n_iter],
-    [run_multichannel_joint, 'multi_joint', n_iter],
-    [run_multichannel_joint_cd, 'multi_joint_cd', n_iter],
-    # [run_multichannel_alternate_adaptive, 'multi_alternate', n_iter],
-    [run_multichannel_alternate_adaptive, 'multi_alternate_adaptive', n_iter],
+    # [run_ista, 'vanilla_ista', n_iter],
+    # [run_fista, 'vanilla_fista', n_iter],
+    # [run_lbfgs, 'vanilla_lbfgsb ', n_iter],
+    [run_multichannel_alt_cd, 'multi_alternate_cd', n_iter],
+    [run_multichannel_alt_ista, 'multi_alternate_lbfgs', n_iter],
+    [run_multichannel_alt_cd_sparse, 'multi_alternate_cd_sparse', n_iter],
 ]
 
 
 def one_run(X, X_shape, random_state, method, n_atoms, n_times_atom,
-            stopping_pobj, best_pobj):
+            stopping_pobj, best_pobj, reg=reg):
     n_trials, n_times = X_shape
     func, label, n_iter = method
     current_time = time.time() - START

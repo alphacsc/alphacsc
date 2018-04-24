@@ -1,6 +1,6 @@
 import numpy as np
 
-from numpy.testing import assert_allclose, assert_raises
+from numpy.testing import assert_allclose
 
 from alphacsc.utils.lil import convert_to_list_of_lil
 from alphacsc.utils.lil import convert_from_list_of_lil
@@ -15,13 +15,8 @@ def test_is_list_of_lil():
 
     assert is_list_of_lil(Z_lil)
     assert not is_list_of_lil(Z)
-    assert_raises(TypeError, is_list_of_lil, Z_lil[0])
-    assert_raises(TypeError, is_list_of_lil, Z[0])
-
     assert is_lil(Z_lil[0])
     assert not is_lil(Z[0])
-    assert_raises(TypeError, is_lil, Z_lil)
-    assert_raises(TypeError, is_lil, Z)
 
 
 def test_get_Z_shape():
