@@ -9,6 +9,9 @@
 import numpy as np
 
 from .compat import numba, jit
+from .lil import get_Z_shape, is_list_of_lil, is_lil
+from ..cython import _fast_sparse_convolve_multi_uv
+from ..cython import _fast_sparse_convolve_multi
 
 
 def construct_X(Z, ds):
@@ -40,6 +43,8 @@ def construct_X_multi(Z, D=None, n_channels=None):
     Parameters
     ----------
     Z : array, shape (n_atoms, n_trials, n_times_valid)
+        Can also be a list of n_trials LIL-sparse matrix of shape
+            (n_atoms, n_times - n_times_atom + 1)
         The activations
     D : array
         The atoms. Can either be full rank with shape shape
@@ -52,8 +57,8 @@ def construct_X_multi(Z, D=None, n_channels=None):
     -------
     X : array, shape (n_trials, n_chan, n_times)
     """
-    n_atoms, n_trials, n_times_valid = Z.shape
-    assert Z.shape[0] == D.shape[0]
+    n_atoms, n_trials, n_times_valid = get_Z_shape(Z)
+    assert n_atoms == D.shape[0]
     if D.ndim == 2:
         n_times_atom = D.shape[1] - n_channels
     else:
@@ -62,8 +67,9 @@ def construct_X_multi(Z, D=None, n_channels=None):
 
     X = np.zeros((n_trials, n_channels, n_times))
     for i in range(n_trials):
+        Zi = Z[i] if is_list_of_lil(Z) else Z[:, i, :]
         X[i] = _choose_convolve_multi(
-            Z[:, i, :], D=D, n_channels=n_channels)
+            Zi, D=D, n_channels=n_channels)
     return X
 
 
@@ -170,11 +176,19 @@ def _choose_convolve_multi(Zi, D=None, n_channels=None):
     """
     assert Zi.shape[0] == D.shape[0]
 
-    if np.sum(Zi != 0) < 0.01 * Zi.size:
+    if is_lil(Zi):
+        if D.ndim == 2:
+            return _fast_sparse_convolve_multi_uv(Zi, D, n_channels,
+                                                  compute_D=True)
+        else:
+            return _fast_sparse_convolve_multi(Zi, D)
+
+    elif np.sum(Zi != 0) < 0.01 * Zi.size:
         if D.ndim == 2:
             return _sparse_convolve_multi_uv(Zi, D, n_channels)
         else:
             return _sparse_convolve_multi(Zi, D)
+
     else:
         if D.ndim == 2:
             return _dense_convolve_multi_uv(Zi, D, n_channels)

@@ -9,9 +9,11 @@
 import numpy as np
 from scipy import optimize
 
+from .utils.lil import get_Z_shape
 from .utils.optim import fista, power_iteration
 from .utils.convolution import numpy_convolve_uv
-from .utils.compute_constants import compute_ZtZ
+from .utils.compute_constants import compute_ZtZ, compute_ZtX
+from .cython import _fast_compute_ZtZ, _fast_compute_ZtX
 
 from .loss_and_gradient import compute_objective, compute_X_and_objective_multi
 from .loss_and_gradient import gradient_uv, gradient_d
@@ -68,6 +70,8 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
     X : array, shape (n_trials, n_times)
         The data for sparse coding
     Z : array, shape (n_atoms, n_trials, n_times - n_times_atom + 1)
+        Can also be a list of n_trials LIL-sparse matrix of shape
+            (n_atoms, n_times - n_times_atom + 1)
         The code for which to learn the atoms
     uv_hat0 : array, shape (n_atoms, n_channels + n_times_atom)
         The initial atoms.
@@ -99,7 +103,7 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
     uv_hat : array, shape (n_atoms, n_channels + n_times_atom)
         The atoms to learn from the data.
     """
-    n_atoms, n_trials, n_times_valid = Z.shape
+    n_atoms, n_trials, n_times_valid = get_Z_shape(Z)
     _, n_chan, n_times = X.shape
 
     if solver_d == 'lbfgs':
@@ -252,6 +256,8 @@ def update_d(X, Z, D_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
     X : array, shape (n_trials, n_times)
         The data for sparse coding
     Z : array, shape (n_atoms, n_trials, n_times - n_times_atom + 1)
+        Can also be a list of n_trials LIL-sparse matrix of shape
+            (n_atoms, n_times - n_times_atom + 1)
         The code for which to learn the atoms
     D_hat0 : array, shape (n_atoms, n_channels, n_times_atom)
         The initial atoms.
@@ -277,7 +283,7 @@ def update_d(X, Z, D_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
     D_hat : array, shape (n_atoms, n_channels, n_times_atom)
         The atoms to learn from the data.
     """
-    n_atoms, n_trials, n_times_valid = Z.shape
+    n_atoms, n_trials, n_times_valid = get_Z_shape(Z)
     _, n_chan, n_times = X.shape
 
     if loss == 'l2':
@@ -335,23 +341,19 @@ def update_d(X, Z, D_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
 
 
 def _get_d_update_constants(X, Z):
-    # Get shapes
-    n_atoms, n_trials, n_times_valid = Z.shape
-    _, n_chan, n_times = X.shape
-    n_times_atom = n_times - n_times_valid + 1
-
-    ZtX = np.zeros((n_atoms, n_chan, n_times_atom))
-    for k, n, t in zip(*Z.nonzero()):
-        ZtX[k, :, :] += Z[k, n, t] * X[n, :, t:t + n_times_atom]
+    if isinstance(Z, list):
+        n_times_atom = X.shape[2] - Z[0].shape[1] + 1
+        ZtX = _fast_compute_ZtX(Z, X)
+        ZtZ = _fast_compute_ZtZ(Z, n_times_atom)
+    else:
+        n_times_atom = X.shape[2] - Z.shape[2] + 1
+        ZtX = compute_ZtX(Z, X)
+        ZtZ = compute_ZtZ(Z, n_times_atom)
 
     constants = {}
     constants['ZtX'] = ZtX
-
-    assert np.allclose(ZtX, constants['ZtX'])
-
-    ZtZ = compute_ZtZ(Z, n_times_atom)
     constants['ZtZ'] = ZtZ
-    constants['n_chan'] = n_chan
+    constants['n_chan'] = X.shape[1]
     constants['XtX'] = np.sum(X * X)
     return constants
 

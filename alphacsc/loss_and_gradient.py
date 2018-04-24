@@ -3,11 +3,11 @@ import numpy as np
 from sdtw import SoftDTW
 from sdtw.distance import SquaredEuclidean
 
-
 from .utils.convolution import numpy_convolve_uv
 from .utils.convolution import tensordot_convolve
 from .utils.convolution import _choose_convolve_multi
 from .utils.whitening import apply_whitening
+from .utils.lil import scale_Z_by_atom, safe_sum
 from .utils import construct_X_multi
 
 
@@ -22,6 +22,8 @@ def compute_objective(X=None, X_hat=None, Z_hat=None, D=None,
     X_hat : array, shape (n_trials, n_channels, n_times)
         The current reconstructed signal.
     Z_hat : array, shape (n_atoms, n_trials, n_times_valid)
+        Can also be a list of n_trials LIL-sparse matrix of shape
+            (n_atoms, n_times - n_times_atom + 1)
         The current activation signals for the regularization.
     constants : dict
         Constant to accelerate the computation when updating uv.
@@ -49,9 +51,9 @@ def compute_objective(X=None, X_hat=None, Z_hat=None, D=None,
 
     if reg is not None:
         if isinstance(reg, float):
-            obj += reg * Z_hat.sum()
+            obj += reg * safe_sum(Z_hat)
         else:
-            obj += np.sum(reg * Z_hat.sum(axis=(1, 2)))
+            obj += np.sum(reg * safe_sum(Z_hat, axis=(1, 2)))
 
     return obj
 
@@ -66,6 +68,8 @@ def compute_X_and_objective_multi(X, Z_hat, D_hat=None, reg=None, loss='l2',
     X : array, shape (n_trials, n_channels, n_times)
         The data on which to perform CSC.
     Z_hat : array, shape (n_atoms, n_trials, n_times - n_times_atom + 1)
+        Can also be a list of n_trials LIL-sparse matrix of shape
+            (n_atoms, n_times - n_times_atom + 1)
         The sparse activation matrix.
     uv_hat : array, shape (n_atoms, n_channels + n_times_atom)
         The atoms to learn from the data.
@@ -86,7 +90,6 @@ def compute_X_and_objective_multi(X, Z_hat, D_hat=None, reg=None, loss='l2',
     n_channels = X.shape[1]
 
     if feasible_evaluation:
-        Z_hat = Z_hat.copy()
         if D_hat.ndim == 2:
             D_hat = D_hat.copy()
             # project to unit norm
@@ -98,8 +101,9 @@ def compute_X_and_objective_multi(X, Z_hat, D_hat=None, reg=None, loss='l2',
             # project to unit norm
             from .update_d_multi import prox_d
             D_hat, norm = prox_d(D_hat, return_norm=True)
+
         # update z in the opposite way
-        Z_hat *= norm[:, None, None]
+        Z_hat = scale_Z_by_atom(Z_hat, scale=norm, copy=True)
 
     X_hat = construct_X_multi(Z_hat, D=D_hat, n_channels=n_channels)
 
