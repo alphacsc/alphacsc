@@ -95,7 +95,7 @@ def fista(X, D, reg, n_iter):
     return _other_solver(X, D, reg, n_iter, solver, solver_kwargs)
 
 
-# (func, max_iter)
+# (func, max_iter)
 all_func = [
     (cd, 20),
     (rcd, 20),

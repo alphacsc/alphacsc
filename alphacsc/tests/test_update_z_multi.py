@@ -1,5 +1,6 @@
 import pytest
 import numpy as np
+from scipy import sparse
 
 from alphacsc.update_z_multi import update_z_multi
 from alphacsc.update_z_multi import compute_DtD, _coordinate_descent_idx
@@ -101,10 +102,15 @@ def test_cd():
     reg = 1
 
     uv = np.random.randn(n_atoms, n_channels + n_times_atom)
-    Z = abs(np.random.randn(n_atoms, n_trials, n_times_valid))
-    Z0 = abs(np.random.randn(n_atoms, n_trials, n_times_valid))
-    Z[Z < 2] = 0
-    Z0[Z0 < 2] = 0
+    # Z = abs(np.random.randn(n_atoms, n_trials, n_times_valid))
+    # Z0 = abs(np.random.randn(n_atoms, n_trials, n_times_valid))
+    # Z[Z < 2] = 0
+    # Z0[Z0 < 2] = 0
+    density = .001
+    Z = [sparse.random(n_atoms, n_times_valid, format='lil', density=density)
+         for _ in range(n_trials)]
+    Z0 = [sparse.random(n_atoms, n_times_valid, format='lil', density=density)
+          for _ in range(n_trials)]
 
     X = construct_X_multi(Z0, D=uv, n_channels=n_channels)
 
@@ -116,7 +122,7 @@ def test_cd():
     constants['DtD'] = compute_DtD(uv, n_channels)
 
     z_hat, pobj = _coordinate_descent_idx(X[0], uv, constants, reg, debug=True,
-                                          z0=Z[:, 0], max_iter=10000)
+                                          z0=Z[0], max_iter=10000)
     z_hat = z_hat[None]
 
     assert all([p1 >= p2 for p1, p2 in zip(pobj[:-1], pobj[1:])]), "oups"

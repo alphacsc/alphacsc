@@ -13,7 +13,7 @@ from .utils.lil import get_Z_shape, is_list_of_lil
 from .utils.optim import fista, power_iteration
 from .utils.convolution import numpy_convolve_uv
 from .utils.compute_constants import compute_ZtZ, compute_ZtX
-from .cython import _fast_compute_ZtZ, _fast_compute_ZtX
+from .cython import _fast_compute_ztz, _fast_compute_ztx
 
 from .loss_and_gradient import compute_objective, compute_X_and_objective_multi
 from .loss_and_gradient import gradient_uv, gradient_d

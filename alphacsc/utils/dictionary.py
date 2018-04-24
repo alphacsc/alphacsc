@@ -1,9 +1,6 @@
 import numpy as np
 
 
-from .convolution import construct_X_multi
-
-
 def get_D(uv_hat, n_chan):
     """Compute the rank 1 dictionary associated with the given uv
 
@@ -48,6 +45,7 @@ def _patch_reconstruction_error(X, Z, D):
     else:
         n_times_atom = D.shape[2]
 
+    from .convolution import construct_X_multi
     X_hat = construct_X_multi(Z, D, n_channels=n_channels)
 
     diff = (X - X_hat)**2

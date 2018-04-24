@@ -14,6 +14,7 @@ from joblib import Parallel, delayed
 
 from .loss_and_gradient import gradient_zi
 from .utils.optim import fista
+from .utils.lil import is_list_of_lil
 from .utils.compute_constants import compute_DtD
 from .utils.convolution import _choose_convolve_multi
 
@@ -33,7 +34,8 @@ def update_z_multi(X, D, reg, z0=None, debug=False, parallel=None,
         the spatial and temporal atoms uv (n_atoms, n_channels + n_times_atom).
     reg : float
         The regularization constant
-    z0 : None | array, shape (n_atoms, n_trials, n_times_valid)
+    z0 : None | array, shape (n_atoms, n_trials, n_times_valid) |
+         list of sparse lil_matrices, shape (n_atoms, n_times_valid)
         Init for z (can be used for warm restart).
     debug : bool
         If True, check the grad.
@@ -72,12 +74,18 @@ def update_z_multi(X, D, reg, z0=None, debug=False, parallel=None,
         my_update_z(X, D, reg, z0, i, debug, solver, solver_kwargs,
                     freeze_support, loss, loss_params=loss_params)
         for i in np.array_split(np.arange(n_trials), parallel.n_jobs))
-    z_hat = np.vstack(zhats)
 
-    z_hat2 = z_hat.reshape((n_trials, n_atoms, n_times_valid))
-    z_hat2 = np.swapaxes(z_hat2, 0, 1)
+    # If Z_hat is a ndarray, stack and reorder the columns
+    if not is_list_of_lil(z0):
+        z_hat = np.vstack(zhats)
 
-    return z_hat2
+        z_hat2 = z_hat.reshape((n_trials, n_atoms, n_times_valid))
+        z_hat2 = np.swapaxes(z_hat2, 0, 1)
+
+        return z_hat2
+    # When using the lil_matrices, return a list of lil_matrices
+    else:
+        return zhats
 
 
 def _update_z_multi_idx(X, D, reg, z0, idxs, debug, solver="l_bfgs",
@@ -100,9 +108,6 @@ def _update_z_multi_idx(X, D, reg, z0, idxs, debug, solver="l_bfgs",
     if solver == "gcd":
         constants['DtD'] = compute_DtD(D=D, n_channels=n_channels)
 
-    if not freeze_support:
-        bounds = [(0, None) for idx in range(n_atoms * n_times_valid)]
-
     init_timing = time.time() - start
 
     for i in idxs:
@@ -114,11 +119,10 @@ def _update_z_multi_idx(X, D, reg, z0, idxs, debug, solver="l_bfgs",
 
         if z0 is None:
             f0 = np.zeros(n_atoms * n_times_valid)
+        elif is_list_of_lil(z0):
+            f0 = z0[i]
         else:
             f0 = z0[:, i, :].reshape(n_atoms * n_times_valid)
-
-        if freeze_support:
-            bounds = [(0, 0) if z == 0 else (0, None) for z in f0]
 
         if timing:
             times = [init_timing]
@@ -150,6 +154,10 @@ def _update_z_multi_idx(X, D, reg, z0, idxs, debug, solver="l_bfgs",
                 raise
 
         if solver == "l_bfgs":
+            if freeze_support:
+                bounds = [(0, 0) if z == 0 else (0, None) for z in f0]
+            else:
+                bounds = [(0, None) for idx in range(n_atoms * n_times_valid)]
             if timing:
                 def callback(xk):
                     times.append(time.time() - start[0])

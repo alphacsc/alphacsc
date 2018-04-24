@@ -11,9 +11,11 @@ import time
 import sys
 
 import numpy as np
+from scipy import sparse
 from joblib import Parallel
 
 from .utils import check_random_state
+from .utils.lil import is_list_of_lil
 from .loss_and_gradient import compute_X_and_objective_multi
 from .update_z_multi import update_z_multi
 from .update_d_multi import update_uv, update_d
@@ -30,8 +32,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
                     eps=1e-10, D_init=None, kmeans_params=dict(),
                     stopping_pobj=None, algorithm='batch', loss='l2',
                     loss_params=dict(gamma=.1, sakoe_chiba_band=10, ordar=10),
-                    lmbd_max='fixed', verbose=10, callback=None,
-                    random_state=None, name="DL"):
+                    use_sparse_z=False, lmbd_max='fixed', verbose=10,
+                    callback=None, random_state=None, name="DL"):
     """Learn atoms and activations using Convolutional Sparse Coding.
 
     Parameters
@@ -80,6 +82,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
         Loss for the data-fit term. Either the norm l2 or the soft-DTW.
     loss_params : dict
         Parameters of the loss
+    use_sparse_z : boolean
+        Use sparse lil_matrices to store the activations.
     lmbd_max : 'fixed' | 'per_atom' | 'shared'
         If not fixed, adapt the regularization rate as a ratio of lambda_max.
     verbose : int
@@ -119,7 +123,11 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
     b_hat_0 = rng.randn(n_atoms * (n_chan + n_times_atom))
     init_duration = time.time() - start
 
-    Z_hat = np.zeros((n_atoms, n_trials, n_times_valid))
+    if use_sparse_z:
+        Z_hat = [sparse.lil_matrices((n_atoms, n_times_valid))
+                 for _ in range(n_trials)]
+    else:
+        Z_hat = np.zeros((n_atoms, n_trials, n_times_valid))
 
     z_kwargs = dict(verbose=verbose)
     z_kwargs.update(solver_z_kwargs)
@@ -223,12 +231,20 @@ def _batch_learn(X, D_hat, Z_hat, compute_z_func, compute_d_func,
         times.append(time.time() - start)
         pobj.append(obj_func(X, Z_hat, D_hat, reg=reg_))
 
+        if is_list_of_lil(Z_hat):
+            Z_nnz = np.array([[len(d) for d in z.data] for z in Z_hat]
+                             ).sum(axis=0)
+            Z_size = len(Z_hat) * np.prod(Z_hat[0].shape)
+        else:
+            Z_nnz = np.sum(Z_hat != 0, axis=(1, 2))
+            Z_size = Z_hat.size
+
         if verbose > 5:
             print("[{}] sparsity: {:.3e}".format(
-                name, np.sum(Z_hat != 0) / Z_hat.size))
+                name, Z_nnz.sum() / Z_size))
             print('[{}] Objective (Z) : {:.3e}'.format(name, pobj[-1]))
 
-        if len(Z_hat.nonzero()[0]) == 0:
+        if Z_nnz == 0:
             import warnings
             warnings.warn("Regularization parameter `reg` is too large "
                           "and all the activations are zero. No atoms has"
@@ -243,7 +259,7 @@ def _batch_learn(X, D_hat, Z_hat, compute_z_func, compute_d_func,
         times.append(time.time() - start)
         pobj.append(obj_func(X, Z_hat, D_hat, reg=reg_))
 
-        null_atom_indices = np.where(abs(Z_hat).sum(axis=(1, 2)) == 0)[0]
+        null_atom_indices = np.where(Z_nnz == 0)
         if len(null_atom_indices) > 0:
             k0 = null_atom_indices[0]
             D_hat[k0] = get_max_error_dict(X, Z_hat, D_hat)[0]

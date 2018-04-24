@@ -50,7 +50,7 @@ def compute_objective(X=None, X_hat=None, Z_hat=None, D=None,
         raise NotImplementedError("loss '{}' is not implemented".format(loss))
 
     if reg is not None:
-        if isinstance(reg, float):
+        if isinstance(reg, (int, float)):
             obj += reg * safe_sum(Z_hat)
         else:
             obj += np.sum(reg * safe_sum(Z_hat, axis=(1, 2)))
