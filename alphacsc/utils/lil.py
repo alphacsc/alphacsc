@@ -4,6 +4,14 @@ import numpy as np
 from scipy import sparse
 
 
+def convert_to_list_of_lil(Z):
+    return [sparse.lil_matrix(zi) for zi in np.swapaxes(Z, 0, 1)]
+
+
+def convert_from_list_of_lil(Z_lil):
+    return np.swapaxes(np.array([zi_lil.toarray() for zi_lil in Z_lil]), 0, 1)
+
+
 def get_Z_shape(Z):
     if is_list_of_lil(Z):
         n_trials = len(Z)
@@ -16,7 +24,7 @@ def get_Z_shape(Z):
 def is_list_of_lil(Z):
     if isinstance(Z, list) and sparse.isspmatrix_lil(Z[0]):
         return True
-    elif Z.dim == 3:
+    elif isinstance(Z, np.ndarray) and Z.ndim == 3:
         return False
     else:
         raise TypeError("Please check the type of Z.")
@@ -25,7 +33,7 @@ def is_list_of_lil(Z):
 def is_lil(Z):
     if sparse.isspmatrix_lil(Z):
         return True
-    elif Z.dim == 2:
+    elif isinstance(Z, np.ndarray) and Z.ndim == 2:
         return False
     else:
         raise TypeError("Please check the type of Z.")
@@ -75,6 +83,7 @@ def safe_sum(Z, axis=None):
             res = np.zeros(n_atoms)
             for Zi in Z:
                 res += np.squeeze(np.array(Zi.sum(axis=1)))
+            return res
         else:
             raise NotImplementedError()
     else:
