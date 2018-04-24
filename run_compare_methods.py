@@ -143,6 +143,10 @@ def run_multichannel_alt_ista(X, ds_init, reg, n_iter, random_state, label,
     return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
 
 
+from alphacsc.utils.profile_this import profile_this  # noqa
+
+
+@profile_this
 def run_multichannel_alt_cd_sparse(X, ds_init, reg, n_iter, random_state,
                                    label, stopping_pobj):
     n_atoms, n_times_atom = ds_init.shape
@@ -222,13 +226,20 @@ if __name__ == '__main__':
             X_shape = X.shape
             stopping_pobj = best_pobj * (1 + threshold)
 
-            # run the methods for different random_state
-            delayed_one_run = delayed(cached_one_run)
-            results = Parallel(n_jobs=n_jobs)(
-                delayed_one_run(X, X_shape, random_state, method, n_atoms,
-                                n_times_atom, stopping_pobj, best_pobj)
-                for method, random_state in itertools.product(
-                    methods, range(n_states)))
+            iterator = itertools.product(methods, range(n_states))
+            if n_jobs == 1:
+                results = [
+                    one_run(X, X_shape, random_state, method, n_atoms,
+                            n_times_atom, stopping_pobj, best_pobj)
+                    for method, random_state in iterator
+                ]
+            else:
+                # run the methods for different random_state
+                delayed_one_run = delayed(cached_one_run)
+                results = Parallel(n_jobs=n_jobs)(
+                    delayed_one_run(X, X_shape, random_state, method, n_atoms,
+                                    n_times_atom, stopping_pobj, best_pobj)
+                    for method, random_state in iterator)
 
             # # add the multicore runs outside the parallel loop
             # if methods[-1][0] is not None:
