@@ -1,3 +1,7 @@
+# cython: cdivision=True
+# cython: boundscheck=False
+# cython: wraparound=False
+
 import numpy as np
 cimport numpy as cnp
 cnp.import_array()
@@ -32,10 +36,9 @@ cdef compute_ztz(object[:] Zi_data,
         # Update the pointers on lower valid indices
         for k in range(n_atoms):
             tk = Zi_rows[k]
-            while tk[lower_tk[k]] <= t0 - n_times_atom:
+            while (lower_tk[k] < len(tk) and
+                    tk[lower_tk[k]] <= t0 - n_times_atom):
                 lower_tk[k] += 1
-                if lower_tk[k] >= len(tk):
-                    break
 
         # compute the correlation from Z_k[t] with Z
         for k, (zk, tk, ltk) in enumerate(zip(Zi_data, Zi_rows, lower_tk)):
