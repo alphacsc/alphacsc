@@ -118,8 +118,10 @@ def run_one(n_atoms, n_trials, n_times_atom, n_times_valid, func):
     start = time.time()
     func(Z, n_times_atom)
     duration = time.time() - start
-    return (n_atoms, n_trials, n_times_valid, n_times_atom, func.__name__,
-            duration)
+    label = func.__name__
+    if label[0] == '_':
+        label = label[1:]
+    return (n_atoms, n_trials, n_times_valid, n_times_atom, label, duration)
 
 
 def benchmark():
