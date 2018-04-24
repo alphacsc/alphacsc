@@ -108,8 +108,9 @@ def test_equality():
 
 
 @memory.cache
-def run_one(n_atoms, n_trials, n_times_atom, n_times_valid, func):
-    Z = sparse.random(n_atoms, n_trials * n_times_valid, density=0.01)
+def run_one(n_atoms, sparsity, n_times_atom, n_times_valid, func):
+    n_trials = 4
+    Z = sparse.random(n_atoms, n_trials * n_times_valid, density=sparsity)
     Z = Z.toarray().reshape(n_atoms, n_trials, n_times_valid)
 
     if 'fast' in func.__name__:
@@ -121,33 +122,33 @@ def run_one(n_atoms, n_trials, n_times_atom, n_times_valid, func):
     label = func.__name__
     if label[0] == '_':
         label = label[1:]
-    return (n_atoms, n_trials, n_times_valid, n_times_atom, label, duration)
+    return (n_atoms, sparsity, n_times_valid, n_times_atom, label, duration)
 
 
 def benchmark():
     n_atoms_range = [1, 4, 16]
-    n_trials_range = [1, 4, 16]
+    sparsity_range = np.logspace(-4, -1, 5)
     n_times_atom_range = [10, 40, 160]
     n_times_valid_range = [200, 800, 3200]
 
-    n_runs = (len(n_atoms_range) * len(n_trials_range) * len(
+    n_runs = (len(n_atoms_range) * len(sparsity_range) * len(
         n_times_atom_range) * len(n_times_valid_range) * len(all_func))
 
     k = 0
     results = []
     for n_atoms in n_atoms_range:
-        for n_trials in n_trials_range:
+        for sparsity in sparsity_range:
             for n_times_atom in n_times_atom_range:
                 for n_times_valid in n_times_valid_range:
                     for func in all_func:
                         print('%d/%d, %s' % (k, n_runs, func.__name__))
                         k += 1
                         results.append(
-                            run_one(n_atoms, n_trials, n_times_atom,
+                            run_one(n_atoms, sparsity, n_times_atom,
                                     n_times_valid, func))
 
     df = pd.DataFrame(results, columns=[
-        'n_atoms', 'n_trials', 'n_times_atom', 'n_times_valid', 'func',
+        'n_atoms', 'sparsity', 'n_times_atom', 'n_times_valid', 'func',
         'duration'
     ])
     fig, axes = plt.subplots(2, 2, figsize=(10, 8))
@@ -163,7 +164,7 @@ def benchmark():
 
     plot('n_atoms', axes[0])
     plot('n_times_atom', axes[1])
-    plot('n_trials', axes[2])
+    plot('sparsity', axes[2])
     plot('n_times_valid', axes[3])
     plt.tight_layout()
     plt.show()

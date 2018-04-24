@@ -13,13 +13,13 @@ def test_sparse_convolve():
     rng = check_random_state(42)
     n_times = 128
     n_channels = 5
-    n_times_atoms = 21
+    n_times_atom = 21
     n_atoms = 3
-    n_times_valid = n_times - n_times_atoms + 1
+    n_times_valid = n_times - n_times_atom + 1
     density = 0.1
     zi_lil = sparse.random(n_atoms, n_times_valid, density, format='lil',
                            random_state=rng)
-    ds = rng.randn(n_atoms, n_channels, n_times_atoms)
+    ds = rng.randn(n_atoms, n_channels, n_times_atom)
     zi = zi_lil.toarray().reshape(n_atoms, n_times_valid)
 
     zd_0 = _dense_convolve_multi(zi, ds)
@@ -32,13 +32,13 @@ def test_sparse_convolve_uv():
     rng = check_random_state(42)
     n_times = 128
     n_channels = 5
-    n_times_atoms = 21
+    n_times_atom = 21
     n_atoms = 3
-    n_times_valid = n_times - n_times_atoms + 1
+    n_times_valid = n_times - n_times_atom + 1
     density = 0.1
     zi_lil = sparse.random(n_atoms, n_times_valid, density, format='lil',
                            random_state=rng)
-    ds = rng.randn(n_atoms, n_channels + n_times_atoms)
+    ds = rng.randn(n_atoms, n_channels + n_times_atom)
     zi = zi_lil.toarray().reshape(n_atoms, n_times_valid)
 
     zd_0 = _dense_convolve_multi_uv(zi, ds, n_channels)

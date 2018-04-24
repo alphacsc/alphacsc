@@ -1,3 +1,4 @@
+# flake8: noqa F401
 import pyximport
 pyximport.install()
 from .sparse_conv import _fast_sparse_convolve_multi

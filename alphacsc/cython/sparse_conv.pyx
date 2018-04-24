@@ -14,6 +14,8 @@ cdef _sparse_conv_d(object[:] Zi_data,
                     cnp.ndarray[double, ndim=3] D,
                     cnp.ndarray[double, ndim=2] Xi):
 
+    cdef int t
+    cdef double ztk
     cdef int n_channels = D.shape[1]
     cdef int n_times_atom = D.shape[2]
     assert n_channels == Xi.shape[0]
@@ -31,6 +33,9 @@ cdef _sparse_conv_uv(object[:] Zi_data,
                      cnp.ndarray[double, ndim=2] v,
                      cnp.ndarray[double, ndim=2] Xi):
 
+    cdef int t
+    cdef double ztk
+    cdef cnp.ndarray[double, ndim=1] zik_vk, uk, vk
     cdef int n_channels = u.shape[1]
     cdef int n_times = Xi.shape[1]
     cdef int n_times_atom = v.shape[1]
