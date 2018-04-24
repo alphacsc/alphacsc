@@ -7,7 +7,7 @@ from .utils.convolution import numpy_convolve_uv
 from .utils.convolution import tensordot_convolve
 from .utils.convolution import _choose_convolve_multi
 from .utils.whitening import apply_whitening
-from .utils.lil import scale_Z_by_atom, safe_sum
+from .utils.lil import scale_Z_by_atom, safe_sum, get_Z_shape, is_list_of_lil
 from .utils import construct_X_multi
 
 
@@ -122,6 +122,8 @@ def gradient_uv(uv, X=None, Z=None, constants=None, reg=None, loss='l2',
     X : array, shape (n_trials, n_channels, n_times) or None
         The data array
     Z : array, shape (n_atoms, n_trials, n_times_valid) or None
+        Can also be a list of n_trials LIL-sparse matrix of shape
+            (n_atoms, n_times - n_times_atom + 1)
         The activations
     constants : dict or None
         Constant to accelerate the computation of the gradient
@@ -146,11 +148,14 @@ def gradient_uv(uv, X=None, Z=None, constants=None, reg=None, loss='l2',
     """
     if Z is not None:
         assert X is not None
-        n_atoms = Z.shape[0]
+        n_atoms = get_Z_shape(Z)[0]
         n_channels = X.shape[1]
     else:
         n_atoms = constants['ZtZ'].shape[0]
         n_channels = constants['n_chan']
+
+    if is_list_of_lil(Z) and loss != 'l2':
+        raise NotImplementedError()
 
     if flatten:
         uv = uv.reshape((n_atoms, -1))
@@ -174,9 +179,9 @@ def gradient_uv(uv, X=None, Z=None, constants=None, reg=None, loss='l2',
     if return_func:
         if reg is not None:
             if isinstance(reg, float):
-                cost += reg * Z.sum()
+                cost += reg * safe_sum(Z)
             else:
-                cost += np.sum(reg * Z.sum(axis=(1, 2)))
+                cost += np.sum(reg * safe_sum(Z, axis=(1, 2)))
         return cost, grad
 
     return grad
@@ -253,9 +258,13 @@ def gradient_d(D=None, X=None, Z=None, constants=None, reg=None,
         The gradient
     """
     if flatten:
-        n_atoms = Z.shape[0]
+        n_atoms = get_Z_shape(Z)[0]
         n_channels = X.shape[1]
         D = D.reshape((n_atoms, n_channels, -1))
+
+    if is_list_of_lil(Z) and loss != 'l2':
+        raise NotImplementedError()
+
     if loss == 'l2':
         cost, grad_d = _l2_gradient_d(D=D, X=X, Z=Z, constants=constants)
     elif loss == 'dtw':
@@ -272,9 +281,9 @@ def gradient_d(D=None, X=None, Z=None, constants=None, reg=None,
     if return_func:
         if reg is not None:
             if isinstance(reg, float):
-                cost += reg * Z.sum()
+                cost += reg * safe_sum(Z)
             else:
-                cost += np.dot(reg, Z.sum(axis=(1, 2)))
+                cost += np.dot(reg, safe_sum(Z, axis=(1, 2)))
         return cost, grad_d
 
     return grad_d
@@ -472,6 +481,9 @@ def _dense_transpose_convolve_z(residual, Z):
     grad_D : array, shape (n_atoms, n_chan, n_times_atom)
 
     """
+    if is_list_of_lil(Z):
+        raise NotImplementedError()
+
     return np.sum([[[np.convolve(res_ip, zik[::-1],
                                  mode='valid')  # n_times_atom
                      for res_ip in res_i]                       # n_chan

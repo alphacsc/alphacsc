@@ -9,7 +9,7 @@
 import numpy as np
 from scipy import optimize
 
-from .utils.lil import get_Z_shape
+from .utils.lil import get_Z_shape, is_list_of_lil
 from .utils.optim import fista, power_iteration
 from .utils.convolution import numpy_convolve_uv
 from .utils.compute_constants import compute_ZtZ, compute_ZtX
@@ -341,12 +341,14 @@ def update_d(X, Z, D_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
 
 
 def _get_d_update_constants(X, Z):
-    if isinstance(Z, list):
-        n_times_atom = X.shape[2] - Z[0].shape[1] + 1
+    n_atoms, n_trials, n_times_valid = get_Z_shape(Z)
+    n_trials, n_chan, n_times = X.shape
+    n_times_atom = n_times - n_times_valid + 1
+
+    if is_list_of_lil(Z):
         ZtX = _fast_compute_ZtX(Z, X)
         ZtZ = _fast_compute_ZtZ(Z, n_times_atom)
     else:
-        n_times_atom = X.shape[2] - Z.shape[2] + 1
         ZtX = compute_ZtX(Z, X)
         ZtZ = compute_ZtZ(Z, n_times_atom)
 

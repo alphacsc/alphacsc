@@ -1,5 +1,6 @@
 from copy import deepcopy
 
+import numpy as np
 from scipy import sparse
 
 
@@ -61,6 +62,7 @@ def scale_Z_by_atom(Z, scale, copy=True):
 
 
 def safe_sum(Z, axis=None):
+    n_atoms, n_trials, n_times_valid = get_Z_shape(Z)
     if is_list_of_lil(Z):
         # n_trials = len(Z) and (n_atoms, n_times_valid) = Z[0].shape
         if axis is None:
@@ -70,8 +72,10 @@ def safe_sum(Z, axis=None):
         axis.sort()
 
         if axis == [1, 2]:
-            raise NotImplementedError()
-        else:  # TODO
+            res = np.zeros(n_atoms)
+            for Zi in Z:
+                res += np.squeeze(np.array(Zi.sum(axis=1)))
+        else:
             raise NotImplementedError()
     else:
         # (n_atoms, n_trials, n_times_valid) = Z.shape
