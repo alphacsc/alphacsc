@@ -17,6 +17,7 @@ from .utils.optim import fista
 from .utils.lil import is_list_of_lil, is_lil
 from .utils.compute_constants import compute_DtD
 from .utils.convolution import _choose_convolve_multi
+from .cython.coordinate_descent import update_dz_opt
 
 
 def update_z_multi(X, D, reg, z0=None, debug=False, parallel=None,
@@ -468,7 +469,10 @@ def _update_beta(beta, dz_opt, dZs, active_segs, z_hat, DtD, norm_Dk, dz, k0,
 
     # update dz_opt
     tmp = np.maximum(-beta[:, t_start_up:t_end_up] - reg, 0) / norm_Dk
-    dz_opt[:, t_start_up:t_end_up] = tmp - z_hat[:, t_start_up:t_end_up]
+    if is_lil(z_hat):
+        update_dz_opt(z_hat, tmp, dz_opt, t_start_up, t_end_up)
+    else:
+        dz_opt[:, t_start_up:t_end_up] = tmp - z_hat[:, t_start_up:t_end_up]
     dz_opt[k0, t0] = 0
 
     # reunable greedy updates in the segments immediately before or after

@@ -126,11 +126,6 @@ def test_cd(use_sparse_lil):
     constants = {}
     constants['DtD'] = compute_DtD(uv, n_channels)
 
-    z_hat, pobj = _coordinate_descent_idx(X[0], uv, constants, reg, debug=True,
-                                          z0=Z0, max_iter=10000)
-
-    assert all([p1 >= p2 for p1, p2 in zip(pobj[:-1], pobj[1:])]), "oups"
-
     # Ensure that the initialization is good, by using a nearly optimal point
     # and verifying that the cost does not goes up.
     z_hat = update_z_multi(X, D=uv, reg=reg, z0=Z_gen,
@@ -143,3 +138,14 @@ def test_cd(use_sparse_lil):
                                            reg=reg, loss='l2',
                                            feasible_evaluation=False)
     assert loss_1 <= loss_0, "Bad initialization in greedy CD."
+
+    z_hat, pobj = _coordinate_descent_idx(X[0], uv, constants, reg, debug=True,
+                                          z0=Z0, max_iter=10000)
+
+    try:
+        assert all([p1 >= p2 for p1, p2 in zip(pobj[:-1], pobj[1:])]), "oups"
+    except AssertionError:
+        import matplotlib.pyplot as plt
+        plt.plot(pobj)
+        plt.show()
+        raise
