@@ -310,14 +310,9 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
         pobj = [objective(z_hat)]
         start = time.time()
 
-    # Init beta with -DtX
-    # beta = _fprime(uv, z_hat.ravel(), Xi=Xi, reg=None, return_func=False)
-    # beta = beta.reshape(n_atoms, n_times_valid)
-    beta = gradient_zi(Xi, z_hat, D=D, reg=None, loss='l2',
-                       return_func=False, constants=constants)
-    for k, t in zip(*z_hat.nonzero()):
-        beta[k, t] -= z_hat[k, t] * norm_Dk[k]  # np.sum(DtD[k, k, t0])
-    dz_opt = np.maximum(-beta - reg, 0) / norm_Dk - z_hat
+    beta, dz_opt = _init_beta(Xi, z_hat, D, constants, reg, norm_Dk,
+                              tol, use_sparse_dz=False)
+
     if freeze_support:
         if is_lil(z0):
             mask = z0 != 0
@@ -333,43 +328,16 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
     t0, k0 = -1, 0
     t_end_seg = n_times_seg
     for ii in range(int(max_iter)):
-        # Pick a coordinate to update
-        if strategy == 'random':
-            k0 = np.random.randint(n_atoms)
-            t0 = np.random.randint(n_times_valid)
-            dz = dz_opt[k0, t0]
-
+        k0, t0, dz = _select_coordinate(strategy, dz_opt, active_segs[i_seg],
+                                        n_atoms, n_times_valid, n_times_seg,
+                                        (t_start_seg, t_end_seg))
+        if strategy in ['random', 'cyclic']:
             if ii % (n_times_valid * n_atoms) == 0:
                 dZs[i_seg] = 0
             dZs[i_seg] += abs(dz)
-
-        elif strategy == 'cyclic':
-            t0 += 1
-            if t0 >= n_times_valid:
-                t0 = 0
-                k0 += 1
-                if k0 >= n_atoms:
-                    k0 = 0
-            dz = dz_opt[k0, t0]
-
-            if ii % (n_times_valid * n_atoms) == 0:
-                dZs[i_seg] = 0
-            dZs[i_seg] += abs(dz)
-
-        elif strategy == 'greedy':
-            # if dZs[i_seg] > tol:
-            if active_segs[i_seg]:
-                i0 = np.argmax(np.abs(dz_opt[:, t_start_seg:t_end_seg]))
-                n_times_current = min(n_times_seg, n_times_valid - t_start_seg)
-                k0, t0 = np.unravel_index(i0, (n_atoms, n_times_current))
-                t0 += t_start_seg
-                dz = dz_opt[k0, t0]
-                dZs[i_seg] = abs(dz)
-            else:
-                dz = tol
         else:
-            raise ValueError('The coordinate selection method should be in '
-                             "{'greedy' | 'random'}. Got {}.".format(strategy))
+            dZs[i_seg] = abs(dz)
+
 
         # Update the selected coordinate and beta if the update is greater than
         # the convergence tolerance.
@@ -393,6 +361,7 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
             if t_end > t_end_seg and dZs[i_seg + 1] <= tol:
                 dZs[i_seg + 1] = 2 * tol
                 active_segs[i_seg + 1] = True
+
             if freeze_support:
                 if is_lil(z0):
                     mask = z0[:, t_start:t_end] != 0
@@ -443,3 +412,55 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
     if timing:
         return z_hat, pobj, times
     return z_hat
+
+
+def _init_beta(Xi, z_hat, D, constants, reg, norm_Dk, tol,
+               use_sparse_dz=False):
+    # Init beta with -DtX
+    # beta = _fprime(uv, z_hat.ravel(), Xi=Xi, reg=None, return_func=False)
+    # beta = beta.reshape(n_atoms, n_times_valid)
+    beta = gradient_zi(Xi, z_hat, D=D, reg=None, loss='l2',
+                       return_func=False, constants=constants)
+    for k, t in zip(*z_hat.nonzero()):
+        beta[k, t] -= z_hat[k, t] * norm_Dk[k]  # np.sum(DtD[k, k, t0])
+    dz_opt = np.maximum(-beta - reg, 0) / norm_Dk - z_hat
+
+    if use_sparse_z:
+        dz_opt[abs(dz_opt) < tol] = 0
+        dz_opt = sparse.lil_matrix(dz_opt)
+
+    return beta, dz_opt
+
+
+def _select_coordinate(strategy, dz_opt, active_seg, n_atoms, n_times_valid,
+                       n_times_seg, seg_bounds):
+    # Pick a coordinate to update
+    if strategy == 'random':
+        k0 = np.random.randint(n_atoms)
+        t0 = np.random.randint(n_times_valid)
+        dz = dz_opt[k0, t0]
+
+    elif strategy == 'cyclic':
+        t0 += 1
+        if t0 >= n_times_valid:
+            t0 = 0
+            k0 += 1
+            if k0 >= n_atoms:
+                k0 = 0
+        dz = dz_opt[k0, t0]
+
+    elif strategy == 'greedy':
+        # if dZs[i_seg] > tol:
+        t_start_seg, t_end_seg = seg_bounds
+        if active_seg:
+            i0 = abs(dz_opt[:, t_start_seg:t_end_seg]).argmax()
+            n_times_current = min(n_times_seg, n_times_valid - t_start_seg)
+            k0, t0 = np.unravel_index(i0, (n_atoms, n_times_current))
+            t0 += t_start_seg
+            dz = dz_opt[k0, t0]
+        else:
+            k0, t0, dz = None, None, 0
+    else:
+        raise ValueError("'The coordinate selection method should be in "
+                         "{'greedy' | 'random'}. Got {}.".format(strategy))
+    return k0, t0, dz
