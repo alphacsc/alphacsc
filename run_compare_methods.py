@@ -31,7 +31,7 @@ n_trials = 10  # N
 n_times_atom = 16  # L
 n_times = 2000  # T
 n_atoms = 2  # K
-reg = 5.0
+reg = 1.0
 
 # A method stops if its objective function reaches best_pobj * (1 + threshold)
 threshold = -1
@@ -166,9 +166,9 @@ def run_multichannel_alt_cd_sparse(X, ds_init, reg, n_iter, random_state,
 
 n_iter = 100
 methods = [
-    # [run_ista, 'vanilla_ista', n_iter],
-    # [run_fista, 'vanilla_fista', n_iter],
-    # [run_lbfgs, 'vanilla_lbfgsb ', n_iter],
+    [run_ista, 'vanilla_ista', n_iter],
+    [run_fista, 'vanilla_fista', n_iter],
+    [run_lbfgs, 'vanilla_lbfgsb ', n_iter],
     [run_multichannel_alt_cd, 'multi_alternate_cd', n_iter],
     [run_multichannel_alt_ista, 'multi_alternate_lbfgs', n_iter],
     [run_multichannel_alt_cd_sparse, 'multi_alternate_cd_sparse', n_iter],

@@ -447,7 +447,8 @@ def _select_coordinate(strategy, dz_opt, active_seg, n_atoms, n_times_valid,
             k0, t0, dz = None, None, 0
     else:
         raise ValueError("'The coordinate selection method should be in "
-                         "{'greedy' | 'random'}. Got {}.".format(strategy))
+                         "{'greedy' | 'random' | 'cyclic'}. Got '%s'."
+                         % (strategy, ))
     return k0, t0, dz
 
 
