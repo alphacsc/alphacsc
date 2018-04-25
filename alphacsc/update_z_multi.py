@@ -379,7 +379,7 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
         seg_bounds[1] += n_times_seg
 
         if seg_bounds[0] >= n_times_valid:
-            # reset to first segment
+            # reset to first segment
             i_seg = 0
             seg_bounds = [0, n_times_seg]
             # Make sure that we do not miss some segments
@@ -455,15 +455,16 @@ def _update_beta(beta, dz_opt, dZs, active_segs, z_hat, DtD, norm_Dk, dz, k0,
                  freeze_support, debug):
     n_atoms, n_times_valid = beta.shape
 
-    # define the bounds for the beta update
+    # define the bounds for the beta update
     t_start_up = max(0, t0 - n_times_atom + 1)
     t_end_up = min(t0 + n_times_atom, n_times_valid)
 
     # update beta
+    beta_i0 = beta[k0, t0]
     ll = t_end_up - t_start_up
     offset = max(0, n_times_atom - t0 - 1)
     beta[:, t_start_up:t_end_up] += DtD[:, k0, offset:offset + ll] * dz
-    beta[k0, t0] = beta[k0, t0]
+    beta[k0, t0] = beta_i0
 
     # update dz_opt
     tmp = np.maximum(-beta[:, t_start_up:t_end_up] - reg, 0) / norm_Dk
