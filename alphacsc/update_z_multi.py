@@ -17,7 +17,7 @@ from .utils.optim import fista
 from .utils.lil import is_list_of_lil, is_lil
 from .utils.compute_constants import compute_DtD
 from .utils.convolution import _choose_convolve_multi
-from .cython.coordinate_descent import update_dz_opt
+from .cython.coordinate_descent import update_dz_opt, subtract_zhat_to_beta
 
 
 def update_z_multi(X, D, reg, z0=None, debug=False, parallel=None,
@@ -325,7 +325,7 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
             mask = z0 == 0
         dz_opt[mask] = 0
 
-    dZs = 2 * tol * np.ones(n_seg)
+    accumulator = n_seg
     active_segs = np.array([True] * n_seg)
     i_seg = 0
     seg_bounds = [0, n_times_seg]
@@ -337,10 +337,8 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
         if strategy in ['random', 'cyclic']:
             # accumulate on all coordinates from the stopping criterion
             if ii % n_coordinates == 0:
-                dZs[i_seg] = 0
-            dZs[i_seg] += abs(dz)
-        else:
-            dZs[i_seg] = abs(dz)
+                accumulator = 0
+            accumulator += abs(dz)
 
         # Update the selected coordinate and beta, only if the update is
         # greater than the convergence tolerance.
@@ -349,12 +347,13 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
             z_hat[k0, t0] += dz
 
             # update beta
-            beta, dz_opt, dZs, active_segs = _update_beta(
-                beta, dz_opt, dZs, active_segs, z_hat, DtD, norm_Dk, dz, k0,
-                t0, reg, tol, seg_bounds, i_seg, n_times_atom, z0,
+            beta, dz_opt, accumulator, active_segs = _update_beta(
+                beta, dz_opt, accumulator, active_segs, z_hat, DtD, norm_Dk,
+                dz, k0, t0, reg, tol, seg_bounds, i_seg, n_times_atom, z0,
                 freeze_support, debug)
 
-        else:
+        elif active_segs[i_seg]:
+            accumulator -= 1
             active_segs[i_seg] = False
 
         if debug:
@@ -367,11 +366,11 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
 
         # check stopping criterion
         if strategy == 'greedy':
-            if dZs.max() <= tol:
+            if accumulator == 0:
                 break
         else:
             # only check at the last coordinate
-            if (ii + 1) % n_coordinates == 0 and dZs.max() <= tol:
+            if (ii + 1) % n_coordinates == 0 and accumulator <= tol:
                 break
 
         # increment to next segment
@@ -383,8 +382,6 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
             # reset to first segment
             i_seg = 0
             seg_bounds = [0, n_times_seg]
-            # Make sure that we do not miss some segments
-            dZs[i_seg:] = 0
 
     else:
         if verbose > 10:
@@ -406,9 +403,19 @@ def _init_beta(Xi, z_hat, D, constants, reg, norm_Dk, tol,
     # beta = beta.reshape(n_atoms, n_times_valid)
     beta = gradient_zi(Xi, z_hat, D=D, reg=None, loss='l2',
                        return_func=False, constants=constants)
-    for k, t in zip(*z_hat.nonzero()):
-        beta[k, t] -= z_hat[k, t] * norm_Dk[k]  # np.sum(DtD[k, k, t0])
-    dz_opt = np.maximum(-beta - reg, 0) / norm_Dk - z_hat
+    if is_lil(z_hat):
+        beta = subtract_zhat_to_beta(beta, z_hat, norm_Dk[:, 0])
+    else:
+        for k, t in zip(*z_hat.nonzero()):
+            beta[k, t] -= z_hat[k, t] * norm_Dk[k]  # np.sum(DtD[k, k, t0])
+
+    if is_lil(z_hat):
+        n_times_valid = beta.shape[1]
+        dz_opt = np.zeros(beta.shape)
+        update_dz_opt(z_hat, beta, dz_opt, norm_Dk[:, 0], reg, t_start=0,
+                      t_end=n_times_valid)
+    else:
+        dz_opt = np.maximum(-beta - reg, 0) / norm_Dk - z_hat
 
     if use_sparse_dz:
         dz_opt[abs(dz_opt) < tol] = 0
@@ -452,8 +459,8 @@ def _select_coordinate(strategy, dz_opt, active_seg, n_atoms, n_times_valid,
     return k0, t0, dz
 
 
-def _update_beta(beta, dz_opt, dZs, active_segs, z_hat, DtD, norm_Dk, dz, k0,
-                 t0, reg, tol, seg_bounds, i_seg, n_times_atom, z0,
+def _update_beta(beta, dz_opt, accumulator, active_segs, z_hat, DtD, norm_Dk,
+                 dz, k0, t0, reg, tol, seg_bounds, i_seg, n_times_atom, z0,
                  freeze_support, debug):
     n_atoms, n_times_valid = beta.shape
 
@@ -469,21 +476,22 @@ def _update_beta(beta, dz_opt, dZs, active_segs, z_hat, DtD, norm_Dk, dz, k0,
     beta[k0, t0] = beta_i0
 
     # update dz_opt
-    tmp = np.maximum(-beta[:, t_start_up:t_end_up] - reg, 0) / norm_Dk
     if is_lil(z_hat):
-        update_dz_opt(z_hat, tmp, dz_opt, t_start_up, t_end_up)
+        update_dz_opt(z_hat, beta, dz_opt, norm_Dk[:, 0], reg, t_start_up,
+                      t_end_up)
     else:
+        tmp = np.maximum(-beta[:, t_start_up:t_end_up] - reg, 0) / norm_Dk
         dz_opt[:, t_start_up:t_end_up] = tmp - z_hat[:, t_start_up:t_end_up]
     dz_opt[k0, t0] = 0
 
     # reunable greedy updates in the segments immediately before or after
     # if beta was update outside the segment
     t_start_seg, t_end_seg = seg_bounds
-    if t_start_up < t_start_seg and dZs[i_seg - 1] <= tol:
-        dZs[i_seg - 1] = 2 * tol
+    if t_start_up < t_start_seg and not active_segs[i_seg - 1]:
+        accumulator += 1
         active_segs[i_seg - 1] = True
-    if t_end_up > t_end_seg and dZs[i_seg + 1] <= tol:
-        dZs[i_seg + 1] = 2 * tol
+    if t_end_up > t_end_seg and not active_segs[i_seg + 1]:
+        accumulator += 1
         active_segs[i_seg + 1] = True
 
     # If we freeze the support, we put dz_opt to zero outside the support of z0
@@ -500,4 +508,4 @@ def _update_beta(beta, dz_opt, dZs, active_segs, z_hat, DtD, norm_Dk, dz, k0,
             nnz_dz = list(zip(*dz_opt[:, t_start_up:t_end_up].nonzero()))
             assert all([nnz in nnz_z0 for nnz in nnz_dz])
 
-    return beta, dz_opt, dZs, active_segs
+    return beta, dz_opt, accumulator, active_segs
