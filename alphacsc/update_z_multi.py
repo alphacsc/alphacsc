@@ -254,7 +254,7 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
         shape shape (n_atoms, n_channels + n_times_atom)
     constants : dict
         Constants containing DtD to speedup computation
-    z0 : array, shape (n_atoms, n_time_valid)
+    z0 : array, shape (n_atoms, n_times_valid)
         Initial estimate of the coding signal, to warm start the algorithm.
     tol : float
         Tolerance for the stopping criterion of the algorithm
@@ -289,6 +289,7 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
             n_seg = max(n_times_valid // (2 * n_times_atom), 1)
         elif strategy in ('random', 'cyclic'):
             n_seg = 1
+            n_coordinates = n_times_valid * n_atoms
 
     max_iter *= n_seg
     n_times_seg = n_times_valid // n_seg + 1
@@ -313,6 +314,7 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
     beta, dz_opt = _init_beta(Xi, z_hat, D, constants, reg, norm_Dk,
                               tol, use_sparse_dz=False)
 
+    # If we freeze the support, we put dz_opt to zero outside the support of z0
     if freeze_support:
         if is_lil(z0):
             mask = z0 != 0
@@ -324,55 +326,33 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
 
     dZs = 2 * tol * np.ones(n_seg)
     active_segs = np.array([True] * n_seg)
-    i_seg, t_start_seg = 0, 0
+    i_seg = 0
+    seg_bounds = [0, n_times_seg]
     t0, k0 = -1, 0
-    t_end_seg = n_times_seg
     for ii in range(int(max_iter)):
         k0, t0, dz = _select_coordinate(strategy, dz_opt, active_segs[i_seg],
                                         n_atoms, n_times_valid, n_times_seg,
-                                        (t_start_seg, t_end_seg))
+                                        seg_bounds)
         if strategy in ['random', 'cyclic']:
-            if ii % (n_times_valid * n_atoms) == 0:
+            # accumulate on all coordinates from the stopping criterion
+            if ii % n_coordinates == 0:
                 dZs[i_seg] = 0
             dZs[i_seg] += abs(dz)
         else:
             dZs[i_seg] = abs(dz)
 
-
-        # Update the selected coordinate and beta if the update is greater than
-        # the convergence tolerance.
+        # Update the selected coordinate and beta, only if the update is
+        # greater than the convergence tolerance.
         if abs(dz) > tol:
+            # update the selected coordinate
             z_hat[k0, t0] += dz
 
-            beta_i0 = beta[k0, t0]
-            offset = max(0, n_times_atom - t0 - 1)
-            t_start = max(0, t0 - n_times_atom + 1)
-            t_end = min(t0 + n_times_atom, n_times_valid)
-            ll = t_end - t_start
-            beta[:, t_start:t_end] += DtD[:, k0, offset:offset + ll] * dz
-            beta[k0, t0] = beta_i0
-            dz_opt[:, t_start:t_end] = (
-                np.maximum(-beta[:, t_start:t_end] - reg, 0) / norm_Dk
-                - z_hat[:, t_start:t_end])
-            dz_opt[k0, t0] = 0
-            if t_start < t_start_seg and dZs[i_seg - 1] <= tol:
-                dZs[i_seg - 1] = 2 * tol
-                active_segs[i_seg - 1] = True
-            if t_end > t_end_seg and dZs[i_seg + 1] <= tol:
-                dZs[i_seg + 1] = 2 * tol
-                active_segs[i_seg + 1] = True
+            # update beta
+            beta, dz_opt, dZs, active_segs = _update_beta(
+                beta, dz_opt, dZs, active_segs, z_hat, DtD, norm_Dk, dz, k0,
+                t0, reg, tol, seg_bounds, i_seg, n_times_atom, z0,
+                freeze_support, debug)
 
-            if freeze_support:
-                if is_lil(z0):
-                    mask = z0[:, t_start:t_end] != 0
-                    mask = mask.toarray()
-                    mask = ~mask
-                else:
-                    mask = z0[:, t_start:t_end] == 0
-                dz_opt[:, t_start:t_end][mask] = 0
-                nnz_z0 = list(zip(*z0[:, t_start:t_end].nonzero()))
-                nnz_dz = list(zip(*dz_opt[:, t_start:t_end].nonzero()))
-                assert all([nnz in nnz_z0 for nnz in nnz_dz])
         else:
             active_segs[i_seg] = False
 
@@ -384,22 +364,26 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
             pobj.append(objective(z_hat))
             start = time.time()
 
+        # check stopping criterion
         if strategy == 'greedy':
             if dZs.max() <= tol:
                 break
         else:
-            if (k0 == n_atoms - 1 and t0 == n_times_valid - 1
-                    and dZs.max() <= tol):
+            # only check at the last coordinate
+            if (ii + 1) % n_coordinates == 0 and dZs.max() <= tol:
                 break
 
+        # increment to next segment
         i_seg += 1
-        t_start_seg += n_times_seg
-        t_end_seg += n_times_seg
-        if t_start_seg >= n_times_valid:
-            dZs[i_seg:] = 0  # Make sure that we do not miss some segments
+        seg_bounds[0] += n_times_seg
+        seg_bounds[1] += n_times_seg
+
+        if seg_bounds[0] >= n_times_valid:
+            # reset to first segment
             i_seg = 0
-            t_start_seg = 0
-            t_end_seg = n_times_seg
+            seg_bounds = [0, n_times_seg]
+            # Make sure that we do not miss some segments
+            dZs[i_seg:] = 0
 
     else:
         if verbose > 10:
@@ -464,3 +448,50 @@ def _select_coordinate(strategy, dz_opt, active_seg, n_atoms, n_times_valid,
         raise ValueError("'The coordinate selection method should be in "
                          "{'greedy' | 'random'}. Got {}.".format(strategy))
     return k0, t0, dz
+
+
+def _update_beta(beta, dz_opt, dZs, active_segs, z_hat, DtD, norm_Dk, dz, k0,
+                 t0, reg, tol, seg_bounds, i_seg, n_times_atom, z0,
+                 freeze_support, debug):
+    n_atoms, n_times_valid = beta.shape
+
+    # define the bounds for the beta update
+    t_start_up = max(0, t0 - n_times_atom + 1)
+    t_end_up = min(t0 + n_times_atom, n_times_valid)
+
+    # update beta
+    ll = t_end_up - t_start_up
+    offset = max(0, n_times_atom - t0 - 1)
+    beta[:, t_start_up:t_end_up] += DtD[:, k0, offset:offset + ll] * dz
+    beta[k0, t0] = beta[k0, t0]
+
+    # update dz_opt
+    tmp = np.maximum(-beta[:, t_start_up:t_end_up] - reg, 0) / norm_Dk
+    dz_opt[:, t_start_up:t_end_up] = tmp - z_hat[:, t_start_up:t_end_up]
+    dz_opt[k0, t0] = 0
+
+    # reunable greedy updates in the segments immediately before or after
+    # if beta was update outside the segment
+    t_start_seg, t_end_seg = seg_bounds
+    if t_start_up < t_start_seg and dZs[i_seg - 1] <= tol:
+        dZs[i_seg - 1] = 2 * tol
+        active_segs[i_seg - 1] = True
+    if t_end_up > t_end_seg and dZs[i_seg + 1] <= tol:
+        dZs[i_seg + 1] = 2 * tol
+        active_segs[i_seg + 1] = True
+
+    # If we freeze the support, we put dz_opt to zero outside the support of z0
+    if freeze_support:
+        if is_lil(z0):
+            mask = z0[:, t_start_up:t_end_up] != 0
+            mask = mask.toarray()
+            mask = ~mask
+        else:
+            mask = z0[:, t_start_up:t_end_up] == 0
+        dz_opt[:, t_start_up:t_end_up][mask] = 0
+        if debug:
+            nnz_z0 = list(zip(*z0[:, t_start_up:t_end_up].nonzero()))
+            nnz_dz = list(zip(*dz_opt[:, t_start_up:t_end_up].nonzero()))
+            assert all([nnz in nnz_z0 for nnz in nnz_dz])
+
+    return beta, dz_opt, dZs, active_segs
