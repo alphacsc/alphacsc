@@ -8,11 +8,15 @@ import pandas as pd
 import scipy.sparse as sp
 from sklearn.externals.joblib import Parallel, delayed, Memory
 
+import alphacsc.other.heide_csc as CSC
+from sporco.admm.cbpdndl import ConvBPDNDictLearn
+
+from alphacsc.utils.profile_this import profile_this  # noqa
 from alphacsc.utils import check_random_state
-from alphacsc.simulate import simulate_data
 from alphacsc.update_d import update_d_block
 from alphacsc.learn_d_z import learn_d_z
 from alphacsc.learn_d_z_multi import learn_d_z_multi
+from alphacsc.datasets.somato import load_data
 
 mem = Memory(cachedir='.', verbose=0)
 
@@ -23,59 +27,94 @@ START = time.time()
 verbose = 1
 
 # n_jobs for the parallel running of single core methods
-n_jobs = 1
+n_jobs = 6
 # number of random states
 n_states = 1
 
 n_trials = 10  # N
-n_times_atom = 16  # L
-n_times = 2000  # T
+n_times_atom = 128  # L
+n_times = 20000  # T
 n_atoms = 2  # K
-reg = 1.0
+reg = 5.0
 
 # A method stops if its objective function reaches best_pobj * (1 + threshold)
 threshold = -1
 
-save_name = 'methods_th%s_' % (threshold, )
+save_name = 'methods_'
 save_name = os.path.join('figures', save_name)
 
 
 ###################
 # simulate the data
 @mem.cache()
-def simulation(n_atoms, n_times_atom, n_trials, n_times, reg):
-    n_atoms = min(n_atoms, 12)  # maximum n_atoms in current simulate_data
-    random_state_simulate = 10
-    X, ds_true, Z_true = simulate_data(
-        n_trials=n_trials, n_times=n_times, n_times_atom=n_times_atom,
-        n_atoms=n_atoms, random_state=random_state_simulate)
+def load(n_atoms, n_times_atom, reg):
+    X, info = load_data(epoch=False, n_jobs=n_jobs)
+    X = X[:, 0, :]
 
-    # scaling to have a scaling of reg that is reasonable
-    X = (X - np.mean(X, axis=1, keepdims=True)) / np.std(
-        X, axis=1, keepdims=True)
+    solver_z_kwargs = dict(max_iter=500, tol=1e-4)
+    print('Finding best_pobj...')
+    rng = check_random_state(0)
+    ds_init = rng.randn(n_atoms, n_times_atom)
+    D_init = np.c_[np.ones((n_atoms, 1)), ds_init]
 
-    rng = check_random_state(random_state_simulate)
-    X += 0.1 * rng.randn(*X.shape)
-
-    # set borders of X to 0.
-    pad = np.zeros((n_trials, n_times_atom * 1))
-    X = np.hstack([pad, X, pad])
-
-    ###############
-    # best possible
-    print('Computing best possible obj')
-    ds_true = np.pad(ds_true, [(0, 0), (n_times_atom // 2,
-                                        n_times_atom // 2 + 1)],
-                     mode='constant')
-    n_atoms, n_times_atom = ds_true.shape
-    pobj, _, _, _ = learn_d_z(X, n_atoms, n_times_atom, func_d=update_d_block,
-                              solver_z='l_bfgs', solver_z_kwargs=dict(
-                                  factr=1e11), reg=reg, n_iter=100,
-                              random_state=random_state_simulate,
-                              ds_init=ds_true, n_jobs=n_jobs, verbose=1)
+    pobj, _, _, _ = learn_d_z_multi(
+        X[:, None, :], n_atoms, n_times_atom, solver_d='alternate_adaptive',
+        solver_z='l_bfgs', uv_constraint='separate',
+        solver_z_kwargs=solver_z_kwargs, reg=reg, solver_d_kwargs=dict(
+            max_iter=50), n_iter=1000, random_state=0,
+        D_init=D_init, n_jobs=n_jobs, stopping_pobj=None, verbose=verbose)
     best_pobj = pobj[-1]
     print('[Done]')
     return X, best_pobj
+
+
+def run_admm(X, ds_init, reg, n_iter, random_state, label, stopping_pobj,
+             max_it_d=10, max_it_z=10):
+    # admm with the following differences
+    # positivity constraints
+    # different init
+    # d step and z step are swapped
+    tol = np.float64(1e-3)  # the stop threshold for the algorithm
+    size_kernel = ds_init.shape
+    [d, z, Dz, list_obj_val, times_admm] = CSC.learn_conv_sparse_coder(
+        X, size_kernel, max_it=n_iter, tol=tol, random_state=random_state,
+        lambda_prior=reg, ds_init=ds_init, verbose=verbose,
+        stopping_pobj=stopping_pobj, max_it_d=max_it_d, max_it_z=max_it_z)
+
+    # z.shape = (n_trials, n_atoms, n_times + 2 * n_times_atom)
+    z = z[:, :, 2 * n_times_atom:-2 * n_times_atom]
+    z = z.swapaxes(0, 1)
+    # z.shape = (n_atoms, n_trials, n_times - 2 * n_times_atom)
+
+    return list_obj_val, np.cumsum(times_admm)[::2], d, z
+
+
+def run_cbpdn(X, ds_init, reg, n_iter, random_state, label, stopping_pobj):
+    # wolberg / convolutional basis pursuit
+    opt = ConvBPDNDictLearn.Options({
+        'Verbose': verbose > 0,
+        'MaxMainIter': n_iter,
+        'CBPDN': dict(rho=50.0 * reg + 0.5, NonNegCoef=True),
+        'CCMOD': dict(ZeroMean=False),
+    })
+    cbpdn = ConvBPDNDictLearn(
+        np.swapaxes(ds_init, 0, 1)[:, None, :],
+        np.swapaxes(X, 0, 1)[:, None, :], reg, opt,
+        stopping_pobj=stopping_pobj)
+    results = cbpdn.solve()
+    times = np.cumsum(cbpdn.getitstat().Time)
+
+    d_hat, pobj = results
+    d_hat = d_hat.squeeze().T
+    z_hat = cbpdn.getcoef().squeeze().swapaxes(0, 2)
+    times = np.concatenate([[0], times])
+
+    n_atoms, n_times_atom = ds_init.shape
+    # z_hat.shape = (n_atoms, n_trials, n_times)
+    z_hat = z_hat[:, :, :-n_times_atom + 1]
+    # z_hat.shape = (n_atoms, n_trials, n_times_valid)
+
+    return pobj, times, d_hat, z_hat
 
 
 def run_ista(X, ds_init, reg, n_iter, random_state, label, stopping_pobj):
@@ -101,7 +140,7 @@ def run_fista(X, ds_init, reg, n_iter, random_state, label, stopping_pobj):
 
 
 def run_lbfgs(X, ds_init, reg, n_iter, random_state, label, stopping_pobj,
-              factr_d=1e7, factr_z=1e15):
+              factr_d=1e9, factr_z=1e12):
     n_atoms, n_times_atom = ds_init.shape
     pobj, times, d_hat, z_hat = learn_d_z(
         X, n_atoms, n_times_atom,
@@ -113,65 +152,65 @@ def run_lbfgs(X, ds_init, reg, n_iter, random_state, label, stopping_pobj,
     return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
 
 
-def run_multichannel_alt_cd(X, ds_init, reg, n_iter, random_state, label,
-                            stopping_pobj):
+# @profile_this
+def run_multichannel_alt_gcd(X, ds_init, reg, n_iter, random_state, label,
+                             stopping_pobj):
     n_atoms, n_times_atom = ds_init.shape
     D_init = np.c_[np.ones((n_atoms, 1)), ds_init]
+
+    solver_z_kwargs = dict(max_iter=500, tol=1e-1)
     pobj, times, d_hat, z_hat = learn_d_z_multi(
         X[:, None, :], n_atoms, n_times_atom, solver_d='alternate_adaptive',
-        solver_z='gcd', uv_constraint='separate', solver_z_kwargs={
-            'max_iter': 200,
-            'tol': 1e-5
-        }, reg=reg, solver_d_kwargs=dict(
+        solver_z='gcd', uv_constraint='separate',
+        solver_z_kwargs=solver_z_kwargs, reg=reg, solver_d_kwargs=dict(
             max_iter=50), n_iter=n_iter, random_state=random_state,
         D_init=D_init, n_jobs=1, stopping_pobj=stopping_pobj, verbose=verbose)
 
     return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
 
 
-def run_multichannel_alt_ista(X, ds_init, reg, n_iter, random_state, label,
-                              stopping_pobj):
+def run_multichannel_alt_lbfgs(X, ds_init, reg, n_iter, random_state, label,
+                               stopping_pobj):
     n_atoms, n_times_atom = ds_init.shape
     D_init = np.c_[np.ones((n_atoms, 1)), ds_init]
     pobj, times, d_hat, z_hat = learn_d_z_multi(
         X[:, None, :], n_atoms, n_times_atom, solver_d='alternate_adaptive',
         uv_constraint='separate', solver_z_kwargs=dict(
             factr=1e15), reg=reg, solver_d_kwargs=dict(
-                max_iter=10), n_iter=n_iter, random_state=random_state,
+                max_iter=50), n_iter=n_iter, random_state=random_state,
         D_init=D_init, n_jobs=1, stopping_pobj=stopping_pobj, verbose=verbose)
 
     return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
 
 
-from alphacsc.utils.profile_this import profile_this  # noqa
-
-
-@profile_this
-def run_multichannel_alt_cd_sparse(X, ds_init, reg, n_iter, random_state,
-                                   label, stopping_pobj):
+# @profile_this
+def run_multichannel_alt_gcd_sparse(X, ds_init, reg, n_iter, random_state,
+                                    label, stopping_pobj):
     n_atoms, n_times_atom = ds_init.shape
     D_init = np.c_[np.ones((n_atoms, 1)), ds_init]
 
-    solver_z_kwargs = dict(max_iter=200, tol=1e-5)
+    solver_z_kwargs = dict(max_iter=500, tol=1e-1)
     pobj, times, d_hat, z_hat = learn_d_z_multi(
         X[:, None, :], n_atoms, n_times_atom, solver_d='alternate_adaptive',
         uv_constraint='separate', solver_z='gcd',
         solver_z_kwargs=solver_z_kwargs, reg=reg, solver_d_kwargs=dict(
-            max_iter=10), use_sparse_z=True, n_iter=n_iter,
+            max_iter=50), use_sparse_z=True, n_iter=n_iter,
         random_state=random_state, D_init=D_init, n_jobs=1,
         stopping_pobj=stopping_pobj, verbose=verbose)
 
     return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
 
 
-n_iter = 100
+n_iter = 500
 methods = [
-    [run_ista, 'vanilla_ista', n_iter],
-    [run_fista, 'vanilla_fista', n_iter],
-    [run_lbfgs, 'vanilla_lbfgsb ', n_iter],
-    [run_multichannel_alt_cd, 'multi_alternate_cd', n_iter],
-    [run_multichannel_alt_ista, 'multi_alternate_lbfgs', n_iter],
-    [run_multichannel_alt_cd_sparse, 'multi_alternate_cd_sparse', n_iter],
+    [run_admm, 'Heide et al (2015)', n_iter // 10],
+    [run_cbpdn, 'Wohlberg (2016)', n_iter],
+    # [run_ista, 'Jas et al (2017) ista', n_iter],
+    [run_fista, 'Jas et al (2017) fista', n_iter],
+    [run_lbfgs, 'Jas et al (2017) lbfgs', n_iter],
+    [run_multichannel_alt_lbfgs, 'multiCSC_lbfgs', n_iter],
+    [run_multichannel_alt_gcd, 'multiCSC_gcd', n_iter // 5],
+    [run_multichannel_alt_gcd_sparse, 'multiCSC_gcd_sparse', n_iter // 5],
 ]
 
 
@@ -184,7 +223,7 @@ def one_run(X, X_shape, random_state, method, n_atoms, n_times_atom,
 
     # use the same init for all methods
     rng = check_random_state(random_state)
-    ds_init = rng.randn(n_atoms, n_times_atom * 2 + 1)
+    ds_init = rng.randn(n_atoms, n_times_atom)
 
     # run the selected algorithm with one iter to remove compilation overhead
     _, _, _, _ = func(X, ds_init, reg, 1, random_state, label, stopping_pobj)
@@ -199,8 +238,7 @@ def one_run(X, X_shape, random_state, method, n_atoms, n_times_atom,
     z_hat = [sp.csr_matrix(z) for z in z_hat]
 
     current_time = time.time() - START
-    print('%s - %s: done at %.0f sec' % (random_state, label, current_time),
-          end='')
+    print('%s - %s: done at %.0f sec' % (random_state, label, current_time))
     return (random_state, label, np.asarray(pobj), np.asarray(times),
             np.asarray(d_hat), np.asarray(z_hat), n_atoms, n_times_atom,
             n_trials, n_times, stopping_pobj, best_pobj)
@@ -211,51 +249,42 @@ if __name__ == '__main__':
     cached_one_run = mem.cache(func=one_run, ignore=['X'])
 
     all_results = []
-    for n_atoms in [
-            2,
-            # 10,
-    ]:
-        for n_times_atom in [
-                32,
-                # 128,
-        ]:
-            print(n_atoms, n_times_atom)
-            # simulate the data and optimize to get the best pobj
-            X, best_pobj = simulation(n_atoms, n_times_atom, n_trials, n_times,
-                                      reg)
-            X_shape = X.shape
-            stopping_pobj = best_pobj * (1 + threshold)
+    print(n_atoms, n_times_atom)
+    # simulate the data and optimize to get the best pobj
+    X, best_pobj = load(n_atoms, n_times_atom, reg)
+    X_shape = X.shape
+    stopping_pobj = best_pobj * (1 + threshold)
 
-            iterator = itertools.product(methods, range(n_states))
-            if n_jobs == 1:
-                results = [
-                    one_run(X, X_shape, random_state, method, n_atoms,
+    iterator = itertools.product(methods, range(n_states))
+    if n_jobs == 1:
+        results = [
+            one_run(X, X_shape, random_state, method, n_atoms,
+                    n_times_atom, stopping_pobj, best_pobj)
+            for method, random_state in iterator
+        ]
+    else:
+        # run the methods for different random_state
+        delayed_one_run = delayed(cached_one_run)
+        results = Parallel(n_jobs=n_jobs)(
+            delayed_one_run(X, X_shape, random_state, method, n_atoms,
                             n_times_atom, stopping_pobj, best_pobj)
-                    for method, random_state in iterator
-                ]
-            else:
-                # run the methods for different random_state
-                delayed_one_run = delayed(cached_one_run)
-                results = Parallel(n_jobs=n_jobs)(
-                    delayed_one_run(X, X_shape, random_state, method, n_atoms,
-                                    n_times_atom, stopping_pobj, best_pobj)
-                    for method, random_state in iterator)
+            for method, random_state in iterator)
 
-            # # add the multicore runs outside the parallel loop
-            # if methods[-1][0] is not None:
-            #     for random_state in range(n_states):
-            #         results.append(
-            #             one_run(
-            #                 X, X_shape, random_state, methods[-1], n_atoms,
-            #                 n_times_atom, stopping_pobj, best_pobj))
+    # # add the multicore runs outside the parallel loop
+    # if methods[-1][0] is not None:
+    #     for random_state in range(n_states):
+    #         results.append(
+    #             one_run(
+    #                 X, X_shape, random_state, methods[-1], n_atoms,
+    #                 n_times_atom, stopping_pobj, best_pobj))
 
-            all_results.extend(results)
+    all_results.extend(results)
 
-            # save even intermediate results
-            all_results_df = pd.DataFrame(
-                all_results, columns='random_state label pobj times d_hat '
-                'z_hat n_atoms n_times_atom n_trials n_times '
-                'stopping_pobj best_pobj'.split(' '))
-            all_results_df.to_pickle(save_name + '.pkl')
+    # save even intermediate results
+    all_results_df = pd.DataFrame(
+        all_results, columns='random_state label pobj times d_hat '
+        'z_hat n_atoms n_times_atom n_trials n_times '
+        'stopping_pobj best_pobj'.split(' '))
+    all_results_df.to_pickle(save_name + '.pkl')
 
     print('-- End of the script --')

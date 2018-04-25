@@ -61,7 +61,7 @@ def plot_convergence(all_results_df, threshold, normalize_method, save_name):
                     # geometric mean on the n_iter_min first iterations
                     n_iter_min = min([t.shape[0] for t in pobj])
                     pobj_stack = np.vstack([p[:n_iter_min] for p in pobj])
-                    pobj_stack = np.log10(pobj_stack + 1e-7)
+                    pobj_stack = np.log10(pobj_stack + 1e-15)
                     pobj_mean = 10 ** (np.mean(pobj_stack, axis=0))
                     times_mean = np.vstack([t[:n_iter_min] for t in times])
                     times_mean = times_mean.mean(axis=0)
@@ -112,8 +112,10 @@ def plot_convergence(all_results_df, threshold, normalize_method, save_name):
             plt.xlabel('Time (s)')
             if normalize_method is None:
                 plt.ylabel('objective')
-                xmax = np.sort(tmax)[0] / 10
+                # xmax = np.sort(tmax)[0] / 10
                 # plt.xlim(-xmax / 10, xmax)
+            elif normalize_method == 'last':
+                plt.ylabel('(objective_i - best_i) / best_i')
             else:
                 plt.ylabel('(objective - best) / best')
             plt.legend(loc=0, ncol=1)
@@ -126,14 +128,14 @@ def plot_convergence(all_results_df, threshold, normalize_method, save_name):
             plt.grid(True)
             plt.tight_layout()
 
-            fig.savefig(save_name + '_bench_K%d_L%d.png' % (n_atoms,
-                                                            n_times_atom), dpi=150)
+            fig.savefig(save_name + '_bench_K%d_L%d.png' %
+                        (n_atoms, n_times_atom), dpi=150)
 
 
 ##############################################################################
 # load the results from file
 
-load_name = 'methods_th-1_.pkl'
+load_name = 'methods_.pkl'
 
 load_name = os.path.join('figures', load_name)
 all_results_df = pd.read_pickle(load_name)
@@ -145,11 +147,11 @@ if 'threshold' not in globals():
     threshold = threshold[0]
 
 # force threshold
-threshold = 0.1
+threshold = 0.001
 normalize_method = None
 save_name = load_name[:-4]
 
-for normalize_method in [None, 'best']:
+for normalize_method in [None, 'best', 'last']:
     plot_convergence(all_results_df, threshold, normalize_method, save_name)
 
 # plt.show()
