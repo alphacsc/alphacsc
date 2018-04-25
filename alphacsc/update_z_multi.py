@@ -425,7 +425,7 @@ def _init_beta(Xi, z_hat, D, constants, reg, norm_Dk, tol,
         beta[k, t] -= z_hat[k, t] * norm_Dk[k]  # np.sum(DtD[k, k, t0])
     dz_opt = np.maximum(-beta - reg, 0) / norm_Dk - z_hat
 
-    if use_sparse_z:
+    if use_sparse_dz:
         dz_opt[abs(dz_opt) < tol] = 0
         dz_opt = sparse.lil_matrix(dz_opt)
 
