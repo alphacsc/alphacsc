@@ -25,10 +25,8 @@ def normalize_pobj(pobj, best_pobj, normalize_method='best'):
 def plot_convergence(all_results_df, threshold, normalize_method, save_name):
     save_name += '_%s' % (normalize_method, )
     labels = all_results_df['label'].unique()
-    if 'M-step ' in labels:
-        labels[3] = labels[2]
-        labels[2] = 'M-step '
     for n_atoms in all_results_df['n_atoms'].unique():
+
         for n_times_atom in all_results_df['n_times_atom'].unique():
             this_res = all_results_df
             this_res = this_res[this_res['n_atoms'] == n_atoms]
@@ -37,7 +35,7 @@ def plot_convergence(all_results_df, threshold, normalize_method, save_name):
             if this_res.size == 0:
                 continue
 
-            best_pobj = min(this_res['best_pobj'].unique())
+            best_pobj = min([min(pobj) for pobj in this_res['pobj']])
 
             # draw a different figure for each setting
             fig = plt.figure(figsize=(12, 9))
@@ -46,6 +44,8 @@ def plot_convergence(all_results_df, threshold, normalize_method, save_name):
             # ymin = np.inf
             tmax = []
             for label in labels:
+                if label == 'find_best_pobj':
+                    continue
                 # aggregate all runs (different random states)
                 this_res_2 = this_res[this_res['label'] == label]
                 times = this_res_2['times']
@@ -140,12 +140,6 @@ load_name = 'methods_.pkl'
 
 load_name = os.path.join('figures', load_name)
 all_results_df = pd.read_pickle(load_name)
-
-if 'threshold' not in globals():
-    threshold = (all_results_df['stopping_pobj'] / all_results_df['best_pobj']
-                 - 1).unique()
-    assert threshold.size == 1
-    threshold = threshold[0]
 
 # force threshold
 threshold = 0.001
