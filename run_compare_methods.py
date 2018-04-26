@@ -88,6 +88,10 @@ def run_admm(X, ds_init, reg, n_iter, random_state, label, stopping_pobj,
 
 
 def run_cbpdn(X, ds_init, reg, n_iter, random_state, label, stopping_pobj):
+    # use only one thread in fft
+    import sporco.linalg
+    sporco.linalg.pyfftw_threads = 1
+
     # wolberg / convolutional basis pursuit
     opt = ConvBPDNDictLearn.Options({
         'Verbose': verbose > 0,
