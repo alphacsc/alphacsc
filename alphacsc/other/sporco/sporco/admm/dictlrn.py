@@ -10,6 +10,7 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+import sys
 from future.utils import with_metaclass
 from builtins import range
 from builtins import object
@@ -361,8 +362,6 @@ class DictLearn(with_metaclass(_DictLearn_Meta, object)):
         n_times = X.shape[1]
         pobjs = list()
 
-        self.timer.start('solve')
-
         d_hat = self.getdict().squeeze().T
         n_times_atom = d_hat.shape[1]
         N = n_times - n_times_atom + 1
@@ -374,8 +373,8 @@ class DictLearn(with_metaclass(_DictLearn_Meta, object)):
         for self.j in range(self.j, self.j + self.opt['MaxMainIter']):
 
             # Reset timer
-            self.timer.reset('solve_wo_eval')
-            self.timer.start('solve_wo_eval')
+            self.timer.reset('solve')
+            self.timer.start('solve')
 
             # X update
             self.xstep.solve()
@@ -385,13 +384,11 @@ class DictLearn(with_metaclass(_DictLearn_Meta, object)):
             self.dstep.solve()
             self.post_dstep()
 
-            # Evaluate functional
-            self.timer.stop('solve_wo_eval')
-            evl = self.evaluate()
-            # self.timer.start('solve_wo_eval')
-
             # Record elapsed time
-            t = self.timer.elapsed(self.opt['IterTimer'])
+            t = self.timer.elapsed('solve')
+
+            # Evaluate functional
+            evl = self.evaluate()
 
             Z_hat = self.getcoef().squeeze().swapaxes(0, 2)[..., :N]
             d_hat = self.getdict().squeeze().T
@@ -410,7 +407,11 @@ class DictLearn(with_metaclass(_DictLearn_Meta, object)):
 
             # Display iteration stats if Verbose option enabled
             if self.opt['Verbose']:
-                self.isc.printiterstats(itst)
+                msg = ('.' if (self.j % 50 != 0) else 'W_%d/%d '
+                       % (self.j, self.opt['MaxMainIter']))
+                print(msg, end='')
+                sys.stdout.flush()
+                # self.isc.printiterstats(itst)
 
             if (self.stopping_pobj is not None
                     and pobjs[-1] < self.stopping_pobj):
@@ -421,7 +422,6 @@ class DictLearn(with_metaclass(_DictLearn_Meta, object)):
                 if self.opt['Callback'](self):
                     break
 
-
         # Increment iteration count
         self.j += 1
 
@@ -430,7 +430,11 @@ class DictLearn(with_metaclass(_DictLearn_Meta, object)):
 
         # Print final separator string if Verbose option enabled
         if self.opt['Verbose'] and self.opt['StatusHeader']:
-            self.isc.printseparator()
+            msg = ('.' if (self.j % 50 != 0) else 'W_%d/%d '
+                   % (self.j, self.opt['MaxMainIter']))
+            print(msg, end='')
+            sys.stdout.flush()
+            # self.isc.printseparator()
 
         # Return final dictionary
         return self.getdict(), pobjs
