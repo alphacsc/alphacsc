@@ -176,6 +176,9 @@ def learn_conv_sparse_coder(b, size_kernel, max_it, tol,
         d = rng.randn(*size_kernel)
     else:
         d = ds_init.copy()
+    d_norm = np.linalg.norm(d, axis=1)
+    d /= d_norm[:, None]
+
 
     # Initial the filters and its fft after being rolled to fit the frequency
     d = np.pad(d, ((0, 0),

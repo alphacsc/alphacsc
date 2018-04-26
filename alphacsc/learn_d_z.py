@@ -105,6 +105,8 @@ def learn_d_z(X, n_atoms, n_times_atom, func_d=update_d_block, reg=0.1,
         d_hat = rng.randn(n_atoms, n_times_atom)
     else:
         d_hat = ds_init.copy()
+    d_norm = np.linalg.norm(d_hat, axis=1)
+    d_hat /= d_norm[:, None]
 
     pobj = list()
     times = list()
