@@ -285,11 +285,11 @@ def get_iteration_func(eps, stopping_pobj, callback, lmbd_max, name, verbose):
         dz = pobj[-3] - pobj[-2]
         du = pobj[-2] - pobj[-1]
         if ((dz < eps or du < eps) and lmbd_max == 'fixed'):
-            if dz < -1e-10:
+            if dz < 0:
                 raise RuntimeError(
                     "The z update have increased the objective value by %s."
                     % dz)
-            if du < -1e-10:
+            if du < 0 and dz > 1e-12:
                 raise RuntimeError(
                     "The d update have increased the objective value by %s."
                     % du)
