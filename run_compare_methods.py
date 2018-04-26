@@ -31,9 +31,7 @@ n_jobs = 6
 # number of random states
 n_states = 1
 
-n_trials = 10  # N
 n_times_atom = 128  # L
-n_times = 20000  # T
 n_atoms = 2  # K
 reg = 5.0
 
@@ -74,7 +72,7 @@ def run_admm(X, ds_init, reg, n_iter, random_state, label, stopping_pobj,
     # positivity constraints
     # different init
     # d step and z step are swapped
-    tol = np.float64(1e-3)  # the stop threshold for the algorithm
+    tol = np.float64(1e-3)
     size_kernel = ds_init.shape
     [d, z, Dz, list_obj_val, times_admm] = CSC.learn_conv_sparse_coder(
         X, size_kernel, max_it=n_iter, tol=tol, random_state=random_state,
@@ -140,7 +138,7 @@ def run_fista(X, ds_init, reg, n_iter, random_state, label, stopping_pobj):
 
 
 def run_lbfgs(X, ds_init, reg, n_iter, random_state, label, stopping_pobj,
-              factr_d=1e9, factr_z=1e12):
+              factr_d=1e7, factr_z=1e14):
     n_atoms, n_times_atom = ds_init.shape
     pobj, times, d_hat, z_hat = learn_d_z(
         X, n_atoms, n_times_atom,
@@ -158,12 +156,12 @@ def run_multichannel_alt_gcd(X, ds_init, reg, n_iter, random_state, label,
     n_atoms, n_times_atom = ds_init.shape
     D_init = np.c_[np.ones((n_atoms, 1)), ds_init]
 
-    solver_z_kwargs = dict(max_iter=500, tol=1e-1)
+    solver_z_kwargs = dict(max_iter=500, tol=2e-1)
     pobj, times, d_hat, z_hat = learn_d_z_multi(
         X[:, None, :], n_atoms, n_times_atom, solver_d='alternate_adaptive',
         solver_z='gcd', uv_constraint='separate',
         solver_z_kwargs=solver_z_kwargs, reg=reg, solver_d_kwargs=dict(
-            max_iter=50), n_iter=n_iter, random_state=random_state,
+            max_iter=40), n_iter=n_iter, random_state=random_state,
         D_init=D_init, n_jobs=1, stopping_pobj=stopping_pobj, verbose=verbose)
 
     return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
@@ -176,8 +174,8 @@ def run_multichannel_alt_lbfgs(X, ds_init, reg, n_iter, random_state, label,
     pobj, times, d_hat, z_hat = learn_d_z_multi(
         X[:, None, :], n_atoms, n_times_atom, solver_d='alternate_adaptive',
         uv_constraint='separate', solver_z_kwargs=dict(
-            factr=1e15), reg=reg, solver_d_kwargs=dict(
-                max_iter=50), n_iter=n_iter, random_state=random_state,
+            factr=8e14), reg=reg, solver_d_kwargs=dict(
+                max_iter=40), n_iter=n_iter, random_state=random_state,
         D_init=D_init, n_jobs=1, stopping_pobj=stopping_pobj, verbose=verbose)
 
     return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
@@ -189,23 +187,23 @@ def run_multichannel_alt_gcd_sparse(X, ds_init, reg, n_iter, random_state,
     n_atoms, n_times_atom = ds_init.shape
     D_init = np.c_[np.ones((n_atoms, 1)), ds_init]
 
-    solver_z_kwargs = dict(max_iter=500, tol=1e-1)
+    solver_z_kwargs = dict(max_iter=500, tol=2e-1)
     pobj, times, d_hat, z_hat = learn_d_z_multi(
         X[:, None, :], n_atoms, n_times_atom, solver_d='alternate_adaptive',
         uv_constraint='separate', solver_z='gcd',
         solver_z_kwargs=solver_z_kwargs, reg=reg, solver_d_kwargs=dict(
-            max_iter=50), use_sparse_z=True, n_iter=n_iter,
+            max_iter=40), use_sparse_z=True, n_iter=n_iter,
         random_state=random_state, D_init=D_init, n_jobs=1,
         stopping_pobj=stopping_pobj, verbose=verbose)
 
     return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
 
 
-n_iter = 500
+n_iter = 1000
 methods = [
     [run_admm, 'Heide et al (2015)', n_iter // 10],
-    [run_cbpdn, 'Wohlberg (2016)', n_iter],
-    # [run_ista, 'Jas et al (2017) ista', n_iter],
+    [run_cbpdn, 'Wohlberg (2017)', n_iter],
+    [run_ista, 'Jas et al (2017) ista', n_iter],
     [run_fista, 'Jas et al (2017) fista', n_iter],
     [run_lbfgs, 'Jas et al (2017) lbfgs', n_iter],
     [run_multichannel_alt_lbfgs, 'multiCSC_lbfgs', n_iter],
@@ -214,12 +212,21 @@ methods = [
 ]
 
 
+BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE = range(30, 38)
+
+
+def colorify(message, color=BLUE):
+    return ("\033[1;%dm" % color) + message + "\033[0m"
+
+
 def one_run(X, X_shape, random_state, method, n_atoms, n_times_atom,
             stopping_pobj, best_pobj, reg=reg):
     n_trials, n_times = X_shape
     func, label, n_iter = method
     current_time = time.time() - START
-    print('%s - %s: started at %.0f sec' % (random_state, label, current_time))
+    msg = ('%s - %s: started at T=%.0f sec'
+           % (random_state, label, current_time))
+    print(colorify(msg, BLUE))
 
     # use the same init for all methods
     rng = check_random_state(random_state)
@@ -237,8 +244,11 @@ def one_run(X, X_shape, random_state, method, n_atoms, n_times_atom,
         z[z < 1e-3] = 0
     z_hat = [sp.csr_matrix(z) for z in z_hat]
 
+    duration = time.time() - START - current_time
     current_time = time.time() - START
-    print('%s - %s: done at %.0f sec' % (random_state, label, current_time))
+    msg = ('%s - %s: done in %.0f sec at T=%.0f sec'
+           % (random_state, label, duration, current_time))
+    print(colorify(msg, GREEN))
     return (random_state, label, np.asarray(pobj), np.asarray(times),
             np.asarray(d_hat), np.asarray(z_hat), n_atoms, n_times_atom,
             n_trials, n_times, stopping_pobj, best_pobj)
@@ -258,8 +268,8 @@ if __name__ == '__main__':
     iterator = itertools.product(methods, range(n_states))
     if n_jobs == 1:
         results = [
-            one_run(X, X_shape, random_state, method, n_atoms,
-                    n_times_atom, stopping_pobj, best_pobj)
+            cached_one_run(X, X_shape, random_state, method, n_atoms,
+                           n_times_atom, stopping_pobj, best_pobj)
             for method, random_state in iterator
         ]
     else:

@@ -208,9 +208,14 @@ def learn_conv_sparse_coder(b, size_kernel, max_it, tol,
     z_hat = fft(z)
 
     """Initial objective function (usually very large)"""
-    obj_val = obj_func(z_hat, d_hat, b,
-                       lambda_residual, lambda_prior,
-                       psf_radius, size_z, size_x)
+    # obj_val = obj_func(z_hat, d_hat, b,
+    #                    lambda_residual, lambda_prior,
+    #                    psf_radius, size_z, size_x)
+    obj_val = obj_func_2(z, d, b, lambda_prior, psf_radius,
+                         feasible_evaluation)
+
+    if verbose > 0:
+        print('Init, Obj %3.3f' % (obj_val, ))
 
     times = list()
     times.append(0.)
@@ -233,7 +238,7 @@ def learn_conv_sparse_coder(b, size_kernel, max_it, tol,
                              feasible_evaluation)
 
         if verbose > 0:
-            print('--> Obj %3.3f' % obj_val)
+            print('Iter Z %d/%d, Obj %3.3f' % (i, max_it, obj_val))
 
         start = time.time()
         d, d_hat = update_d(
@@ -249,15 +254,12 @@ def learn_conv_sparse_coder(b, size_kernel, max_it, tol,
                              feasible_evaluation)
 
         if verbose > 0:
-            print('Iter D %d, Obj %3.3f' % (i, obj_val))
+            print('Iter D %d/%d, Obj %3.3f' % (i, max_it, obj_val))
 
         list_obj_val.append(obj_val)
 
         # Debug progress
         # z_comp = z
-
-        if verbose > 0:
-            print('Iter Z %d, Obj %3.3f' % (i, obj_val))
 
         # Termination
         # if (linalg.norm(z_diff) / linalg.norm(z_comp) < tol and
@@ -275,15 +277,15 @@ def learn_conv_sparse_coder(b, size_kernel, max_it, tol,
 
     Dz = np.real(ifft(np.einsum('ijk,jk->ik', z_hat, d_hat)))
 
-    obj_val = obj_func(z_hat, d_hat, b,
-                       lambda_residual, lambda_prior,
-                       psf_radius, size_z, size_x)
-    if verbose > 0:
-        print('Final objective function %f' % obj_val)
-
-    reconstr_err = reconstruction_err(z_hat, d_hat, b, psf_radius, size_x)
-    if verbose > 0:
-        print('Final reconstruction error %f' % reconstr_err)
+    # obj_val = obj_func(z_hat, d_hat, b,
+    #                    lambda_residual, lambda_prior,
+    #                    psf_radius, size_z, size_x)
+    # if verbose > 0:
+    #     print('Final objective function %f' % obj_val)
+    #
+    # reconstr_err = reconstruction_err(z_hat, d_hat, b, psf_radius, size_x)
+    # if verbose > 0:
+    #     print('Final reconstruction error %f' % reconstr_err)
 
     return d_res, z_res, Dz, np.array(list_obj_val), times
 
@@ -339,8 +341,8 @@ def precompute_D_step(z_hat, size_z, rho, verbose):
                                                     inv_rho_z_hat_z_hat_t),
                                           zhat_mat))
 
-    if verbose > 0:
-        print('Done precomputing for D')
+    # if verbose > 0:
+    #     print('Done precomputing for D')
     return zhat_mat, zhat_inv_mat
 
 
@@ -350,8 +352,8 @@ def precompute_Z_step(dhat, size_x, verbose):
     dhat_flat = dhat.T
     dhatTdhat_flat = np.sum(np.multiply(
         np.ma.conjugate(dhat_flat), dhat_flat), axis=1)
-    if verbose > 0:
-        print('Done precomputing for Z')
+    # if verbose > 0:
+    #     print('Done precomputing for Z')
     return dhat_flat, dhatTdhat_flat
 
 

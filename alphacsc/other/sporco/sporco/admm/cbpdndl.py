@@ -144,7 +144,7 @@ class ConvBPDNDictLearn(dictlrn.DictLearn):
 
 
     def __init__(self, D0, S, lmbda=None, opt=None, method='cns',
-                 dimK=1, dimN=2):
+                 dimK=1, dimN=2, stopping_pobj=None):
         """
         Initialise a ConvBPDNDictLearn object with problem size and options.
 
@@ -183,6 +183,8 @@ class ConvBPDNDictLearn(dictlrn.DictLearn):
         if opt is None:
             opt = ConvBPDNDictLearn.Options(method=method)
         self.opt = opt
+
+        self.stopping_pobj = stopping_pobj
 
         # Get dictionary size
         if self.opt['DictSize'] is None:
