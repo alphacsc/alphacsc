@@ -14,7 +14,7 @@ def normalize_pobj(pobj, best_pobj, normalize_method='best'):
         pobj = (pobj - best_pobj) / best_pobj
     elif normalize_method == 'last':
         pobj = [(p - p.min()) / p.min() for p in pobj]
-    elif normalize_method is None:
+    elif normalize_method in [None, 'short']:
         pass
     else:
         raise ValueError('unknown normalize_method: %s' % normalize_method)
@@ -43,7 +43,7 @@ def plot_convergence(all_results_df, threshold, normalize_method, save_name):
             fig = plt.figure(figsize=(12, 9))
             ax = fig.gca()
             plt.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
-            ymin = np.inf
+            # ymin = np.inf
             tmax = []
             for label in labels:
                 # aggregate all runs (different random states)
@@ -52,10 +52,10 @@ def plot_convergence(all_results_df, threshold, normalize_method, save_name):
                 pobj = this_res_2['pobj']
 
                 pobj = normalize_pobj(pobj, best_pobj, normalize_method)
-                if normalize_method is None:
+                if normalize_method in [None, 'short']:
                     plot_func = plt.plot
                 else:
-                    plot_func = plt.semilogy
+                    plot_func = plt.loglog
 
                 if True:
                     # geometric mean on the n_iter_min first iterations
@@ -79,7 +79,7 @@ def plot_convergence(all_results_df, threshold, normalize_method, save_name):
                     # for times_, pobj_ in zip(times, pobj):
                     #     plt.semilogy(times_, pobj_, alpha=0.2, color=color)
 
-                    ymin = min(ymin, pobj_mean[pobj_mean > 0].min())
+                    # ymin = min(ymin, pobj_mean[pobj_mean > 0].min())
 
                 else:
                     color = None  # new color for new label
@@ -110,10 +110,11 @@ def plot_convergence(all_results_df, threshold, normalize_method, save_name):
                             label = None
 
             plt.xlabel('Time (s)')
-            if normalize_method is None:
+            if normalize_method in [None, 'short']:
                 plt.ylabel('objective')
-                # xmax = np.sort(tmax)[0] / 10
-                # plt.xlim(-xmax / 10, xmax)
+                if normalize_method == 'short':
+                    xmax = np.sort(tmax)[0] / 10
+                    plt.xlim(-xmax / 10, xmax)
             elif normalize_method == 'last':
                 plt.ylabel('(objective_i - best_i) / best_i')
             else:
@@ -151,7 +152,7 @@ threshold = 0.001
 normalize_method = None
 save_name = load_name[:-4]
 
-for normalize_method in [None, 'best', 'last']:
+for normalize_method in [None, 'short', 'best', 'last']:
     plot_convergence(all_results_df, threshold, normalize_method, save_name)
 
 # plt.show()

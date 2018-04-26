@@ -361,6 +361,8 @@ class DictLearn(with_metaclass(_DictLearn_Meta, object)):
         n_times = X.shape[1]
         pobjs = list()
 
+        self.timer.start('solve')
+
         d_hat = self.getdict().squeeze().T
         n_times_atom = d_hat.shape[1]
         N = n_times - n_times_atom + 1
@@ -372,7 +374,8 @@ class DictLearn(with_metaclass(_DictLearn_Meta, object)):
         for self.j in range(self.j, self.j + self.opt['MaxMainIter']):
 
             # Reset timer
-            self.timer.start()
+            self.timer.reset('solve_wo_eval')
+            self.timer.start('solve_wo_eval')
 
             # X update
             self.xstep.solve()
@@ -385,7 +388,7 @@ class DictLearn(with_metaclass(_DictLearn_Meta, object)):
             # Evaluate functional
             self.timer.stop('solve_wo_eval')
             evl = self.evaluate()
-            self.timer.start('solve_wo_eval')
+            # self.timer.start('solve_wo_eval')
 
             # Record elapsed time
             t = self.timer.elapsed(self.opt['IterTimer'])

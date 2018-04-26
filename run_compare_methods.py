@@ -27,7 +27,7 @@ START = time.time()
 verbose = 1
 
 # n_jobs for the parallel running of single core methods
-n_jobs = 6
+n_jobs = 5
 # number of random states
 n_states = 1
 
@@ -59,7 +59,7 @@ def load(n_atoms, n_times_atom, reg):
         X[:, None, :], n_atoms, n_times_atom, solver_d='alternate_adaptive',
         solver_z='l_bfgs', uv_constraint='separate',
         solver_z_kwargs=solver_z_kwargs, reg=reg, solver_d_kwargs=dict(
-            max_iter=50), n_iter=1000, random_state=0,
+            max_iter=50), n_iter=2000, random_state=0,
         D_init=D_init, n_jobs=n_jobs, stopping_pobj=None, verbose=verbose)
     best_pobj = pobj[-1]
     print('[Done]')
@@ -168,6 +168,9 @@ def run_multichannel_alt_gcd(X, ds_init, reg, n_iter, random_state, label,
             max_iter=40), n_iter=n_iter, random_state=random_state,
         D_init=D_init, n_jobs=1, stopping_pobj=stopping_pobj, verbose=verbose)
 
+    # remove the ds init duration
+    times[0] = 0
+
     return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
 
 
@@ -178,9 +181,12 @@ def run_multichannel_alt_lbfgs(X, ds_init, reg, n_iter, random_state, label,
     pobj, times, d_hat, z_hat = learn_d_z_multi(
         X[:, None, :], n_atoms, n_times_atom, solver_d='alternate_adaptive',
         uv_constraint='separate', solver_z_kwargs=dict(
-            factr=8e14), reg=reg, solver_d_kwargs=dict(
+            factr=1e15), reg=reg, solver_d_kwargs=dict(
                 max_iter=40), n_iter=n_iter, random_state=random_state,
         D_init=D_init, n_jobs=1, stopping_pobj=stopping_pobj, verbose=verbose)
+
+    # remove the ds init duration
+    times[0] = 0
 
     return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
 
@@ -200,19 +206,22 @@ def run_multichannel_alt_gcd_sparse(X, ds_init, reg, n_iter, random_state,
         random_state=random_state, D_init=D_init, n_jobs=1,
         stopping_pobj=stopping_pobj, verbose=verbose)
 
+    # remove the ds init duration
+    times[0] = 0
+
     return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
 
 
-n_iter = 1000
+n_iter = 200
 methods = [
-    [run_admm, 'Heide et al (2015)', n_iter // 10],
-    [run_cbpdn, 'Wohlberg (2017)', n_iter],
-    [run_ista, 'Jas et al (2017) ista', n_iter],
-    [run_fista, 'Jas et al (2017) fista', n_iter],
-    [run_lbfgs, 'Jas et al (2017) lbfgs', n_iter],
-    [run_multichannel_alt_lbfgs, 'multiCSC_lbfgs', n_iter],
-    [run_multichannel_alt_gcd, 'multiCSC_gcd', n_iter // 5],
-    [run_multichannel_alt_gcd_sparse, 'multiCSC_gcd_sparse', n_iter // 5],
+    [run_admm, 'Heide et al (2015)', n_iter // 2],
+    # [run_cbpdn, 'Wohlberg (2017)', n_iter],
+    # [run_ista, 'Jas et al (2017) ista', n_iter * 5],
+    # [run_fista, 'Jas et al (2017) fista', n_iter * 5],
+    # [run_lbfgs, 'Jas et al (2017) lbfgs', n_iter * 5],
+    # [run_multichannel_alt_lbfgs, 'multiCSC_lbfgs', n_iter * 5],
+    # [run_multichannel_alt_gcd, 'multiCSC_gcd', n_iter],
+    # [run_multichannel_alt_gcd_sparse, 'multiCSC_gcd_sparse', n_iter],
 ]
 
 
@@ -235,6 +244,8 @@ def one_run(X, X_shape, random_state, method, n_atoms, n_times_atom,
     # use the same init for all methods
     rng = check_random_state(random_state)
     ds_init = rng.randn(n_atoms, n_times_atom)
+    d_norm = np.linalg.norm(ds_init, axis=1)
+    ds_init /= d_norm[:, None]
 
     # run the selected algorithm with one iter to remove compilation overhead
     _, _, _, _ = func(X, ds_init, reg, 1, random_state, label, stopping_pobj)
