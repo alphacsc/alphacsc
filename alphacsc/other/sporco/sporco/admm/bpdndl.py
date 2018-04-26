@@ -1,5 +1,5 @@
-#-*- coding: utf-8 -*-
-# Copyright (C) 2015-2016 by Brendt Wohlberg <brendt@ieee.org>
+# -*- coding: utf-8 -*-
+# Copyright (C) 2015-2017 by Brendt Wohlberg <brendt@ieee.org>
 # All rights reserved. BSD 3-clause License.
 # This file is part of the SPORCO package. Details of the copyright
 # and user license can be found in the 'LICENSE.txt' file distributed
@@ -12,8 +12,8 @@ from __future__ import absolute_import
 from builtins import range
 from builtins import object
 
-import numpy as np
 import copy
+import numpy as np
 
 from sporco.util import u
 from sporco.admm import bpdn
@@ -24,14 +24,20 @@ __author__ = """Brendt Wohlberg <brendt@ieee.org>"""
 
 
 class BPDNDictLearn(dictlrn.DictLearn):
-    """Dictionary learning based on BPDN and CnstrMOD
+    r"""**Class inheritance structure**
+
+    .. inheritance-diagram:: BPDNDictLearn
+       :parts: 2
+
+    |
+
+    Dictionary learning based on BPDN and CnstrMOD
 
     Solve the optimisation problem
 
     .. math::
-       \mathrm{argmin}_{D, X} \;
-       (1/2) \| D X - S \|_F^2 + \lambda \| X \|_1 \quad \\text{such that}
-       \quad \|\mathbf{d}_m\|_2 = 1
+       \mathrm{argmin}_{D, X} \; (1/2) \| D X - S \|_F^2 + \lambda \|
+       X \|_1 \quad \text{such that} \quad \|\mathbf{d}_m\|_2 = 1
 
     via interleaved alternation between the ADMM steps of the
     :class:`.BPDN` and :class:`.CnstrMOD` problems.
@@ -44,11 +50,10 @@ class BPDNDictLearn(dictlrn.DictLearn):
 
        ``ObjFun`` : Objective function value
 
-       ``DFid`` :  Value of data fidelity term \
-       :math:`(1/2) \| D X - S \|_F^2`
+       ``DFid`` : Value of data fidelity term :math:`(1/2) \| D X - S
+       \|_F^2`
 
-       ``RegL1`` : Value of regularisation term \
-       :math:`\| X \|_1`
+       ``RegL1`` : Value of regularisation term :math:`\| X \|_1`
 
        ``Cnstr`` : Constraint violation measure
 
@@ -71,35 +76,35 @@ class BPDNDictLearn(dictlrn.DictLearn):
     class Options(dictlrn.DictLearn.Options):
         """BPDN dictionary learning algorithm options.
 
-        Options:
+        Options include all of those defined in
+        :class:`sporco.admm.dictlrn.DictLearn.Options`, together with
+        additional options:
 
-          ``Verbose`` : Flag determining whether iteration status is displayed.
-
-          ``StatusHeader`` : Flag determining whether status header and
-          separator are dislayed
-
-          ``MaxMainIter`` : Maximum main iterations
+          ``AccurateDFid`` : Flag determining whether data fidelity term is
+          estimated from the value computed in the X update (``False``) or is
+          computed after every outer iteration over an X update and a D
+          update (``True``), which is slower but more accurate.
 
           ``BPDN`` : Options :class:`sporco.admm.bpdn.BPDN.Options`
 
           ``CMOD`` : Options :class:`sporco.admm.cmod.CnstrMOD.Options`
         """
 
-        defaults = {'Verbose' : False, 'StatusHeader' : True,
-                    'MaxMainIter' : 1000,
-                    'BPDN' : copy.deepcopy(bpdn.BPDN.Options.defaults),
-                    'CMOD' : copy.deepcopy(cmod.CnstrMOD.Options.defaults)}
+        defaults = copy.deepcopy(dictlrn.DictLearn.Options.defaults)
+        defaults.update({'AccurateDFid': False,
+            'BPDN' : copy.deepcopy(bpdn.BPDN.Options.defaults),
+            'CMOD' : copy.deepcopy(cmod.CnstrMOD.Options.defaults)})
 
 
         def __init__(self, opt=None):
             """Initialise BPDN dictionary learning algorithm options."""
 
             dictlrn.DictLearn.Options.__init__(self, {
-                'BPDN' : bpdn.BPDN.Options({'MaxMainIter' : 1,
-                    'AutoRho' : {'Period' : 10, 'AutoScaling' : False,
-                    'RsdlRatio' : 10.0, 'Scaling': 2.0, 'RsdlTarget' : 1.0}}),
-                'CMOD' : cmod.CnstrMOD.Options({'MaxMainIter' : 1,
-                    'AutoRho' : {'Period' : 10}, 'AuxVarObj' : False})
+                'BPDN': bpdn.BPDN.Options({'MaxMainIter': 1,
+                    'AutoRho': {'Period': 10, 'AutoScaling': False,
+                    'RsdlRatio': 10.0, 'Scaling': 2.0, 'RsdlTarget': 1.0}}),
+                'CMOD': cmod.CnstrMOD.Options({'MaxMainIter': 1,
+                    'AutoRho': {'Period': 10}, 'AuxVarObj': False})
                 })
 
             if opt is None:
@@ -111,6 +116,17 @@ class BPDNDictLearn(dictlrn.DictLearn):
     def __init__(self, D0, S, lmbda=None, opt=None):
         """
         Initialise a BPDNDictLearn object with problem size and options.
+
+        |
+
+        **Call graph**
+
+        .. image:: _static/jonga/bpdndl_init.svg
+           :width: 20%
+           :target: _static/jonga/bpdndl_init.svg
+
+        |
+
 
         Parameters
         ----------
@@ -133,7 +149,7 @@ class BPDNDictLearn(dictlrn.DictLearn):
 
         # Modify D update options to include initial values for Y and U
         Nc = D0.shape[1]
-        opt['CMOD'].update({'Y0' : D0, 'U0' : np.zeros((S.shape[0], Nc))})
+        opt['CMOD'].update({'Y0': D0, 'U0': np.zeros((S.shape[0], Nc))})
 
         # Create X update object
         xstep = bpdn.BPDN(D0, S, lmbda, opt['BPDN'])
@@ -143,22 +159,44 @@ class BPDNDictLearn(dictlrn.DictLearn):
         dstep = cmod.CnstrMOD(xstep.Y, S, (Nc, Nm), opt['CMOD'])
 
         # Configure iteration statistics reporting
+        if self.opt['AccurateDFid']:
+            isxmap = {'XPrRsdl': 'PrimalRsdl', 'XDlRsdl': 'DualRsdl',
+                      'XRho': 'Rho'}
+            evlmap = {'ObjFun': 'ObjFun', 'DFid': 'DFid', 'RegL1': 'RegL1'}
+        else:
+            isxmap = {'ObjFun': 'ObjFun', 'DFid': 'DFid', 'RegL1': 'RegL1',
+                      'XPrRsdl': 'PrimalRsdl', 'XDlRsdl': 'DualRsdl',
+                      'XRho': 'Rho'}
+            evlmap = {}
         isc = dictlrn.IterStatsConfig(
-            isfld = ['Iter', 'ObjFun', 'DFid', 'RegL1', 'Cnstr', 'XPrRsdl',
-                     'XDlRsdl', 'XRho', 'DPrRsdl', 'DDlRsdl', 'DRho', 'Time'],
-            isxmap = {'ObjFun' : 'ObjFun', 'DFid' : 'DFid', 'RegL1' : 'RegL1',
-                      'XPrRsdl' : 'PrimalRsdl', 'XDlRsdl' : 'DualRsdl',
-                      'XRho' : 'Rho'},
-            isdmap = {'Cnstr' :  'Cnstr', 'DPrRsdl' : 'PrimalRsdl',
-                      'DDlRsdl' : 'DualRsdl', 'DRho' : 'Rho'},
-            evlmap = {},
-            hdrtxt = ['Itn', 'Fnc', 'DFid', u('l1'), 'Cnstr', 'r_X', 's_X',
-                      u('?_X'), 'r_D', 's_D', u('?_D')],
-            hdrmap = {'Itn' : 'Iter', 'Fnc' : 'ObjFun', 'DFid' : 'DFid',
-                      u('l1') : 'RegL1', 'Cnstr' : 'Cnstr', 'r_X' : 'XPrRsdl',
-                      's_X' : 'XDlRsdl', u('?_X') : 'XRho', 'r_D' : 'DPrRsdl',
-                      's_D' : 'DDlRsdl', u('?_D') : 'DRho'}
+            isfld=['Iter', 'ObjFun', 'DFid', 'RegL1', 'Cnstr', 'XPrRsdl',
+                   'XDlRsdl', 'XRho', 'DPrRsdl', 'DDlRsdl', 'DRho', 'Time'],
+            isxmap=isxmap,
+            isdmap={'Cnstr':  'Cnstr', 'DPrRsdl': 'PrimalRsdl',
+                    'DDlRsdl': 'DualRsdl', 'DRho': 'Rho'},
+            evlmap=evlmap,
+            hdrtxt=['Itn', 'Fnc', 'DFid', u('ℓ1'), 'Cnstr', 'r_X', 's_X',
+                    u('ρ_X'), 'r_D', 's_D', u('ρ_D')],
+            hdrmap={'Itn': 'Iter', 'Fnc': 'ObjFun', 'DFid': 'DFid',
+                    u('ℓ1'): 'RegL1', 'Cnstr': 'Cnstr', 'r_X': 'XPrRsdl',
+                    's_X': 'XDlRsdl', u('ρ_X'): 'XRho', 'r_D': 'DPrRsdl',
+                    's_D': 'DDlRsdl', u('ρ_D'): 'DRho'}
             )
 
         # Call parent constructor
         super(BPDNDictLearn, self).__init__(xstep, dstep, opt, isc)
+
+
+
+    def evaluate(self):
+        """Evaluate functional value of previous iteration"""
+
+        if self.opt['AccurateDFid']:
+            D = self.dstep.var_y()
+            X = self.xstep.var_y()
+            S = self.xstep.S
+            dfd = 0.5*np.linalg.norm((D.dot(X) - S))**2
+            rl1 = np.sum(np.abs(X))
+            return dict(DFid=dfd, RegL1=rl1, ObjFun=dfd+self.xstep.lmbda*rl1)
+        else:
+            return None

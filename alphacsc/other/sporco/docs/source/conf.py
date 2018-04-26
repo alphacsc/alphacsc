@@ -19,6 +19,9 @@ from builtins import filter
 from ast import parse
 import re, shutil, tempfile
 
+sys.path.append(os.path.dirname(__file__))
+import callgraph
+import docntbk
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -43,7 +46,11 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinx.ext.autosummary',
     'sphinx.ext.intersphinx',
-    'sphinxcontrib.bibtex'
+    'sphinxcontrib.bibtex',
+    'sphinx.ext.inheritance_diagram',
+    'sphinx.ext.graphviz',
+    'sphinx_tabs.tabs',
+    'sphinx_fontawesome'
 ]
 
 # generate autosummary pages
@@ -149,6 +156,7 @@ html_theme = "haiku"
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
 #html_logo = None
+html_logo = '_static/logo.png'
 
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
@@ -266,8 +274,17 @@ intersphinx_mapping = {'http://docs.python.org/': None,
                        'http://matplotlib.sourceforge.net/': None,
                        'http://hgomersall.github.io/pyFFTW/': None
                       }
+# Added timeout due to periodic scipy.org down time
+#intersphinx_timeout = 30
 
 numpydoc_show_class_members = False
+
+graphviz_output_format = 'svg'
+inheritance_graph_attrs = dict(rankdir="LR", fontsize=9, ratio='compress',
+                               bgcolor='transparent')
+inheritance_node_attrs = dict(shape='box', fontsize=9, height=0.4,
+                              margin='"0.08, 0.03"', style='"rounded,filled"',
+                              fillcolor='"#f4f4ffff"')
 
 
 # -- Options for manual page output ---------------------------------------
@@ -315,6 +332,10 @@ if on_rtd:
     print("Current working directory: {}" . format(os.path.abspath(os.curdir)))
 
 if on_rtd:
+
+    import matplotlib
+    matplotlib.use('agg')
+
     if sys.version[0] == '3':
         from unittest.mock import MagicMock
     elif sys.version[0] == '2':
@@ -325,11 +346,10 @@ if on_rtd:
     class Mock(MagicMock):
         @classmethod
         def __getattr__(cls, name):
-            return Mock()
+            return MagicMock()
 
     MOCK_MODULES = ['pyfftw']
     sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
-
 
 # See https://developer.ridgerun.com/wiki/index.php/How_to_generate_sphinx_documentation_for_python_code_running_in_an_embedded_system
 
@@ -338,11 +358,29 @@ if on_rtd:
 autodoc_member_order = 'bysource'
 #autodoc_default_flags = ['members', 'inherited-members', 'show-inheritance']
 
+
+# List of patterns, relative to source directory, that match files and
+# directories to ignore when looking for source files.
+#exclude_patterns = ['_build', '**tests**', '**spi**']
+
+
+# Avoid errors when extension module sporco_cuda is not installed
+if sys.version[0] == '3':
+    import unittest.mock as mock
+elif sys.version[0] == '2':
+    import mock
+else:
+    raise ImportError("Can't determine how to import mock.")
+sys.modules['sporco.cuda'] = mock.Mock()
+
+
 # Ensure that the __init__ method gets documented.
 def skip_member(app, what, name, obj, skip, options):
     if name == "__init__":
         return False
     if name == "IterationStats":
+        return True
+    if name == "timer":
         return True
     return skip
 
@@ -381,12 +419,22 @@ def rmsection(filename, pattern):
 # See https://github.com/rtfd/readthedocs.org/issues/1139
 def run_apidoc(_):
 
-    # Import the sporco.admm modules and undo the effect of
-    # sporco.admm._module_name_nested so that docs for Options
-    # classes appear in the correct locations
+    # Import the sporco.admm and sporco.fista modules and undo the
+    # effect of sporco.util._module_name_nested so that docs for
+    # Options classes appear in the correct locations
     import inspect
-    import sporco
+    import sporco.admm
     for mnm, mod in inspect.getmembers(sporco.admm, inspect.ismodule):
+        for cnm, cls in inspect.getmembers(mod, inspect.isclass):
+            if hasattr(cls, 'Options') and inspect.isclass(getattr(cls,
+                                                'Options')):
+                optcls = getattr(cls, 'Options')
+                if optcls.__name__ != 'Options':
+                    delattr(mod, optcls.__name__)
+                    optcls.__name__ = 'Options'
+
+    import sporco.fista
+    for mnm, mod in inspect.getmembers(sporco.fista, inspect.ismodule):
         for cnm, cls in inspect.getmembers(mod, inspect.isclass):
             if hasattr(cls, 'Options') and inspect.isclass(getattr(cls,
                                                 'Options')):
@@ -399,31 +447,75 @@ def run_apidoc(_):
     module = '../../sporco' if on_rtd else 'sporco'
     cpath = os.path.abspath(os.path.dirname(__file__))
     opath = cpath
+
+    # Insert documentation for inherited solve methods
+    callgraph.insert_solve_docs()
+
+    # Remove auto-generated sporco.rst, sporco.admm.rst, and sporco.fista.rst
     rst = os.path.join(cpath, 'sporco.rst')
     if os.path.exists(rst):
         os.remove(rst)
     rst = os.path.join(cpath, 'sporco.admm.rst')
     if os.path.exists(rst):
         os.remove(rst)
+    rst = os.path.join(cpath, 'sporco.fista.rst')
+    if os.path.exists(rst):
+        os.remove(rst)
+
+    # Run sphinx-apidoc
     print("Running sphinx-apidoc with output path " + opath)
     sys.stdout.flush()
-    sphinx.apidoc.main(['sphinx-apidoc', '-e', '-d', '2', '-o', opath, module])
-    rst = os.path.join(cpath, 'sporco.rst')
-    if os.path.exists(rst):
-        rmsection(rst, r'^Module contents')
-    rst = os.path.join(cpath, 'sporco.admm.rst')
-    if os.path.exists(rst):
-        rmsection(rst, r'^Module contents')
+    sphinx.apidoc.main(['sphinx-apidoc', '-e', '-d', '2', '-o', opath,
+                        module, os.path.join(module, 'admm/tests'),
+                        os.path.join(module, 'fista/tests')])
+
+    # Remove "Module contents" sections from specified autodoc generated files
+    rmmodlst = ['sporco.rst', 'sporco.admm.rst', 'sporco.fista.rst']
+    for fnm in rmmodlst:
+        rst = os.path.join(cpath, fnm)
+        if os.path.exists(rst):
+            rmsection(rst, r'^Module contents')
+
+
+
+def gencallgraph(_):
+
+    print('Constructing call graph images')
+    cgpth = '_static/jonga' if on_rtd else 'docs/source/_static/jonga'
+    callgraph.gengraphs(cgpth, on_rtd)
+
+
+
+def genexamples(_):
+
+    import zipfile
+    from sporco.util import netgetdata
+
+    url = 'https://codeload.github.com/bwohlberg/sporco-notebooks/zip/master'
+    print('Constructing docs from example scripts')
+    epth = '../../examples' if on_rtd else 'examples'
+    spth = os.path.join(epth, 'scripts')
+    npth = os.path.join(epth, 'notebooks')
+    rpth = 'examples' if on_rtd else 'docs/source/examples'
+
+    if not os.path.exists(npth):
+        print('Notebooks required for examples section not found: '
+            'downloading from sporco-notebooks repo on GitHub')
+        zipdat = netgetdata(url)
+        zipobj = zipfile.ZipFile(zipdat)
+        zipobj.extractall(path=epth)
+        os.rename(os.path.join(epth, 'sporco-notebooks-master'),
+                  os.path.join(epth, 'notebooks'))
+
+    docntbk.make_example_scripts_docs(spth, npth, rpth)
 
 
 
 def setup(app):
     app.connect("autodoc-skip-member", skip_member)
     app.connect('builder-inited', run_apidoc)
+    app.connect('builder-inited', genexamples)
     #app.connect('autodoc-process-docstring', process_docstring)
     #app.connect('autodoc-process-signature', process_signature)
 
-
-# List of patterns, relative to source directory, that match files and
-# directories to ignore when looking for source files.
-#exclude_patterns = ['_build', '**tests**', '**spi**']
+    gencallgraph(None)

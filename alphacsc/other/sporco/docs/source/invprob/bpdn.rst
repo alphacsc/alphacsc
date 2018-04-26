@@ -1,5 +1,5 @@
-bpdn
-====
+Module bpdn
+===========
 
 This module includes the following classes:
 
@@ -10,6 +10,7 @@ This module includes the following classes:
   .. math::
      \mathrm{argmin}_\mathbf{x} \;
      (1/2) \| D \mathbf{x} - \mathbf{s} \|_2^2 + \lambda \| \mathbf{x} \|_1
+     :label: bpdn
 
 
 * :class:`.BPDNJoint`
@@ -32,38 +33,33 @@ This module includes the following classes:
      + (\mu/2) \| \mathbf{x} \|_2^2
 
 
+* :class:`.BPDNProjL1`
 
-Usage Examples
---------------
+  Solve the problem with :math:`\ell_2` objective and an
+  :math:`\ell_1` constraint
 
-.. container:: toggle
-
-    .. container:: header
-
-        :class:`.BPDN` usage
-
-    .. literalinclude:: ../../../examples/stdsparse/demo_bpdn.py
-       :language: python
-       :lines: 9-
+  .. math::
+     \mathrm{argmin}_\mathbf{x} \;
+     (1/2) \| D \mathbf{x} - \mathbf{s} \|_2^2 \; \text{such that} \;
+     \| \mathbf{x} \|_1 \leq \gamma
+     :label: lasso
 
 
-.. container:: toggle
+* :class:`.MinL1InL2Ball`
 
-    .. container:: header
+  Solve the problem with :math:`\ell_1` objective and an
+  :math:`\ell_2` constraint
 
-        :class:`.BPDNJoint` usage
+  .. math::
+     \mathrm{argmin}_\mathbf{x} \| \mathbf{x} \|_1 \; \text{such that} \;
+     \| D \mathbf{x} - \mathbf{s} \|_2 \leq \epsilon
+     :label: minl1inl2
 
-    .. literalinclude:: ../../../examples/stdsparse/demo_bpdnjnt.py
-       :language: python
-       :lines: 9-
+
+:ref:`Usage examples <example_sparse_coding_index>` are available.
 
 
-.. container:: toggle
+A Note on Problem Naming
+------------------------
 
-    .. container:: header
-
-        :class:`.ElasticNet` usage
-
-    .. literalinclude:: ../../../examples/stdsparse/demo_elnet.py
-       :language: python
-       :lines: 9-
+Unfortunately there is no consistent use of names for problems :eq:`bpdn`, :eq:`lasso`, and :eq:`minl1inl2` in the literature. Problem :eq:`bpdn` is referred to here as Basis Pursuit DeNoising (BPDN) since this is the form of the problem to which this name was first applied :cite:`chen-1998-atomic`, but one can also find problem :eq:`minl1inl2` referred to as BPDN, and problem :eq:`bpdn` referred to as the lasso, which is the name that was originally applied to problem :eq:`lasso` :cite:`tibshirani-1996-regression`.

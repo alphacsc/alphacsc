@@ -1,5 +1,5 @@
-#-*- coding: utf-8 -*-
-# Copyright (C) 2015-2016 by Brendt Wohlberg <brendt@ieee.org>
+# -*- coding: utf-8 -*-
+# Copyright (C) 2015-2017 by Brendt Wohlberg <brendt@ieee.org>
 # All rights reserved. BSD 3-clause License.
 # This file is part of the SPORCO package. Details of the copyright
 # and user license can be found in the 'LICENSE.txt' file distributed
@@ -10,9 +10,9 @@
 from __future__ import division
 from __future__ import absolute_import
 
+import copy
 import numpy as np
 from scipy import linalg
-import copy
 
 from sporco.admm import admm
 import sporco.linalg as sl
@@ -21,14 +21,21 @@ __author__ = """Brendt Wohlberg <brendt@ieee.org>"""
 
 
 class CnstrMOD(admm.ADMMEqual):
-    """ADMM algorithm for a constrained variant of the Method of Optimal
+    r"""**Class inheritance structure**
+
+    .. inheritance-diagram:: CnstrMOD
+       :parts: 2
+
+    |
+
+    ADMM algorithm for a constrained variant of the Method of Optimal
     Directions (MOD) :cite:`engan-1999-method` problem, referred to here
     as Constrained MOD (CMOD).
 
     Solve the optimisation problem
 
     .. math::
-       \mathrm{argmin}_D \| D X - S \|_2^2 \quad \\text{such that}
+       \mathrm{argmin}_D \| D X - S \|_2^2 \quad \text{such that}
        \quad \| \mathbf{d}_m \|_2 = 1 \;\;,
 
     where :math:`\mathbf{d}_m` is column :math:`m` of matrix :math:`D`,
@@ -36,7 +43,7 @@ class CnstrMOD(admm.ADMMEqual):
 
     .. math::
        \mathrm{argmin}_D \| D X - S \|_2^2 + \iota_C(G) \quad
-       \\text{such that} \quad D = G \;\;,
+       \text{such that} \quad D = G \;\;,
 
     where :math:`\iota_C(\cdot)` is the indicator function of feasible
     set :math:`C` consisting of matrices with unit-norm columns.
@@ -47,7 +54,8 @@ class CnstrMOD(admm.ADMMEqual):
 
        ``Iter`` : Iteration number
 
-       ``DFid`` :  Value of data fidelity term :math:`(1/2) \|  D X - S \|_2^2`
+       ``DFid`` : Value of data fidelity term :math:`(1/2) \| D X - S
+       \|_2^2`
 
        ``Cnstr`` : Constraint violation measure
 
@@ -55,10 +63,10 @@ class CnstrMOD(admm.ADMMEqual):
 
        ``DualRsdl`` : Norm of dual residual
 
-       ``EpsPrimal`` : Primal residual stopping tolerance \
+       ``EpsPrimal`` : Primal residual stopping tolerance
        :math:`\epsilon_{\mathrm{pri}}`
 
-       ``EpsDual`` : Dual residual stopping tolerance \
+       ``EpsDual`` : Dual residual stopping tolerance
        :math:`\epsilon_{\mathrm{dua}}`
 
        ``Rho`` : Penalty parameter
@@ -74,18 +82,27 @@ class CnstrMOD(admm.ADMMEqual):
         :class:`sporco.admm.admm.ADMMEqual.Options`, together with
         additional options:
 
-        ``AuxVarObj`` : Flag indicating whether the objective function \
-        should be evaluated using variable X  (``False``) or Y (``True``) \
-        as its argument
+          ``AuxVarObj`` : Flag indicating whether the objective
+          function should be evaluated using variable X (``False``) or
+          Y (``True``) as its argument. Setting this flag to ``True``
+          often gives a better estimate of the objective function
 
-        ``ZeroMean`` : Flag indicating whether the solution dictionary \
-        :math:`D` should have zero-mean components
+          ``ZeroMean`` : Flag indicating whether the solution
+          dictionary :math:`D` should have zero-mean components.
         """
 
         defaults = copy.deepcopy(admm.ADMMEqual.Options.defaults)
-        defaults.update({'AuxVarObj' : True, 'ReturnX' : False,
-                        'RelaxParam' : 1.8, 'ZeroMean' : False})
-        defaults['AutoRho'].update({'Enabled' : True})
+        # Warning: although __setitem__ below takes care of setting
+        # 'fEvalX' and 'gEvalY' from the value of 'AuxVarObj', this
+        # cannot be relied upon for initialisation since the order of
+        # initialisation of the dictionary keys is not deterministic;
+        # if 'AuxVarObj' is initialised first, the other two keys are
+        # correctly set, but this setting is overwritten when 'fEvalX'
+        # and 'gEvalY' are themselves initialised
+        defaults.update({'AuxVarObj': True, 'fEvalX': False,
+                         'gEvalY': True, 'ReturnX': False,
+                         'RelaxParam': 1.8, 'ZeroMean': False})
+        defaults['AutoRho'].update({'Enabled': True})
 
 
         def __init__(self, opt=None):
@@ -95,31 +112,52 @@ class CnstrMOD(admm.ADMMEqual):
                 opt = {}
             admm.ADMMEqual.Options.__init__(self, opt)
 
-            if self['AuxVarObj']:
-                self['fEvalX'] = False
-                self['gEvalY'] = True
-            else:
-                self['fEvalX'] = True
-                self['gEvalY'] = False
+            if self['AutoRho', 'RsdlTarget'] is None:
+                self['AutoRho', 'RsdlTarget'] = 1.0
 
-            if self['AutoRho','RsdlTarget'] is None:
-                self['AutoRho','RsdlTarget'] = 1.0
+
+
+        def __setitem__(self, key, value):
+            """Set options 'fEvalX' and 'gEvalY' appropriately when option
+            'AuxVarObj' is set.
+            """
+
+            admm.ADMMEqual.Options.__setitem__(self, key, value)
+
+            if key == 'AuxVarObj':
+                if value is True:
+                    self['fEvalX'] = False
+                    self['gEvalY'] = True
+                else:
+                    self['fEvalX'] = True
+                    self['gEvalY'] = False
 
 
 
     itstat_fields_objfn = ('DFid', 'Cnstr')
     hdrtxt_objfn = ('DFid', 'Cnstr')
-    hdrval_objfun = {'DFid' : 'DFid', 'Cnstr' : 'Cnstr'}
+    hdrval_objfun = {'DFid': 'DFid', 'Cnstr': 'Cnstr'}
 
 
 
-    def __init__(self, A, S, dsz=None, opt=None):
+    def __init__(self, Z, S, dsz=None, opt=None):
         """
         Initialise a CnstrMOD object with problem parameters.
 
+        |
+
+        **Call graph**
+
+        .. image:: _static/jonga/cmod_init.svg
+           :width: 20%
+           :target: _static/jonga/cmod_init.svg
+
+        |
+
+
         Parameters
         ----------
-        A : array_like, shape (M, K)
+        Z : array_like, shape (M, K)
           Sparse representation coefficient matrix
         S : array_like, shape (N, K)
           Signal vector or matrix
@@ -133,12 +171,12 @@ class CnstrMOD(admm.ADMMEqual):
             opt = CnstrMOD.Options()
 
         Nc = S.shape[0]
-        # If A not specified, get dictionary size from dsz
-        if A is None:
+        # If Z not specified, get dictionary size from dsz
+        if Z is None:
             Nm = dsz[0]
         else:
-            Nm = A.shape[0]
-        super(CnstrMOD, self).__init__((Nc,Nm), S.dtype, opt)
+            Nm = Z.shape[0]
+        super(CnstrMOD, self).__init__((Nc, Nm), S.dtype, opt)
 
         # Set penalty parameter
         self.set_attr('rho', opt['rho'], dval=S.shape[1] / 500.0,
@@ -149,14 +187,8 @@ class CnstrMOD(admm.ADMMEqual):
         # Create constraint set projection function
         self.Pcn = getPcn(opt['ZeroMean'])
 
-        if A is not None:
-            self.setcoef(A)
-
-        # Increment `runtime` to reflect object initialisation
-        # time. The timer object is reset to avoid double-counting of
-        # elapsed time if a similar increment is applied in a derived
-        # class __init__.
-        self.runtime += self.timer.elapsed(reset=True)
+        if Z is not None:
+            self.setcoef(Z)
 
 
 
@@ -173,13 +205,13 @@ class CnstrMOD(admm.ADMMEqual):
 
 
 
-    def setcoef(self, A):
+    def setcoef(self, Z):
         """Set coefficient array."""
 
-        self.A = np.asarray(A, dtype=self.dtype)
-        self.SAT = self.S.dot(A.T)
+        self.Z = np.asarray(Z, dtype=self.dtype)
+        self.SZT = self.S.dot(Z.T)
         # Factorise dictionary for efficient solves
-        self.lu, self.piv = sl.lu_factor(A, self.rho)
+        self.lu, self.piv = sl.lu_factor(Z, self.rho)
         self.lu = np.asarray(self.lu, dtype=self.dtype)
 
 
@@ -192,16 +224,20 @@ class CnstrMOD(admm.ADMMEqual):
 
 
     def xstep(self):
-        """Minimise Augmented Lagrangian with respect to :math:`\mathbf{x}`."""
+        r"""Minimise Augmented Lagrangian with respect to
+        :math:`\mathbf{x}`.
+        """
 
-        self.X = np.asarray(sl.lu_solve_AATI(self.A, self.rho, self.SAT +
+        self.X = np.asarray(sl.lu_solve_AATI(self.Z, self.rho, self.SZT +
                             self.rho*(self.Y - self.U), self.lu, self.piv,),
                             dtype=self.dtype)
 
 
 
     def ystep(self):
-        """Minimise Augmented Lagrangian with respect to :math:`\mathbf{y}`."""
+        r"""Minimise Augmented Lagrangian with respect to
+        :math:`\mathbf{y}`.
+        """
 
         self.Y = self.Pcn(self.AX + self.U)
 
@@ -219,16 +255,16 @@ class CnstrMOD(admm.ADMMEqual):
 
 
     def obfn_dfd(self):
-        """Compute data fidelity term :math:`(1/2) \| D \mathbf{x} -
+        r"""Compute data fidelity term :math:`(1/2) \| D \mathbf{x} -
         \mathbf{s} \|_2^2`.
         """
 
-        return 0.5*linalg.norm((self.obfn_fvar().dot(self.A) - self.S))**2
+        return 0.5*linalg.norm((self.obfn_fvar().dot(self.Z) - self.S))**2
 
 
 
     def obfn_cns(self):
-        """Compute constraint violation measure :math:`\| P(\mathbf{y}) -
+        r"""Compute constraint violation measure :math:`\| P(\mathbf{y}) -
         \mathbf{y}\|_2`.
         """
 
@@ -239,7 +275,7 @@ class CnstrMOD(admm.ADMMEqual):
     def rhochange(self):
         """Re-factorise matrix when rho changes"""
 
-        self.lu, self.piv = sl.lu_factor(self.A, self.rho)
+        self.lu, self.piv = sl.lu_factor(self.Z, self.rho)
         self.lu = np.asarray(self.lu, dtype=self.dtype)
 
 

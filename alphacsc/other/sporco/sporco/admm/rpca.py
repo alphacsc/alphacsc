@@ -1,5 +1,5 @@
-#-*- coding: utf-8 -*-
-# Copyright (C) 2015-2016 by Brendt Wohlberg <brendt@ieee.org>
+# -*- coding: utf-8 -*-
+# Copyright (C) 2015-2017 by Brendt Wohlberg <brendt@ieee.org>
 # All rights reserved. BSD 3-clause License.
 # This file is part of the SPORCO package. Details of the copyright
 # and user license can be found in the 'LICENSE.txt' file distributed
@@ -10,11 +10,12 @@
 from __future__ import division
 from __future__ import absolute_import
 
-import numpy as np
 import copy
+import numpy as np
 
 from sporco.admm import admm
 import sporco.linalg as sl
+import sporco.prox as sp
 from sporco.util import u
 
 
@@ -22,14 +23,14 @@ __author__ = """Brendt Wohlberg <brendt@ieee.org>"""
 
 
 class RobustPCA(admm.ADMM):
-    """ADMM algorithm for Robust PCA problem :cite:`candes-2011-robust`
+    r"""ADMM algorithm for Robust PCA problem :cite:`candes-2011-robust`
     :cite:`cai-2010-singular`.
 
     Solve the optimisation problem
 
     .. math::
        \mathrm{argmin}_{X, Y} \;
-        \| X \|_* + \lambda \| Y \|_1 \quad \\text{such that}
+        \| X \|_* + \lambda \| Y \|_1 \quad \text{such that}
         \quad X + Y = S \;\;.
 
     This problem is unusual in that it is already in ADMM form without
@@ -53,10 +54,10 @@ class RobustPCA(admm.ADMM):
 
        ``DualRsdl`` : Norm of dual residual
 
-       ``EpsPrimal`` : Primal residual stopping tolerance \
+       ``EpsPrimal`` : Primal residual stopping tolerance
        :math:`\epsilon_{\mathrm{pri}}`
 
-       ``EpsDual`` : Dual residual stopping tolerance \
+       ``EpsDual`` : Dual residual stopping tolerance
        :math:`\epsilon_{\mathrm{dua}}`
 
        ``Rho`` : Penalty parameter
@@ -73,20 +74,20 @@ class RobustPCA(admm.ADMM):
         :class:`sporco.admm.admm.ADMM.Options`, together with
         an additional option:
 
-        ``fEvalX`` : Flag indicating whether the :math:`f` component of the \
-        objective function should be evaluated using variable X \
-        (``True``) or Y (``False``) as its argument
+          ``fEvalX`` : Flag indicating whether the :math:`f` component
+          of the objective function should be evaluated using variable
+          X (``True``) or Y (``False``) as its argument.
 
-        ``gEvalY`` : Flag indicating whether the :math:`g` component of the \
-        objective function should be evaluated using variable Y \
-        (``True``) or X (``False``) as its argument
+          ``gEvalY`` : Flag indicating whether the :math:`g` component
+          of the objective function should be evaluated using variable
+          Y (``True``) or X (``False``) as its argument.
         """
 
         defaults = copy.deepcopy(admm.ADMM.Options.defaults)
-        defaults.update({'gEvalY' : True, 'fEvalX' : True, 'RelaxParam' : 1.8})
-        defaults['AutoRho'].update({'Enabled' : True, 'Period' : 1,
-                                    'AutoScaling' : True, 'Scaling' : 1000.0,
-                                    'RsdlRatio' : 1.2})
+        defaults.update({'gEvalY': True, 'fEvalX': True, 'RelaxParam': 1.8})
+        defaults['AutoRho'].update({'Enabled': True, 'Period': 1,
+                                    'AutoScaling': True, 'Scaling': 1000.0,
+                                    'RsdlRatio': 1.2})
 
 
         def __init__(self, opt=None):
@@ -96,15 +97,15 @@ class RobustPCA(admm.ADMM):
                 opt = {}
             admm.ADMM.Options.__init__(self, opt)
 
-            if self['AutoRho','RsdlTarget'] is None:
-                self['AutoRho','RsdlTarget'] = 1.0
+            if self['AutoRho', 'RsdlTarget'] is None:
+                self['AutoRho', 'RsdlTarget'] = 1.0
 
 
 
     itstat_fields_objfn = ('ObjFun', 'NrmNuc', 'NrmL1', 'Cnstr')
-    hdrtxt_objfn = ('Fnc', 'NrmNuc', u('Nrml1'), 'Cnstr')
-    hdrval_objfun = {'Fnc' : 'ObjFun', 'NrmNuc' : 'NrmNuc',
-                     u('Nrml1') : 'NrmL1', 'Cnstr' : 'Cnstr'}
+    hdrtxt_objfn = ('Fnc', 'NrmNuc', u('Nrmℓ1'), 'Cnstr')
+    hdrval_objfun = {'Fnc': 'ObjFun', 'NrmNuc': 'NrmNuc',
+                     u('Nrmℓ1'): 'NrmL1', 'Cnstr': 'Cnstr'}
 
 
 
@@ -142,12 +143,6 @@ class RobustPCA(admm.ADMM):
 
         self.S = np.asarray(S, dtype=self.dtype)
 
-        # Increment `runtime` to reflect object initialisation
-        # time. The timer object is reset to avoid double-counting of
-        # elapsed time if a similar increment is applied in a derived
-        # class __init__.
-        self.runtime += self.timer.elapsed(reset=True)
-
 
 
     def uinit(self, ushape):
@@ -172,17 +167,22 @@ class RobustPCA(admm.ADMM):
 
 
     def xstep(self):
-        """Minimise Augmented Lagrangian with respect to :math:`\mathbf{x}`."""
+        r"""Minimise Augmented Lagrangian with respect to
+        :math:`\mathbf{x}`.
+        """
 
-        self.X, self.ss = shrinksv(self.S - self.Y - self.U, 1 / self.rho)
+        self.X, self.ss = sp.prox_nuclear(self.S - self.Y - self.U,
+                                          1/self.rho)
 
 
 
     def ystep(self):
-        """Minimise Augmented Lagrangian with respect to :math:`\mathbf{y}`."""
+        r"""Minimise Augmented Lagrangian with respect to
+        :math:`\mathbf{y}`.
+        """
 
         self.Y = np.asarray(sl.shrink1(self.S - self.AX - self.U,
-                            self.lmbda/self.rho), dtype=self.dtype)
+                                       self.lmbda/self.rho), dtype=self.dtype)
 
 
 
@@ -215,12 +215,11 @@ class RobustPCA(admm.ADMM):
         contribution to objective function.
         """
 
-        gvr = self.obfn_gvar()
         if self.opt['fEvalX']:
             rnn = np.sum(self.ss)
         else:
-            rnn = nucnorm(self.X)
-        rl1 = np.sum(np.abs(gvr))
+            rnn = sp.norm_nuclear(self.obfn_fvar())
+        rl1 = np.sum(np.abs(self.obfn_gvar()))
         cns = np.linalg.norm(self.X + self.Y - self.S)
         obj = rnn + self.lmbda*rl1
         return (obj, rnn, rl1, cns)
@@ -228,8 +227,8 @@ class RobustPCA(admm.ADMM):
 
 
     def cnst_A(self, X):
-        """Compute :math:`A \mathbf{x}` component of ADMM problem constraint.
-        In this case :math:`A \mathbf{x} = \mathbf{x}`.
+        r"""Compute :math:`A \mathbf{x}` component of ADMM problem
+        constraint.  In this case :math:`A \mathbf{x} = \mathbf{x}`.
         """
 
         return X
@@ -237,7 +236,7 @@ class RobustPCA(admm.ADMM):
 
 
     def cnst_AT(self, X):
-        """Compute :math:`A^T \mathbf{x}` where :math:`A \mathbf{x}` is
+        r"""Compute :math:`A^T \mathbf{x}` where :math:`A \mathbf{x}` is
         a component of ADMM problem constraint. In this case
         :math:`A^T \mathbf{x} = \mathbf{x}`.
         """
@@ -247,32 +246,16 @@ class RobustPCA(admm.ADMM):
 
 
     def cnst_B(self, Y):
-        """Compute :math:`B \mathbf{y}` component of ADMM problem constraint.
-        In this case :math:`B \mathbf{y} = -\mathbf{y}`.
+        r"""Compute :math:`B \mathbf{y}` component of ADMM problem
+        constraint.  In this case :math:`B \mathbf{y} = -\mathbf{y}`.
         """
 
         return Y
 
 
     def cnst_c(self):
-        """Compute constant component :math:`\mathbf{c}` of ADMM problem
+        r"""Compute constant component :math:`\mathbf{c}` of ADMM problem
         constraint. In this case :math:`\mathbf{c} = \mathbf{s}`.
         """
 
         return self.S
-
-
-
-def shrinksv(v, alpha):
-    """Shrinkage of singular values"""
-
-    U, s, V = sl.promote16(v, fn=np.linalg.svd, full_matrices=False)
-    ss = np.maximum(0, s - alpha)
-    return np.dot(U, np.dot(np.diag(ss), V)), ss
-
-
-
-def nucnorm(x):
-    """Nuclear norm"""
-
-    return np.sum(np.linalg.svd(sl.promote16(x), compute_uv=False))

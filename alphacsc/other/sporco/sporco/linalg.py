@@ -1,5 +1,5 @@
-#-*- coding: utf-8 -*-
-# Copyright (C) 2015-2016 by Brendt Wohlberg <brendt@ieee.org>
+# -*- coding: utf-8 -*-
+# Copyright (C) 2015-2018 by Brendt Wohlberg <brendt@ieee.org>
 # All rights reserved. BSD 3-clause License.
 # This file is part of the SPORCO package. Details of the copyright
 # and user license can be found in the 'LICENSE.txt' file distributed
@@ -10,12 +10,12 @@
 from __future__ import division
 from builtins import range
 
+import multiprocessing
 import numpy as np
 from scipy import linalg
 from scipy import fftpack
 from scipy.sparse.linalg import LinearOperator
 from scipy.sparse.linalg import cg
-import multiprocessing
 import pyfftw
 try:
     import numexpr as ne
@@ -90,8 +90,8 @@ def fftn(a, s=None, axes=None):
     a : array_like
       Input array (can be complex)
     s : sequence of ints, optional (default None)
-      Shape of the output along each axis (input is cropped or zero-padded
-      to match).
+      Shape of the output along each transformed axis (input is cropped or
+      zero-padded to match).
     axes : sequence of ints, optional (default None)
       Axes over which to compute the DFT.
 
@@ -118,8 +118,8 @@ def ifftn(a, s=None, axes=None):
     a : array_like
       Input array (can be complex)
     s : sequence of ints, optional (default None)
-      Shape of the output along each axis (input is cropped or zero-padded
-      to match).
+      Shape of the output along each transformed axis (input is cropped or
+      zero-padded to match).
     axes : sequence of ints, optional (default None)
       Axes over which to compute the inverse DFT.
 
@@ -146,8 +146,8 @@ def rfftn(a, s=None, axes=None):
     a : array_like
       Input array (taken to be real)
     s : sequence of ints, optional (default None)
-      Shape of the output along each axis (input is cropped or zero-padded
-      to match).
+      Shape of the output along each transformed axis (input is cropped or
+      zero-padded to match).
     axes : sequence of ints, optional (default None)
       Axes over which to compute the DFT.
 
@@ -163,7 +163,7 @@ def rfftn(a, s=None, axes=None):
 
 
 
-def irfftn(a, s=None, axes=None):
+def irfftn(a, s, axes=None):
     """
     Compute the inverse of the multi-dimensional discrete Fourier transform
     for real input. This function is a wrapper for
@@ -174,9 +174,11 @@ def irfftn(a, s=None, axes=None):
     ----------
     a : array_like
       Input array
-    s : sequence of ints, optional (default None)
-      Shape of the output along each axis (input is cropped or zero-padded
-      to match).
+    s : sequence of ints
+      Shape of the output along each transformed axis (input is cropped or
+      zero-padded to match). This parameter is not optional because, unlike
+      :func:`ifftn`, the output shape cannot be uniquely determined from
+      the input shape.
     axes : sequence of ints, optional (default None)
       Axes over which to compute the inverse DFT.
 
@@ -248,8 +250,90 @@ def idctii(x, axes=None):
 
 
 
-def solvedbi_sm(ah, rho, b, c=None, axis=4):
+def fftconv(a, b, axes=(0, 1)):
     """
+    Compute a multi-dimensional convolution via the Discrete Fourier Transform.
+
+    Parameters
+    ----------
+    a : array_like
+      Input array
+    b : array_like
+      Input array
+    axes : sequence of ints, optional (default (0, 1))
+      Axes on which to perform convolution
+
+    Returns
+    -------
+    ab : ndarray
+      Convolution of input arrays, a and b, along specified axes
+    """
+
+    if np.isrealobj(a) and np.isrealobj(b):
+        fft = rfftn
+        ifft = irfftn
+    else:
+        fft = fftn
+        ifft = ifftn
+    dims = np.maximum([a.shape[i] for i in axes], [b.shape[i] for i in axes])
+    af = fft(a, dims, axes)
+    bf = fft(b, dims, axes)
+    return ifft(af*bf, dims, axes)
+
+
+
+def inner(x, y, axis=-1):
+    """
+    Compute inner product of x and y on specified axis, equivalent to
+    np.sum(x * y, axis=axis, keepdims=True).
+
+    Parameters
+    ----------
+    x : array_like
+      Input array x
+    y : array_like
+      Input array y
+    axes : int, optional (default -1)
+      Axis over which to compute the sum
+
+    Returns
+    -------
+    y : ndarray
+      Inner product array equivalent to summing x*y over the specified
+      axis
+    """
+
+    # Convert negative axis to positive
+    if axis < 0:
+        axis = x.ndim + axis
+
+    # If sum not on axis 0, roll specified axis to 0 position
+    if axis == 0:
+        xr = x
+        yr = y
+    else:
+        xr = np.rollaxis(x, axis, 0)
+        yr = np.rollaxis(y, axis, 0)
+
+    # Efficient inner product on axis 0
+    if np.__version__ == '1.14.0':
+        # Setting of optimize flag due to
+        #    https://github.com/numpy/numpy/issues/10343
+        ip = np.einsum(xr, [0, Ellipsis], yr, [0, Ellipsis],
+                       optimize=False)[np.newaxis, ...]
+    else:
+        ip = np.einsum(xr, [0, Ellipsis], yr, [0, Ellipsis])[np.newaxis, ...]
+
+    # Roll axis back to original position if necessary
+    if axis != 0:
+        ip = np.rollaxis(ip, 0, axis+1)
+
+    return ip
+
+
+
+def solvedbi_sm(ah, rho, b, c=None, axis=4):
+    r"""
     Solve a diagonal block linear system with a scaled identity term
     using the Sherman-Morrison equation.
 
@@ -257,7 +341,7 @@ def solvedbi_sm(ah, rho, b, c=None, axis=4):
     systems of the form (see :cite:`wohlberg-2016-efficient`)
 
     .. math::
-      (\\rho I + \mathbf{a} \mathbf{a}^H ) \; \mathbf{x} = \mathbf{b} \;\;.
+      (\rho I + \mathbf{a} \mathbf{a}^H ) \; \mathbf{x} = \mathbf{b} \;\;.
 
     In this equation inner products and matrix products are taken along
     the specified axis of the corresponding multi-dimensional arrays; the
@@ -268,7 +352,7 @@ def solvedbi_sm(ah, rho, b, c=None, axis=4):
     ah : array_like
       Linear system component :math:`\mathbf{a}^H`
     rho : float
-      Linear system parameter :math:`\\rho`
+      Linear system parameter :math:`\rho`
     b : array_like
       Linear system component :math:`\mathbf{b}`
     c : array_like, optional (default None)
@@ -287,15 +371,15 @@ def solvedbi_sm(ah, rho, b, c=None, axis=4):
     if c is None:
         c = solvedbi_sm_c(ah, a, rho, axis)
     if have_numexpr:
-        cb = np.sum(c * b, axis=axis, keepdims=True)
+        cb = inner(c, b, axis=axis)
         return ne.evaluate('(b - (a * cb)) / rho')
     else:
-        return (b - (a * np.sum(c * b, axis=axis, keepdims=True))) / rho
+        return (b - (a * inner(c, b, axis=axis))) / rho
 
 
 
 def solvedbi_sm_c(ah, a, rho, axis=4):
-    """
+    r"""
     Compute cached component used by :func:`solvedbi_sm`.
 
     Parameters
@@ -305,7 +389,7 @@ def solvedbi_sm_c(ah, a, rho, axis=4):
     a : array_like
       Linear system component :math:`\mathbf{a}`
     rho : float
-      Linear system parameter :math:`\\rho`
+      Linear system parameter :math:`\rho`
     axis : int, optional (default 4)
       Axis along which to solve the linear system
 
@@ -315,12 +399,83 @@ def solvedbi_sm_c(ah, a, rho, axis=4):
       Argument :math:`\mathbf{c}` used by :func:`solvedbi_sm`
     """
 
-    return ah / (np.sum(ah * a, axis=axis, keepdims=True) + rho)
+    return ah / (inner(ah, a, axis=axis) + rho)
+
+
+
+def solvedbd_sm(ah, d, b, c=None, axis=4):
+    r"""
+    Solve a diagonal block linear system with a diagonal term
+    using the Sherman-Morrison equation.
+
+    The solution is obtained by independently solving a set of linear
+    systems of the form (see :cite:`wohlberg-2016-efficient`)
+
+    .. math::
+      (\mathbf{d}  + \mathbf{a} \mathbf{a}^H ) \; \mathbf{x} = \mathbf{b} \;\;.
+
+    In this equation inner products and matrix products are taken along
+    the specified axis of the corresponding multi-dimensional arrays; the
+    solutions are independent over the other axes.
+
+    Parameters
+    ----------
+    ah : array_like
+      Linear system component :math:`\mathbf{a}^H`
+    d : array_like
+      Linear system parameter :math:`\mathbf{d}`
+    b : array_like
+      Linear system component :math:`\mathbf{b}`
+    c : array_like, optional (default None)
+      Solution component :math:`\mathbf{c}` that may be pre-computed using
+      :func:`solvedbd_sm_c` and cached for re-use.
+    axis : int, optional (default 4)
+      Axis along which to solve the linear system
+
+    Returns
+    -------
+    x : ndarray
+      Linear system solution :math:`\mathbf{x}`
+    """
+
+    a = np.conj(ah)
+    if c is None:
+        c = solvedbd_sm_c(ah, a, d, axis)
+    if have_numexpr:
+        cb = inner(c, b, axis=axis)
+        return ne.evaluate('(b - (a * cb)) / d')
+    else:
+        return (b - (a * inner(c, b, axis=axis))) / d
+
+
+
+def solvedbd_sm_c(ah, a, d, axis=4):
+    r"""
+    Compute cached component used by :func:`solvedbd_sm`.
+
+    Parameters
+    ----------
+    ah : array_like
+      Linear system component :math:`\mathbf{a}^H`
+    a : array_like
+      Linear system component :math:`\mathbf{a}`
+    d : array_like
+      Linear system parameter :math:`\mathbf{d}`
+    axis : int, optional (default 4)
+      Axis along which to solve the linear system
+
+    Returns
+    -------
+    c : ndarray
+      Argument :math:`\mathbf{c}` used by :func:`solvedbd_sm`
+    """
+
+    return (ah / d) / (inner(ah, (a / d), axis=axis) + 1.0)
 
 
 
 def solvemdbi_ism(ah, rho, b, axisM, axisK):
-    """
+    r"""
     Solve a multiple diagonal block linear system with a scaled
     identity term by iterated application of the Sherman-Morrison
     equation. The computation is performed in a way that avoids
@@ -331,7 +486,7 @@ def solvemdbi_ism(ah, rho, b, axisM, axisK):
     systems of the form (see :cite:`wohlberg-2016-efficient`)
 
     .. math::
-      (\\rho I + \mathbf{a}_0 \mathbf{a}_0^H + \mathbf{a}_1 \mathbf{a}_1^H +
+      (\rho I + \mathbf{a}_0 \mathbf{a}_0^H + \mathbf{a}_1 \mathbf{a}_1^H +
        \; \ldots \; + \mathbf{a}_{K-1} \mathbf{a}_{K-1}^H) \; \mathbf{x} =
        \mathbf{b}
 
@@ -345,7 +500,7 @@ def solvemdbi_ism(ah, rho, b, axisM, axisK):
     ah : array_like
       Linear system component :math:`\mathbf{a}^H`
     rho : float
-      Linear system parameter :math:`\\rho`
+      Linear system parameter :math:`\rho`
     b : array_like
       Linear system component :math:`\mathbf{b}`
     axisM : int
@@ -359,12 +514,19 @@ def solvemdbi_ism(ah, rho, b, axisM, axisK):
       Linear system solution :math:`\mathbf{x}`
     """
 
+    if axisM < 0:
+        axisM += ah.ndim
+    if axisK < 0:
+        axisK += ah.ndim
+
     K = ah.shape[axisK]
     a = np.conj(ah)
     gamma = np.zeros(a.shape, a.dtype)
-    delta = np.zeros(a.shape[0:axisM] + (1,), a.dtype)
-    slcnc = (slice(None),)*axisK
-    alpha = a[slcnc + (slice(0, 1),)] / rho
+    dltshp = list(a.shape)
+    dltshp[axisM] = 1
+    delta = np.zeros(dltshp, a.dtype)
+    slcnc = (slice(None),) * axisK
+    alpha = np.take(a, [0], axisK) / rho
     beta = b / rho
 
     del b
@@ -372,26 +534,24 @@ def solvemdbi_ism(ah, rho, b, axisM, axisK):
 
         slck = slcnc + (slice(k, k+1),)
         gamma[slck] = alpha
-        delta[slck] = 1.0 + np.sum(ah[slck] * gamma[slck], axisM, keepdims=True)
+        delta[slck] = 1.0 + inner(ah[slck], gamma[slck], axis=axisM)
 
-        c = np.sum(ah[slck] * beta, axisM, keepdims=True)
-        d = c * gamma[slck]
-        beta = beta - (d / delta[slck])
+        d = gamma[slck] * inner(ah[slck], beta, axis=axisM)
+        beta[:] -= d / delta[slck]
 
         if k < K-1:
-            alpha = a[slcnc + (slice(k+1, k+2),)] / rho
+            alpha[:] = np.take(a, [k+1], axisK) / rho
             for l in range(0, k+1):
                 slcl = slcnc + (slice(l, l+1),)
-                c = np.sum(ah[slcl] * alpha, axisM, keepdims=True)
-                d = c * gamma[slcl]
-                alpha = alpha - (d / delta[slcl])
+                d = gamma[slcl] * inner(ah[slcl], alpha, axis=axisM)
+                alpha[:] -= d / delta[slcl]
 
     return beta
 
 
 
 def solvemdbi_rsm(ah, rho, b, axisK, dimN=2):
-    """
+    r"""
     Solve a multiple diagonal block linear system with a scaled
     identity term by repeated application of the Sherman-Morrison
     equation. The computation is performed by explictly constructing
@@ -403,7 +563,7 @@ def solvemdbi_rsm(ah, rho, b, axisK, dimN=2):
     systems of the form (see :cite:`wohlberg-2016-efficient`)
 
     .. math::
-      (\\rho I + \mathbf{a}_0 \mathbf{a}_0^H + \mathbf{a}_1 \mathbf{a}_1^H +
+      (\rho I + \mathbf{a}_0 \mathbf{a}_0^H + \mathbf{a}_1 \mathbf{a}_1^H +
        \; \ldots \; + \mathbf{a}_{K-1} \mathbf{a}_{K-1}^H) \; \mathbf{x} =
        \mathbf{b}
 
@@ -417,7 +577,7 @@ def solvemdbi_rsm(ah, rho, b, axisK, dimN=2):
     ah : array_like
       Linear system component :math:`\mathbf{a}^H`
     rho : float
-      Linear system parameter :math:`\\rho`
+      Linear system parameter :math:`\rho`
     b : array_like
       Linear system component :math:`\mathbf{b}`
     axisK : int
@@ -438,24 +598,24 @@ def solvemdbi_rsm(ah, rho, b, axisK, dimN=2):
     K = ah.shape[axisK]
     a = np.conj(ah)
     Ainv = np.ones(ah.shape[0:dimN] + (1,)*4) * \
-        np.reshape(np.eye(M,M) / rho, (1,)*(dimN+2) + (M, M))
+        np.reshape(np.eye(M, M) / rho, (1,)*(dimN+2) + (M, M))
 
     for k in range(0, K):
         slck = slcnc + (slice(k, k+1),) + (slice(None), np.newaxis,)
-        Aia = np.sum(Ainv * np.swapaxes(a[slck], dimN+2, dimN+3),
-                     dimN+3, keepdims=True)
-        ahAia = 1.0 + np.sum(ah[slck] * Aia, dimN+2, keepdims=True)
-        ahAi = np.sum(ah[slck] * Ainv, dimN+2, keepdims=True)
+        Aia = inner(Ainv, np.swapaxes(a[slck], dimN+2, dimN+3),
+                    axis=dimN+3)
+        ahAia = 1.0 + inner(ah[slck], Aia, axis=dimN+2)
+        ahAi = inner(ah[slck], Ainv, axis=dimN+2)
         AiaahAi = Aia * ahAi
         Ainv = Ainv - AiaahAi / ahAia
 
     return np.sum(Ainv * np.swapaxes(b[(slice(None),)*b.ndim + (np.newaxis,)],
-                                        dimN+2, dimN+3), dimN+3)
+                                     dimN+2, dimN+3), dimN+3)
 
 
 
 def solvemdbi_cg(ah, rho, b, axisM, axisK, tol=1e-5, mit=1000, isn=None):
-    """
+    r"""
     Solve a multiple diagonal block linear system with a scaled
     identity term using Conjugate Gradient (CG) via
     :func:`scipy.sparse.linalg.cg`.
@@ -464,7 +624,7 @@ def solvemdbi_cg(ah, rho, b, axisM, axisK, tol=1e-5, mit=1000, isn=None):
     systems of the form (see :cite:`wohlberg-2016-efficient`)
 
      .. math::
-      (\\rho I + \mathbf{a}_0 \mathbf{a}_0^H + \mathbf{a}_1 \mathbf{a}_1^H +
+      (\rho I + \mathbf{a}_0 \mathbf{a}_0^H + \mathbf{a}_1 \mathbf{a}_1^H +
        \; \ldots \; + \mathbf{a}_{K-1} \mathbf{a}_{K-1}^H) \; \mathbf{x} =
        \mathbf{b}
 
@@ -503,8 +663,8 @@ def solvemdbi_cg(ah, rho, b, axisM, axisK, tol=1e-5, mit=1000, isn=None):
     a = np.conj(ah)
     if isn is not None:
         isn = isn.ravel()
-    Aop = lambda x: np.sum(ah * x, axis=axisM, keepdims=True)
-    AHop = lambda x: np.sum(a * x, axis=axisK, keepdims=True)
+    Aop = lambda x: inner(ah, x, axis=axisM)
+    AHop = lambda x: inner(a, x, axis=axisK)
     AHAop = lambda x: AHop(Aop(x))
     vAHAoprI = lambda x: AHAop(x.reshape(b.shape)).ravel() + rho*x.ravel()
     lop = LinearOperator((b.size, b.size), matvec=vAHAoprI, dtype=b.dtype)
@@ -514,16 +674,16 @@ def solvemdbi_cg(ah, rho, b, axisM, axisK, tol=1e-5, mit=1000, isn=None):
 
 
 def lu_factor(A, rho):
-    """
-    Compute LU factorisation of either :math:`A^T A + \\rho I` or
-    :math:`A A^T + \\rho I`, depending on which matrix is smaller.
+    r"""
+    Compute LU factorisation of either :math:`A^T A + \rho I` or
+    :math:`A A^T + \rho I`, depending on which matrix is smaller.
 
     Parameters
     ----------
     A : array_like
       Array :math:`A`
     rho : float
-      Scalar :math:`\\rho`
+      Scalar :math:`\rho`
 
     Returns
     -------
@@ -540,27 +700,27 @@ def lu_factor(A, rho):
     # matrix inversion lemma to compute the inverse of A^T*A + rho*I
     if N >= M:
         lu, piv = linalg.lu_factor(A.T.dot(A) + rho*np.identity(M,
-                        dtype=A.dtype))
+                                   dtype=A.dtype))
     else:
         lu, piv = linalg.lu_factor(A.dot(A.T) + rho*np.identity(N,
-                        dtype=A.dtype))
+                                   dtype=A.dtype))
     return lu, piv
 
 
 
 def lu_solve_ATAI(A, rho, b, lu, piv):
-    """
-    Solve the linear system :math:`(A^T A + \\rho I)\\mathbf{x} = \\mathbf{b}`
-    or :math:`(A^T A + \\rho I)X = B` using :func:`scipy.linalg.lu_solve`.
+    r"""
+    Solve the linear system :math:`(A^T A + \rho I)\mathbf{x} = \mathbf{b}`
+    or :math:`(A^T A + \rho I)X = B` using :func:`scipy.linalg.lu_solve`.
 
     Parameters
     ----------
     A : array_like
       Matrix :math:`A`
     rho : float
-      Scalar :math:`\\rho`
+      Scalar :math:`\rho`
     b : array_like
-      Vector :math:`\\mathbf{b}` or matrix :math:`B`
+      Vector :math:`\mathbf{b}` or matrix :math:`B`
     lu : array_like
       Matrix containing U in its upper triangle, and L in its lower triangle,
       as returned by :func:`scipy.linalg.lu_factor`
@@ -584,18 +744,18 @@ def lu_solve_ATAI(A, rho, b, lu, piv):
 
 
 def lu_solve_AATI(A, rho, b, lu, piv):
-    """
-    Solve the linear system :math:`(A A^T + \\rho I)\\mathbf{x} = \\mathbf{b}`
-    or :math:`(A A^T + \\rho I)X = B` using :func:`scipy.linalg.lu_solve`.
+    r"""
+    Solve the linear system :math:`(A A^T + \rho I)\mathbf{x} = \mathbf{b}`
+    or :math:`(A A^T + \rho I)X = B` using :func:`scipy.linalg.lu_solve`.
 
     Parameters
     ----------
     A : array_like
       Matrix :math:`A`
     rho : float
-      Scalar :math:`\\rho`
+      Scalar :math:`\rho`
     b : array_like
-      Vector :math:`\\mathbf{b}` or matrix :math:`B`
+      Vector :math:`\mathbf{b}` or matrix :math:`B`
     lu : array_like
       Matrix containing U in its upper triangle, and L in its lower triangle,
       as returned by :func:`scipy.linalg.lu_factor`
@@ -638,7 +798,7 @@ def zpad(x, pd, ax):
       Padded array
     """
 
-    xpd = ((0,0),)*ax + (pd,) + ((0,0),)*(x.ndim-ax-1)
+    xpd = ((0, 0),)*ax + (pd,) + ((0, 0),)*(x.ndim-ax-1)
     return np.pad(x, xpd, 'constant')
 
 
@@ -660,8 +820,10 @@ def Gax(x, ax):
       Output array
     """
 
-    slc0 = (slice(None),)*ax
-    return zpad(x[slc0 + (slice(1,None),)] - x[slc0 + (slice(-1),)], (0,1), ax)
+    slc = (slice(None),)*ax + (slice(-1,None),)
+    xg = np.roll(x, -1, axis=ax) - x
+    xg[slc] = 0.0
+    return xg
 
 
 
@@ -683,13 +845,15 @@ def GTax(x, ax):
     """
 
     slc0 = (slice(None),)*ax
-    return zpad(x[slc0 + (slice(-1),)], (1,0), ax) - \
-      zpad(x[slc0 + (slice(-1),)], (0,1), ax)
+    xg = np.roll(x, 1, axis=ax) - x
+    xg[slc0 + (slice(0, 1),)] = -x[slc0 + (slice(0, 1),)]
+    xg[slc0 + (slice(-1, None),)] = x[slc0 + (slice(-2, -1),)]
+    return xg
 
 
 
 def GradientFilters(ndim, axes, axshp, dtype=None):
-    """
+    r"""
     Construct a set of filters for computing gradients in the frequency
     domain.
 
@@ -718,41 +882,10 @@ def GradientFilters(ndim, axes, axshp, dtype=None):
     g = np.zeros([2 if k in axes else 1 for k in range(ndim)] +
                  [len(axes),], dtype)
     for k in axes:
-        g[(0,)*k +(slice(None),)+(0,)*(g.ndim-2-k)+(k,)] = [1,-1]
+        g[(0,) * k + (slice(None),) + (0,) * (g.ndim-2-k) + (k,)] = [1, -1]
     Gf = rfftn(g, axshp, axes=axes)
-    GHGf = np.sum(np.conj(Gf)*Gf, axis=-1)
+    GHGf = np.sum(np.conj(Gf) * Gf, axis=-1)
     return Gf, GHGf
-
-
-
-def shrink1(x, alpha):
-    """
-    Scalar shrinkage/soft thresholding function
-
-     .. math::
-      \mathcal{S}_{1,\\alpha}(\mathbf{x}) = \mathrm{sign}(\mathbf{x}) \odot
-      \max(0, |\mathbf{x}| - \\alpha) = \mathrm{prox}_f(\mathbf{x}) \;\;
-      \\text{where} \;\; f(\mathbf{u}) = \\alpha \|\mathbf{u}\|_1 \;\;.
-
-    Parameters
-    ----------
-    x : array_like
-      Input array :math:`\mathbf{x}`
-    alpha : float or array_like
-      Shrinkage parameter :math:`\\alpha`
-
-    Returns
-    -------
-    x : ndarray
-      Output array
-    """
-
-    if have_numexpr:
-        return ne.evaluate(
-            'where(abs(x)-alpha > 0, where(x >= 0, 1, -1) * (abs(x)-alpha), 0)'
-        )
-    else:
-        return np.sign(x) * (np.clip(np.abs(x) - alpha, 0, float('Inf')))
 
 
 
@@ -780,15 +913,46 @@ def zdivide(x, y):
 
 
 
-def shrink2(x, alpha, axis=-1):
+def shrink1(x, alpha):
+    r"""
+    Scalar shrinkage/soft thresholding function
+
+     .. math::
+      \mathcal{S}_{1,\alpha}(\mathbf{x}) = \mathrm{sign}(\mathbf{x}) \odot
+      \max(0, |\mathbf{x}| - \alpha) = \mathrm{prox}_f(\mathbf{x}) \;\;
+      \text{where} \;\; f(\mathbf{u}) = \alpha \|\mathbf{u}\|_1 \;\;.
+
+    Parameters
+    ----------
+    x : array_like
+      Input array :math:`\mathbf{x}`
+    alpha : float or array_like
+      Shrinkage parameter :math:`\alpha`
+
+    Returns
+    -------
+    x : ndarray
+      Output array
     """
+
+    if have_numexpr:
+        return ne.evaluate(
+            'where(abs(x)-alpha > 0, where(x >= 0, 1, -1) * (abs(x)-alpha), 0)'
+        )
+    else:
+        return np.sign(x) * (np.clip(np.abs(x) - alpha, 0, float('Inf')))
+
+
+
+def shrink2(x, alpha, axis=-1):
+    r"""
     Vector shrinkage/soft thresholding function
 
      .. math::
-      \mathcal{S}_{2,\\alpha}(\mathbf{x}) =
-      \\frac{\mathbf{x}}{\|\mathbf{x}\|_2} \max(0, \|\mathbf{x}\|_2 - \\alpha)
+      \mathcal{S}_{2,\alpha}(\mathbf{x}) =
+      \frac{\mathbf{x}}{\|\mathbf{x}\|_2} \max(0, \|\mathbf{x}\|_2 - \alpha)
       = \mathrm{prox}_f(\mathbf{x}) \;\;
-      \\text{where} \;\; f(\mathbf{u}) = \\alpha \|\mathbf{u}\|_2 \;\;.
+      \text{where} \;\; f(\mathbf{u}) = \alpha \|\mathbf{u}\|_2 \;\;.
 
     The :math:`\ell_2` norm is applied over the specified axis of a
     multi-dimensional input (the last axis by default).
@@ -798,7 +962,7 @@ def shrink2(x, alpha, axis=-1):
     x : array_like
       Input array :math:`\mathbf{x}`
     alpha : float or array_like
-      Shrinkage parameter :math:`\\alpha`
+      Shrinkage parameter :math:`\alpha`
     axis : int, optional (default -1)
       Axis of x over which the :math:`\ell_2` norm
 
@@ -816,16 +980,16 @@ def shrink2(x, alpha, axis=-1):
 
 
 def shrink12(x, alpha, beta, axis=-1):
-    """
+    r"""
     Compound shrinkage/soft thresholding function
     :cite:`wohlberg-2012-local` :cite:`chartrand-2013-nonconvex`
 
      .. math::
-      \mathcal{S}_{1,2,\\alpha,\\beta}(\mathbf{x}) =
-      \mathcal{S}_{2,\\beta}(\mathcal{S}_{1,\\alpha}(\mathbf{x}))
+      \mathcal{S}_{1,2,\alpha,\beta}(\mathbf{x}) =
+      \mathcal{S}_{2,\beta}(\mathcal{S}_{1,\alpha}(\mathbf{x}))
       = \mathrm{prox}_f(\mathbf{x}) \;\;
-      \\text{where} \;\; f(\mathbf{u}) = \\alpha \|\mathbf{u}\|_1 +
-      \\beta \|\mathbf{u}\|_2 \;\;.
+      \text{where} \;\; f(\mathbf{u}) = \alpha \|\mathbf{u}\|_1 +
+      \beta \|\mathbf{u}\|_2 \;\;.
 
     The :math:`\ell_2` norm is applied over the specified axis of a
     multi-dimensional input (the last axis by default).
@@ -835,9 +999,9 @@ def shrink12(x, alpha, beta, axis=-1):
     x : array_like
       Input array :math:`\mathbf{x}`
     alpha : float or array_like
-      Shrinkage parameter :math:`\\alpha`
+      Shrinkage parameter :math:`\alpha`
     beta : float or array_like
-      Shrinkage parameter :math:`\\beta`
+      Shrinkage parameter :math:`\beta`
     axis : int, optional (default -1)
       Axis of x over which the :math:`\ell_2` norm
 
@@ -852,7 +1016,7 @@ def shrink12(x, alpha, beta, axis=-1):
 
 
 def proj_l2ball(b, s, r, axes=None):
-    """
+    r"""
     Project :math:`\mathbf{b}` into the :math:`\ell_2` ball of radius
     :math:`r` about :math:`\mathbf{s}`, i.e.
     :math:`\{ \mathbf{x} : \|\mathbf{x} - \mathbf{s} \|_2 \leq r \}`.
@@ -881,7 +1045,7 @@ def proj_l2ball(b, s, r, axes=None):
 
 
 def promote16(u, fn=None, *args, **kwargs):
-    """
+    r"""
     Utility function for use with functions that do not support arrays
     of dtype np.float16. This function has two distinct modes of
     operation. If called with only the `u` parameter specified, the
@@ -993,7 +1157,7 @@ def blockcirculant(A):
       Output array
     """
 
-    r,c = A[0].shape
+    r, c = A[0].shape
     B = np.zeros((len(A)*r, len(A)*c), dtype=A[0].dtype)
     for k in range(len(A)):
         for l in range(len(A)):
@@ -1003,8 +1167,8 @@ def blockcirculant(A):
 
 
 
-def fl2norm2(xf, axis=(0,1)):
-    """
+def fl2norm2(xf, axis=(0, 1)):
+    r"""
     Compute the squared :math:`\ell_2` norm in the DFT domain, taking
     into account the unnormalised DFT scaling, i.e. given the DFT of a
     multi-dimensional array computed via :func:`fftn`, return the
@@ -1030,8 +1194,8 @@ def fl2norm2(xf, axis=(0,1)):
 
 
 
-def rfl2norm2(xf, xs, axis=(0,1)):
-    """
+def rfl2norm2(xf, xs, axis=(0, 1)):
+    r"""
     Compute the squared :math:`\ell_2` norm in the DFT domain, taking
     into account the unnormalised DFT scaling, i.e. given the DFT of a
     multi-dimensional array computed via :func:`rfftn`, return the
@@ -1059,9 +1223,9 @@ def rfl2norm2(xf, xs, axis=(0,1)):
     slc0 = (slice(None),)*axis[-1]
     nrm0 = linalg.norm(xf[slc0 + (0,)])
     idx1 = (xs[axis[-1]]+1)//2
-    nrm1 = linalg.norm(xf[slc0 + (slice(1,idx1),)])
-    if xs[axis[-1]]%2 == 0:
-        nrm2 = linalg.norm(xf[slc0 + (slice(-1,None),)])
+    nrm1 = linalg.norm(xf[slc0 + (slice(1, idx1),)])
+    if xs[axis[-1]] % 2 == 0:
+        nrm2 = linalg.norm(xf[slc0 + (slice(-1, None),)])
     else:
         nrm2 = 0.0
     return scl*(nrm0**2 + 2.0*nrm1**2 + nrm2**2)
@@ -1069,7 +1233,7 @@ def rfl2norm2(xf, xs, axis=(0,1)):
 
 
 def rrs(ax, b):
-    """
+    r"""
     Compute relative residual :math:`\|\mathbf{b} - A \mathbf{x}\|_2 /
     \|\mathbf{b}\|_2` of the solution to a linear equation :math:`A \mathbf{x}
     = \mathbf{b}`. Returns 1.0 if :math:`\mathbf{b} = 0`.
@@ -1092,28 +1256,3 @@ def rrs(ax, b):
         return 1.0
     else:
         return linalg.norm((ax - b).ravel()) / nrm
-
-
-
-import warnings
-import sporco.metric as sm
-
-def mae(*args, **kwargs):
-    warnings.warn("sporco.linalg.mae is deprecated: please use"\
-                  " sporco.metric.mae")
-    return sm.mae(*args, **kwargs)
-
-def mse(*args, **kwargs):
-    warnings.warn("sporco.linalg.mse is deprecated: please use"\
-                  " sporco.metric.mse")
-    return sm.mse(*args, **kwargs)
-
-def snr(*args, **kwargs):
-    warnings.warn("sporco.linalg.snr is deprecated: please use"\
-                  " sporco.metric.snr")
-    return sm.snr(*args, **kwargs)
-
-def psnr(*args, **kwargs):
-    warnings.warn("sporco.linalg.psnr is deprecated: please use"\
-                  " sporco.metric.psnr")
-    return sm.psnr(*args, **kwargs)

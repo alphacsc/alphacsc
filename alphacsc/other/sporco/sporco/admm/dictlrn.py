@@ -1,5 +1,5 @@
-#-*- coding: utf-8 -*-
-# Copyright (C) 2015-2016 by Brendt Wohlberg <brendt@ieee.org>
+# -*- coding: utf-8 -*-
+# Copyright (C) 2015-2017 by Brendt Wohlberg <brendt@ieee.org>
 # All rights reserved. BSD 3-clause License.
 # This file is part of the SPORCO package. Details of the copyright
 # and user license can be found in the 'LICENSE.txt' file distributed
@@ -10,6 +10,7 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+from future.utils import with_metaclass
 from builtins import range
 from builtins import object
 
@@ -20,6 +21,8 @@ from scipy import signal, linalg
 from sporco import cdict
 from sporco import util
 from sporco.util import u
+from sporco.util import _fix_nested_class_lookup
+
 
 __author__ = """Brendt Wohlberg <brendt@ieee.org>"""
 
@@ -103,7 +106,7 @@ class IterStatsConfig(object):
           display
         hdrmap : dict
           Dictionary mapping column header titles to IterationStats entries
-            """
+        """
 
         self.IterationStats = collections.namedtuple('IterationStats', isfld)
         self.isxmap = isxmap
@@ -198,7 +201,31 @@ class IterStatsConfig(object):
 
 
 
-class DictLearn(object):
+class _DictLearn_Meta(type):
+    """Metaclass for DictLearn class that handles intialisation of the
+    object initialisation timer and stopping this timer at the end of
+    initialisation.
+    """
+
+    def __init__(cls, *args):
+
+        # Apply _fix_nested_class_lookup function to class after creation
+        _fix_nested_class_lookup(cls, nstnm='Options')
+
+
+
+    def __call__(cls, *args, **kwargs):
+
+        # Initialise instance
+        instance = super(_DictLearn_Meta, cls).__call__(*args, **kwargs)
+        # Stop initialisation timer
+        instance.timer.stop('init')
+        # Return instance
+        return instance
+
+
+
+class DictLearn(with_metaclass(_DictLearn_Meta, object)):
     """General dictionary learning class that supports alternation
     between user-specified sparse coding and dictionary update steps,
     each of which is based on an ADMM algorithm.
@@ -210,16 +237,23 @@ class DictLearn(object):
 
         Options:
 
-          ``Verbose`` : Flag determining whether iteration status is displayed.
+          ``Verbose`` : Flag determining whether iteration status is
+          displayed.
 
-          ``StatusHeader`` : Flag determining whether status header and \
-           separator are displayed
+          ``StatusHeader`` : Flag determining whether status header and
+          separator are displayed.
 
-          ``MaxMainIter`` : Maximum main iterations
+          ``IterTimer`` : Label of the timer to use for iteration times.
+
+          ``MaxMainIter`` : Maximum main iterations.
+
+          ``Callback`` : Callback function to be called at the end of
+          every iteration.
         """
 
-        defaults = {'Verbose' : False, 'StatusHeader' : True,
-                    'MaxMainIter' : 1000}
+        defaults = {'Verbose': False, 'StatusHeader': True,
+                    'IterTimer': 'solve', 'MaxMainIter': 1000,
+                    'Callback': None}
 
 
         def __init__(self, opt=None):
@@ -229,6 +263,15 @@ class DictLearn(object):
                 opt = {}
             cdict.ConstrainedDict.__init__(self, opt)
 
+
+
+    def __new__(cls, *args, **kwargs):
+        """Create a DictLearn object and start its initialisation timer."""
+
+        instance = super(DictLearn, cls).__new__(cls)
+        instance.timer = util.Timer(['init', 'solve', 'solve_wo_eval'])
+        instance.timer.start('init')
+        return instance
 
 
 
@@ -244,12 +287,9 @@ class DictLearn(object):
           Object handling D update step
         opt : :class:`DictLearn.Options` object
           Algorithm options
-        isc : :class:`DictLearn.IterStatsConfig` object
+        isc : :class:`IterStatsConfig` object
           Iteration statistics and header display configuration
         """
-
-        self.runtime = 0.0
-        self.timer = util.Timer()
 
         if opt is None:
             opt = DictLearn.Options()
@@ -257,20 +297,20 @@ class DictLearn(object):
 
         if isc is None:
             isc = IterStatsConfig(
-                isfld = ['Iter', 'ObjFunX', 'XPrRsdl', 'XDlRsdl', 'XRho',
-                         'ObjFunD', 'DPrRsdl', 'DDlRsdl', 'DRho', 'Time'],
-                isxmap = {'ObjFunX' : 'ObjFun', 'XPrRsdl' : 'PrimalRsdl',
-                          'XDlRsdl' : 'DualRsdl', 'XRho' : 'Rho'},
-                isdmap = {'ObjFunD' : 'DFid', 'DPrRsdl' : 'PrimalRsdl',
-                          'DDlRsdl' : 'DualRsdl', 'DRho' : 'Rho'},
-                evlmap = {},
-                hdrtxt = ['Itn', 'FncX', 'r_X', 's_X', u('?_X'),
-                          'FncD', 'r_D', 's_D', u('?_D')],
-                hdrmap = {'Itn' : 'Iter', 'FncX' : 'ObjFunX',
-                          'r_X' : 'XPrRsdl', 's_X' : 'XDlRsdl',
-                          u('?_X') : 'XRho', 'FncD' : 'ObjFunD',
-                          'r_D' : 'DPrRsdl', 's_D' : 'DDlRsdl',
-                          u('?_D') : 'DRho'}
+                isfld=['Iter', 'ObjFunX', 'XPrRsdl', 'XDlRsdl', 'XRho',
+                       'ObjFunD', 'DPrRsdl', 'DDlRsdl', 'DRho', 'Time'],
+                isxmap={'ObjFunX': 'ObjFun', 'XPrRsdl': 'PrimalRsdl',
+                        'XDlRsdl': 'DualRsdl', 'XRho': 'Rho'},
+                isdmap={'ObjFunD': 'DFid', 'DPrRsdl': 'PrimalRsdl',
+                        'DDlRsdl': 'DualRsdl', 'DRho': 'Rho'},
+                evlmap={},
+                hdrtxt=['Itn', 'FncX', 'r_X', 's_X', u('ρ_X'),
+                        'FncD', 'r_D', 's_D', u('ρ_D')],
+                hdrmap={'Itn': 'Iter', 'FncX': 'ObjFunX',
+                        'r_X': 'XPrRsdl', 's_X': 'XDlRsdl',
+                        u('ρ_X'): 'XRho', 'FncD': 'ObjFunD',
+                        'r_D': 'DPrRsdl', 's_D': 'DDlRsdl',
+                        u('ρ_D'): 'DRho'}
             )
         self.isc = isc
 
@@ -280,16 +320,38 @@ class DictLearn(object):
         self.itstat = []
         self.j = 0
 
-        # Increment `runtime` to reflect object initialisation
-        # time. The timer object is reset to avoid double-counting of
-        # elapsed time if a similar increment is applied in a derived
-        # class __init__.
-        self.runtime += self.timer.elapsed(reset=True)
-
 
 
     def solve(self):
-        """Run optimisation"""
+        """Start (or re-start) optimisation. This method implements the
+        framework for the alternation between `X` and `D` updates in a
+        dictionary learning algorithm. There is sufficient flexibility
+        in specifying the two updates that it calls that it is
+        usually not necessary to override this method in derived
+        clases.
+
+        If option ``Verbose`` is ``True``, the progress of the
+        optimisation is displayed at every iteration. At termination
+        of this method, attribute :attr:`itstat` is a list of tuples
+        representing statistics of each iteration.
+
+        Attribute :attr:`timer` is an instance of :class:`.util.Timer`
+        that provides the following labelled timers:
+
+          ``init``: Time taken for object initialisation by
+          :meth:`__init__`
+
+          ``solve``: Total time taken by call(s) to :meth:`solve`
+
+          ``solve_wo_func``: Total time taken by call(s) to
+          :meth:`solve`, excluding time taken to compute functional
+          value and related iteration statistics
+
+          ``solve_wo_rsdl`` : Total time taken by call(s) to
+          :meth:`solve`, excluding time taken to compute functional
+          value and related iteration statistics as well as time take
+          to compute residuals and implemented ``AutoRho`` mechanism
+        """
 
         # Print header and separator strings
         if self.opt['Verbose'] and self.opt['StatusHeader']:
@@ -306,24 +368,27 @@ class DictLearn(object):
         pobjs.append(compute_X_and_objective(X, Z_hat, d_hat,
                                              reg=self.xstep.lmbda))
 
-        for j in range(self.j, self.j + self.opt['MaxMainIter']):
+        # Main optimisation iterations
+        for self.j in range(self.j, self.j + self.opt['MaxMainIter']):
 
             # Reset timer
             self.timer.start()
 
             # X update
             self.xstep.solve()
-            self.dstep.setcoef(self.xstep.getcoef())
+            self.post_xstep()
 
             # D update
             self.dstep.solve()
-            self.xstep.setdict(self.dstep.getdict())
+            self.post_dstep()
 
-            # Evaluate progress
+            # Evaluate functional
+            self.timer.stop('solve_wo_eval')
             evl = self.evaluate()
+            self.timer.start('solve_wo_eval')
 
             # Record elapsed time
-            t = self.timer.elapsed()
+            t = self.timer.elapsed(self.opt['IterTimer'])
 
             Z_hat = self.getcoef().squeeze().swapaxes(0, 2)[..., :N]
             d_hat = self.getdict().squeeze().T
@@ -331,8 +396,13 @@ class DictLearn(object):
                                                  reg=self.xstep.lmbda))
 
             # Extract and record iteration stats
-            itst = self.isc.iterstats(j, t, self.xstep.itstat[-1],
-                                      self.dstep.itstat[-1], evl)
+            xitstat = self.xstep.itstat[-1] if len(self.xstep.itstat) > 0 else\
+                      self.xstep.IterationStats(*([0.0,] *
+                            len(self.xstep.IterationStats._fields)))
+            ditstat = self.dstep.itstat[-1] if len(self.dstep.itstat) > 0 else\
+                      self.dstep.IterationStats(*([0.0,] *
+                            len(self.dstep.IterationStats._fields)))
+            itst = self.isc.iterstats(self.j, t, xitstat, ditstat, evl)
             self.itstat.append(itst)
 
             # Display iteration stats if Verbose option enabled
@@ -343,11 +413,17 @@ class DictLearn(object):
                     and pobjs[-1] < self.stopping_pobj):
                 break
 
-        # Record run time
-        self.runtime += self.timer.elapsed()
+            # Call callback function if defined
+            if self.opt['Callback'] is not None:
+                if self.opt['Callback'](self):
+                    break
 
-        # Record iteration count
-        self.j = j+1
+
+        # Increment iteration count
+        self.j += 1
+
+        # Record solve time
+        self.timer.stop(['solve', 'solve_wo_eval'])
 
         # Print final separator string if Verbose option enabled
         if self.opt['Verbose'] and self.opt['StatusHeader']:
@@ -355,6 +431,20 @@ class DictLearn(object):
 
         # Return final dictionary
         return self.getdict(), pobjs
+
+
+
+    def post_xstep(self):
+        """Handle passing result of xstep to dstep"""
+
+        self.dstep.setcoef(self.xstep.getcoef())
+
+
+
+    def post_dstep(self):
+        """Handle passing result of dstep to xstep"""
+
+        self.xstep.setdict(self.dstep.getdict())
 
 
 
@@ -384,10 +474,4 @@ class DictLearn(object):
         named tuples.
         """
 
-        if len(self.itstat) == 0:
-            return None
-        else:
-            return self.isc.IterationStats(
-                *[[self.itstat[k][l] for k in range(len(self.itstat))]
-                  for l in range(len(self.itstat[0]))]
-            )
+        return util.transpose_ntpl_list(self.itstat)

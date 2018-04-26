@@ -13,8 +13,7 @@ class TestSet01(object):
 
     def setup_method(self, method):
         np.random.seed(12345)
-        N = 16
-        self.D = np.random.randn(N,N)
+        self.D = np.random.randn(16, 15)
 
 
     def test_01(self):
@@ -40,8 +39,8 @@ class TestSet01(object):
     def test_03(self):
         lmbda = 3
         dt = np.float16
-        opt = tvl1.TVL1Denoise.Options({'Verbose' : False, 'MaxMainIter' : 20,
-                            'AutoRho' : {'Enabled' : True}, 'DataType' : dt})
+        opt = tvl1.TVL1Denoise.Options({'Verbose': False, 'MaxMainIter': 20,
+                            'AutoRho': {'Enabled': True}, 'DataType': dt})
         b = tvl1.TVL1Denoise(self.D, lmbda, opt=opt)
         b.solve()
         assert(b.X.dtype == dt)
@@ -52,8 +51,8 @@ class TestSet01(object):
     def test_04(self):
         lmbda = 3
         dt = np.float32
-        opt = tvl1.TVL1Denoise.Options({'Verbose' : False, 'MaxMainIter' : 20,
-                            'AutoRho' : {'Enabled' : True}, 'DataType' : dt})
+        opt = tvl1.TVL1Denoise.Options({'Verbose': False, 'MaxMainIter': 20,
+                            'AutoRho': {'Enabled': True}, 'DataType': dt})
         b = tvl1.TVL1Denoise(self.D, lmbda, opt=opt)
         b.solve()
         assert(b.X.dtype == dt)
@@ -64,8 +63,8 @@ class TestSet01(object):
     def test_05(self):
         lmbda = 3
         dt = np.float64
-        opt = tvl1.TVL1Denoise.Options({'Verbose' : False, 'MaxMainIter' : 20,
-                            'AutoRho' : {'Enabled' : True}, 'DataType' : dt})
+        opt = tvl1.TVL1Denoise.Options({'Verbose': False, 'MaxMainIter': 20,
+                            'AutoRho': {'Enabled': True}, 'DataType': dt})
         b = tvl1.TVL1Denoise(self.D, lmbda, opt=opt)
         b.solve()
         assert(b.X.dtype == dt)
@@ -76,8 +75,8 @@ class TestSet01(object):
     def test_06(self):
         lmbda = 3
         dt = np.float32
-        opt = tvl1.TVL1Deconv.Options({'Verbose' : False, 'MaxMainIter' : 20,
-                            'AutoRho' : {'Enabled' : True}, 'DataType' : dt})
+        opt = tvl1.TVL1Deconv.Options({'Verbose': False, 'MaxMainIter': 20,
+                            'AutoRho': {'Enabled': True}, 'DataType': dt})
         b = tvl1.TVL1Deconv(np.ones((1,1)), self.D, lmbda, opt=opt)
         b.solve()
         assert(b.X.dtype == dt)
@@ -88,8 +87,8 @@ class TestSet01(object):
     def test_07(self):
         lmbda = 3
         dt = np.float64
-        opt = tvl1.TVL1Deconv.Options({'Verbose' : False, 'MaxMainIter' : 20,
-                            'AutoRho' : {'Enabled' : True}, 'DataType' : dt})
+        opt = tvl1.TVL1Deconv.Options({'Verbose': False, 'MaxMainIter': 20,
+                            'AutoRho': {'Enabled': True}, 'DataType': dt})
         b = tvl1.TVL1Deconv(np.ones((1,1)), self.D, lmbda, opt=opt)
         b.solve()
         assert(b.X.dtype == dt)
@@ -99,7 +98,7 @@ class TestSet01(object):
 
     def test_08(self):
         lmbda = 3
-        opt = tvl1.TVL1Denoise.Options({'MaxMainIter' : 20})
+        opt = tvl1.TVL1Denoise.Options({'MaxMainIter': 20})
         b = tvl1.TVL1Denoise(self.D, lmbda, opt)
         b.solve()
         opt['Y0'] = b.Y
@@ -113,7 +112,7 @@ class TestSet01(object):
 
     def test_09(self):
         lmbda = 3
-        opt = tvl1.TVL1Deconv.Options({'MaxMainIter' : 20})
+        opt = tvl1.TVL1Deconv.Options({'MaxMainIter': 20})
         b = tvl1.TVL1Deconv(np.ones((1,1)), self.D, lmbda, opt)
         b.solve()
         opt['Y0'] = b.Y
@@ -143,8 +142,8 @@ class TestSet02(object):
 
     def test_01(self):
         lmbda = 3
-        opt = tvl1.TVL1Denoise.Options({'Verbose' : False, 'gEvalY' : False,
-                                        'MaxMainIter' : 250})
+        opt = tvl1.TVL1Denoise.Options({'Verbose': False, 'gEvalY': False,
+                                        'MaxMainIter': 250})
         b = tvl1.TVL1Denoise(self.D, lmbda, opt)
         X = b.solve()
         assert(np.abs(b.itstat[-1].ObjFun - 447.78101756451662) < 1e-6)
@@ -153,8 +152,8 @@ class TestSet02(object):
 
     def test_02(self):
         lmbda = 3
-        opt = tvl1.TVL1Deconv.Options({'Verbose' : False, 'gEvalY' : False,
-                                       'MaxMainIter' : 250, 'rho' : 10.0})
+        opt = tvl1.TVL1Deconv.Options({'Verbose': False, 'gEvalY': False,
+                                       'MaxMainIter': 250, 'rho': 10.0})
         b = tvl1.TVL1Deconv(np.ones((1,1)), self.D, lmbda, opt)
         X = b.solve()
         assert(np.abs(b.itstat[-1].ObjFun - 831.88219947939172) < 1e-5)
@@ -179,8 +178,8 @@ class TestSet03(object):
 
     def test_01(self):
         lmbda = 3
-        opt = tvl1.TVL1Denoise.Options({'Verbose' : False, 'gEvalY' : False,
-                                        'MaxMainIter' : 250})
+        opt = tvl1.TVL1Denoise.Options({'Verbose': False, 'gEvalY': False,
+                                        'MaxMainIter': 250})
         b = tvl1.TVL1Denoise(self.D, lmbda, opt, axes=(0,1))
         X = b.solve()
         assert(np.abs(b.itstat[-1].ObjFun - 6219.3241727233126) < 1e-6)
@@ -189,8 +188,8 @@ class TestSet03(object):
 
     def test_02(self):
         lmbda = 3
-        opt = tvl1.TVL1Deconv.Options({'Verbose' : False, 'gEvalY' : False,
-                                       'MaxMainIter' : 250, 'rho' : 10.0})
+        opt = tvl1.TVL1Deconv.Options({'Verbose': False, 'gEvalY': False,
+                                       'MaxMainIter': 250, 'rho': 10.0})
         b = tvl1.TVL1Deconv(np.ones((1,1)), self.D, lmbda, opt, axes=(0,1))
         X = b.solve()
         assert(np.abs(b.itstat[-1].ObjFun - 12364.029061174046) < 1e-5)
@@ -215,8 +214,8 @@ class TestSet04(object):
 
     def test_01(self):
         lmbda = 3
-        opt = tvl1.TVL1Denoise.Options({'Verbose' : False, 'gEvalY' : False,
-                                        'MaxMainIter' : 250})
+        opt = tvl1.TVL1Denoise.Options({'Verbose': False, 'gEvalY': False,
+                                        'MaxMainIter': 250})
         b = tvl1.TVL1Denoise(self.D, lmbda, opt, axes=(0,1,2))
         X = b.solve()
         assert(np.abs(b.itstat[-1].ObjFun - 6219.6209699337605) < 1e-6)
@@ -225,8 +224,8 @@ class TestSet04(object):
 
     def test_02(self):
         lmbda = 3
-        opt = tvl1.TVL1Deconv.Options({'Verbose' : False, 'gEvalY' : False,
-                                       'MaxMainIter' : 250, 'rho' : 10.0})
+        opt = tvl1.TVL1Deconv.Options({'Verbose': False, 'gEvalY': False,
+                                       'MaxMainIter': 250, 'rho': 10.0})
         b = tvl1.TVL1Deconv(np.ones((1,1)), self.D, lmbda, opt, axes=(0,1,2))
         X = b.solve()
         assert(np.abs(b.itstat[-1].ObjFun - 12363.969118576981) < 1e-5)

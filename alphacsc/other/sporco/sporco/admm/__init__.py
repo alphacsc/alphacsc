@@ -3,8 +3,10 @@ from __future__ import absolute_import
 import sporco.admm.admm
 import sporco.admm.bpdn
 import sporco.admm.cbpdn
+import sporco.admm.cbpdntv
 import sporco.admm.cmod
 import sporco.admm.ccmod
+import sporco.admm.ccmodmd
 import sporco.admm.dictlrn
 import sporco.admm.bpdndl
 import sporco.admm.cbpdndl

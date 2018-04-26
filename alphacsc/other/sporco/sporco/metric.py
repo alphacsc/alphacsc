@@ -1,4 +1,4 @@
-#-*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 # Copyright (C) 2016-2017 by Brendt Wohlberg <brendt@ieee.org>
 # All rights reserved. BSD 3-clause License.
 # This file is part of the SPORCO package. Details of the copyright
@@ -267,10 +267,10 @@ def gmsd(vref, vcmp, rescale=True, returnMap=False):
 
     T = 170.0
     dwn = 2
-    dx = np.array([[1,0,-1],[1,0,-1],[1,0,-1]])/3.0
+    dx = np.array([[1, 0, -1], [1, 0, -1], [1, 0, -1]])/3.0
     dy = dx.T
 
-    ukrn = np.ones((2,2))/4.0
+    ukrn = np.ones((2, 2))/4.0
     aveY1 = signal.convolve2d(scl*vref, ukrn, mode='same', boundary='symm')
     aveY2 = signal.convolve2d(scl*vcmp, ukrn, mode='same', boundary='symm')
     Y1 = aveY1[0::dwn, 0::dwn]

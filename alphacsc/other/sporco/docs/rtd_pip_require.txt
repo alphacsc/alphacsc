@@ -1,5 +1,0 @@
-future
-sphinx
-sphinxcontrib-bibtex
-numpydoc
-scipy

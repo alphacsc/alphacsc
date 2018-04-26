@@ -16,16 +16,26 @@ the following modules:
 
   Functions for plotting graphs or 3D surfaces and visualising images.
 
+* :mod:`.metric`
+
+  Various image quality metrics including standard metrics such as
+  MSE, SNR, and PSNR.
+
 * :mod:`.linalg`
 
   Various linear algebra and related functions, including solvers for
   specific forms of linear system and filters for computing image
   gradients.
 
-* :mod:`.metric`
+* :mod:`.prox`
 
-  Various image quality metrics including standard metrics such as
-  MSE, SNR, and PSNR.
+  Evaluation of various norms and their proximal operators and projection
+  operators.
+
+* :mod:`.cnvrep`
+
+  Support classes and functions for working with convolutional
+  representations.
 
 * :mod:`.cdict`
 
@@ -36,11 +46,4 @@ the following modules:
 
 
 The usage of many of these utility and support functions/classes is
-demonstrated in the usage examples in the ``examples`` directory of
-the source distribution.
-
-
-.. toctree::
-   :hidden:
-
-   notes
+demonstrated in the :doc:`usage examples <examples/index>`.

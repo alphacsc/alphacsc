@@ -11,6 +11,14 @@ from sporco.admm import bpdn
 import sporco.linalg as sl
 
 
+
+def CallbackTest(obj):
+    if obj.k > 5:
+        return True
+    else:
+        return False
+
+
 class TestSet01(object):
 
     def setup_method(self, method):
@@ -50,8 +58,25 @@ class TestSet01(object):
         D = np.random.randn(N, M)
         s = np.random.randn(N, 1)
         try:
-            opt = bpdn.BPDN.Options({'Verbose' : True, 'MaxMainIter' : 20,
-                                     'AutoRho' : {'StdResiduals' : True}})
+            opt = bpdn.BPDN.Options({'Verbose': False, 'MaxMainIter': 20,
+                                     'LinSolveCheck': True,
+                                     'AutoRho': {'StdResiduals': True}})
+            b = bpdn.BPDN(D, s, lmbda=1.0, opt=opt)
+            b.solve()
+        except Exception as e:
+            print(e)
+            assert(0)
+        assert(np.array(b.getitstat().XSlvRelRes).max() < 1e-5)
+
+
+    def test_04(self):
+        N = 8
+        M = 8
+        D = np.random.randn(N, M)
+        s = np.random.randn(N, 1)
+        try:
+            opt = bpdn.BPDN.Options({'FastSolve': True, 'Verbose': False,
+                'MaxMainIter': 10, 'AutoRho': {'Enabled': False}})
             b = bpdn.BPDN(D, s, lmbda=1.0, opt=opt)
             b.solve()
         except Exception as e:
@@ -59,31 +84,15 @@ class TestSet01(object):
             assert(0)
 
 
-    def test_04(self):
-        N = 8
-        M = 16
-        D = np.random.randn(N, M)
-        s = np.random.randn(N, 1)
-        dt = np.float16
-        opt = bpdn.BPDN.Options({'Verbose' : False, 'MaxMainIter' : 20,
-                                 'AutoRho' : {'Enabled' : True},
-                                 'DataType' : dt})
-        b = bpdn.BPDN(D, s, lmbda=1.0, opt=opt)
-        b.solve()
-        assert(b.X.dtype == dt)
-        assert(b.Y.dtype == dt)
-        assert(b.U.dtype == dt)
-
-
     def test_05(self):
         N = 8
         M = 16
         D = np.random.randn(N, M)
         s = np.random.randn(N, 1)
-        dt = np.float32
-        opt = bpdn.BPDN.Options({'Verbose' : False, 'MaxMainIter' : 20,
-                                 'AutoRho' : {'Enabled' : True},
-                                 'DataType' : dt})
+        dt = np.float16
+        opt = bpdn.BPDN.Options({'Verbose': False, 'MaxMainIter': 20,
+                                 'AutoRho': {'Enabled': True},
+                                 'DataType': dt})
         b = bpdn.BPDN(D, s, lmbda=1.0, opt=opt)
         b.solve()
         assert(b.X.dtype == dt)
@@ -96,10 +105,10 @@ class TestSet01(object):
         M = 16
         D = np.random.randn(N, M)
         s = np.random.randn(N, 1)
-        dt = np.float64
-        opt = bpdn.BPDN.Options({'Verbose' : False, 'MaxMainIter' : 20,
-                                 'AutoRho' : {'Enabled' : True},
-                                 'DataType' : dt})
+        dt = np.float32
+        opt = bpdn.BPDN.Options({'Verbose': False, 'MaxMainIter': 20,
+                                 'AutoRho': {'Enabled': True},
+                                 'DataType': dt})
         b = bpdn.BPDN(D, s, lmbda=1.0, opt=opt)
         b.solve()
         assert(b.X.dtype == dt)
@@ -108,6 +117,22 @@ class TestSet01(object):
 
 
     def test_07(self):
+        N = 8
+        M = 16
+        D = np.random.randn(N, M)
+        s = np.random.randn(N, 1)
+        dt = np.float64
+        opt = bpdn.BPDN.Options({'Verbose': False, 'MaxMainIter': 20,
+                                 'AutoRho': {'Enabled': True},
+                                 'DataType': dt})
+        b = bpdn.BPDN(D, s, lmbda=1.0, opt=opt)
+        b.solve()
+        assert(b.X.dtype == dt)
+        assert(b.Y.dtype == dt)
+        assert(b.U.dtype == dt)
+
+
+    def test_08(self):
         N = 64
         M = 2*N
         L = 4
@@ -118,8 +143,8 @@ class TestSet01(object):
         x0[si[0:L]] = np.random.randn(L, 1)
         s0 = D.dot(x0)
         lmbda = 5e-3
-        opt = bpdn.BPDN.Options({'Verbose' : False, 'MaxMainIter' : 500,
-                                 'RelStopTol' : 5e-4})
+        opt = bpdn.BPDN.Options({'Verbose': False, 'MaxMainIter': 500,
+                                 'RelStopTol': 5e-4})
         b = bpdn.BPDN(D, s0, lmbda, opt)
         b.solve()
         x1 = b.Y
@@ -129,7 +154,7 @@ class TestSet01(object):
         assert(linalg.norm(x1-x0) < 1e-3)
 
 
-    def test_08(self):
+    def test_09(self):
         N = 8
         M = 16
         D = np.random.randn(N, M)
@@ -144,15 +169,15 @@ class TestSet01(object):
             assert(0)
 
 
-    def test_09(self):
+    def test_10(self):
         N = 8
         M = 16
         D = np.random.randn(N, M)
         s = np.random.randn(N, 1)
         dt = np.float16
-        opt = bpdn.BPDNJoint.Options({'Verbose' : False, 'MaxMainIter' : 20,
-                                 'AutoRho' : {'Enabled' : True},
-                                 'DataType' : dt})
+        opt = bpdn.BPDNJoint.Options({'Verbose': False, 'MaxMainIter': 20,
+                                 'AutoRho': {'Enabled': True},
+                                 'DataType': dt})
         b = bpdn.BPDNJoint(D, s, lmbda=1.0, mu=0.1, opt=opt)
         b.solve()
         assert(b.X.dtype == dt)
@@ -160,7 +185,7 @@ class TestSet01(object):
         assert(b.U.dtype == dt)
 
 
-    def test_10(self):
+    def test_11(self):
         N = 8
         M = 16
         D = np.random.randn(N, M)
@@ -175,16 +200,65 @@ class TestSet01(object):
             assert(0)
 
 
-    def test_11(self):
+    def test_12(self):
+        N = 8
+        M = 16
+        D = np.random.randn(N, M)
+        s = np.random.randn(N, 1)
+        lmbda = 1e-1
+        mu = 1e-2
+        try:
+            opt = bpdn.ElasticNet.Options({'Verbose': False,
+                                'MaxMainIter': 20, 'LinSolveCheck': True,
+                                'AutoRho': {'StdResiduals': True}})
+            b = bpdn.ElasticNet(D, s, lmbda, mu, opt=opt)
+            b.solve()
+        except Exception as e:
+            print(e)
+            assert(0)
+        assert(np.array(b.getitstat().XSlvRelRes).max() < 1e-5)
+
+
+    def test_13(self):
         N = 8
         M = 16
         D = np.random.randn(N, M)
         s = np.random.randn(N, 1)
         dt = np.float16
-        opt = bpdn.ElasticNet.Options({'Verbose' : False, 'MaxMainIter' : 20,
-                                 'AutoRho' : {'Enabled' : True},
-                                 'DataType' : dt})
+        opt = bpdn.ElasticNet.Options({'Verbose': False, 'MaxMainIter': 20,
+                                 'AutoRho': {'Enabled': True},
+                                 'DataType': dt})
         b = bpdn.ElasticNet(D, s, lmbda=1.0, mu=0.1, opt=opt)
+        b.solve()
+        assert(b.X.dtype == dt)
+        assert(b.Y.dtype == dt)
+        assert(b.U.dtype == dt)
+
+
+    def test_14(self):
+        N = 8
+        M = 16
+        D = np.random.randn(N, M)
+        s = np.random.randn(N, 1)
+        gamma = 1e0
+        try:
+            b = bpdn.BPDNProjL1(D, s, gamma)
+            b.solve()
+        except Exception as e:
+            print(e)
+            assert(0)
+
+
+    def test_15(self):
+        N = 8
+        M = 16
+        D = np.random.randn(N, M)
+        s = np.random.randn(N, 1)
+        dt = np.float16
+        opt = bpdn.BPDNProjL1.Options({'Verbose': False, 'MaxMainIter': 20,
+                                 'AutoRho': {'Enabled': True},
+                                 'DataType': dt})
+        b = bpdn.BPDNProjL1(D, s, gamma=1.0, opt=opt)
         b.solve()
         assert(b.X.dtype == dt)
         assert(b.Y.dtype == dt)
@@ -196,11 +270,74 @@ class TestSet01(object):
         M = 16
         D = np.random.randn(N, M)
         s = np.random.randn(N, 1)
+        epsilon = 1e-1
+        try:
+            b = bpdn.MinL1InL2Ball(D, s, epsilon)
+            b.solve()
+        except Exception as e:
+            print(e)
+            assert(0)
+
+
+    def test_17(self):
+        N = 8
+        M = 16
+        D = np.random.randn(N, M)
+        s = np.random.randn(N, 1)
+        dt = np.float16
+        opt = bpdn.MinL1InL2Ball.Options({'Verbose': False, 'MaxMainIter': 20,
+                                 'AutoRho': {'Enabled': True},
+                                 'DataType': dt})
+        b = bpdn.MinL1InL2Ball(D, s, epsilon=1.0, opt=opt)
+        b.solve()
+        assert(b.X.dtype == dt)
+        assert(b.Y.dtype == dt)
+        assert(b.U.dtype == dt)
+
+
+    def test_18(self):
+        N = 8
+        M = 16
+        D = np.random.randn(N, M)
+        s = np.random.randn(N, 1)
         lmbda = 1e-1
-        opt = bpdn.BPDN.Options({'Verbose' : False, 'MaxMainIter' : 10})
+        opt = bpdn.BPDN.Options({'Verbose': False, 'MaxMainIter': 10})
         b = bpdn.BPDN(D, s, lmbda, opt)
         bp = pickle.dumps(b)
         c = pickle.loads(bp)
         Xb = b.solve()
         Xc = c.solve()
         assert(linalg.norm(Xb-Xc)==0.0)
+
+
+    def test_19(self):
+        opt = bpdn.GenericBPDN.Options({'AuxVarObj': False})
+        assert(opt['fEvalX'] is True and opt['gEvalY'] is False)
+        opt['AuxVarObj'] = True
+        assert(opt['fEvalX'] is False and opt['gEvalY'] is True)
+
+
+    def test_20(self):
+        opt = bpdn.GenericBPDN.Options({'AuxVarObj': True})
+        assert(opt['fEvalX'] is False and opt['gEvalY'] is True)
+        opt['AuxVarObj'] = False
+        assert(opt['fEvalX'] is True and opt['gEvalY'] is False)
+
+
+    @pytest.mark.filterwarnings('ignore:admm.ADMM.runtime')
+    def test_21(self):
+        N = 8
+        M = 16
+        D = np.random.randn(N, M)
+        s = np.random.randn(N, 1)
+        lmbda = 1e-1
+        opt = bpdn.BPDN.Options({'Verbose': False, 'MaxMainIter': 10,
+                        'Callback': CallbackTest, 'RelaxParam': 1.0})
+        b = bpdn.BPDN(D, s, lmbda, opt=opt)
+        assert(b.getitstat() is None)
+        b.solve()
+        assert(b.runtime > 0.0)
+        assert(b.k == 7)
+        assert(b.var_x() is not None)
+        assert(b.var_y() is not None)
+        assert(b.var_u() is not None)
