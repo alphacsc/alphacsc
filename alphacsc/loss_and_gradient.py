@@ -258,8 +258,12 @@ def gradient_d(D=None, X=None, Z=None, constants=None, reg=None,
         The gradient
     """
     if flatten:
-        n_atoms = get_Z_shape(Z)[0]
-        n_channels = X.shape[1]
+        if Z is None:
+            n_atoms = constants['ZtZ'].shape[0]
+            n_channels = constants['n_chan']
+        else:
+            n_atoms = get_Z_shape(Z)[0]
+            n_channels = X.shape[1]
         D = D.reshape((n_atoms, n_channels, -1))
 
     if is_list_of_lil(Z) and loss != 'l2':

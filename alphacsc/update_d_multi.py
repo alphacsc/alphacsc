@@ -307,9 +307,9 @@ def update_d(X, Z, D_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
         def prox(D):
             return prox_d(D)
 
-        D_hat = fista(objective, grad, prox, None, D_hat0, max_iter,
-                      verbose=verbose, momentum=momentum, eps=eps,
-                      adaptive_step_size=True, debug=debug, name="Update D")
+        D_hat, _ = fista(objective, grad, prox, None, D_hat0, max_iter,
+                         verbose=verbose, momentum=momentum, eps=eps,
+                         adaptive_step_size=True, debug=debug, name="Update D")
 
     elif solver_d == 'lbfgs':
         # use L-BFGS on joint [u, v] with a box constraint (L_inf norm <= 1)
