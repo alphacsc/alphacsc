@@ -34,7 +34,7 @@ n_states = 1
 n_times_atom = 129  # L
 assert n_times_atom % 2 == 1  # has to be odd for [Heide et al 2016]
 n_atoms = 2  # K
-reg = 5.0
+reg = 1.
 
 save_name = 'methods_'
 save_name = os.path.join('figures', save_name)
@@ -133,10 +133,10 @@ def run_multichannel_alt_gcd(X, ds_init, reg, n_iter, random_state, label):
     n_atoms, n_times_atom = ds_init.shape
     D_init = np.c_[np.ones((n_atoms, 1)), ds_init]
 
-    solver_z_kwargs = dict(max_iter=500, tol=2e-1)
+    solver_z_kwargs = dict(max_iter=500, tol=1e-1)
     pobj, times, d_hat, z_hat = learn_d_z_multi(
         X[:, None, :], n_atoms, n_times_atom, solver_d='alternate_adaptive',
-        solver_z='gcd', uv_constraint='separate',
+        solver_z='gcd', uv_constraint='separate', eps=1e-14,
         solver_z_kwargs=solver_z_kwargs, reg=reg, solver_d_kwargs=dict(
             max_iter=40), n_iter=n_iter, random_state=random_state,
         D_init=D_init, n_jobs=1, verbose=verbose)
@@ -153,7 +153,7 @@ def run_multichannel_alt_lbfgs(X, ds_init, reg, n_iter, random_state, label):
     pobj, times, d_hat, z_hat = learn_d_z_multi(
         X[:, None, :], n_atoms, n_times_atom, solver_d='alternate_adaptive',
         uv_constraint='separate', solver_z_kwargs=dict(
-            factr=1e15), reg=reg, solver_d_kwargs=dict(
+            factr=1e15), eps=1e-14, reg=reg, solver_d_kwargs=dict(
                 max_iter=40), n_iter=n_iter, random_state=random_state,
         D_init=D_init, n_jobs=1, verbose=verbose)
 
@@ -169,10 +169,10 @@ def run_multichannel_alt_gcd_sparse(X, ds_init, reg, n_iter, random_state,
     n_atoms, n_times_atom = ds_init.shape
     D_init = np.c_[np.ones((n_atoms, 1)), ds_init]
 
-    solver_z_kwargs = dict(max_iter=500, tol=2e-1)
+    solver_z_kwargs = dict(max_iter=500, tol=1e-1)
     pobj, times, d_hat, z_hat = learn_d_z_multi(
         X[:, None, :], n_atoms, n_times_atom, solver_d='alternate_adaptive',
-        uv_constraint='separate', solver_z='gcd',
+        uv_constraint='separate', solver_z='gcd', eps=1e-14,
         solver_z_kwargs=solver_z_kwargs, reg=reg, solver_d_kwargs=dict(
             max_iter=40), use_sparse_z=True, n_iter=n_iter,
         random_state=random_state, D_init=D_init, n_jobs=1,
@@ -184,17 +184,17 @@ def run_multichannel_alt_gcd_sparse(X, ds_init, reg, n_iter, random_state,
     return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
 
 
-n_iter = 10
+n_iter = 200
 methods = [
-    [run_multichannel_alt_lbfgs, 'find_best_pobj', n_iter * 10],
-    # [run_admm, 'Heide et al (2015)', n_iter // 2],
-    [run_cbpdn, 'Wohlberg (2017)', n_iter],
-    [run_ista, 'Jas et al (2017) ista', n_iter * 5],
-    [run_fista, 'Jas et al (2017) fista', n_iter * 5],
-    [run_lbfgs, 'Jas et al (2017) lbfgs', n_iter * 5],
-    [run_multichannel_alt_lbfgs, 'multiCSC_lbfgs', n_iter * 5],
-    [run_multichannel_alt_gcd, 'multiCSC_gcd', n_iter],
-    [run_multichannel_alt_gcd_sparse, 'multiCSC_gcd_sparse', n_iter],
+    # [run_multichannel_alt_lbfgs, 'find_best_pobj', n_iter * 5],
+    # [run_admm, 'Heide & al (2015)', n_iter // 2],  # FIXME
+    [run_cbpdn, 'Wohlberg (2017)', n_iter * 4],
+    # [run_ista, 'Jas & al (2017) ISTA', n_iter * 2]],
+    [run_fista, 'Jas & al (2017) FISTA', n_iter * 2],
+    [run_lbfgs, 'Jas & al (2017) LBFGS', n_iter * 2],
+    [run_multichannel_alt_lbfgs, 'multiCSC LBFGS', n_iter],
+    [run_multichannel_alt_gcd, 'multiCSC LGCD', n_iter],
+    [run_multichannel_alt_gcd_sparse, 'multiCSC LGCD sparse', n_iter],
 ]
 
 
@@ -205,9 +205,8 @@ def colorify(message, color=BLUE):
     return ("\033[1;%dm" % color) + message + "\033[0m"
 
 
-def one_run(X, X_shape, random_state, method, n_atoms, n_times_atom,
-            reg=reg):
-    n_trials, n_times = X_shape
+def one_run(X, X_shape, random_state, method, n_atoms, n_times_atom, reg=reg):
+    n_trials, n_times = X.shape
     func, label, n_iter = method
     current_time = time.time() - START
     msg = ('%s - %s: started at T=%.0f sec'
@@ -215,8 +214,19 @@ def one_run(X, X_shape, random_state, method, n_atoms, n_times_atom,
     print(colorify(msg, BLUE))
 
     # use the same init for all methods
+    init = 'chunk'
     rng = check_random_state(random_state)
-    ds_init = rng.randn(n_atoms, n_times_atom)
+    if init == 'random':
+        ds_init = rng.randn(n_atoms, n_times_atom)
+    elif init == 'chunk':
+        ds_init = np.zeros((n_atoms, n_times_atom))
+        for i_atom in range(n_atoms):
+            i_trial = rng.randint(n_trials)
+            t0 = rng.randint(n_times - n_times_atom)
+            ds_init[i_atom] = X[i_trial, t0:t0 + n_times_atom]
+    else:
+        raise ValueError()
+
     d_norm = np.linalg.norm(ds_init, axis=1)
     ds_init /= d_norm[:, None]
 
@@ -249,8 +259,9 @@ if __name__ == '__main__':
     all_results = []
     print(n_atoms, n_times_atom)
 
-    X, info = load_data(epoch=False, n_jobs=n_jobs)
+    X, info = load_data(epoch=False, n_jobs=n_jobs, n_trials=2)
     X = X[:, 0, :]  # take only one channel
+    assert X.shape[0] > 1  # we need at least two trials for sporco
     X_shape = X.shape
 
     iterator = itertools.product(methods, range(n_states))
@@ -267,14 +278,6 @@ if __name__ == '__main__':
             delayed_one_run(X, X_shape, random_state, method, n_atoms,
                             n_times_atom)
             for method, random_state in iterator)
-
-    # # add the multicore runs outside the parallel loop
-    # if methods[-1][0] is not None:
-    #     for random_state in range(n_states):
-    #         results.append(
-    #             one_run(
-    #                 X, X_shape, random_state, methods[-1], n_atoms,
-    #                 n_times_atom))
 
     all_results.extend(results)
 

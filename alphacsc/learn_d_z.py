@@ -124,7 +124,8 @@ def learn_d_z(X, n_atoms, n_times_atom, func_d=update_d_block, reg=0.1,
     with Parallel(n_jobs=n_jobs) as parallel:
         for ii in range(n_iter):  # outer loop of coordinate descent
             if verbose == 1:
-                print('.', end='')
+                msg = '.' if (ii % 50 != 0) else 'V_%d/%d ' % (ii, n_iter)
+                print(msg, end='')
                 sys.stdout.flush()
             if verbose > 1:
                 print('Coordinate descent loop %d / %d [n_jobs=%d]' %

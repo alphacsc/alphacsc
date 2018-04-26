@@ -113,7 +113,7 @@ def plot_convergence(all_results_df, threshold, normalize_method, save_name):
             if normalize_method in [None, 'short']:
                 plt.ylabel('objective')
                 if normalize_method == 'short':
-                    xmax = np.sort(tmax)[0] / 10
+                    xmax = 10 ** np.mean(np.log10(tmax)) / 10
                     plt.xlim(-xmax / 10, xmax)
             elif normalize_method == 'last':
                 plt.ylabel('(objective_i - best_i) / best_i')
@@ -142,7 +142,7 @@ load_name = os.path.join('figures', load_name)
 all_results_df = pd.read_pickle(load_name)
 
 # force threshold
-threshold = 0.001
+threshold = 1e-10
 normalize_method = None
 save_name = load_name[:-4]
 

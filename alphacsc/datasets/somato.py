@@ -11,7 +11,7 @@ mem = Memory(cachedir='.', verbose=0)
 
 
 @mem.cache(ignore=['n_jobs'])
-def load_data(sfreq=None, epoch=True, n_jobs=1, filt=[2., None]):
+def load_data(sfreq=None, epoch=True, n_jobs=1, filt=[2., None], n_trials=10):
     """Load and prepare the somato dataset for multiCSC
 
 
@@ -54,9 +54,9 @@ def load_data(sfreq=None, epoch=True, n_jobs=1, filt=[2., None]):
             raw.resample(sfreq, npad='auto', n_jobs=n_jobs)
         X = raw.get_data()
         T = X.shape[-1]
-        n_times = T // 10
+        n_times = T // n_trials
         X = np.array([X[:, i * n_times:(i + 1) * n_times]
-                      for i in range(10)])
+                      for i in range(n_trials)])
         info = raw.info
 
     events[:, 0] -= raw.first_samp

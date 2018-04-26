@@ -210,7 +210,8 @@ def _batch_learn(X, D_hat, Z_hat, compute_z_func, compute_d_func,
 
     for ii in range(n_iter):  # outer loop of coordinate descent
         if verbose == 1:
-            print('.', end='')
+            msg = '.' if (ii % 50 != 0) else 'M_%d/%d ' % (ii, n_iter)
+            print(msg, end='')
             sys.stdout.flush()
         if verbose > 1:
             print('[{}] CD iterations {} / {}'.format(name, ii, n_iter))
