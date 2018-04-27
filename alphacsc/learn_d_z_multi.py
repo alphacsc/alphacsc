@@ -259,7 +259,7 @@ def _batch_learn(X, D_hat, Z_hat, compute_z_func, compute_d_func,
         times.append(time.time() - start)
         pobj.append(obj_func(X, Z_hat, D_hat, reg=reg_))
 
-        null_atom_indices = np.where(Z_nnz == 0)
+        null_atom_indices = np.where(Z_nnz == 0)[0]
         if len(null_atom_indices) > 0:
             k0 = null_atom_indices[0]
             D_hat[k0] = get_max_error_dict(X, Z_hat, D_hat)[0]
