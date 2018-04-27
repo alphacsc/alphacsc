@@ -8,7 +8,8 @@ from sklearn.externals.joblib import Memory
 from scipy.stats.mstats import gmean
 
 from alphacsc.utils.compat import numba, jit
-from alphacsc.cython import _fast_compute_ztz
+from alphacsc.cython import _fast_compute_ztz_lil
+from alphacsc.cython import _fast_compute_ztz_csr
 
 memory = Memory(cachedir='', verbose=0)
 
@@ -85,15 +86,16 @@ def tensordot(Z, n_times_atom):
 
 
 all_func = [
-    naive_sum,
+    # naive_sum,
     sum_numba,
     tensordot,
-    _fast_compute_ztz,
+    _fast_compute_ztz_lil,
+    _fast_compute_ztz_csr,
 ]
 
 
 def test_equality():
-    n_atoms, n_trials, n_times_atom, n_times_valid = 5, 10, 20, 150
+    n_atoms, n_trials, n_times_atom, n_times_valid = 5, 10, 20, 50
     Z = np.random.randn(n_atoms, n_trials, n_times_valid)
 
     reference = all_func[0](Z, n_times_atom)
@@ -122,14 +124,14 @@ def run_one(n_atoms, sparsity, n_times_atom, n_times_valid, func):
     label = func.__name__
     if label[0] == '_':
         label = label[1:]
-    return (n_atoms, sparsity, n_times_valid, n_times_atom, label, duration)
+    return (n_atoms, sparsity, n_times_atom, n_times_valid, label, duration)
 
 
 def benchmark():
-    n_atoms_range = [1, 4, 16]
-    sparsity_range = np.logspace(-4, -1, 5)
-    n_times_atom_range = [10, 40, 160]
-    n_times_valid_range = [200, 800, 3200]
+    n_atoms_range = [1, 3, 9]
+    sparsity_range = [0.01, 0.03, 0.1, 0.3]
+    n_times_atom_range = [8, 32, 128]
+    n_times_valid_range = [1000, 30000, 10000]
 
     n_runs = (len(n_atoms_range) * len(sparsity_range) * len(
         n_times_atom_range) * len(n_times_valid_range) * len(all_func))
