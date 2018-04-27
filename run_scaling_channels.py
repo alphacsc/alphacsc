@@ -21,19 +21,18 @@ START = time.time()
 verbose = 1
 
 # n_jobs for the parallel running of single core methods
-n_jobs = 20
+n_jobs = 50
 # number of random states
-n_states = 1
+n_states = 10
 
 n_trials = 10  # N
 n_times_atom = 128  # L
 n_times = 20000  # T
 n_atoms = 2  # K
 reg = 1.0
-random_state = 42
 
 # A method stops if its objective function reaches best_pobj * (1 + threshold)
-threshold = .0001
+threshold = -1
 
 save_name = 'methods_scaling.pkl'
 if not os.path.exists("figures"):
@@ -41,7 +40,7 @@ if not os.path.exists("figures"):
 save_name = os.path.join('figures', save_name)
 
 
-def generate_D_init(n_channels):
+def generate_D_init(n_channels, random_state):
     rng = check_random_state(random_state)
     return rng.randn(n_atoms, n_channels + n_times_atom)
 
@@ -75,6 +74,7 @@ def run_multichannel(X, D_init, reg, n_iter, random_state,
         solver_d='alternate_adaptive', solver_d_kwargs=dict(max_iter=50),
         solver_z='gcd', solver_z_kwargs=solver_z_kwargs, use_sparse_z=True,
         stopping_pobj=stopping_pobj,
+        name="rank1-{}-{}".format(n_channels, random_state),
         random_state=random_state, n_jobs=1, verbose=verbose)
 
 
@@ -92,25 +92,26 @@ def run_multivariate(X, D_init, reg, n_iter, random_state,
         solver_d='lbfgs', solver_d_kwargs=dict(max_iter=50),
         solver_z='gcd', solver_z_kwargs=solver_z_kwargs, use_sparse_z=True,
         stopping_pobj=stopping_pobj,
+        name="dense-{}-{}".format(n_channels, random_state),
         random_state=random_state, n_jobs=1, verbose=verbose)
 
 
 n_iter = 50
 methods = [
     [run_multichannel, 'rank1', n_iter],
-    # [run_multichannel_alt_gcd, 'multiCSC_gcd', n_iter // 3],
-    [run_multivariate, 'dense', n_iter],
+    # [run_multivariate, 'dense', n_iter],
 ]
 
 
-def one_run(X, n_channels, method, n_atoms, n_times_atom,
+def one_run(X, n_channels, method, n_atoms, n_times_atom, random_state,
             stopping_pobj, best_pobj, reg=reg):
     func, label, n_iter = method
     current_time = time.time() - START
-    print('%s - %s: started at %.0f sec' % (n_channels, label, current_time))
+    print('{}-{}-{}: started at {:.0f} sec'.format(
+          label, n_channels, random_state, current_time))
 
     # use the same init for all methods
-    D_init = generate_D_init(n_channels)
+    D_init = generate_D_init(n_channels, random_state)
     X = X[:, :n_channels]
 
     # run the selected algorithm with one iter to remove compilation overhead
@@ -127,10 +128,12 @@ def one_run(X, n_channels, method, n_atoms, n_times_atom,
     z_hat = [sp.csr_matrix(z) for z in z_hat]
 
     current_time = time.time() - START
-    print('%s - %s: done at %.0f sec' % (n_channels, label, current_time))
-    return (n_channels, random_state, label, np.asarray(pobj), np.asarray(times),
-            np.asarray(d_hat), np.asarray(z_hat), n_atoms, n_times_atom,
-            n_trials, n_times, stopping_pobj, best_pobj)
+    print('{}-{}-{}: done at {:.0f} sec'.format(
+          label, n_channels, random_state, current_time))
+    assert len(times) > 15
+    return (n_channels, random_state, label, np.asarray(pobj),
+            np.asarray(times), np.asarray(d_hat), np.asarray(z_hat), n_atoms,
+            n_times_atom, n_trials, n_times, stopping_pobj, best_pobj)
 
 
 if __name__ == '__main__':
@@ -156,13 +159,14 @@ if __name__ == '__main__':
             (n_channels, chan_best_pobj * (1 + threshold), chan_best_pobj)
             for n_channels, chan_best_pobj in best_pobjs]
 
-        iterator = itertools.product(methods, stopping_pobj)
+        iterator = itertools.product(methods, stopping_pobj, range(n_states))
         # run the methods for different random_state
         delayed_one_run = delayed(cached_one_run)
         results = parallel(
-            delayed_one_run(X, n_channels, method, n_atoms,
-                            n_times_atom, stopping_pobj, best_pobj)
-            for method, (n_channels, stopping_pobj, best_pobj) in iterator)
+            delayed_one_run(X, n_chan, method, n_atoms,
+                            n_times_atom, rst, stopping_pobj,
+                            best_pobj)
+            for method, (n_chan, stopping_pobj, best_pobj), rst in iterator)
 
         all_results.extend(results)
 
@@ -172,5 +176,7 @@ if __name__ == '__main__':
         'd_hat z_hat n_atoms n_times_atom n_trials n_times '
         'stopping_pobj best_pobj'.split(' '))
     all_results_df.to_pickle(save_name)
+    import IPython
+    IPython.embed()
 
     print('-- End of the script --')
