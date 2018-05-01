@@ -71,5 +71,5 @@ Cite
 ====
 
 [1] Jas, M., Dupré La Tour, T., Şimşekli, U., & Gramfort, A. (2017). `Learning the Morphology of
-Brain Signals Using Alpha-Stable Convolutional Sparse Coding <https://arxiv.org/pdf/1705.08006>`_.
-arXiv preprint arXiv:1705.08006.
+Brain Signals Using Alpha-Stable Convolutional Sparse Coding <https://papers.nips.cc/paper/6710-learning-the-morphology-of-brain-signals-using-alpha-stable-convolutional-sparse-coding.pdf>`_.
+Advances in Neural Information Processing Systems (NIPS), pages 1099--1108.
