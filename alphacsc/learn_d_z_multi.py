@@ -290,10 +290,10 @@ def get_iteration_func(eps, stopping_pobj, callback, lmbd_max, name, verbose):
                 raise RuntimeError(
                     "The z update have increased the objective value by %s."
                     % dz)
-            if du < 0 and dz > 1e-12:
+            if du < -1e-10 and dz > 1e-12:
                 raise RuntimeError(
                     "The d update have increased the objective value by %s."
-                    % du)
+                    "(dz=%s)" % (du, dz))
             if dz < eps and du < eps:
                 print("[{}] Converged after {} iteration, dz, du "
                       "={:.3e}, {:.3e}".format(name, iteration, dz, du))

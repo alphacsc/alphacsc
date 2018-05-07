@@ -44,13 +44,17 @@ def plot_convergence(all_results_df, threshold, aggregate_method, save_name):
                 for n_channels in span_channels:
                     # aggregate all runs (different random states)
                     this_res_2 = this_res[this_res['n_channels'] == n_channels]
-                    times = this_res_2['times'].values[0]
-
-                    timing_z_update.append(aggregate_timing(times[::2], 
+                    timing_z, timing_d, timing_full = [], [], []
+                    for times in this_res_2['times'].values:
+                        timing_z.extend(times[1::2])
+                        timing_d.extend(times[2::2])
+                        timing_full.append(np.sum(times))
+                    timing_z_update.append(aggregate_timing(timing_z,
                                                             aggregate_method))
-                    timing_d_update.append(aggregate_timing(times[1::2],
+                    print(timing_d)
+                    timing_d_update.append(aggregate_timing(timing_d,
                                                             aggregate_method))
-                    timing_full_update.append(np.sum(times).sum())
+                    timing_full_update.append(np.mean(timing_full))
 
                 ax.set_yscale('log')
                 plt.plot(span_channels, timing_z_update, label="z_update")

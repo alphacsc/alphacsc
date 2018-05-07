@@ -57,7 +57,7 @@ def _compute_DtD_D(D):
     return DtD
 
 
-@jit((numba.float64[:, :, :], numba.int64))
+@jit((numba.float64[:, :, :], numba.int64), nopython=True)
 def compute_ZtZ(Z, n_times_atom):
     """
     ZtZ.shape = n_atoms, n_atoms, 2 * n_times_atom - 1

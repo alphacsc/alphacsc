@@ -143,7 +143,6 @@ try:
                                               D[k1, p, ::-1])
         return G
 
-
     @jit(nogil=True)
     def sum_and_numba(ZtZ, D):
         """
