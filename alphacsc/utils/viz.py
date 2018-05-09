@@ -199,7 +199,7 @@ def plot_callback(X, info, n_atoms, layout=None):
         patterns = mne.EvokedArray(uv_hat[:n_atoms_plot, :n_chan].T,
                                    this_info, tmin=0)
         patterns.plot_topomap(times=np.arange(n_atoms_plot),
-                              layout=layout, axes=axes_topo, scaling_time=1,
+                              layout=layout, axes=axes_topo, time_unit='s',
                               time_format='Atom%01d', show=False)
 
         if axes[0].lines == []:

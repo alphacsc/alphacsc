@@ -28,7 +28,7 @@ raw = mne.io.read_raw_fif(op.join(data_path,
                           preload=True)
 
 raw.pick_types(meg='mag', eog=True)
-raw.filter(1., 35.)
+raw.filter(1., 40.)
 raw_data = raw[:][0]
 raw.crop(tmax=30.)  # take only 30 s of data
 
@@ -40,7 +40,7 @@ method = 'fastica'
 decim = 3
 random_state = 23
 
-eog_inds = [5]
+eog_inds = [4]
 
 reject = dict(mag=5e-12)
 ica = ICA(n_components=n_atoms, method=method, random_state=random_state)
@@ -102,11 +102,30 @@ info = mne.create_info(ch_names, sfreq=raw.info['sfreq'])
 raw_atoms = mne.io.RawArray(X_hat_k, info, first_samp=raw.first_samp)
 raw_atoms.plot(scalings=dict(misc='auto'))
 
-eog_idx = 18
-plt.figure('EOG spatial map')
-mne.viz.plot_topomap(uv_hat[eog_idx, :n_channels], raw.info)
-plt.figure('EOG temporal atom')
-plt.plot(uv_hat[eog_idx, n_channels:])
+# Plot interesting atoms
+atoms_idx = [14, 18, 23]
+times = np.arange(n_times_atom) / raw.info['sfreq']
+fig, axes = plt.subplots(1, len(atoms_idx), figsize=(12, 4))
+for idx, atom_idx in enumerate(atoms_idx):
+    mne.viz.plot_topomap(uv_hat[atom_idx, :n_channels], raw.info,
+                         axes=axes[idx])
+    axes[idx].set_title('atom%d' % atom_idx)
+fig.canvas.set_window_title('Spatial atom')
+
+fig, axes = plt.subplots(len(atoms_idx), 1, sharex=True, sharey=True)
+fig.canvas.set_window_title('Temporal atom')
+for idx, atom_idx in enumerate(atoms_idx):
+    axes[idx].plot(times, uv_hat[atoms_idx[idx], n_channels:].T)
+    axes[idx].set_title('Atom%d' % atom_idx)
+
+# XXX: what is this 20 Hz atom? It doesn't have topomap of motor ...
+atoms_idx = [14]
+plt.figure('Power spectral density')
+sfreq = raw.info['sfreq']
+psd = np.abs(np.fft.rfft(uv_hat[atoms_idx, :n_channels])) ** 2
+freqs = np.linspace(0, sfreq / 2.0, psd.shape[1])
+plt.plot(freqs, psd.T)
+plt.gca().set(xscale='log')
 
 ica.plot_properties(raw, picks=eog_inds, psd_args={'fmax': 35.},
                     image_args={'sigma': 1.})
