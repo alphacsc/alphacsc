@@ -11,16 +11,17 @@ matplotlib.rc('font', **font)
 
 def aggregate_timing(times, aggregate_method='mean'):
     if aggregate_method == 'mean':
-        return np.mean(times)
+        return np.mean(times), np.std(times)
     elif aggregate_method == 'median':
-        return np.median(times)
+        return np.median(times), np.std(times)
     elif aggregate_method == 'max':
-        return np.max(times)
+        return np.max(times), np.std(times)
     else:
         raise ValueError('unknown aggregate_time: {}'.format(aggregate_method))
 
 
-def plot_convergence(all_results_df, threshold, aggregate_method, save_name):
+def plot_scaling_channels(all_results_df, threshold, aggregate_method,
+                          save_name):
     save_name += '_{}'.format(aggregate_method)
     span_channels = all_results_df['n_channels'].unique()
     for n_atoms in all_results_df['n_atoms'].unique():
@@ -38,9 +39,7 @@ def plot_convergence(all_results_df, threshold, aggregate_method, save_name):
                 fig = plt.figure(figsize=(12, 9))
                 ax = fig.gca()
                 plt.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
-                timing_z_update = []
-                timing_d_update = []
-                timing_full_update = []
+                z_update, d_update, full_update = [], [], []
                 for n_channels in span_channels:
                     # aggregate all runs (different random states)
                     this_res_2 = this_res[this_res['n_channels'] == n_channels]
@@ -48,18 +47,36 @@ def plot_convergence(all_results_df, threshold, aggregate_method, save_name):
                     for times in this_res_2['times'].values:
                         timing_z.extend(times[1::2])
                         timing_d.extend(times[2::2])
-                        timing_full.append(np.sum(times))
-                    timing_z_update.append(aggregate_timing(timing_z,
-                                                            aggregate_method))
-                    print(timing_d)
-                    timing_d_update.append(aggregate_timing(timing_d,
-                                                            aggregate_method))
-                    timing_full_update.append(np.mean(timing_full))
+                        timing_full.extend(times[1::2] + times[2::2])
 
-                ax.set_yscale('log')
-                plt.plot(span_channels, timing_z_update, label="z_update")
-                plt.plot(span_channels, timing_d_update, label="d_update")
-                plt.plot(span_channels, timing_full_update, label="full_update")
+                    z_update.append(aggregate_timing(timing_z,
+                                                     aggregate_method))
+                    d_update.append(aggregate_timing(timing_d,
+                                                     aggregate_method))
+                    full_update.append(aggregate_timing(timing_full,
+                                                        aggregate_method))
+
+                z_update = np.array(z_update) / z_update[0]
+                d_update = np.array(d_update) / d_update[0]
+                full_update = np.array(full_update) / full_update[0]
+
+                # ax.set_yscale('log')
+                plots = [
+                    (z_update, "C0", "z_update"),
+                    (d_update, "C1", "d_update"),
+                    (full_update, "C2", "full_update")
+                ]
+                for timing, color, name in plots:
+                    plt.plot(span_channels, timing[:, 0], c=color, label=name)
+                    # m, std = timing[:, 0], timing[:, 1]
+                    # plt.fill_between(span_channels, m - std, m + std,
+                    #                  color=color, alpha=.1)
+
+                # Plot first diagonal
+                t = np.arange(101)
+                plt.plot(t, t, "k--")
+                plt.text(37, 55, "linear scaling", rotation=57, fontsize=18,
+                         bbox=dict(facecolor="white", edgecolor="white"))
 
                 plt.xlabel('n_channels')
                 plt.ylabel('Time (s)')
@@ -70,6 +87,9 @@ def plot_convergence(all_results_df, threshold, aggregate_method, save_name):
                                       top='off')
                 plt.gca().tick_params(axis='y', which='both', left='off',
                                       right='off')
+                plt.gca().ticklabel_format(style="plain", axis='y')
+                plt.ylim((0, 100))
+                plt.xlim((0, span_channels.max()))
                 plt.grid(True)
                 plt.tight_layout()
 
@@ -97,7 +117,8 @@ normalize_method = None
 save_name = load_name[:-4]
 
 for aggregate_method in ['mean', 'median', 'max']:
-    plot_convergence(all_results_df, threshold, aggregate_method, save_name)
+    plot_scaling_channels(all_results_df, threshold, aggregate_method,
+                          save_name)
 
 # plt.show()
 plt.close('all')
