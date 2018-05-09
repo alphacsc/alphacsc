@@ -7,10 +7,11 @@ from scipy.signal import tukey
 import mne
 from mne.utils import _reject_data_segments
 from mne.preprocessing import ICA, create_eog_epochs
+from mne import EvokedArray
 
 from alphacsc.learn_d_z_multi import learn_d_z_multi
 from alphacsc.utils import construct_X_multi, _choose_convolve
-from alphacsc.utils import plot_callback
+from alphacsc.utils import plot_callback, get_D
 
 parser = argparse.ArgumentParser('Programme to launch experiment on multi csc')
 parser.add_argument('--profile', action='store_true',
@@ -119,13 +120,17 @@ for idx, atom_idx in enumerate(atoms_idx):
     axes[idx].set_title('Atom%d' % atom_idx)
 
 # XXX: what is this 20 Hz atom? It doesn't have topomap of motor ...
-atoms_idx = [14]
+atom_idx = 14
 plt.figure('Power spectral density')
 sfreq = raw.info['sfreq']
-psd = np.abs(np.fft.rfft(uv_hat[atoms_idx, :n_channels])) ** 2
-freqs = np.linspace(0, sfreq / 2.0, psd.shape[1])
+psd = np.abs(np.fft.rfft(uv_hat[atom_idx, :n_channels])) ** 2
+freqs = np.linspace(0, sfreq / 2.0, psd.shape[0])
 plt.plot(freqs, psd.T)
 plt.gca().set(xscale='log')
+
+D = get_D(uv_hat, n_channels)[atom_idx]
+evoked = EvokedArray(D, raw.info)
+evoked.save('atom_multi-ave.fif')
 
 ica.plot_properties(raw, picks=eog_inds, psd_args={'fmax': 35.},
                     image_args={'sigma': 1.})
