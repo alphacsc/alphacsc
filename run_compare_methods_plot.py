@@ -130,7 +130,7 @@ def plot_convergence(all_results_df, threshold, normalize_method, save_name):
             plt.tight_layout()
 
             try:
-                reg = min(this_res_2['times'].unique())
+                reg = min(this_res_2['reg'].unique())
             except:
                 reg = None
 
@@ -141,18 +141,21 @@ def plot_convergence(all_results_df, threshold, normalize_method, save_name):
 ##############################################################################
 # load the results from file
 
-load_name = 'methods_.pkl'
+for load_name in os.listdir('figures'):
+    load_name = os.path.join('figures', load_name)
+    if load_name[-4:] == '.pkl':
+        all_results_df = pd.read_pickle(load_name)
+    else:
+        continue
 
-load_name = os.path.join('figures', load_name)
-all_results_df = pd.read_pickle(load_name)
+    # force threshold
+    threshold = 1e-4
+    normalize_method = None
+    save_name = load_name[:-4]
 
-# force threshold
-threshold = 1e-4
-normalize_method = None
-save_name = load_name[:-4]
+    for normalize_method in [None, 'short', 'best', 'last']:
+        plot_convergence(all_results_df, threshold, normalize_method,
+                         save_name)
 
-for normalize_method in [None, 'short', 'best', 'last']:
-    plot_convergence(all_results_df, threshold, normalize_method, save_name)
-
-# plt.show()
-plt.close('all')
+    # plt.show()
+    plt.close('all')

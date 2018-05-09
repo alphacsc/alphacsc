@@ -17,7 +17,7 @@ from builtins import object
 
 import collections
 import numpy as np
-from scipy import signal, linalg
+from scipy import signal
 
 from sporco import cdict
 from sporco import util
@@ -29,18 +29,6 @@ __author__ = """Brendt Wohlberg <brendt@ieee.org>"""
 
 
 def construct_X(Z, ds):
-    """
-    Parameters
-    ----------
-    z : array, shape (n_trials, n_atoms, n_times)
-        The activations
-    ds : array, shape (n_atoms, n_times_atom)
-        The atom.
-
-    Returns
-    -------
-    X : array, shape (n_trials, n_times + n_times_atom - 1)
-    """
     assert Z.shape[0] == ds.shape[0]
     n_trials = Z.shape[1]
     n_times_atom = ds.shape[1]
@@ -52,23 +40,58 @@ def construct_X(Z, ds):
     return X
 
 
+def construct_X_multi(Z, D):
+    n_atoms, n_trials, n_times_valid = Z.shape
+    assert n_atoms == D.shape[0]
+    _, n_channels, n_times_atom = D.shape
+    n_times = n_times_valid + n_times_atom - 1
+
+    X = np.zeros((n_trials, n_channels, n_times))
+    for i in range(n_trials):
+        X[i] = np.sum([[np.convolve(zik, dkp) for dkp in dk]
+                       for zik, dk in zip(Z[:, i, :], D)], 0)
+    return X
+
+
 def objective(X, X_hat, Z_hat, reg):
-    obj = 0.5 * linalg.norm(X - X_hat, 'fro')**2 + reg * Z_hat.sum()
+    residual = (X - X_hat).ravel()
+    frobenius = np.dot(residual, residual)
+    obj = 0.5 * frobenius + reg * Z_hat.sum()
     return obj
 
 
 def compute_X_and_objective(X, Z_hat, d_hat, reg, feasible_evaluation=True):
+    if X.ndim == 3:
+        return compute_X_and_objective_multi(X, Z_hat, d_hat, reg,
+                                             feasible_evaluation)
+    assert X.ndim == 2
     X_hat = construct_X(Z_hat, d_hat)
 
     if feasible_evaluation:
         Z_hat = Z_hat.copy()
         d_hat = d_hat.copy()
         # project to unit norm
-        d_norm = np.linalg.norm(d_hat, axis=1)
-        mask = d_norm >= 1
-        d_hat[mask] /= d_norm[mask][:, None]
+        norm_d = np.linalg.norm(d_hat, axis=1)
+        d_hat /= norm_d[:, None]
         # update z in the opposite way
-        Z_hat[mask] *= d_norm[mask][:, None, None]
+        Z_hat *= norm_d[:, None, None]
+
+    return objective(X, X_hat, Z_hat, reg)
+
+
+def compute_X_and_objective_multi(X, Z_hat, D_hat, reg,
+                                  feasible_evaluation=True):
+    assert X.ndim == 3
+    X_hat = construct_X_multi(Z_hat, D=D_hat)
+
+    if feasible_evaluation:
+        D_hat = D_hat.copy()
+        Z_hat = Z_hat.copy()
+        # project to unit norm
+        norm_d = np.maximum(1, np.linalg.norm(D_hat, axis=(1, 2)))
+        D_hat /= norm_d[:, None, None]
+        # update z in the opposite way
+        Z_hat *= norm_d[:, None, None]
 
     return objective(X, X_hat, Z_hat, reg)
 
@@ -358,12 +381,23 @@ class DictLearn(with_metaclass(_DictLearn_Meta, object)):
         if self.opt['Verbose'] and self.opt['StatusHeader']:
             self.isc.printheader()
 
-        X = self.xstep.S.squeeze().swapaxes(0, 1)
-        n_times = X.shape[1]
+        X = self.xstep.S.squeeze()
+        if X.ndim == 2:
+            X = X.swapaxes(0, 1)
+            n_times = X.shape[1]
+        else:
+            X = X.swapaxes(0, 2)
+            n_times = X.shape[2]
+
         pobjs = list()
 
-        d_hat = self.getdict().squeeze().T
-        n_times_atom = d_hat.shape[1]
+        d_hat = self.getdict().squeeze()
+        if d_hat.ndim == 2:
+            d_hat = d_hat.T
+        else:
+            d_hat = d_hat.swapaxes(0, 2)
+
+        n_times_atom = d_hat.shape[-1]
         N = n_times - n_times_atom + 1
         Z_hat = self.getcoef().squeeze().swapaxes(0, 2)[..., :N]
         pobjs.append(compute_X_and_objective(X, Z_hat, d_hat,
@@ -391,7 +425,11 @@ class DictLearn(with_metaclass(_DictLearn_Meta, object)):
             evl = self.evaluate()
 
             Z_hat = self.getcoef().squeeze().swapaxes(0, 2)[..., :N]
-            d_hat = self.getdict().squeeze().T
+            d_hat = self.getdict().squeeze()
+            if d_hat.ndim == 2:
+                d_hat = d_hat.T
+            else:
+                d_hat = d_hat.swapaxes(0, 2)
             pobjs.append(compute_X_and_objective(X, Z_hat, d_hat,
                                                  reg=self.xstep.lmbda))
 

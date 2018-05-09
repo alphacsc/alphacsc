@@ -247,7 +247,7 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
 
 
 def update_d(X, Z, D_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
-             solver_d='alternate', momentum=False, uv_constraint='separate',
+             solver_d='fista', momentum=False, uv_constraint='joint',
              loss='l2', loss_params=dict(), verbose=0):
     """Learn d's in time domain.
 
