@@ -12,7 +12,7 @@ def compute_DtD(D, n_channels=None):
     return _compute_DtD_D(D)
 
 
-@jit((numba.float64[:, :], numba.int64), nopython=True)
+@jit((numba.float64[:, :], numba.int64), nopython=True, cache=True)
 def _compute_DtD_uv(uv, n_channels):
     # TODO: benchmark the cross correlate function of numpy
     n_atoms, n_times_atom = uv.shape
@@ -37,7 +37,7 @@ def _compute_DtD_uv(uv, n_channels):
     return DtD
 
 
-@jit((numba.float64[:, :, :],))
+@jit((numba.float64[:, :, :],), nopython=True, cache=True)
 def _compute_DtD_D(D):
     # TODO: benchmark the cross correlate function of numpy
     n_atoms, n_channels, n_times_atom = D.shape
@@ -57,7 +57,7 @@ def _compute_DtD_D(D):
     return DtD
 
 
-@jit((numba.float64[:, :, :], numba.int64), nopython=True)
+@jit((numba.float64[:, :, :], numba.int64), nopython=True, cache=True)
 def compute_ZtZ(Z, n_times_atom):
     """
     ZtZ.shape = n_atoms, n_atoms, 2 * n_times_atom - 1

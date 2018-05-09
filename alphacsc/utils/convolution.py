@@ -196,7 +196,7 @@ def _choose_convolve_multi(Zi, D=None, n_channels=None):
             return _dense_convolve_multi(Zi, D)
 
 
-@jit((numba.float64[:, :, :], numba.float64[:, :]))
+@jit((numba.float64[:, :, :], numba.float64[:, :]), cache=True, nopython=True)
 def numpy_convolve_uv(ZtZ, uv):
     """Compute the multivariate (valid) convolution of ZtZ and D
 
@@ -218,14 +218,14 @@ def numpy_convolve_uv(ZtZ, uv):
     n_channels = uv.shape[1] - n_times_atom
 
     u = uv[:, :n_channels]
-    v = uv[:, n_channels:]
+    v = uv[:, n_channels:][:, ::-1]
 
     G = np.zeros((n_atoms, n_channels, n_times_atom))
     for k0 in range(n_atoms):
         for k1 in range(n_atoms):
-            G[k0, :, :] += (
-                np.convolve(ZtZ[k0, k1], v[k1], mode='valid')[None, :]
-                * u[k1, :][:, None])
+            for t in range(n_times_atom):
+                G[k0, :, t] += (np.sum(ZtZ[k0, k1, t:t + n_times_atom] * v[k1])
+                                * u[k1, :])
 
     return G
 
