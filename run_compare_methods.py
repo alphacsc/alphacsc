@@ -245,7 +245,7 @@ def run_multichannel_gcd_sparse(X, ds_init, reg, n_iter, random_state, label):
     return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
 
 
-n_iter = 500
+n_iter = 1000
 methods_univariate = [
     # [run_multichannel_alt_lbfgs, 'find_best_pobj', n_iter * 5],
     # [run_admm, 'Heide & al (2015)', n_iter // 2],  # FIXME: going up
@@ -258,7 +258,7 @@ methods_univariate = [
     # [run_multichannel_gcd_sparse, 'multiCSC LGCD sparse', n_iter],
 ]
 
-n_iter_multi = 100
+n_iter_multi = 200
 methods_multivariate = [
     [run_cbpdn, 'Wohlberg (2016)', n_iter_multi * 5],
     [run_multichannel_gcd_fullrank, 'LGCD (full rank)', n_iter_multi],
