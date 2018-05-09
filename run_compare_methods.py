@@ -138,7 +138,7 @@ def run_multichannel_alt_gcd(X, ds_init, reg, n_iter, random_state, label):
         X[:, None, :], n_atoms, n_times_atom, solver_d='alternate_adaptive',
         solver_z='gcd', uv_constraint='separate', eps=1e-14,
         solver_z_kwargs=solver_z_kwargs, reg=reg, solver_d_kwargs=dict(
-            max_iter=40), n_iter=n_iter, random_state=random_state,
+            max_iter=100), n_iter=n_iter, random_state=random_state,
         D_init=D_init, n_jobs=1, verbose=verbose)
 
     # remove the ds init duration
@@ -154,7 +154,7 @@ def run_multichannel_alt_lbfgs(X, ds_init, reg, n_iter, random_state, label):
         X[:, None, :], n_atoms, n_times_atom, solver_d='alternate_adaptive',
         uv_constraint='separate', solver_z_kwargs=dict(
             factr=1e15), eps=1e-14, reg=reg, solver_d_kwargs=dict(
-                max_iter=40), n_iter=n_iter, random_state=random_state,
+                max_iter=100), n_iter=n_iter, random_state=random_state,
         D_init=D_init, n_jobs=1, verbose=verbose)
 
     # remove the ds init duration
@@ -249,7 +249,7 @@ def one_run(X, X_shape, random_state, method, n_atoms, n_times_atom, reg=reg):
     print(colorify(msg, GREEN))
     return (random_state, label, np.asarray(pobj), np.asarray(times),
             np.asarray(d_hat), np.asarray(z_hat), n_atoms, n_times_atom,
-            n_trials, n_times)
+            n_trials, n_times, reg)
 
 
 if __name__ == '__main__':
@@ -267,8 +267,7 @@ if __name__ == '__main__':
     iterator = itertools.product(methods, range(n_states))
     if n_jobs == 1:
         results = [
-            cached_one_run(X, X_shape, random_state, method, n_atoms,
-                           n_times_atom)
+            one_run(X, X_shape, random_state, method, n_atoms, n_times_atom)
             for method, random_state in iterator
         ]
     else:
@@ -284,7 +283,7 @@ if __name__ == '__main__':
     # save even intermediate results
     all_results_df = pd.DataFrame(
         all_results, columns='random_state label pobj times d_hat '
-        'z_hat n_atoms n_times_atom n_trials n_times'.split(' '))
+        'z_hat n_atoms n_times_atom n_trials n_times reg'.split(' '))
     all_results_df.to_pickle(save_name + '.pkl')
 
     print('-- End of the script --')

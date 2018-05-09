@@ -55,7 +55,7 @@ def plot_convergence(all_results_df, threshold, normalize_method, save_name):
                 if normalize_method in [None, 'short']:
                     plot_func = plt.plot
                 else:
-                    plot_func = plt.loglog
+                    plot_func = plt.semilogy
 
                 if True:
                     # geometric mean on the n_iter_min first iterations
@@ -68,7 +68,7 @@ def plot_convergence(all_results_df, threshold, normalize_method, save_name):
                     tmax.append(times_mean[-1])
 
                     if normalize_method == 'last' and True:
-                        last = np.where(pobj_mean <= threshold / 10)[0][0]
+                        last = np.where(pobj_mean <= threshold)[0][0]
                         times_mean = times_mean[:last]
                         pobj_mean = pobj_mean[:last]
 
@@ -86,7 +86,7 @@ def plot_convergence(all_results_df, threshold, normalize_method, save_name):
                     for times_, pobj_ in zip(times, pobj):
                         if pobj_[-1] <= threshold:
                             if normalize_method == 'last' and True:
-                                last = np.where(pobj_ <= threshold / 10)[0][0]
+                                last = np.where(pobj_ <= threshold)[0][0]
                                 times_ = times_[:last]
                                 pobj_ = pobj_[:last]
                             marker, alpha = None, 1.0
@@ -113,8 +113,8 @@ def plot_convergence(all_results_df, threshold, normalize_method, save_name):
             if normalize_method in [None, 'short']:
                 plt.ylabel('objective')
                 if normalize_method == 'short':
-                    xmax = 10 ** np.mean(np.log10(tmax)) / 10
-                    plt.xlim(-xmax / 10, xmax)
+                    xmax = 10 ** np.mean(np.log10(tmax)) / 5
+                    plt.xlim(-xmax / 20, xmax)
             elif normalize_method == 'last':
                 plt.ylabel('(objective_i - best_i) / best_i')
             else:
@@ -129,8 +129,13 @@ def plot_convergence(all_results_df, threshold, normalize_method, save_name):
             plt.grid(True)
             plt.tight_layout()
 
-            fig.savefig(save_name + '_bench_K%d_L%d.png' %
-                        (n_atoms, n_times_atom), dpi=150)
+            try:
+                reg = min(this_res_2['times'].unique())
+            except:
+                reg = None
+
+            fig.savefig(save_name + '_bench_K%d_L%d_r%s.png' %
+                        (n_atoms, n_times_atom, reg), dpi=150)
 
 
 ##############################################################################
@@ -142,7 +147,7 @@ load_name = os.path.join('figures', load_name)
 all_results_df = pd.read_pickle(load_name)
 
 # force threshold
-threshold = 1e-10
+threshold = 1e-4
 normalize_method = None
 save_name = load_name[:-4]
 
