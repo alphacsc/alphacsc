@@ -6,11 +6,10 @@ from scipy import sparse
 from sklearn.externals.joblib import Parallel, delayed, Memory
 
 from alphacsc.simulate import get_atoms
-from alphacsc.learn_d_z import learn_d_z
 from alphacsc.update_d_multi import prox_uv
 from alphacsc.utils import construct_X_multi
 from alphacsc.learn_d_z_multi import learn_d_z_multi
-from alphacsc.utils.dictionary import get_D, get_lambda_max
+from alphacsc.utils.dictionary import get_D, get_lambda_max, get_uv
 
 verbose = 1
 random_state = 27
@@ -46,7 +45,7 @@ def score_D(uv, D_hat, n_channels):
 
     distances = np.array([[
         1 - abs(np.sum([np.correlate(Dkp_hat, Dkp, mode='valid').max()
-                        for Dkp, Dkp_hat in zip(Dk, Dk_hat)]) / np.sum(Dk * Dk)
+                        for Dkp, Dkp_hat in zip(Dk, Dk_hat)])) / np.sum(Dk * Dk)
         for Dk_hat in D_hat] for Dk in D
     ])
     return find_best_allocation(distances, order='min')[0]
@@ -91,86 +90,49 @@ def score_d(uv, d_hat, n_channels):
     return compute_score(v, v_hat)
 
 
-def run_one(X, D_init, sigma, uv, n_atoms, n_times_atom, n_channels, n_iter,
-            strongest_ch):
+def run_one(X, uv_init, reg, sigma, seed, uv, n_atoms, n_times_atom,
+            n_channels, n_iter, run_n_channels):
 
+    rng = np.random.RandomState(seed)
     X = X + sigma * rng.randn(*X.shape)
-    X_uni = X[:, strongest_ch]
-    D_init_uni = D_init[:, n_channels:]
-    D_init_dense = get_D(D_init, n_channels)
 
-    reg_multi = reg * get_lambda_max(X, D_init).max()
-    reg_uni = reg * get_lambda_max(X_uni[:, None], D_init_uni[:, None]).max()
-    reg_dense= reg * get_lambda_max(X_uni, D_init_dense).max()
+    if isinstance(uv_init, list):
+        D = np.zeros((n_atoms, n_channels, n_times_atom))
+        for k, i0, t0 in uv_init:
+            D[k] = X[i0, :, t0:t0 + n_times_atom]
+        uv_init = get_uv(D)
 
-    # print('Univariate gcd:')
-    # uv_init = np.c_[np.ones((n_atoms, 1)), D_init[:, n_channels:]]
-    # pobj, times, uv_hat_uni, Z_hat = learn_d_z_multi(
-    #     X[:, strongest_ch:strongest_ch + 1, :], n_atoms, n_times_atom,
-    #     random_state=random_state, callback=None,
-    #     n_iter=n_iter, n_jobs=1, reg=reg / 5, uv_constraint='separate',
-    #     solver_z='gcd', solver_z_kwargs=dict(tol=1e-3, maxiter=200),
-    #     solver_d='alternate_adaptive', solver_d_kwargs={'max_iter': 100},
-    #     use_sparse_z=True, D_init=uv_init, verbose=1,
-    # )
-    # uv_hat_uni = np.c_[
-    #     np.ones((n_atoms, 1)),
-    #     uv_hat_uni[:, 1:] * uv_hat_uni[:, :1]]
+    reg_ = reg * get_lambda_max(X, uv_init).max()
+    reg_ *= run_n_channels
 
-    # print("done\nUnivariate_gcd score sig={:.2e}: {:.3e}".format(
-    #       sigma, score_d(uv, uv_hat_uni[:, 1:], n_channels)))
-    uv_hat_uni = np.c_[np.ones((n_atoms, 1)), D_init[:, n_channels:]]
+    uv_init_ = prox_uv(np.c_[uv_init[:, :run_n_channels],
+                             uv_init[:, n_channels:]])
+    uv_ = prox_uv(np.c_[uv[:, :run_n_channels], uv[:, n_channels:]],
+                  uv_constraint='separate', n_chan=n_channels)
+    def cb(X, uv_hat, Z_hat, pobj):
+        it = len(pobj) // 2
+        if it % 10 == 0:
+            print("[channels{}] iter{} score sig={:.2e}: {:.3e}".format(
+                run_n_channels, it, sigma,
+                score_uv(uv_, uv_hat, run_n_channels)))
 
-    # print('Univariate:')
-    # pobj, times, d_hat, Z_hat = learn_d_z(
-    #     X_uni, n_atoms, n_times_atom,
-    #     reg=reg_uni, n_iter=n_iter * 5, ds_init=D_init_uni,
-    #     solver_d_kwargs=dict(factr=100, max_iter=100),
-    #     random_state=random_state, n_jobs=1, verbose=verbose)
-
-    # print("done\nUnivariate score sig={:.2e}: {:.3e}".format(
-    #       sigma, score_d(uv, d_hat, n_channels)))
-
-    # print('Multivariate:')
-    # # from alphacsc.utils.viz import get_callback_csc
-    # csc_kwargs = dict(
-    #     n_atoms=n_atoms, n_times_atom=n_times_atom, random_state=random_state,
-    #     n_iter=n_iter, n_jobs=1, reg=reg_multi,
-    #     uv_constraint='separate',
-    #     solver_z='gcd', solver_z_kwargs=dict(tol=1e-3, maxiter=200),
-    #     solver_d='alternate_adaptive', solver_d_kwargs={'max_iter': 200}
-    # )
-    # pobj, times, uv_hat, Z_hat = learn_d_z_multi(
-    #     X, **csc_kwargs,
-    #     use_sparse_z=True, D_init=D_init, verbose=verbose,
-    #     callback=None
-    #     # callback=get_callback_csc(csc_kwargs, config={'atom': {}})
-    # )
-    # print("done\nMultivariate score sig={:.2e}: {:.3e}".format(
-    #       sigma, score_uv(uv, uv_hat, n_channels)))
-
-    print('Dense:')
-    from alphacsc.utils.viz import get_callback_csc
-    csc_kwargs = dict(
-        n_atoms=n_atoms, n_times_atom=n_times_atom, random_state=random_state,
-        n_iter=n_iter, n_jobs=1, reg=reg_dense,
-        uv_constraint='separate', rank1=False,
-        solver_z='gcd', solver_z_kwargs=dict(tol=1e-3, maxiter=200),
-        solver_d='alternate_adaptive', solver_d_kwargs={'max_iter': 200}
-    )
     pobj, times, uv_hat, Z_hat = learn_d_z_multi(
-        X, **csc_kwargs,
-        use_sparse_z=True, D_init=D_init_dense, verbose=verbose,
-        # callback=None
-        callback=get_callback_csc(csc_kwargs, config={'atom': {}})
+        X[:, :run_n_channels, :], n_atoms, n_times_atom,
+        random_state=random_state,
+        # callback=cb,
+        n_iter=n_iter, n_jobs=1, reg=reg_, uv_constraint='separate',
+        solver_d='alternate_adaptive', solver_d_kwargs={'max_iter': 50},
+        solver_z='gcd', solver_z_kwargs=dict(tol=1e-3, maxiter=500),
+        use_sparse_z=True, D_init=uv_init_, verbose=0,
     )
-    print("done\nMultivariate score sig={:.2e}: {:.3e}".format(
-          sigma, score_uv(uv, uv_hat, n_channels)))
 
-    return (sigma, score_d(uv, d_hat, n_channels),
-            score_d(uv, uv_hat_uni[:, 1:], n_channels),
-            score_uv(uv, uv_hat, n_channels),
-            uv, uv_hat, d_hat)
+    score = score_uv(uv_, uv_hat, run_n_channels)
+    print("=" * 79 + "\n"
+          + "[channels{}-{}] iter{} score sig={:.2e}: {:.3e}\n"
+          .format(run_n_channels, reg, len(pobj) // 2, sigma, score)
+          + "=" * 79)
+
+    return seed, sigma, run_n_channels, score, uv, uv_hat, reg
 
 
 if __name__ == "__main__":
@@ -179,6 +141,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser('Programme to launch experiemnt')
     parser.add_argument('--njobs', type=int, default=6,
                         help='Number of processes used to run the experiement')
+    parser.add_argument('--chunks', action="store_true",
+                        help='Use chunks of the data to initialize D')
     args = parser.parse_args()
 
     save_name = 'rank1_snr.pkl'
@@ -199,7 +163,7 @@ if __name__ == "__main__":
     n_trials = 100
     strongest_ch = 0
 
-    n_iter = 100
+    n_iter = 200
 
     v0 = get_atoms('triangle', n_times_atom_gen)  # temporal atoms
     v1 = get_atoms('square', n_times_atom_gen)
@@ -221,22 +185,35 @@ if __name__ == "__main__":
 
     X = construct_X_multi(Z, uv, n_channels=n_channels)
 
-    reg = 0.2
+    reg = 0.005
 
-    D_init = rng.randn(n_atoms, n_channels + n_times_atom)
-    D_init = prox_uv(D_init, uv_constraint='separate', n_chan=n_channels)
+    rng = np.random.RandomState(1729)
+    if args.chunks:
+        uv_init = []
+        for i_atom in range(n_atoms):
+            i0 = rng.randint(n_trials)
+            t0 = rng.randint(n_times - n_times_atom)
+            uv_init += [(i_atom, i0, t0)]
+    else:
+        uv_init = rng.randn(n_atoms, n_channels + n_times_atom)
+        uv_init = prox_uv(uv_init, uv_constraint='separate', n_chan=n_channels)
 
-    span_sigma = np.logspace(-6, -1, 20)
+    span_reg = [1e-3, 2e-3, 5e-3, 8e-3, 1e-2, 3e-2]
+    span_noise = [(seed, sigma)
+                  for seed, sigma in enumerate(np.logspace(-6, -1, 20))]
+    span_channels = [1, 2, 5, 10, 25, 50]
+    grid_args = itertools.product(span_noise, span_channels, span_reg)
+
     results = Parallel(n_jobs=args.njobs)(
-        delayed_run_one(X, D_init, sigma, uv, n_atoms, n_times_atom,
-                        n_channels, n_iter, strongest_ch)
-        for sigma in span_sigma
+        delayed_run_one(X, uv_init, reg_, sigma, seed, uv, n_atoms,
+                        n_times_atom, n_channels, n_iter, run_n_channels)
+        for (seed, sigma), run_n_channels, reg_ in grid_args
     )
 
     # save even intermediate results
     all_results_df = pd.DataFrame(
-        results, columns='sigma score_d score_uv_uni score_uv uv uv_hat '
-        'd_hat'.split(' '))
+        results,
+        columns='seed sigma run_n_channels score uv uv_hat reg'.split(' '))
     all_results_df.to_pickle(save_name)
 
     # plt.plot(uv_hat[:, n_channels:].T, 'g', label='Multivariate')
