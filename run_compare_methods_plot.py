@@ -112,7 +112,7 @@ def plot_convergence(all_results_df, threshold, normalize_method, save_name):
             plt.xlabel('Time (s)')
             if normalize_method in [None, 'short']:
                 plt.ylabel('objective')
-                if normalize_method == 'short':
+                if normalize_method == 'short' and tmax != []:
                     xmax = 10 ** np.mean(np.log10(tmax)) / 5
                     plt.xlim(-xmax / 20, xmax)
             elif normalize_method == 'last':

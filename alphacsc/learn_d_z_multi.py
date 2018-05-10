@@ -33,7 +33,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
                     stopping_pobj=None, algorithm='batch', loss='l2',
                     loss_params=dict(gamma=.1, sakoe_chiba_band=10, ordar=10),
                     use_sparse_z=False, lmbd_max='fixed', verbose=10,
-                    callback=None, random_state=None, name="DL"):
+                    callback=None, random_state=None, name="DL",
+                    raise_on_increase=True):
     """Learn atoms and activations using Convolutional Sparse Coding.
 
     Parameters
@@ -162,7 +163,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
                             loss=loss, loss_params=loss_params, **d_kwargs)
 
     end_iter_func = get_iteration_func(eps, stopping_pobj, callback, lmbd_max,
-                                       name, verbose)
+                                       name, verbose, raise_on_increase)
 
     with Parallel(n_jobs=n_jobs) as parallel:
         if algorithm == 'batch':
@@ -276,7 +277,8 @@ def _batch_learn(X, D_hat, Z_hat, compute_z_func, compute_d_func,
     return pobj, times, D_hat, Z_hat
 
 
-def get_iteration_func(eps, stopping_pobj, callback, lmbd_max, name, verbose):
+def get_iteration_func(eps, stopping_pobj, callback, lmbd_max, name, verbose,
+                       raise_on_increase):
     def end_iteration(X, Z_hat, D_hat, pobj, iteration):
         if callable(callback):
             callback(X, D_hat, Z_hat, pobj)
@@ -286,11 +288,11 @@ def get_iteration_func(eps, stopping_pobj, callback, lmbd_max, name, verbose):
         dz = pobj[-3] - pobj[-2]
         du = pobj[-2] - pobj[-1]
         if ((dz < eps or du < eps) and lmbd_max == 'fixed'):
-            if dz < 0:
+            if dz < 0 and raise_on_increase:
                 raise RuntimeError(
                     "The z update have increased the objective value by %s."
                     % dz)
-            if du < -1e-10 and dz > 1e-12:
+            if du < -1e-10 and dz > 1e-12 and raise_on_increase:
                 raise RuntimeError(
                     "The d update have increased the objective value by %s."
                     "(dz=%s)" % (du, dz))

@@ -45,14 +45,14 @@ else:
     # number of random states
     n_states = 10
     # loop over parameters
-    n_channel_list = [1, 5, 25]
-    n_atoms_list = [2, 10]
+    n_channel_list = [1, 16]
+    n_atoms_list = [2, 8]
     n_times_atom_list = [32, 128]
     reg_list = [0.3, 1., 3., 9.]
 
-
 ##############################
 # methods
+
 
 def run_admm(X, ds_init, reg, n_iter, random_state, label, max_it_d=10,
              max_it_z=10):
@@ -167,13 +167,13 @@ def run_multichannel_gcd(X, ds_init, reg, n_iter, random_state, label):
         n_atoms, n_channels, n_times_atom = ds_init.shape
         ds_init = get_uv(ds_init)  # project init to rank 1
 
-    solver_z_kwargs = dict(max_iter=500, tol=1e-1)
+    solver_z_kwargs = dict(max_iter=5, tol=1e-3)
     pobj, times, d_hat, z_hat = learn_d_z_multi(
         X, n_atoms, n_times_atom, solver_d='alternate_adaptive',
         solver_z='gcd', uv_constraint='separate', eps=1e-14,
         solver_z_kwargs=solver_z_kwargs, reg=reg, solver_d_kwargs=dict(
             max_iter=100), n_iter=n_iter, random_state=random_state,
-        D_init=ds_init, n_jobs=1, verbose=verbose)
+        raise_on_increase=False, D_init=ds_init, n_jobs=1, verbose=verbose)
 
     # remove the ds init duration
     times[0] = 0
@@ -186,13 +186,13 @@ def run_multichannel_gcd_fullrank(X, ds_init, reg, n_iter, random_state,
     assert X.ndim == 3
     n_atoms, n_channels, n_times_atom = ds_init.shape
 
-    solver_z_kwargs = dict(max_iter=500, tol=1e-1)
+    solver_z_kwargs = dict(max_iter=5, tol=1e-3)
     pobj, times, d_hat, z_hat = learn_d_z_multi(
         X, n_atoms, n_times_atom, solver_d='fista', solver_z='gcd',
-        uv_constraint='separate', eps=1e-14,
-        solver_z_kwargs=solver_z_kwargs, reg=reg, solver_d_kwargs=dict(
-            max_iter=100), n_iter=n_iter, random_state=random_state,
-        D_init=ds_init, n_jobs=1, verbose=verbose, rank1=False)
+        uv_constraint='separate', eps=1e-14, solver_z_kwargs=solver_z_kwargs,
+        reg=reg, solver_d_kwargs=dict(max_iter=100), n_iter=n_iter,
+        random_state=random_state, raise_on_increase=False, D_init=ds_init,
+        n_jobs=1, verbose=verbose, rank1=False)
 
     # remove the ds init duration
     times[0] = 0
@@ -214,7 +214,7 @@ def run_multichannel_lbfgs(X, ds_init, reg, n_iter, random_state, label):
         uv_constraint='separate', solver_z_kwargs=dict(
             factr=1e15), eps=1e-14, reg=reg, solver_d_kwargs=dict(
                 max_iter=100), n_iter=n_iter, random_state=random_state,
-        D_init=ds_init, n_jobs=1, verbose=verbose)
+        raise_on_increase=False, D_init=ds_init, n_jobs=1, verbose=verbose)
 
     # remove the ds init duration
     times[0] = 0
@@ -231,13 +231,14 @@ def run_multichannel_gcd_sparse(X, ds_init, reg, n_iter, random_state, label):
         n_atoms, n_channels, n_times_atom = ds_init.shape
         ds_init = get_uv(ds_init)  # project init to rank 1
 
-    solver_z_kwargs = dict(max_iter=500, tol=1e-1)
+    solver_z_kwargs = dict(max_iter=5, tol=1e-3)
     pobj, times, d_hat, z_hat = learn_d_z_multi(
         X, n_atoms, n_times_atom, solver_d='alternate_adaptive',
         uv_constraint='separate', solver_z='gcd', eps=1e-14,
         solver_z_kwargs=solver_z_kwargs, reg=reg, solver_d_kwargs=dict(
             max_iter=100), use_sparse_z=True, n_iter=n_iter,
-        random_state=random_state, D_init=ds_init, n_jobs=1, verbose=verbose)
+        raise_on_increase=False, random_state=random_state, D_init=ds_init,
+        n_jobs=1, verbose=verbose)
 
     # remove the ds init duration
     times[0] = 0
@@ -326,50 +327,55 @@ if __name__ == '__main__':
                                      n_times_atom_list, reg_list)
 
     for params in out_iterator:
-        n_channels, n_atoms, n_times_atom, reg = params
-        msg = 'n_channels, n_atoms, n_times_atom, reg = ' + str(params)
-        print(colorify(msg, RED))
-        print(colorify('-' * len(msg), RED))
+        try:
+            n_channels, n_atoms, n_times_atom, reg = params
+            msg = 'n_channels, n_atoms, n_times_atom, reg = ' + str(params)
+            print(colorify(msg, RED))
+            print(colorify('-' * len(msg), RED))
 
-        save_name = 'methods_' + str(params)
-        save_name = os.path.join('figures', save_name)
+            save_name = 'methods_' + str(params)
+            save_name = os.path.join('figures', save_name)
 
-        all_results = []
+            all_results = []
 
-        X, info = load_data(epoch=False, n_jobs=n_jobs, n_trials=2)
+            X, info = load_data(epoch=False, n_jobs=n_jobs, n_trials=2)
 
-        if n_channels == 1:
-            X = X[:, 0, :]  # take only one channel
-        elif n_channels is not None:
-            X = X[:, :n_channels, :]
+            if n_channels == 1:
+                X = X[:, 0, :]  # take only one channel
+            elif n_channels is not None:
+                X = X[:, :n_channels, :]
 
-        assert X.shape[0] > 1  # we need at least two trials for sporco
-        X_shape = X.shape
+            assert X.shape[0] > 1  # we need at least two trials for sporco
+            X_shape = X.shape
 
-        if n_channels == 1:
-            methods = methods_univariate
-        else:
-            methods = methods_multivariate
+            if n_channels == 1:
+                methods = methods_univariate
+            else:
+                methods = methods_multivariate
 
-        iterator = itertools.product(methods, range(n_states))
-        if n_jobs == 1:
-            results = [
-                one_run(X, X_shape, random_state, method, n_atoms,
-                        n_times_atom, reg) for method, random_state in iterator
-            ]
-        else:
-            # run the methods for different random_state
-            delayed_one_run = delayed(one_run)
-            results = Parallel(n_jobs=n_jobs)(delayed_one_run(
-                X, X_shape, random_state, method, n_atoms, n_times_atom,
-                reg) for method, random_state in iterator)
+            iterator = itertools.product(methods, range(n_states))
+            if n_jobs == 1:
+                results = [
+                    one_run(X, X_shape, random_state, method, n_atoms,
+                            n_times_atom, reg)
+                    for method, random_state in iterator
+                ]
+            else:
+                # run the methods for different random_state
+                delayed_one_run = delayed(one_run)
+                results = Parallel(n_jobs=n_jobs)(delayed_one_run(
+                    X, X_shape, random_state, method, n_atoms, n_times_atom,
+                    reg) for method, random_state in iterator)
 
-        all_results.extend(results)
+            all_results.extend(results)
 
-        all_results_df = pd.DataFrame(
-            all_results, columns='random_state label pobj times d_hat '
-            'z_hat n_atoms n_times_atom n_trials n_times n_channels reg'.split(
-                ' '))
-        all_results_df.to_pickle(save_name + '.pkl')
+            all_results_df = pd.DataFrame(
+                all_results, columns='random_state label pobj times d_hat '
+                'z_hat n_atoms n_times_atom n_trials n_times n_channels reg'.
+                split(' '))
+            all_results_df.to_pickle(save_name + '.pkl')
+        except Exception as e:
+            print(e)
+            pass
 
     print('-- End of the script --')
