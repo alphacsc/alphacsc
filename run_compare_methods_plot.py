@@ -1,16 +1,18 @@
 import os
+import itertools
 
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-font = {'size': 14}
-matplotlib.rc('font', **font)
+matplotlib.rc('font', size=14)
+matplotlib.rc('mathtext', fontset='cm')
 
 
-def normalize_pobj(pobj, best_pobj, normalize_method='best'):
+def normalize_pobj(pobj, best_pobj=None, normalize_method='best'):
     if normalize_method == 'best':
+        assert best_pobj is not None
         pobj = (pobj - best_pobj) / best_pobj
     elif normalize_method == 'last':
         pobj = [(p - p.min()) / p.min() for p in pobj]
@@ -22,13 +24,13 @@ def normalize_pobj(pobj, best_pobj, normalize_method='best'):
     return pobj
 
 
-def plot_convergence(all_results_df, threshold, normalize_method, save_name):
+def plot_convergence(data_frame, threshold, normalize_method, save_name):
     save_name += '_%s' % (normalize_method, )
-    labels = all_results_df['label'].unique()
-    for n_atoms in all_results_df['n_atoms'].unique():
+    labels = data_frame['label'].unique()
+    for n_atoms in data_frame['n_atoms'].unique():
 
-        for n_times_atom in all_results_df['n_times_atom'].unique():
-            this_res = all_results_df
+        for n_times_atom in data_frame['n_times_atom'].unique():
+            this_res = data_frame
             this_res = this_res[this_res['n_atoms'] == n_atoms]
             this_res = this_res[this_res['n_times_atom'] == n_times_atom]
 
@@ -38,7 +40,7 @@ def plot_convergence(all_results_df, threshold, normalize_method, save_name):
             best_pobj = min([min(pobj) for pobj in this_res['pobj']])
 
             # draw a different figure for each setting
-            fig = plt.figure(figsize=(12, 9))
+            fig = plt.figure(figsize=(6, 4))
             ax = fig.gca()
             plt.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
             # ymin = np.inf
@@ -138,24 +140,131 @@ def plot_convergence(all_results_df, threshold, normalize_method, save_name):
                         (n_atoms, n_times_atom, reg), dpi=150)
 
 
+def plot_barplot(all_results_df, threshold, normalize_method, save_name):
+    all_results_df = all_results_df.sort_values(by=['reg'], kind='mergesort')
+
+    if normalize_method is None:
+        return None
+    save_name += '_%s_%s' % (normalize_method, threshold)
+    labels = all_results_df['label'].unique()
+    to_plot = []
+    iterator = itertools.product(
+        all_results_df['n_channels'].unique(),
+        all_results_df['n_atoms'].unique(),
+        all_results_df['n_times_atom'].unique(),
+        all_results_df['reg'].unique(),
+        labels, )
+    for n_channels, n_atoms, n_times_atom, reg, label in iterator:
+        setting = 'P=%d, K=%d, L=%d' % (n_channels, n_atoms, n_times_atom)
+        this_res = all_results_df
+        this_res = this_res[this_res['n_atoms'] == n_atoms]
+        this_res = this_res[this_res['n_times_atom'] == n_times_atom]
+        this_res = this_res[this_res['n_channels'] == n_channels]
+        this_res = this_res[this_res['reg'] == reg]
+        this_res = this_res[this_res['label'] == label]
+
+        if this_res.size == 0:
+            continue
+
+        # aggregate all runs (different random states)
+        times = this_res['times']
+        pobj = this_res['pobj']
+
+        pobj = normalize_pobj(pobj, None, normalize_method)
+
+        # find first time instant where pobj go below threshold
+        first_time_list = []
+        for pobj_, times_ in zip(pobj, times):
+            idx = np.where(pobj_ < threshold)[0]
+            if idx.size != 0:
+                first_time_list.append(times_[idx[0]])
+        first_time_list = np.array(first_time_list)
+        to_plot.append((reg, first_time_list, first_time_list.mean(),
+                        first_time_list.std(), label, setting))
+
+    to_plot_df = pd.DataFrame(to_plot, columns=[
+        'reg', 'first_time', 'mean', 'std', 'label', 'setting'
+    ])
+
+    regs = to_plot_df['reg'].unique()
+    regs.sort()
+    labels = to_plot_df['label'].unique()
+    settings = to_plot_df['setting'].unique()
+    width = 1. / (labels.size + 1)  # the width of the bars
+    x_positions = np.arange(regs.size)
+
+    for setting in settings:
+        this_to_plot_df = to_plot_df[to_plot_df['setting'] == setting]
+        fig = plt.figure(figsize=(11, 4))
+        ax = fig.gca()
+        rect_list = []
+        for i, label in enumerate(labels):
+            this_df = this_to_plot_df[this_to_plot_df['label'] == label]
+
+            rect = ax.bar(left=x_positions + i * width,
+                          height=np.array(this_df['mean']), width=width,
+                          label=label)
+            rect_list.append(rect)
+            # yerr=np.array(this_df['std']),
+
+            # color = rect[0].get_facecolor()
+            for j, first_time in enumerate(this_df['first_time']):
+                ax.plot(
+                    np.ones_like(first_time) * x_positions[j] + i * width,
+                    first_time, '_', color='k')
+
+        ax.set_xticks(x_positions + 0.3)
+        ax.set_xticklabels([r'$\lambda=%s$' % r for r in regs], ha='center')
+        ax.set_yscale("log")
+
+        plt.ylabel('Time (s)')
+        plt.grid(True)
+        # plt.title('Time to reach a relative precision of %s' % threshold)
+        plt.tight_layout()
+
+        # legend to the top
+        plt.legend()
+        labels = [text.get_text() for text in ax.get_legend().get_texts()]
+        fig.legend(rect_list, labels, loc='upper center', ncol=4,
+                   columnspacing=0.8)
+        ax.legend_.remove()
+        fig.subplots_adjust(top=0.85)
+
+        fig.savefig('%s_%s.png' % (save_name, setting))
+
+
 ##############################################################################
 # load the results from file
-
+all_results_df = None
 for load_name in os.listdir('figures'):
     load_name = os.path.join('figures', load_name)
     if load_name[-4:] == '.pkl':
-        all_results_df = pd.read_pickle(load_name)
+        print("load %s" % load_name)
+        data_frame = pd.read_pickle(load_name)
     else:
         continue
 
-    # force threshold
-    threshold = 1e-4
+    if all_results_df is not None:
+        all_results_df = pd.concat([all_results_df, data_frame],
+                                   ignore_index=True)
+    else:
+        all_results_df = data_frame
+
+    threshold = 1e-3
     normalize_method = None
     save_name = load_name[:-4]
 
+    # plot each convergence plot
     for normalize_method in [None, 'short', 'best', 'last']:
-        plot_convergence(all_results_df, threshold, normalize_method,
-                         save_name)
+        plot_convergence(data_frame, threshold, normalize_method, save_name)
+        plt.close('all')
 
-    # plt.show()
-    plt.close('all')
+threshold = 3e-3
+normalize_method = 'last'
+save_name = os.path.join('figures', 'all')
+
+# plot the aggregation of all results
+# plot_barplot(all_results_df, threshold, normalize_method, save_name)
+
+# plt.show()
+plt.close('all')

@@ -30,6 +30,7 @@ verbose = 1
 
 debug = False
 if debug:
+    base_name = 'debug_'
     # n_jobs for the parallel running of single core methods
     n_jobs = 1
     # number of random states
@@ -37,18 +38,19 @@ if debug:
     # loop over parameters
     n_channel_list = [1]
     n_atoms_list = [2]
-    n_times_atom_list = [32]
-    reg_list = [1.]
+    n_times_atom_list = [16]
+    reg_list = [0.3]
 else:
+    base_name = 'run_1'
     # n_jobs for the parallel running of single core methods
     n_jobs = -3
     # number of random states
     n_states = 10
     # loop over parameters
-    n_channel_list = [1, 16]
+    n_times_atom_list = [16, 64]
     n_atoms_list = [2, 8]
-    n_times_atom_list = [32, 128]
-    reg_list = [0.3, 1., 3., 9.]
+    n_channel_list = [1, 5, 25]
+    reg_list = [0.3, 1., 3., 10.]
 
 ##############################
 # methods
@@ -127,7 +129,7 @@ def run_ista(X, ds_init, reg, n_iter, random_state, label):
     n_atoms, n_times_atom = ds_init.shape
     pobj, times, d_hat, z_hat = learn_d_z(
         X, n_atoms, n_times_atom, func_d=update_d_block, solver_z='ista',
-        solver_z_kwargs=dict(max_iter=5), reg=reg, n_iter=n_iter,
+        solver_z_kwargs=dict(max_iter=2), reg=reg, n_iter=n_iter,
         random_state=random_state, ds_init=ds_init, n_jobs=1, verbose=verbose)
 
     return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
@@ -138,7 +140,7 @@ def run_fista(X, ds_init, reg, n_iter, random_state, label):
     n_atoms, n_times_atom = ds_init.shape
     pobj, times, d_hat, z_hat = learn_d_z(
         X, n_atoms, n_times_atom, func_d=update_d_block, solver_z='fista',
-        solver_z_kwargs=dict(max_iter=5), reg=reg, n_iter=n_iter,
+        solver_z_kwargs=dict(max_iter=2), reg=reg, n_iter=n_iter,
         random_state=random_state, ds_init=ds_init, n_jobs=1, verbose=verbose)
 
     return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
@@ -167,7 +169,7 @@ def run_multichannel_gcd(X, ds_init, reg, n_iter, random_state, label):
         n_atoms, n_channels, n_times_atom = ds_init.shape
         ds_init = get_uv(ds_init)  # project init to rank 1
 
-    solver_z_kwargs = dict(max_iter=5, tol=1e-3)
+    solver_z_kwargs = dict(max_iter=2, tol=1e-3)
     pobj, times, d_hat, z_hat = learn_d_z_multi(
         X, n_atoms, n_times_atom, solver_d='alternate_adaptive',
         solver_z='gcd', uv_constraint='separate', eps=1e-14,
@@ -186,7 +188,7 @@ def run_multichannel_gcd_fullrank(X, ds_init, reg, n_iter, random_state,
     assert X.ndim == 3
     n_atoms, n_channels, n_times_atom = ds_init.shape
 
-    solver_z_kwargs = dict(max_iter=5, tol=1e-3)
+    solver_z_kwargs = dict(max_iter=2, tol=1e-3)
     pobj, times, d_hat, z_hat = learn_d_z_multi(
         X, n_atoms, n_times_atom, solver_d='fista', solver_z='gcd',
         uv_constraint='separate', eps=1e-14, solver_z_kwargs=solver_z_kwargs,
@@ -231,7 +233,7 @@ def run_multichannel_gcd_sparse(X, ds_init, reg, n_iter, random_state, label):
         n_atoms, n_channels, n_times_atom = ds_init.shape
         ds_init = get_uv(ds_init)  # project init to rank 1
 
-    solver_z_kwargs = dict(max_iter=5, tol=1e-3)
+    solver_z_kwargs = dict(max_iter=2, tol=1e-3)
     pobj, times, d_hat, z_hat = learn_d_z_multi(
         X, n_atoms, n_times_atom, solver_d='alternate_adaptive',
         uv_constraint='separate', solver_z='gcd', eps=1e-14,
@@ -323,17 +325,17 @@ if __name__ == '__main__':
 
     # cached_one_run = mem.cache(func=one_run, ignore=['X'])
 
-    out_iterator = itertools.product(n_channel_list, n_atoms_list,
-                                     n_times_atom_list, reg_list)
+    out_iterator = itertools.product(n_times_atom_list, n_atoms_list,
+                                     n_channel_list, reg_list)
 
     for params in out_iterator:
         try:
-            n_channels, n_atoms, n_times_atom, reg = params
-            msg = 'n_channels, n_atoms, n_times_atom, reg = ' + str(params)
+            n_times_atom, n_atoms, n_channels, reg = params
+            msg = 'n_times_atom, n_atoms, n_channels, reg = ' + str(params)
             print(colorify(msg, RED))
             print(colorify('-' * len(msg), RED))
 
-            save_name = 'methods_' + str(params)
+            save_name = base_name + str(params)
             save_name = os.path.join('figures', save_name)
 
             all_results = []
