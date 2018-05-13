@@ -16,6 +16,8 @@ def normalize_pobj(pobj, best_pobj=None, normalize_method='best'):
         pobj = (pobj - best_pobj) / best_pobj
     elif normalize_method == 'last':
         pobj = [(p - p.min()) / p.min() for p in pobj]
+        pobj = [p / p[0] if p[0] != 0 else p for p in pobj]
+
     elif normalize_method in [None, 'short']:
         pass
     else:
@@ -57,7 +59,7 @@ def plot_convergence(data_frame, threshold, normalize_method, save_name):
                 if normalize_method in [None, 'short']:
                     plot_func = plt.plot
                 else:
-                    plot_func = plt.semilogy
+                    plot_func = plt.loglog
 
                 if True:
                     # geometric mean on the n_iter_min first iterations
@@ -186,15 +188,17 @@ def plot_barplot(all_results_df, threshold, normalize_method, save_name):
         'reg', 'first_time', 'mean', 'std', 'label', 'setting'
     ])
 
-    regs = to_plot_df['reg'].unique()
-    regs.sort()
-    labels = to_plot_df['label'].unique()
     settings = to_plot_df['setting'].unique()
     width = 1. / (labels.size + 1)  # the width of the bars
-    x_positions = np.arange(regs.size)
 
     for setting in settings:
         this_to_plot_df = to_plot_df[to_plot_df['setting'] == setting]
+
+        labels = this_to_plot_df['label'].unique()
+        regs = this_to_plot_df['reg'].unique()
+        regs.sort()
+        x_positions = np.arange(regs.size)
+
         fig = plt.figure(figsize=(11, 4))
         ax = fig.gca()
         rect_list = []
@@ -259,12 +263,12 @@ for load_name in os.listdir('figures'):
         plot_convergence(data_frame, threshold, normalize_method, save_name)
         plt.close('all')
 
-threshold = 3e-3
+threshold = 1e-3
 normalize_method = 'last'
 save_name = os.path.join('figures', 'all')
 
 # plot the aggregation of all results
-# plot_barplot(all_results_df, threshold, normalize_method, save_name)
+plot_barplot(all_results_df, threshold, normalize_method, save_name)
 
 # plt.show()
 plt.close('all')
