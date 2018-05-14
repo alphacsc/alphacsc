@@ -168,8 +168,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser('Programme to launch experiemnt')
     parser.add_argument('--njobs', type=int, default=6,
                         help='Number of processes used to run the experiement')
-    parser.add_argument('--chunks', action="store_true",
-                        help='Use chunks of the data to initialize D')
     args = parser.parse_args()
 
     save_name = 'rank1_snr.pkl'
@@ -186,7 +184,7 @@ if __name__ == "__main__":
     n_times_valid = 640
     max_n_channels = 50
     n_atoms = 2
-    n_run = 5
+    n_run = 1
     n_trials = 100
     strongest_ch = 0
 
@@ -199,13 +197,13 @@ if __name__ == "__main__":
                              ).astype(int)
     spane_channels = [1, 2, 4, 9, 21, 50]
 
-    grid_args = itertools.product(span_noise, span_channels, span_reg,
-                                  span_random_state)
+    grid_args = itertools.product(span_random_state, span_noise, span_channels,
+                                  span_reg)
 
     results = Parallel(n_jobs=args.njobs)(
         delayed_run_one(reg_, sigma, n_atoms, n_times_atom, max_n_channels,
                         n_times_valid, n_iter, run_n_channels, random_state)
-        for sigma, run_n_channels, reg_, random_state in grid_args
+        for random_state, sigma, run_n_channels, reg_ in grid_args
     )
 
     # save even intermediate results
