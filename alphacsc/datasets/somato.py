@@ -60,9 +60,12 @@ def load_data(sfreq=None, epoch=True, n_jobs=1, filt=[2., None], n_trials=10):
         info = raw.info
 
     events[:, 0] -= raw.first_samp
-    info['t_min'] = t_min
-    info['event_id'] = event_id
-    info['events'] = events
+
+    # XXX: causes problems when saving EvokedArray
+    # info['t_min'] = t_min
+    # info['event_id'] = event_id
+    # info['events'] = events
+
     # define n_chan, n_trials, n_times
     n_trials, n_chan, n_times = X.shape
     X *= tukey(n_times, alpha=0.1)[None, None, :]

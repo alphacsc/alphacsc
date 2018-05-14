@@ -14,6 +14,8 @@ from scipy.signal import tukey
 
 from alphacsc.learn_d_z_multi import learn_d_z_multi
 from alphacsc.utils.viz import plot_activations_density, COLORS
+from alphacsc.utils import get_D
+from alphacsc.datasets.somato import load_data
 
 figure_path = 'figures'
 mem = Memory(cachedir='.', verbose=0)
@@ -39,45 +41,6 @@ if True:
     n_iter = 1
     n_states = 1
     n_jobs = 1
-
-
-@mem.cache()
-def load_data(sfreq=sfreq):
-    # load the raw data
-    data_path = os.path.join(mne.datasets.somato.data_path(), 'MEG', 'somato')
-    raw = mne.io.read_raw_fif(
-        os.path.join(data_path, 'sef_raw_sss.fif'), preload=True)
-
-    # filter the signals
-    raw.filter(2, 90., n_jobs=n_jobs)
-    raw.notch_filter(np.arange(50, 101, 50), n_jobs=n_jobs)
-    raw.resample(sfreq, npad='auto')
-
-    # find the events
-    events = mne.find_events(raw, stim_channel='STI 014')
-    events[:, 0] -= raw.first_samp
-
-    # pick channels and resample to sfreq sampling frequency
-    raw.pick_types(
-        meg='grad',
-        eog=False,
-        stim=False,
-        eeg=False, )
-
-    # get a numpy array from the raw object
-    X = raw.get_data()
-
-    # split into n_splits, to take advantage of multiprocessing
-    n_channels, n_times = X.shape
-    n_splits = 10
-    n_times = n_times // n_splits
-    X = np.reshape(X[:, :n_splits * n_times], (n_channels, n_splits, n_times))
-    X = np.swapaxes(X, 0, 1)
-
-    # normalization
-    X *= tukey(n_times, alpha=0.02)
-    X /= np.std(X)
-    return X, raw.info, events
 
 
 def time_string():
@@ -116,7 +79,7 @@ def one_run(method, random_state, reg):
     return func(random_state, reg)
 
 
-X, info, events = load_data()
+X, info = load_data()
 n_trials, n_channels, n_times = X.shape
 
 method = ('chunk', partial(_run, D_init='chunk'))
@@ -133,53 +96,62 @@ labels = [
     '%s_r%s_%d' % (method[0], reg_list[0], random_state)
 ]
 
-if True:
-    # ------------ plot many representations of the atoms init/final
 
-    def plot_psd_final(res, ax, i_atom):
-        pobj, times, uv_hat, Z_hat, uv_init = res
-        v_hat = uv_hat[i_atom, n_channels:]
-        psd = np.abs(np.fft.rfft(v_hat)) ** 2
-        frequencies = np.linspace(0, sfreq / 2.0, len(psd))
-        ax.plot(frequencies, psd, color=COLORS[i_atom % len(COLORS)])
-        ax.set(xlabel='Frequencies (Hz)', title='PSD atom final')
-        ax.grid('on')
-        ax.set_xlim(0, 30)
+def plot_psd_final(res, ax, i_atom):
+    pobj, times, uv_hat, Z_hat, uv_init = res
+    v_hat = uv_hat[i_atom, n_channels:]
+    psd = np.abs(np.fft.rfft(v_hat)) ** 2
+    frequencies = np.linspace(0, sfreq / 2.0, len(psd))
+    ax.plot(frequencies, psd, color=COLORS[i_atom % len(COLORS)])
+    ax.set(xlabel='Frequencies (Hz)', title='Power Spectral Density')
+    ax.grid('on')
+    ax.set_xlim(0, 30)
 
-    def plot_atom_final(res, ax, i_atom):
-        pobj, times, uv_hat, Z_hat, uv_init = res
-        v_hat = uv_hat[i_atom, n_channels:]
-        ax.plot(
-            np.arange(v_hat.size) / sfreq, v_hat,
-            color=COLORS[i_atom % len(COLORS)])
-        ax.set(xlabel='Time (sec)', title='Atom final')
-        ax.grid('on')
 
-    def plot_topo_final(res, ax, i_atom):
-        pobj, times, uv_hat, Z_hat, uv_init = res
-        u_hat = uv_hat[i_atom, :n_channels]
-        mne.viz.plot_topomap(u_hat, info, axes=ax, show=False)
-        ax.set(title='Topomap final')
+def plot_atom_final(res, ax, i_atom):
+    pobj, times, uv_hat, Z_hat, uv_init = res
+    v_hat = uv_hat[i_atom, n_channels:]
+    ax.plot(
+        np.arange(v_hat.size) / sfreq, v_hat,
+        color=COLORS[i_atom % len(COLORS)])
+    ax.set(xlabel='Time (sec)', title='Learned temporal waveform')
+    ax.grid('on')
 
-    all_plots = [
-        plot_psd_final,
-        plot_atom_final,
-        plot_topo_final
-    ]
 
-    n_plots = len(all_plots)
+def plot_topo_final(res, ax, i_atom):
+    pobj, times, uv_hat, Z_hat, uv_init = res
+    u_hat = uv_hat[i_atom, :n_channels]
+    mne.viz.plot_topomap(u_hat, info, axes=ax, show=False)
+    ax.set(title='Learned spatial pattern')
 
-    for label, res in zip(labels, results):
 
-        figsize = (2 + n_atoms * 3, n_plots * 3)
-        fig, axes = plt.subplots(n_plots, n_atoms, figsize=figsize,
-                                 squeeze=False)
-        for i_atom in range(n_atoms):
-            for i_plot, plot_func in enumerate(all_plots):
-                ax = axes[i_plot, i_atom]
-                plot_func(res, ax, i_atom)
-        plt.tight_layout()
-        fig.savefig(save_name + '_' + label + '_multiplot.png')
+all_plots = [
+    plot_psd_final,
+    plot_atom_final,
+    plot_topo_final
+]
+
+n_plots = len(all_plots)
+
+for label, res in zip(labels, results):
+
+    figsize = (n_plots * 3.5, 2 + n_atoms * 3)
+    fig, axes = plt.subplots(n_atoms, n_plots, figsize=figsize,
+                             squeeze=False)
+    for i_atom in range(n_atoms):
+        for i_plot, plot_func in enumerate(all_plots):
+            ax = axes[i_atom, i_plot]
+            plot_func(res, ax, i_atom)
+    plt.tight_layout()
+    fig.savefig(save_name + '_' + label + '_multiplot.pdf')
 
 plt.close('all')
-# plt.show()
+plt.show()
+
+pobj, times, uv_hat, Z_hat, uv_init = res
+
+D = get_D(uv_hat, n_channels)
+evokeds = list()
+for idx in range(n_atoms):
+    evokeds.append(mne.EvokedArray(D[idx], info, comment='Atom %d' % idx))
+mne.write_evokeds('examples_multicsc/atom_multi_somato-ave.fif', evokeds)
