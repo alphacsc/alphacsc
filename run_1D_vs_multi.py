@@ -195,7 +195,6 @@ if __name__ == "__main__":
     span_noise = np.logspace(-6, -1, 20)[5::2]
     span_channels = np.round(np.logspace(0, np.log10(max_n_channels), 10)
                              ).astype(int)
-    spane_channels = [1, 2, 4, 9, 21, 50]
 
     grid_args = itertools.product(span_random_state, span_noise, span_channels,
                                   span_reg)
