@@ -186,17 +186,18 @@ if __name__ == "__main__":
     n_times_valid = 640
     max_n_channels = 50
     n_atoms = 2
-    n_run = 10
+    n_run = 5
     n_trials = 100
     strongest_ch = 0
 
     n_iter = 500
 
-    span_reg = np.logspace(-5, -0.5, 15)
+    span_reg = np.logspace(-5, -0.5, 15)[7:-2]
     span_random_state = np.arange(n_run)
-    span_noise = np.logspace(-6, -1, 20)
+    span_noise = np.logspace(-6, -1, 20)[5::2]
     span_channels = np.round(np.logspace(0, np.log10(max_n_channels), 10)
                              ).astype(int)
+    spane_channels = [1, 2, 4, 9, 21, 50]
 
     grid_args = itertools.product(span_noise, span_channels, span_reg,
                                   span_random_state)

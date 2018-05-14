@@ -23,10 +23,10 @@ if __name__ == "__main__":
         curve = []
         results_n_channel = all_results_df[
             all_results_df['run_n_channels'] == n_channels]
-        print("{} -> {}".format(n_channels,
-                                results_n_channel.reg.loc[results_n_channel.score.idxmin()]))
         for sigma in span_sigma:
             results = results_n_channel[results_n_channel['sigma'] == sigma]
+            print("{} -> {}".format(n_channels,
+                                    results.reg.loc[results.score.idxmin()]))
             curve += [results.score.min()]
         plt.loglog(span_sigma, curve, label=n_channels)
 
