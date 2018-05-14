@@ -33,7 +33,7 @@ def init_dictionary(X, n_atoms, n_times_atom, D_init=None, rank1=True,
         The number of atoms to learn.
     n_times_atom : int
         The support of the atom.
-    D_init : array or {'kmeans' | 'ssa' | 'chunks' | 'random'}
+    D_init : array or {'kmeans' | 'ssa' | 'chunk' | 'random'}
         The initialization scheme for the dictionary or the initial
         atoms. The shape should match the required dictionary shape, ie if
         rank1 is TRue, (n_atoms, n_channels + n_times_atom) and else
