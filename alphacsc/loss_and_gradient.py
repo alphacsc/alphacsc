@@ -111,6 +111,31 @@ def compute_X_and_objective_multi(X, Z_hat, D_hat=None, reg=None, loss='l2',
                              loss_params=loss_params)
 
 
+def compute_gradient_norm(X, Z_hat, D_hat, reg, loss='l2', loss_params=dict(),
+                          rank1=False, sample_weights=None):
+    if X.ndim == 2:
+        X = X[:, None, :]
+        D_hat = D_hat[:, None, :]
+
+    if rank1:
+        grad_d = gradient_uv(uv=D_hat, X=X, Z=Z_hat, constants=None,
+                             loss=loss, loss_params=loss_params)
+    else:
+        grad_d = gradient_d(D=D_hat, X=X, Z=Z_hat, constants=None,
+                            loss=loss, loss_params=loss_params)
+
+    grad_norm_z = 0
+    for i in range(X.shape[0]):
+        grad_zi = gradient_zi(X[i], Z_hat[:, i], D=D_hat, reg=reg,
+                              loss=loss, loss_params=loss_params)
+        grad_norm_z += np.dot(grad_zi.ravel(), grad_zi.ravel())
+
+    grad_norm_d = np.dot(grad_d.ravel(), grad_d.ravel())
+    grad_norm = np.sqrt(grad_norm_d) + np.sqrt(grad_norm_z)
+
+    return grad_norm
+
+
 def gradient_uv(uv, X=None, Z=None, constants=None, reg=None, loss='l2',
                 loss_params=dict(), return_func=False, flatten=False):
     """Compute the gradient of the reconstruction loss relative to uv.

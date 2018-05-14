@@ -17,7 +17,8 @@ def normalize_pobj(pobj, best_pobj=None, normalize_method='best'):
     elif normalize_method == 'last':
         pobj = [(p - p.min()) / p.min() for p in pobj]
         pobj = [p / p[0] if p[0] != 0 else p for p in pobj]
-
+    elif normalize_method == 'diff':
+        pobj = [-np.diff(p) for p in pobj]
     elif normalize_method in [None, 'short']:
         pass
     else:
@@ -69,6 +70,8 @@ def plot_convergence(data_frame, threshold, normalize_method, save_name):
                     pobj_mean = 10 ** (np.mean(pobj_stack, axis=0))
                     times_mean = np.vstack([t[:n_iter_min] for t in times])
                     times_mean = times_mean.mean(axis=0)
+                    if times_mean.size == 0:
+                        continue
                     tmax.append(times_mean[-1])
 
                     if normalize_method == 'last' and True:
@@ -119,8 +122,10 @@ def plot_convergence(data_frame, threshold, normalize_method, save_name):
                 if normalize_method == 'short' and tmax != []:
                     xmax = 10 ** np.mean(np.log10(tmax)) / 5
                     plt.xlim(-xmax / 20, xmax)
+            elif normalize_method == 'diff':
+                plt.ylabel('diff(objective)')
             elif normalize_method == 'last':
-                plt.ylabel('(objective_i - best_i) / best_i')
+                plt.ylabel('(objective_i - best_i) / (init - best_i)')
             else:
                 plt.ylabel('(objective - best) / best')
             plt.legend(loc=0, ncol=1)
@@ -194,6 +199,12 @@ def plot_barplot(all_results_df, threshold, normalize_method, save_name):
     for setting in settings:
         this_to_plot_df = to_plot_df[to_plot_df['setting'] == setting]
 
+        # remove last point which have failed
+        if 'P=5' in setting:
+            this_to_plot_df = this_to_plot_df[this_to_plot_df['reg'] < 50.]
+        if 'P=25' in setting:
+            this_to_plot_df = this_to_plot_df[this_to_plot_df['reg'] < 75.]
+
         labels = this_to_plot_df['label'].unique()
         regs = this_to_plot_df['reg'].unique()
         regs.sort()
@@ -205,9 +216,11 @@ def plot_barplot(all_results_df, threshold, normalize_method, save_name):
         for i, label in enumerate(labels):
             this_df = this_to_plot_df[this_to_plot_df['label'] == label]
 
+            hatch = '//' if 'Proposed' in label else ''
+
             rect = ax.bar(left=x_positions + i * width,
                           height=np.array(this_df['mean']), width=width,
-                          label=label)
+                          label=label, hatch=hatch)
             rect_list.append(rect)
             # yerr=np.array(this_df['std']),
 
@@ -229,12 +242,43 @@ def plot_barplot(all_results_df, threshold, normalize_method, save_name):
         # legend to the top
         plt.legend()
         labels = [text.get_text() for text in ax.get_legend().get_texts()]
-        fig.legend(rect_list, labels, loc='upper center', ncol=4,
+        if len(labels) > 3:
+            ncol = 2
+            top = 0.80
+        else:
+            ncol = 3
+            top = 0.85
+        fig.legend(rect_list, labels, loc='upper center', ncol=ncol,
                    columnspacing=0.8)
         ax.legend_.remove()
-        fig.subplots_adjust(top=0.85)
+        fig.subplots_adjust(top=top)
 
         fig.savefig('%s_%s.png' % (save_name, setting))
+
+
+def change_label(data_frame, old, new):
+    """Change a method label"""
+    mask = data_frame['label'] == old
+    data_frame.loc[mask, 'label'] = new
+    return data_frame
+
+
+def clean_data_frame(data_frame):
+    """Various cleaning"""
+    data_frame = change_label(data_frame, old='Wohlberg (2017)',
+                              new='Garcia-Cardona et al (2017)')
+    data_frame = change_label(data_frame, old='LGCD (1 channel)',
+                              new='Proposed (univariate)')
+    data_frame = change_label(data_frame, old='LGCD (full rank)',
+                              new='Proposed (multivariate)')
+    data_frame = change_label(data_frame, old='LGCD (rank 1)',
+                              new='Proposed (multichannel)')
+    data_frame = change_label(data_frame, old='Jas & al (2017) LBFGS',
+                              new='Jas et al (2017) LBFGS')
+    data_frame = change_label(data_frame, old='Jas & al (2017) FISTA',
+                              new='Jas et al (2017) FISTA')
+
+    return data_frame
 
 
 ##############################################################################
@@ -247,6 +291,8 @@ for load_name in os.listdir('figures'):
         data_frame = pd.read_pickle(load_name)
     else:
         continue
+
+    data_frame = clean_data_frame(data_frame)
 
     if all_results_df is not None:
         all_results_df = pd.concat([all_results_df, data_frame],
@@ -263,7 +309,7 @@ for load_name in os.listdir('figures'):
         plot_convergence(data_frame, threshold, normalize_method, save_name)
         plt.close('all')
 
-threshold = 1e-3
+threshold = 1e-2
 normalize_method = 'last'
 save_name = os.path.join('figures', 'all')
 

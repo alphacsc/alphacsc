@@ -94,7 +94,7 @@ def learn_d_z(X, n_atoms, n_times_atom, func_d=update_d_block, reg=0.1,
         The cumulative time for each iteration of the coordinate descent.
     d_hat : array, shape (n_atoms, n_times)
         The estimated atoms.
-    Z_hat : array, shape (n_atoms, n_times - n_times_atom + 1)
+    Z_hat : array, shape (n_atoms, n_trials, n_times - n_times_atom + 1)
         The sparse activation matrix.
     """
     n_trials, n_times = X.shape

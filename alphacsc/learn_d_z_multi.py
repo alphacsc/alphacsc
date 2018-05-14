@@ -94,6 +94,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
         coordinate descent.
     random_state : int | None
         The random state.
+    raise_on_increase : boolean
+        Raise an error if the objective function increase
 
     Returns
     -------
