@@ -21,9 +21,6 @@ START = time.time()
 # Parameters of the simulation
 verbose = 1
 
-# number of random states
-n_states = 3
-
 n_trials = 10  # N
 n_times_atom = 128  # L
 n_times = 20000  # T
@@ -124,8 +121,11 @@ if __name__ == '__main__':
 
     reg = .01
     n_iter = 50
+    # number of random states
+    n_states = 3
     n_channels = X.shape[1]
-    span_channels = np.floor(np.logspace(1, n_channels, 10)).astype(int)
+    span_channels = np.unique(np.floor(
+        np.logspace(0, np.log10(n_channels), 10)).astype(int))
     methods = [
         [run_multichannel, 'rank1', n_iter],
         # [run_multivariate, 'dense', n_iter],
