@@ -11,6 +11,7 @@ from sklearn.externals.joblib import Parallel, delayed, Memory
 from alphacsc.utils.profile_this import profile_this  # noqa
 from alphacsc.utils import check_random_state, get_D
 from alphacsc.learn_d_z_multi import learn_d_z_multi
+from alphacsc.utils.dictionary import get_lambda_max
 
 mem = Memory(cachedir='.', verbose=0)
 
@@ -114,8 +115,11 @@ def one_run(X, n_channels, method, n_atoms, n_times_atom, random_state,
     D_init = generate_D_init(n_channels, random_state)
     X = X[:, :n_channels]
 
+    lmbd_max = get_lambda_max(X, D_init)
+    reg_ = reg * lmbd_max
+
     # run the selected algorithm with one iter to remove compilation overhead
-    _, _, _, _ = func(X, D_init, reg, 1, random_state, label, n_channels,
+    _, _, _, _ = func(X, D_init, reg_, 1, random_state, label, n_channels,
                       stopping_pobj)
 
     # run the selected algorithm
@@ -146,6 +150,7 @@ if __name__ == '__main__':
     from alphacsc.datasets.somato import load_data
     X, info = load_data(epoch=False, n_jobs=n_jobs)
 
+    reg = .1
     n_channels = X.shape[1]
     span_channels = np.linspace(1, n_channels, 20).astype(int)
 

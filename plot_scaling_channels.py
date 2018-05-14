@@ -36,7 +36,7 @@ def plot_scaling_channels(all_results_df, threshold, aggregate_method,
                     continue
 
                 # draw a different figure for each setting
-                fig = plt.figure(figsize=(12, 9))
+                fig = plt.figure(figsize=(8, 6))
                 ax = fig.gca()
                 plt.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
                 z_update, d_update, full_update = [], [], []
@@ -75,11 +75,11 @@ def plot_scaling_channels(all_results_df, threshold, aggregate_method,
                 # Plot first diagonal
                 t = np.arange(101)
                 plt.plot(t, t, "k--")
-                plt.text(37, 55, "linear scaling", rotation=57, fontsize=18,
+                plt.text(27, 55, "linear scaling", rotation=57, fontsize=18,
                          bbox=dict(facecolor="white", edgecolor="white"))
 
-                plt.xlabel('n_channels')
-                plt.ylabel('Time (s)')
+                plt.xlabel('# of channels P')
+                plt.ylabel('$^{time_{P}}/_{time_1}$', fontsize=22)
                 plt.legend()
                 # plt.ylim(ymin=ymin / 10)
                 # plt.title('K = %d, L = %d' % (n_atoms, n_times_atom))
@@ -88,12 +88,14 @@ def plot_scaling_channels(all_results_df, threshold, aggregate_method,
                 plt.gca().tick_params(axis='y', which='both', left='off',
                                       right='off')
                 plt.gca().ticklabel_format(style="plain", axis='y')
-                plt.ylim((0, 100))
-                plt.xlim((0, span_channels.max()))
+                plt.ylim((1, 100))
+                plt.xlim((1, span_channels.max()))
+                plt.xticks([1, 50, 100, 150, 200])
+                plt.yticks([1, 25, 50, 75, 100])
                 plt.grid(True)
                 plt.tight_layout()
 
-                fig.savefig(save_name + '_bench_%s_K%d_L%d.png' %
+                fig.savefig(save_name + '_%s_K%d_L%d.png' %
                             (label, n_atoms, n_times_atom), dpi=150)
 
 
@@ -114,7 +116,7 @@ if 'threshold' not in globals():
 # force threshold
 threshold = 0.001
 normalize_method = None
-save_name = load_name[:-4]
+save_name = os.path.join('figures', 'scaling_channels')
 
 for aggregate_method in ['mean', 'median', 'max']:
     plot_scaling_channels(all_results_df, threshold, aggregate_method,
