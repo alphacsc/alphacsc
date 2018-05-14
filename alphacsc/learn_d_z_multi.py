@@ -202,7 +202,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
 
 def _batch_learn(X, D_hat, Z_hat, compute_z_func, compute_d_func,
                  obj_func, end_iter_func, n_iter=100, n_jobs=1, verbose=0,
-                 random_state=None, parallel=None, lmbd_max=False, reg=None,
+                 random_state=None, parallel=None, lmbd_max='fixed', reg=None,
                  name="batch"):
 
     reg_ = reg

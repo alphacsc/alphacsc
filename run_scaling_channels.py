@@ -32,7 +32,7 @@ if not os.path.exists("figures"):
 save_name = os.path.join('figures', save_name)
 
 
-def generate_D_init(n_channels, random_state):
+def generate_D_init(n_channels, n_times_atom, random_state):
     rng = check_random_state(random_state)
     return rng.randn(n_atoms, n_channels + n_times_atom)
 
@@ -77,10 +77,10 @@ def one_run(X, n_channels, method, n_atoms, n_times_atom, random_state, reg):
           label, n_channels, random_state, current_time))
 
     # use the same init for all methods
-    D_init = generate_D_init(n_channels, random_state)
+    D_init = generate_D_init(n_channels, n_times_atom, random_state)
     X = X[:, :n_channels]
 
-    lmbd_max = get_lambda_max(X, D_init).max()
+    lmbd_max = get_lambda_max(X, D_init).mean()
     reg_ = reg * lmbd_max
 
     # run the selected algorithm with one iter to remove compilation overhead
@@ -98,7 +98,7 @@ def one_run(X, n_channels, method, n_atoms, n_times_atom, random_state, reg):
     current_time = time.time() - START
     print('{}-{}-{}: done at {:.0f} sec'.format(
           label, n_channels, random_state, current_time))
-    assert len(times) > 15
+    assert len(times) > 5
     return (n_channels, random_state, label, np.asarray(pobj),
             np.asarray(times), np.asarray(d_hat), np.asarray(z_hat), n_atoms,
             n_times_atom, n_trials, n_times, reg)
@@ -119,7 +119,7 @@ if __name__ == '__main__':
     from alphacsc.datasets.somato import load_data
     X, info = load_data(epoch=False, n_jobs=args.njobs)
 
-    reg = .01
+    reg = .005
     n_iter = 50
     # number of random states
     n_states = 3
