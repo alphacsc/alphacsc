@@ -12,7 +12,7 @@ from mne.simulation import simulate_evoked
 
 data_path = mne.datasets.sample.data_path()
 subjects_dir = op.join(data_path, 'subjects')
-fname_ave = 'examples_multicsc/atom_multi-ave.fif'
+fname_ave = 'examples_multicsc/atom_multi_sample-ave.fif'
 fname_cov = op.join(data_path, 'MEG', 'sample', 'sample_audvis-cov.fif')
 fname_bem = op.join(subjects_dir, 'sample', 'bem', 'sample-5120-bem-sol.fif')
 fname_trans = op.join(data_path, 'MEG', 'sample',

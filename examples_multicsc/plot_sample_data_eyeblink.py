@@ -130,7 +130,7 @@ plt.gca().set(xscale='log')
 
 D = get_D(uv_hat, n_channels)[atom_idx]
 evoked = EvokedArray(D, raw.info)
-evoked.save('examples_multicsc/atom_multi-ave.fif')
+evoked.save('examples_multicsc/atom_multi_sample-ave.fif')
 
 ica.plot_properties(raw, picks=eog_inds, psd_args={'fmax': 35.},
                     image_args={'sigma': 1.})
