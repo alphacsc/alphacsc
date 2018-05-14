@@ -11,7 +11,8 @@ mem = Memory(cachedir='.', verbose=0)
 
 
 @mem.cache(ignore=['n_jobs'])
-def load_data(sfreq=None, epoch=True, n_jobs=1, filt=[2., None], n_trials=10):
+def load_data(sfreq=None, epoch=True, n_jobs=1, filt=[2., None], n_trials=10,
+              return_epochs=False):
     """Load and prepare the somato dataset for multiCSC
 
 
@@ -24,6 +25,8 @@ def load_data(sfreq=None, epoch=True, n_jobs=1, filt=[2., None], n_trials=10):
         signal, divided in 10 chunks.
     n_jobs : int
         Number of jobs that can be used for preparing (filtering) the data.
+    return_epochs : boolean
+        If True, return epochs instead of X and info
     """
     data_path = os.path.join(mne.datasets.somato.data_path(), 'MEG', 'somato')
     raw = mne.io.read_raw_fif(
@@ -47,6 +50,8 @@ def load_data(sfreq=None, epoch=True, n_jobs=1, filt=[2., None], n_trials=10):
             epochs.resample(sfreq, npad='auto')
         X = epochs.get_data()
         info = epochs.info
+        if return_epochs:
+            return epochs
 
     else:
         raw.pick_types(meg='grad', eog=False)
@@ -58,6 +63,9 @@ def load_data(sfreq=None, epoch=True, n_jobs=1, filt=[2., None], n_trials=10):
         X = np.array([X[:, i * n_times:(i + 1) * n_times]
                       for i in range(n_trials)])
         info = raw.info
+        if return_epochs:
+            raise ValueError('return_epochs=True is not allowed with '
+                             'epochs=False')
 
     events[:, 0] -= raw.first_samp
 

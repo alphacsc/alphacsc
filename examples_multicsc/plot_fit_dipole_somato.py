@@ -1,3 +1,5 @@
+# Run plot_somato_data_mu.py before this script
+
 import os
 from os import path as op
 import numpy as np
@@ -23,14 +25,14 @@ fname_surf_lh = op.join(subjects_dir, 'sample', 'surf', 'lh.white')
 evoked = mne.read_evokeds(fname_ave, baseline=None)[0]
 evoked.pick_types(meg=True, eeg=False)
 
-epochs = load_data(sfreq=300., epochs=True)
+epochs = load_data(epoch=True, return_epochs=True)
 cov = mne.compute_covariance(epochs)
 
 # Fit a dipole
 dip = mne.fit_dipole(evoked, cov, fname_bem, fname_trans)[0]
 
 # Plot the result in 3D brain with the MRI image.
-dip.plot_locations(fname_trans, 'sample', subjects_dir, mode='orthoview')
+dip.plot_locations(fname_trans, 'somato', subjects_dir, mode='orthoview')
 
 fwd, stc = make_forward_dipole(dip, fname_bem, evoked.info, fname_trans)
 pred_evoked = simulate_evoked(fwd, stc, evoked.info, cov=None, nave=np.inf)
@@ -46,7 +48,7 @@ fig, axes = plt.subplots(nrows=1, ncols=4, figsize=[10., 3.4])
 vmin, vmax = -400, 400  # make sure each plot has same colour range
 
 # first plot the topography at the time of the best fitting (single) dipole
-plot_params = dict(times=best_time, ch_type='mag', outlines='skirt',
+plot_params = dict(times=best_time, ch_type='grad', outlines='skirt',
                    colorbar=False, time_unit='s')
 evoked.plot_topomap(time_format='Measured field', axes=axes[0], **plot_params)
 

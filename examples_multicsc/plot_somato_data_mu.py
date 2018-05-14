@@ -79,7 +79,7 @@ def one_run(method, random_state, reg):
     return func(random_state, reg)
 
 
-X, info = load_data()
+X, info = load_data(epoch=False)
 n_trials, n_channels, n_times = X.shape
 
 method = ('chunk', partial(_run, D_init='chunk'))
