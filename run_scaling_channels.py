@@ -30,7 +30,6 @@ n_trials = 10  # N
 n_times_atom = 128  # L
 n_times = 20000  # T
 n_atoms = 2  # K
-reg = 1.0
 
 save_name = 'methods_scaling.pkl'
 if not os.path.exists("figures"):
@@ -45,7 +44,7 @@ def generate_D_init(n_channels, random_state):
 
 # @profile_this
 def run_multichannel(X, D_init, reg, n_iter, random_state,
-                     label, n_channels, stopping_pobj):
+                     label, n_channels):
     n_atoms, n_channels_n_times_atom = D_init.shape
     n_times_atom = n_channels_n_times_atom - n_channels
 
@@ -55,14 +54,13 @@ def run_multichannel(X, D_init, reg, n_iter, random_state,
         uv_constraint='separate', rank1=True, D_init=D_init,
         solver_d='alternate_adaptive', solver_d_kwargs=dict(max_iter=50),
         solver_z='gcd', solver_z_kwargs=solver_z_kwargs, use_sparse_z=True,
-        stopping_pobj=stopping_pobj,
         name="rank1-{}-{}".format(n_channels, random_state),
         random_state=random_state, n_jobs=1, verbose=verbose)
 
 
 # @profile_this
 def run_multivariate(X, D_init, reg, n_iter, random_state,
-                     label, n_channels, stopping_pobj):
+                     label, n_channels):
     n_atoms, n_channels_n_times_atom = D_init.shape
     n_times_atom = n_channels_n_times_atom - n_channels
     D_init = get_D(D_init, n_channels)
@@ -73,16 +71,8 @@ def run_multivariate(X, D_init, reg, n_iter, random_state,
         uv_constraint='separate', rank1=False, D_init=D_init,
         solver_d='lbfgs', solver_d_kwargs=dict(max_iter=50),
         solver_z='gcd', solver_z_kwargs=solver_z_kwargs, use_sparse_z=True,
-        stopping_pobj=stopping_pobj,
         name="dense-{}-{}".format(n_channels, random_state),
         random_state=random_state, n_jobs=1, verbose=verbose)
-
-
-n_iter = 50
-methods = [
-    [run_multichannel, 'rank1', n_iter],
-    # [run_multivariate, 'dense', n_iter],
-]
 
 
 def one_run(X, n_channels, method, n_atoms, n_times_atom, random_state, reg):
@@ -129,8 +119,13 @@ if __name__ == '__main__':
     X, info = load_data(epoch=False, n_jobs=n_jobs)
 
     reg = .1
+    n_iter = 50
     n_channels = X.shape[1]
     span_channels = np.linspace(1, n_channels, 20).astype(int)
+    methods = [
+        [run_multichannel, 'rank1', n_iter],
+        # [run_multivariate, 'dense', n_iter],
+    ]
 
     with Parallel(n_jobs=n_jobs) as parallel:
 
@@ -140,7 +135,7 @@ if __name__ == '__main__':
         results = parallel(
             delayed_one_run(X, n_chan, method, n_atoms,
                             n_times_atom, rst, reg)
-            for rst, n_chan, method in iterator)
+            for rst, method, n_chan in iterator)
 
         all_results.extend(results)
 

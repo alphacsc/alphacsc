@@ -184,7 +184,7 @@ if __name__ == "__main__":
     n_times_valid = 640
     max_n_channels = 50
     n_atoms = 2
-    n_run = 1
+    n_run = 3
     n_trials = 100
     strongest_ch = 0
 
