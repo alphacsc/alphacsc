@@ -24,8 +24,7 @@ sfreq = 150.
 n_times_atom = int(round(sfreq * 1.0))  # 1000. ms
 reg_list = [29.]
 
-# n_atoms = 30
-n_atoms = 5
+n_atoms = 30
 n_iter = 200
 random_state = 0
 n_jobs = 6
@@ -35,7 +34,7 @@ verbose = 2
 event_id, tmin, tmax = 1, -2., 5.
 
 # debug
-if True:
+if False:
     reg_list = [5]
     n_atoms = 2
     n_iter = 1
