@@ -140,8 +140,8 @@ fig.subplots_adjust(hspace=0.4)
 fig.savefig('figures/atoms_sample.pdf')
 
 # XXX: what is this 20 Hz atom? It doesn't have topomap of motor ...
+atom_idx = 14
 if debug:
-    atom_idx = 14
     plt.figure('Power spectral density')
     sfreq = raw.info['sfreq']
     psd = np.abs(np.fft.rfft(uv_hat[atom_idx, :n_channels])) ** 2

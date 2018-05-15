@@ -4,11 +4,12 @@
 from os import path as op
 import numpy as np
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 import mne
-from mne.forward import make_forward_dipole
-from mne.evoked import combine_evoked
-from mne.simulation import simulate_evoked
+
+from alphacsc.utils import get_uv
+from alphacsc.utils.viz import COLORS
 
 data_path = mne.datasets.sample.data_path()
 subjects_dir = op.join(data_path, 'subjects')
@@ -26,33 +27,23 @@ evoked.pick_types(meg=True, eeg=False)
 dip = mne.fit_dipole(evoked, fname_cov, fname_bem, fname_trans)[0]
 
 # Plot the result in 3D brain with the MRI image.
-dip.plot_locations(fname_trans, 'sample', subjects_dir, mode='orthoview')
-
-fwd, stc = make_forward_dipole(dip, fname_bem, evoked.info, fname_trans)
-pred_evoked = simulate_evoked(fwd, stc, evoked.info, cov=None, nave=np.inf)
-
-# find time point with highest GOF to plot
+fig = plt.figure(figsize=plt.figaspect(2.))
+ax = fig.add_subplot(2, 1, 1, projection='3d')
+dip.plot_locations(fname_trans, 'sample', subjects_dir, ax=ax,
+                   mode='orthoview')
 best_idx = np.argmax(dip.gof)
 best_time = dip.times[best_idx]
-print('Highest GOF %0.1f%% at t=%0.1f ms with confidence volume %0.1f cm^3'
-      % (dip.gof[best_idx], best_time * 1000,
-         dip.conf['vol'][best_idx] * 100 ** 3))
-# rememeber to create a subplot for the colorbar
-fig, axes = plt.subplots(nrows=1, ncols=4, figsize=[10., 3.4])
-vmin, vmax = -400, 400  # make sure each plot has same colour range
+ax.set_title('Dipole fit (Highest GOF=%0.1f%%)' % dip.gof[best_idx])
 
-# first plot the topography at the time of the best fitting (single) dipole
-plot_params = dict(times=best_time, ch_type='mag', outlines='skirt',
-                   colorbar=False, time_unit='s')
-evoked.plot_topomap(time_format='Measured field', axes=axes[0], **plot_params)
+# add PSD
+ax = fig.add_subplot(2, 1, 2)
+v_hat = get_uv(evoked.data[None, ...])[0, evoked.info['nchan']:]
+psd = np.abs(np.fft.rfft(v_hat)) ** 2
+frequencies = np.linspace(0, evoked.info['sfreq'] / 2.0, len(psd))
+ax.semilogy(frequencies, psd, color=COLORS[0])
+ax.set(xlabel='Frequencies (Hz)', title='Power Spectral Density')
+ax.grid('on')
+ax.set_xlim(0, 30)
 
-# compare this to the predicted field
-pred_evoked.plot_topomap(time_format='Predicted field', axes=axes[1],
-                         **plot_params)
-
-# Subtract predicted from measured data (apply equal weights)
-diff = combine_evoked([evoked, -pred_evoked], weights='equal')
-plot_params['colorbar'] = True
-diff.plot_topomap(time_format='Difference', axes=axes[2], **plot_params)
-plt.suptitle('Comparison of measured and predicted fields '
-             'at {:.0f} ms'.format(best_time * 1000.), fontsize=16)
+plt.suptitle('')
+plt.savefig('figures/dipole_sample.png')
