@@ -129,7 +129,7 @@ def run_one(reg, sigma, n_atoms, n_times_atom, max_n_channels, n_times_valid,
                                  sigma, random_state)
 
     reg_ = reg * get_lambda_max(X, uv_init).max()
-    reg_ *= run_n_channels
+    # reg_ *= run_n_channels
 
     uv_init_ = prox_uv(np.c_[uv_init[:, :run_n_channels],
                              uv_init[:, max_n_channels:]])
@@ -155,9 +155,9 @@ def run_one(reg, sigma, n_atoms, n_times_atom, max_n_channels, n_times_valid,
 
     score = score_uv(uv_, uv_hat, run_n_channels)
     print("=" * 79 + "\n"
-          + "[channels{}-{}] iter{} score sig={:.2e}: {:.3e}\n"
-          .format(run_n_channels, reg, len(pobj) // 2, sigma, score)
-          + "=" * 79)
+          + "[channels{}-{:.2e}-{}] iter {} score sig={:.2e}: {:.3e}\n"
+          .format(run_n_channels, reg, random_state, len(pobj) // 2, sigma,
+                  score) + "=" * 79)
 
     return random_state, sigma, run_n_channels, score, uv, uv_hat, reg
 
@@ -190,11 +190,11 @@ if __name__ == "__main__":
 
     n_iter = 500
 
-    span_reg = np.logspace(-5, -0.5, 15)[7:-2]
+    span_reg = np.logspace(-4, -0.5, 10)
     span_random_state = np.arange(n_run)
-    span_noise = np.logspace(-6, -1, 20)[5::2]
-    span_channels = np.round(np.logspace(0, np.log10(max_n_channels), 10)
-                             ).astype(int)
+    span_noise = np.logspace(-4, -1, 10)
+    span_channels = np.unique(
+        np.round(np.logspace(0, np.log10(max_n_channels), 10)).astype(int))
 
     grid_args = itertools.product(span_random_state, span_noise, span_channels,
                                   span_reg)
