@@ -26,7 +26,7 @@ n_times_atom = 128  # L
 n_times = 20000  # T
 n_atoms = 2  # K
 
-save_name = 'methods_scaling.pkl'
+save_name = 'methods_scaling_reg{}.pkl'
 if not os.path.exists("figures"):
     os.mkdir("figures")
 save_name = os.path.join('figures', save_name)
@@ -119,10 +119,10 @@ if __name__ == '__main__':
     from alphacsc.datasets.somato import load_data
     X, info = load_data(epoch=False, n_jobs=args.njobs)
 
-    reg = .005
+    reg = .001
     n_iter = 50
     # number of random states
-    n_states = 3
+    n_states = 10
     n_channels = X.shape[1]
     span_channels = np.unique(np.floor(
         np.logspace(0, np.log10(n_channels), 10)).astype(int))
@@ -147,7 +147,7 @@ if __name__ == '__main__':
     all_results_df = pd.DataFrame(
         all_results, columns='n_channels random_state label pobj times '
         'd_hat z_hat n_atoms n_times_atom n_trials n_times reg'.split(' '))
-    all_results_df.to_pickle(save_name)
+    all_results_df.to_pickle(save_name.format(reg))
     import IPython
     IPython.embed()
 

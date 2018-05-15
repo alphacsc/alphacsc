@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+fontsize = 18
 font = {'size': 14}
 matplotlib.rc('font', **font)
 
@@ -20,8 +21,7 @@ def aggregate_timing(times, aggregate_method='mean'):
         raise ValueError('unknown aggregate_time: {}'.format(aggregate_method))
 
 
-def plot_scaling_channels(all_results_df, threshold, aggregate_method,
-                          save_name):
+def plot_scaling_channels(all_results_df, aggregate_method, save_name):
     save_name += '_{}'.format(aggregate_method)
     span_channels = all_results_df['n_channels'].unique()
     for n_atoms in all_results_df['n_atoms'].unique():
@@ -73,12 +73,12 @@ def plot_scaling_channels(all_results_df, threshold, aggregate_method,
                     #                  color=color, alpha=.1)
 
                 # Plot first diagonal
-                t = np.arange(101)
-                plt.plot(t, t, "k--")
-                plt.text(23, 46, "linear scaling", rotation=60, fontsize=14,
-                         bbox=dict(facecolor="white", edgecolor="white"))
+                # t = np.arange(101)
+                # plt.plot(t, t, "k--")
+                # plt.text(23, 46, "linear scaling", rotation=60, fontsize=14,
+                #          bbox=dict(facecolor="white", edgecolor="white"))
 
-                plt.xlabel('# of channels P')
+                plt.xlabel('# of channels P', fontsize=fontsize)
                 plt.ylabel('$^{time_{P}}/_{time_1}$', fontsize=22)
                 plt.legend(frameon=True, fontsize=14, ncol=3, columnspacing=.5)
                 plt.gca().tick_params(axis='x', which='both', bottom=False,
@@ -87,7 +87,7 @@ def plot_scaling_channels(all_results_df, threshold, aggregate_method,
                                       right=False)
                 plt.gca().ticklabel_format(style="plain", axis='y')
                 plt.xticks([1, 50, 100, 150, 200])
-                # plt.yticks([1, 25, 50, 75, 100])
+                plt.yticks([1, 2, 3, 4])
                 plt.ylim((1, 4))
                 plt.xlim((1, span_channels.max()))
                 plt.grid(True)
@@ -98,28 +98,28 @@ def plot_scaling_channels(all_results_df, threshold, aggregate_method,
                             (label, n_atoms, n_times_atom), dpi=150)
 
 
-##############################################################################
-# load the results from file
+if __name__ == '__main__':
+    
+    import argparse
+    parser = argparse.ArgumentParser(
+        'Plot the scaling of multichannel CSC relatively to the number of channels P.')
+    parser.add_argument('--fname', type=str, default='figures/methods_scaling_reg0.005.pkl',
+                        help='Name of the file to plot from.')
+    args = parser.parse_args()
 
-load_name = 'methods_scaling.pkl'
+    ##############################################################################
+    # load the results from file
 
-load_name = os.path.join('figures', load_name)
-all_results_df = pd.read_pickle(load_name)
+    load_name = args.fname
 
-if 'threshold' not in globals():
-    threshold = (all_results_df['stopping_pobj'] / all_results_df['best_pobj']
-                 - 1).unique()
-    assert threshold.size == 1
-    threshold = threshold[0]
+    all_results_df = pd.read_pickle(load_name)
 
-# force threshold
-threshold = 0.001
-normalize_method = None
-save_name = os.path.join('figures', 'scaling_channels')
+    normalize_method = None
+    save_name = load_name.replace("methods_scaling", "scaling_channels").replace(".pkl", '')
+    save_name = save_name.replace(".", "_")
 
-for aggregate_method in ['mean', 'median', 'max']:
-    plot_scaling_channels(all_results_df, threshold, aggregate_method,
-                          save_name)
+    for aggregate_method in ['mean', 'median', 'max']:
+        plot_scaling_channels(all_results_df, aggregate_method, save_name)
 
-# plt.show()
-plt.close('all')
+    # plt.show()
+    plt.close('all')
