@@ -133,6 +133,10 @@ times = np.arange(n_times - n_times_atom + 1) / raw.info['sfreq']
 ax3.plot(times, Z_hat[atoms_idx[2], 0, :], color=COLORS[0])
 ax3.set_title('            C. Activations', fontsize=16)
 ax3.set_xlabel('Time (s)')
+time_diff = np.diff(np.where(
+    Z_hat[atoms_idx[2], 0, :] > 0.15)[0]) / raw.info['sfreq']
+time_diff = time_diff[time_diff > 0.1]
+print('Average pulse %f / min' % (1 / time_diff.mean() * 60))
 
 # fig.tight_layout()
 fig.subplots_adjust(hspace=0.4)

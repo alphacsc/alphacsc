@@ -23,7 +23,8 @@ fname_trans = op.join(data_path, 'MEG', 'somato',
                       'sef_raw_sss-trans.fif')
 fname_surf_lh = op.join(subjects_dir, 'somato', 'surf', 'lh.white')
 
-evoked = mne.read_evokeds(fname_ave, baseline=None)[0]
+atom_idx = 4
+evoked = mne.read_evokeds(fname_ave, baseline=None)[atom_idx]
 evoked.pick_types(meg=True, eeg=False)
 
 epochs = load_data(epoch=True, return_epochs=True)
@@ -50,8 +51,8 @@ ax.plot(frequencies, 10 * np.log10(psd), color=COLORS[0], linewidth=1.5)
 ax.set(xlabel='Frequencies (Hz)', ylabel='Power Spectral Density (dB)')
 ax.grid('on')
 ax.set_xlim(0, 40)
-ax.axvline(10., linestyle='--', color=COLORS[1])
-ax.axvline(20., linestyle='--', color=COLORS[1])
+ax.axvline(8.6, linestyle='--', color=COLORS[1])
+ax.axvline(17.2, linestyle='--', color=COLORS[1])
 
 plt.suptitle('')
 plt.tight_layout()
