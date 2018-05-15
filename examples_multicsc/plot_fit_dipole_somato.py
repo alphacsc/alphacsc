@@ -46,10 +46,10 @@ ax = fig.add_subplot(2, 1, 2)
 v_hat = get_uv(evoked.data[None, ...])[0, evoked.info['nchan']:]
 psd = np.abs(np.fft.rfft(v_hat)) ** 2
 frequencies = np.linspace(0, evoked.info['sfreq'] / 2.0, len(psd))
-ax.semilogy(frequencies, psd, color=COLORS[0], linewidth=1.5)
-ax.set(xlabel='Frequencies (Hz)', ylabel='Power Spectral Density')
+ax.plot(frequencies, 10 * np.log10(psd), color=COLORS[0], linewidth=1.5)
+ax.set(xlabel='Frequencies (Hz)', ylabel='Power Spectral Density (dB)')
 ax.grid('on')
-ax.set_xlim(0, 30)
+ax.set_xlim(0, 40)
 ax.axvline(10., linestyle='--', color=COLORS[1])
 ax.axvline(20., linestyle='--', color=COLORS[1])
 
