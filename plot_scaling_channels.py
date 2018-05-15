@@ -36,7 +36,7 @@ def plot_scaling_channels(all_results_df, threshold, aggregate_method,
                     continue
 
                 # draw a different figure for each setting
-                fig = plt.figure(figsize=(8, 6))
+                fig = plt.figure(figsize=(6, 4))
                 ax = fig.gca()
                 plt.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
                 z_update, d_update, full_update = [], [], []
@@ -62,9 +62,9 @@ def plot_scaling_channels(all_results_df, threshold, aggregate_method,
 
                 # ax.set_yscale('log')
                 plots = [
-                    (z_update, "C0", "z_update"),
-                    (d_update, "C1", "d_update"),
-                    (full_update, "C2", "full_update")
+                    (z_update, "C0", "z step"),
+                    (d_update, "C1", "d step"),
+                    (full_update, "C2", "z+d steps")
                 ]
                 for timing, color, name in plots:
                     plt.plot(span_channels, timing[:, 0], c=color, label=name)
@@ -75,24 +75,23 @@ def plot_scaling_channels(all_results_df, threshold, aggregate_method,
                 # Plot first diagonal
                 t = np.arange(101)
                 plt.plot(t, t, "k--")
-                plt.text(27, 55, "linear scaling", rotation=57, fontsize=18,
+                plt.text(23, 46, "linear scaling", rotation=60, fontsize=14,
                          bbox=dict(facecolor="white", edgecolor="white"))
 
                 plt.xlabel('# of channels P')
                 plt.ylabel('$^{time_{P}}/_{time_1}$', fontsize=22)
-                plt.legend()
-                # plt.ylim(ymin=ymin / 10)
-                # plt.title('K = %d, L = %d' % (n_atoms, n_times_atom))
-                plt.gca().tick_params(axis='x', which='both', bottom='off',
-                                      top='off')
-                plt.gca().tick_params(axis='y', which='both', left='off',
-                                      right='off')
+                plt.legend(frameon=True, fontsize=14, ncol=3, columnspacing=.5)
+                plt.gca().tick_params(axis='x', which='both', bottom=False,
+                                      top=False)
+                plt.gca().tick_params(axis='y', which='both', left=False,
+                                      right=False)
                 plt.gca().ticklabel_format(style="plain", axis='y')
-                plt.ylim((1, 100))
-                plt.xlim((1, span_channels.max()))
                 plt.xticks([1, 50, 100, 150, 200])
-                plt.yticks([1, 25, 50, 75, 100])
+                # plt.yticks([1, 25, 50, 75, 100])
+                plt.ylim((1, 4))
+                plt.xlim((1, span_channels.max()))
                 plt.grid(True)
+                plt.pause(.001)
                 plt.tight_layout()
 
                 fig.savefig(save_name + '_%s_K%d_L%d.png' %
