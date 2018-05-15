@@ -32,25 +32,25 @@ debug = False
 if debug:
     base_name = 'debug_'
     # n_jobs for the parallel running of single core methods
-    n_jobs = 1
+    n_jobs = 5
     # number of random states
     n_states = 1
     # loop over parameters
     n_channel_list = [1]
     n_atoms_list = [2]
-    n_times_atom_list = [16]
+    n_times_atom_list = [128]
     reg_list = [0.3]
 else:
-    base_name = 'run_2'
+    base_name = 'run_5'
     # n_jobs for the parallel running of single core methods
-    n_jobs = -3
+    n_jobs = 30
     # number of random states
     n_states = 10
     # loop over parameters
-    n_times_atom_list = [16]
-    n_atoms_list = [2]
-    n_channel_list = [5, 25]
-    reg_list = [0.3, 1., 3., 10.]
+    n_times_atom_list = [128]
+    n_atoms_list = [8]
+    n_channel_list = [1, 5]
+    reg_list = [3., 10.]
 
 ##############################
 # methods
@@ -95,7 +95,7 @@ def run_cbpdn(X, ds_init, reg, n_iter, random_state, label):
     options = {
         'Verbose': verbose > 0,
         'MaxMainIter': n_iter,
-        'CBPDN': dict(rho=50.0 * reg + 0.5, NonNegCoef=True),
+        'CBPDN': dict(NonNegCoef=True),
         'CCMOD': dict(ZeroMean=False),
         'DictSize': ds_init.shape,
     }
@@ -169,7 +169,7 @@ def run_multichannel_gcd(X, ds_init, reg, n_iter, random_state, label):
         n_atoms, n_channels, n_times_atom = ds_init.shape
         ds_init = get_uv(ds_init)  # project init to rank 1
 
-    solver_z_kwargs = dict(max_iter=2, tol=1e-5)
+    solver_z_kwargs = dict(max_iter=2, tol=1e-3)
     pobj, times, d_hat, z_hat = learn_d_z_multi(
         X, n_atoms, n_times_atom, solver_d='alternate_adaptive',
         solver_z='gcd', uv_constraint='separate', eps=-np.inf,
@@ -188,7 +188,7 @@ def run_multichannel_gcd_fullrank(X, ds_init, reg, n_iter, random_state,
     assert X.ndim == 3
     n_atoms, n_channels, n_times_atom = ds_init.shape
 
-    solver_z_kwargs = dict(max_iter=2, tol=1e-5)
+    solver_z_kwargs = dict(max_iter=2, tol=1e-3)
     pobj, times, d_hat, z_hat = learn_d_z_multi(
         X, n_atoms, n_times_atom, solver_d='fista', solver_z='gcd',
         uv_constraint='separate', eps=-np.inf, solver_z_kwargs=solver_z_kwargs,
@@ -233,7 +233,7 @@ def run_multichannel_gcd_sparse(X, ds_init, reg, n_iter, random_state, label):
         n_atoms, n_channels, n_times_atom = ds_init.shape
         ds_init = get_uv(ds_init)  # project init to rank 1
 
-    solver_z_kwargs = dict(max_iter=2, tol=1e-5)
+    solver_z_kwargs = dict(max_iter=2, tol=1e-3)
     pobj, times, d_hat, z_hat = learn_d_z_multi(
         X, n_atoms, n_times_atom, solver_d='alternate_adaptive',
         uv_constraint='separate', solver_z='gcd', eps=-np.inf,
@@ -252,7 +252,7 @@ n_iter = 1000
 methods_univariate = [
     # [run_multichannel_alt_lbfgs, 'find_best_pobj', n_iter * 5],
     # [run_admm, 'Heide et al (2015)', n_iter // 2],  # FIXME: going up
-    [run_cbpdn, 'Garcia-Cardona et al (2017)', n_iter * 5],
+    [run_cbpdn, 'Garcia-Cardona et al (2017)', n_iter * 2],
     # [run_ista, 'Jas et al (2017) ISTA', n_iter * 3]],
     [run_fista, 'Jas et al (2017) FISTA', n_iter],
     [run_lbfgs, 'Jas et al (2017) LBFGS', n_iter],
@@ -263,7 +263,7 @@ methods_univariate = [
 
 n_iter_multi = 200
 methods_multivariate = [
-    [run_cbpdn, 'Wohlberg (2016)', n_iter_multi * 5],
+    [run_cbpdn, 'Wohlberg (2016)', n_iter_multi * 2],
     [run_multichannel_gcd_fullrank, 'Proposed (multivariate)', n_iter_multi],
     [run_multichannel_gcd, 'Proposed (multichannel)', n_iter_multi],
 ]
@@ -283,6 +283,9 @@ def one_run(X, X_shape, random_state, method, n_atoms, n_times_atom, reg):
                                                current_time))
     print(colorify(msg, BLUE))
 
+    # XXX faster on run_4
+    # X = X[..., :13470]
+
     if len(X_shape) == 2:
         n_trials, n_times = X.shape
         n_channels = 1
@@ -290,7 +293,7 @@ def one_run(X, X_shape, random_state, method, n_atoms, n_times_atom, reg):
     else:
         n_trials, n_channels, n_times = X.shape
         X_init = X
-        reg = reg * n_channels
+        # reg = reg * n_channels
 
     # use the same init for all methods
     ds_init = init_dictionary(X_init, n_atoms, n_times_atom, D_init='chunk',

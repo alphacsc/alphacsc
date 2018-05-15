@@ -75,7 +75,10 @@ def plot_convergence(data_frame, threshold, normalize_method, save_name):
                     tmax.append(times_mean[-1])
 
                     if normalize_method == 'last' and True:
-                        last = np.where(pobj_mean <= threshold)[0][0]
+                        last = np.where(pobj_mean <= threshold)[0]
+                        if last.size == 0:
+                            continue
+                        last = last[0]
                         times_mean = times_mean[:last]
                         pobj_mean = pobj_mean[:last]
 
@@ -159,13 +162,16 @@ def plot_barplot(all_results_df, threshold, normalize_method, save_name):
         all_results_df['n_channels'].unique(),
         all_results_df['n_atoms'].unique(),
         all_results_df['n_times_atom'].unique(),
+        all_results_df['n_times'].unique(),
         all_results_df['reg'].unique(),
         labels, )
-    for n_channels, n_atoms, n_times_atom, reg, label in iterator:
-        setting = 'P=%d, K=%d, L=%d' % (n_channels, n_atoms, n_times_atom)
+    for n_channels, n_atoms, n_times_atom, n_times, reg, label in iterator:
+        setting = 'T_%d, P=%d, K=%d, L=%d' % (n_times, n_channels, n_atoms,
+                                              n_times_atom)
         this_res = all_results_df
         this_res = this_res[this_res['n_atoms'] == n_atoms]
         this_res = this_res[this_res['n_times_atom'] == n_times_atom]
+        this_res = this_res[this_res['n_times'] == n_times]
         this_res = this_res[this_res['n_channels'] == n_channels]
         this_res = this_res[this_res['reg'] == reg]
         this_res = this_res[this_res['label'] == label]
@@ -194,18 +200,18 @@ def plot_barplot(all_results_df, threshold, normalize_method, save_name):
     ])
 
     settings = to_plot_df['setting'].unique()
-    width = 1. / (labels.size + 1)  # the width of the bars
 
     for setting in settings:
         this_to_plot_df = to_plot_df[to_plot_df['setting'] == setting]
 
-        # remove last point which have failed
-        if 'P=5' in setting:
-            this_to_plot_df = this_to_plot_df[this_to_plot_df['reg'] < 50.]
-        if 'P=25' in setting:
-            this_to_plot_df = this_to_plot_df[this_to_plot_df['reg'] < 75.]
+        # # remove last point which have failed
+        # if 'P=5' in setting:
+        #     this_to_plot_df = this_to_plot_df[this_to_plot_df['reg'] < 50.]
+        # if 'P=25' in setting:
+        #     this_to_plot_df = this_to_plot_df[this_to_plot_df['reg'] < 75.]
 
         labels = this_to_plot_df['label'].unique()
+        width = 1. / (labels.size + 2)  # the width of the bars
         regs = this_to_plot_df['reg'].unique()
         regs.sort()
         x_positions = np.arange(regs.size)
@@ -230,7 +236,8 @@ def plot_barplot(all_results_df, threshold, normalize_method, save_name):
                     np.ones_like(first_time) * x_positions[j] + i * width,
                     first_time, '_', color='k')
 
-        ax.set_xticks(x_positions + 0.3)
+        offset = (labels.size - 1) / 2.0 * width
+        ax.set_xticks(x_positions + offset)
         ax.set_xticklabels([r'$\lambda=%s$' % r for r in regs], ha='center')
         ax.set_yscale("log")
 
@@ -306,7 +313,7 @@ for load_name in os.listdir('figures'):
 
     # plot each convergence plot
     for normalize_method in [None, 'short', 'best', 'last']:
-        plot_convergence(data_frame, threshold, normalize_method, save_name)
+        # plot_convergence(data_frame, threshold, normalize_method, save_name)
         plt.close('all')
 
 threshold = 1e-2
