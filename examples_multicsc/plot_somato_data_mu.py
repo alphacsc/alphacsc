@@ -24,14 +24,12 @@ sfreq = 150.
 n_times_atom = int(round(sfreq * 1.0))  # 1000. ms
 reg_list = [29.]
 
-n_atoms = 30
-n_iter = 200
+n_atoms = 25
+n_iter = 60
 random_state = 0
-n_jobs = 6
+n_jobs = 10
 
-verbose = 2
-
-event_id, tmin, tmax = 1, -2., 5.
+verbose = 10
 
 # debug
 if False:
@@ -56,9 +54,10 @@ def _run(random_state, reg, **kwargs):
         n_times_atom=n_times_atom,
         reg=reg,
         eps=1e-5,
+        solver_z="gcd",
         uv_constraint='separate',
         solver_d='alternate_adaptive',
-        solver_z_kwargs={'factr': 1e12},
+        solver_z_kwargs={'factr': 1e12, 'max_iter': 1000},
         solver_d_kwargs={'max_iter': 300},
         loss='l2',
         verbose=verbose,
@@ -78,9 +77,8 @@ def one_run(method, random_state, reg):
     return func(random_state, reg)
 
 
-X, info = load_data(epoch=False)
+X, info = load_data(epoch=True, sfreq=sfreq)
 n_trials, n_channels, n_times = X.shape
-
 method = ('chunk', partial(_run, D_init='chunk'))
 
 all_methods = [method]

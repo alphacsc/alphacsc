@@ -29,7 +29,7 @@ data_path = op.join(mne.datasets.sample.data_path(), 'MEG', 'sample')
 raw = mne.io.read_raw_fif(op.join(data_path,
                                   'sample_audvis_filt-0-40_raw.fif'),
                           preload=True)
-
+sdfdf
 raw.pick_types(meg='mag', eog=True)
 raw.filter(1., 40.)
 raw_data = raw[:][0]
