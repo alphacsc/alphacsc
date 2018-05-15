@@ -113,14 +113,14 @@ if debug:
 # Plot interesting atoms
 atoms_idx = [14, 18, 23]
 times = np.arange(n_times_atom) / raw.info['sfreq']
-fig = plt.figure()
+fig = plt.figure(figsize=(7, 8))
 for idx, atom_idx in enumerate(atoms_idx):
 
-    ax1 = plt.subplot2grid((len(atoms_idx), 3), (idx, 0), colspan=2)
+    ax1 = plt.subplot2grid((len(atoms_idx) + 1, 3), (idx, 0), colspan=2)
     ax1.plot(times, uv_hat[atoms_idx[idx], n_channels:].T, color=COLORS[0])
     ax1.grid('on')
 
-    ax2 = plt.subplot2grid((len(atoms_idx), 3), (idx, 2), colspan=1)
+    ax2 = plt.subplot2grid((len(atoms_idx) + 1, 3), (idx, 2), colspan=1)
     mne.viz.plot_topomap(uv_hat[atom_idx, :n_channels], raw.info,
                          axes=ax2)
 
@@ -128,8 +128,16 @@ for idx, atom_idx in enumerate(atoms_idx):
         ax1.set_title('A. Temporal waveform', fontsize=16)
         ax2.set_title('B. Spatial pattern', fontsize=16)
 ax1.set_xlabel('Time (s)')
-fig.tight_layout()
-fig.savefig('figures/figure_sample.pdf')
+ax3 = plt.subplot2grid((len(atoms_idx) + 1, 3), (idx + 1, 0), colspan=3)
+ax3.grid('on')
+times = np.arange(n_times - n_times_atom + 1) / raw.info['sfreq']
+ax3.plot(times, Z_hat[atoms_idx[2], 0, :], color=COLORS[0])
+ax3.set_title('            C. Activations', fontsize=16)
+ax3.set_xlabel('Time (s)')
+
+# fig.tight_layout()
+fig.subplots_adjust(hspace=0.4)
+fig.savefig('figures/atoms_sample.pdf')
 
 # XXX: what is this 20 Hz atom? It doesn't have topomap of motor ...
 if debug:
