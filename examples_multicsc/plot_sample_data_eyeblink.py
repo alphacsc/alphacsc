@@ -22,7 +22,7 @@ args = parser.parse_args()
 dataset = 'sample'
 
 n_atoms = 25
-debug = False
+debug = True
 
 # get X
 data_path = op.join(mne.datasets.sample.data_path(), 'MEG', 'sample')
@@ -32,7 +32,7 @@ raw = mne.io.read_raw_fif(op.join(data_path,
 raw.pick_types(meg='mag', eog=True)
 raw.filter(1., 40.)
 raw_data = raw[:][0]
-raw.crop(tmax=30.)  # take only 30 s of data
+raw.crop(tmax=100.)  # take only 30 s of data
 
 # ICA for comparison
 picks_meg = mne.pick_types(raw.info, meg=True, eeg=False, eog=False,
@@ -129,14 +129,14 @@ for idx, atom_idx in enumerate(atoms_idx):
 ax1.set_xlabel('Time (s)')
 ax3 = plt.subplot2grid((len(atoms_idx) + 1, 3), (idx + 1, 0), colspan=3)
 ax3.grid('on')
-times = np.arange(n_times - n_times_atom + 1) / raw.info['sfreq']
-ax3.plot(times, Z_hat[atoms_idx[2], 0, :], color=COLORS[0])
+times = np.arange(4462) / raw.info['sfreq']
+ax3.plot(times, Z_hat[atoms_idx[2], 0, :4462], color=COLORS[0])
 ax3.set_title('            C. Activations', fontsize=16)
 ax3.set_xlabel('Time (s)')
-time_diff = np.diff(np.where(
-    Z_hat[atoms_idx[2], 0, :] > 0.15)[0]) / raw.info['sfreq']
-time_diff = time_diff[time_diff > 0.1]
-print('Average pulse %f / min' % (1 / time_diff.mean() * 60))
+# time_diff = np.diff(np.where(
+#     Z_hat[atoms_idx[2], 0, :] > 0.15)[0]) / raw.info['sfreq']
+# time_diff = time_diff[time_diff > 0.1]
+# print('Average pulse %f / min' % (1 / time_diff.mean() * 60))
 
 # fig.tight_layout()
 fig.subplots_adjust(hspace=0.4)
