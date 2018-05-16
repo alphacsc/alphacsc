@@ -77,7 +77,8 @@ def plot_scaling_channels(all_results_df, aggregate_method, save_name):
                     (d_update, "d step"),
                     (full_update, "z+d steps")
                 ]
-                colors = color_palette(len(plots))
+                # colors = color_palette(len(plots))[::-1]
+                colors = ['C0', 'C1', 'C2']
                 for (timing, name), color in zip(plots, colors):
                     plt.plot(span_channels, timing[:, 0], c=color, label=name)
                     # m, std = timing[:, 0], timing[:, 1]
