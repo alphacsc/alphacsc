@@ -79,7 +79,7 @@ def plot_scaling_channels(all_results_df, aggregate_method, save_name):
                 #          bbox=dict(facecolor="white", edgecolor="white"))
 
                 plt.xlabel('# of channels P', fontsize=fontsize)
-                plt.ylabel('$^{time_{P}}/_{time_1}$', fontsize=22)
+                plt.ylabel('$^{time_{P}}/_{time_1}$', fontsize=20)
                 plt.legend(frameon=True, fontsize=14, ncol=3, columnspacing=.5)
                 plt.gca().tick_params(axis='x', which='both', bottom=False,
                                       top=False)

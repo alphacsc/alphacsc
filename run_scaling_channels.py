@@ -179,7 +179,7 @@ if __name__ == '__main__':
     reg = .001
     n_iter = 50
     # number of random states
-    n_states = 10
+    n_states = 5
     n_channels = X.shape[1]
     span_channels = np.unique(np.floor(
         np.logspace(0, np.log10(n_channels), 10)).astype(int))
