@@ -22,7 +22,7 @@ args = parser.parse_args()
 dataset = 'sample'
 
 n_atoms = 25
-debug = True
+debug = False
 
 # get X
 data_path = op.join(mne.datasets.sample.data_path(), 'MEG', 'sample')
@@ -32,7 +32,7 @@ raw = mne.io.read_raw_fif(op.join(data_path,
 raw.pick_types(meg='mag', eog=True)
 raw.filter(1., 40.)
 raw_data = raw[:][0]
-raw.crop(tmax=100.)  # take only 30 s of data
+# raw.crop(tmax=100.)  # take only 30 s of data
 
 # ICA for comparison
 picks_meg = mne.pick_types(raw.info, meg=True, eeg=False, eog=False,
@@ -61,7 +61,7 @@ X, _ = _reject_data_segments(X, reject, flat=None, decim=None,
 
 # define n_chan, n_times, n_trials
 n_channels, n_times = X.shape
-n_times_atom = int(round(raw.info['sfreq'] * 0.4))  # 400. ms
+n_times_atom = int(round(raw.info['sfreq'] * 0.8))  # 400. ms
 
 # make windows
 X = X[None, ...]
@@ -81,8 +81,9 @@ if args.profile:
     pr = cProfile.Profile()
     pr.enable()
 pobj, times, uv_hat, Z_hat = learn_d_z_multi(
-    X, n_atoms, n_times_atom, random_state=42, n_iter=60, n_jobs=1, reg=2e-2,
+    X, n_atoms, n_times_atom, random_state=42, n_iter=60, n_jobs=1, reg=0.1,
     eps=1e-3, solver_z_kwargs={'factr': 1e12},
+    D_init='chunk',
     solver_d_kwargs={'max_iter': 300}, uv_constraint='separate',
     solver_d='alternate_adaptive', callback=callback)
 
@@ -109,39 +110,6 @@ if debug:
     raw_atoms = mne.io.RawArray(X_hat_k, info, first_samp=raw.first_samp)
     raw_atoms.plot(scalings=dict(misc='auto'))
 
-# Plot interesting atoms
-atoms_idx = [14, 18, 0]
-times = np.arange(n_times_atom) / raw.info['sfreq']
-fig = plt.figure(figsize=(7, 8))
-for idx, atom_idx in enumerate(atoms_idx):
-
-    ax1 = plt.subplot2grid((len(atoms_idx) + 1, 3), (idx, 0), colspan=2)
-    ax1.plot(times, uv_hat[atoms_idx[idx], n_channels:].T, color=COLORS[0])
-    ax1.grid('on')
-
-    ax2 = plt.subplot2grid((len(atoms_idx) + 1, 3), (idx, 2), colspan=1)
-    mne.viz.plot_topomap(uv_hat[atom_idx, :n_channels], raw.info,
-                         axes=ax2)
-
-    if idx == 0:
-        ax1.set_title('A. Temporal waveform', fontsize=16)
-        ax2.set_title('B. Spatial pattern', fontsize=16)
-ax1.set_xlabel('Time (s)')
-ax3 = plt.subplot2grid((len(atoms_idx) + 1, 3), (idx + 1, 0), colspan=3)
-ax3.grid('on')
-times = np.arange(4462) / raw.info['sfreq']
-ax3.plot(times, Z_hat[atoms_idx[2], 0, :4462], color=COLORS[0])
-ax3.set_title('            C. Activations', fontsize=16)
-ax3.set_xlabel('Time (s)')
-# time_diff = np.diff(np.where(
-#     Z_hat[atoms_idx[2], 0, :] > 0.15)[0]) / raw.info['sfreq']
-# time_diff = time_diff[time_diff > 0.1]
-# print('Average pulse %f / min' % (1 / time_diff.mean() * 60))
-
-# fig.tight_layout()
-fig.subplots_adjust(hspace=0.4)
-fig.savefig('figures/atoms_sample.pdf')
-
 # XXX: what is this 20 Hz atom? It doesn't have topomap of motor ...
 atom_idx = 14
 if debug:
@@ -152,9 +120,10 @@ if debug:
     plt.plot(freqs, psd.T)
     plt.gca().set(xscale='log')
 
-D = get_D(uv_hat, n_channels)[atom_idx]
-evoked = EvokedArray(D, raw.info)
-evoked.save('examples_multicsc/atom_multi_sample-ave.fif')
+from mne.io import write_info
+np.savez('examples_multicsc/multi_sample-ave.npz', Z_hat=Z_hat,
+         uv_hat=uv_hat, sfreq=raw.info['sfreq'], n_channels=n_channels)
+write_info('examples_multicsc/info_sample.fif', raw.info)
 
 if debug:
     ica.plot_properties(raw, picks=eog_inds, psd_args={'fmax': 35.},
