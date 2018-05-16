@@ -70,29 +70,33 @@ if __name__ == "__main__":
     plt.tight_layout()
     plt.savefig(fname.replace("pkl", "png"), dpi=150)
 
-    plt.figure(figsize=(6, 4))
     sig = all_results_df.sigma.unique()[12]
     print("sigma = {:.2e}".format(sig))
-    res_sig = all_results_df[all_results_df.sigma == sig]
-    lines = []
-    for n_chan, color in [(1, 'C0'), (50, 'C1')]:
-        res = res_sig[res_sig.run_n_channels == n_chan]
-        i0 = res.score.idxmin()
-        uv_hat = res.uv_hat[i0]
-        uv = res.uv[i0]
-        s = np.dot(uv[:, -64:], uv_hat[:, -64:].T)
-        if np.trace(abs(s)) >= np.trace(abs(s)[::-1]):
-            uv_hat *= np.sign(np.diag(s))[:, None]
-        else:
-            uv_hat *= np.sign(np.diag(s[::-1]))[:, None]
+    for P in span_n_channels:
+        if P == 1:
+            continue
+        plt.figure(figsize=(6, 4))
+        res_sig = all_results_df[all_results_df.sigma == sig]
+        lines = []
+        for n_chan, color in [(1, 'C0'), (P, 'C1')]:
+            res = res_sig[res_sig.run_n_channels == n_chan]
+            i0 = res.score.idxmin()
+            uv_hat = res.uv_hat[i0]
+            uv = res.uv[i0]
+            s = np.dot(uv[:, -64:], uv_hat[:, -64:].T)
+            if np.trace(abs(s)) >= np.trace(abs(s)[::-1]):
+                uv_hat *= np.sign(np.diag(s))[:, None]
+            else:
+                uv_hat *= np.sign(np.diag(s[::-1]))[:, None]
 
-        ll = plt.plot(uv_hat[:, -64:].T, color=color, label=n_chan)
+            ll = plt.plot(uv_hat[:, -64:].T, color=color, label=n_chan)
+            lines += [ll[0]]
+        ll = plt.plot(uv[:, -64:].T, "k--", label="GT")
         lines += [ll[0]]
-    ll = plt.plot(uv[:, -64:].T, "k--", label="GT")
-    lines += [ll[0]]
-    plt.legend(lines, ['$P=1$', '$P=50$', "GT"], loc=8, fontsize=fontsize,
-               ncol=3, columnspacing=.5)
-    plt.xlabel("Times", fontsize=fontsize)
-    plt.ylabel("Atoms", fontsize=fontsize)
-    plt.tight_layout()
-    plt.savefig(fname.replace(".pkl", "_uv_hat.png"), dpi=150)
+        plt.legend(lines, ['$P=1$', '$P={}$'.format(P), "GT"], loc=8,
+                   fontsize=fontsize, ncol=3, columnspacing=.5)
+        plt.xlabel("Times", fontsize=fontsize)
+        plt.ylabel("Atoms", fontsize=fontsize)
+        plt.tight_layout()
+        plt.savefig(fname.replace(".pkl", "_uv_hat_P{}.png").format(P),
+                    dpi=150)
