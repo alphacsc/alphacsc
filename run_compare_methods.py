@@ -50,7 +50,7 @@ else:
     n_times_atom_list = [128]
     n_atoms_list = [8]
     n_channel_list = [1, 5]
-    reg_list = [3., 10.]
+    reg_list = [1., 0.3]
 
 ##############################
 # methods

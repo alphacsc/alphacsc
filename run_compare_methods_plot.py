@@ -6,8 +6,19 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-matplotlib.rc('font', size=14)
+matplotlib.rc('font', size=18)
 matplotlib.rc('mathtext', fontset='cm')
+
+
+def color_palette(n_colors=4, cmap='viridis', extrema=False):
+    if extrema:
+        bins = np.linspace(0, 1, n_colors)
+    else:
+        bins = np.linspace(0, 1, n_colors * 2 - 1 + 2)[1:-1:2]
+
+    cmap = plt.get_cmap(cmap)
+    palette = list(map(tuple, cmap(bins)[:, :3]))
+    return palette
 
 
 def normalize_pobj(pobj, best_pobj=None, normalize_method='best'):
@@ -29,13 +40,13 @@ def normalize_pobj(pobj, best_pobj=None, normalize_method='best'):
 
 def plot_convergence(data_frame, threshold, normalize_method, save_name):
     save_name += '_%s' % (normalize_method, )
-    labels = data_frame['label'].unique()
     for n_atoms in data_frame['n_atoms'].unique():
 
         for n_times_atom in data_frame['n_times_atom'].unique():
             this_res = data_frame
             this_res = this_res[this_res['n_atoms'] == n_atoms]
             this_res = this_res[this_res['n_times_atom'] == n_times_atom]
+            labels = this_res['label'].unique()
 
             if this_res.size == 0:
                 continue
@@ -48,7 +59,8 @@ def plot_convergence(data_frame, threshold, normalize_method, save_name):
             plt.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
             # ymin = np.inf
             tmax = []
-            for label in labels:
+            colors = color_palette(len(labels))
+            for label, color in zip(labels, colors):
                 if label == 'find_best_pobj':
                     continue
                 # aggregate all runs (different random states)
@@ -57,10 +69,6 @@ def plot_convergence(data_frame, threshold, normalize_method, save_name):
                 pobj = this_res_2['pobj']
 
                 pobj = normalize_pobj(pobj, best_pobj, normalize_method)
-                if normalize_method in [None, 'short']:
-                    plot_func = plt.plot
-                else:
-                    plot_func = plt.loglog
 
                 if True:
                     # geometric mean on the n_iter_min first iterations
@@ -74,6 +82,9 @@ def plot_convergence(data_frame, threshold, normalize_method, save_name):
                         continue
                     tmax.append(times_mean[-1])
 
+                    times_mean = times_mean[1:]
+                    pobj_mean = pobj_mean[1:]
+
                     if normalize_method == 'last' and True:
                         last = np.where(pobj_mean <= threshold)[0]
                         if last.size == 0:
@@ -82,17 +93,19 @@ def plot_convergence(data_frame, threshold, normalize_method, save_name):
                         times_mean = times_mean[:last]
                         pobj_mean = pobj_mean[:last]
 
+                    style = '--' if 'Proposed' in label else '-'
+
                     # plot the mean
-                    plot_func(times_mean, pobj_mean, '.-', label=label,
-                              alpha=1.)
-                    color = ax.lines[-1].get_color()
+                    plt.plot(times_mean, pobj_mean, style, label=label,
+                             alpha=1., markevery=0.1, lw=2., color=color)
+                    # color = ax.lines[-1].get_color()
                     # for times_, pobj_ in zip(times, pobj):
                     #     plt.semilogy(times_, pobj_, alpha=0.2, color=color)
 
                     # ymin = min(ymin, pobj_mean[pobj_mean > 0].min())
 
                 else:
-                    color = None  # new color for new label
+                    # color = None  # new color for new label
                     for times_, pobj_ in zip(times, pobj):
                         if pobj_[-1] <= threshold:
                             if normalize_method == 'last' and True:
@@ -101,10 +114,10 @@ def plot_convergence(data_frame, threshold, normalize_method, save_name):
                                 pobj_ = pobj_[:last]
                             marker, alpha = None, 1.0
 
-                            plot_func(times_, pobj_, marker=marker,
-                                      label=label, alpha=alpha, color=color)
+                            plt.plot(times_, pobj_, marker=marker, label=label,
+                                     alpha=alpha, color=color)
                             # reuse color for next lines
-                            color = ax.lines[-1].get_color()
+                            # color = ax.lines[-1].get_color()
                             # don't duplicate label for next lines
                             label = None
 
@@ -112,12 +125,16 @@ def plot_convergence(data_frame, threshold, normalize_method, save_name):
                         if pobj_[-1] > threshold:
                             marker, alpha = None, 0.3
 
-                            plot_func(times_, pobj_, marker=marker,
-                                      label=label, alpha=alpha, color=color)
+                            plt.plot(times_, pobj_, marker=marker, label=label,
+                                     alpha=alpha, color=color)
                             # reuse color for next lines
-                            color = ax.lines[-1].get_color()
+                            # color = ax.lines[-1].get_color()
                             # don't duplicate label for next lines
                             label = None
+
+                if normalize_method not in [None, 'short']:
+                    ax.set_xscale('log')
+                    ax.set_yscale('log')
 
             plt.xlabel('Time (s)')
             if normalize_method in [None, 'short']:
@@ -131,7 +148,11 @@ def plot_convergence(data_frame, threshold, normalize_method, save_name):
                 plt.ylabel('(objective_i - best_i) / (init - best_i)')
             else:
                 plt.ylabel('(objective - best) / best')
-            plt.legend(loc=0, ncol=1)
+
+            # ---- Cleaner fig for the paper
+            # plt.legend(loc=0, ncol=1)
+            plt.ylabel('')
+
             # plt.ylim(ymin=ymin / 10)
             # plt.title('K = %d, L = %d' % (n_atoms, n_times_atom))
             plt.gca().tick_params(axis='x', which='both', bottom='off',
@@ -145,9 +166,12 @@ def plot_convergence(data_frame, threshold, normalize_method, save_name):
                 reg = min(this_res_2['reg'].unique())
             except:
                 reg = None
-
-            fig.savefig(save_name + '_bench_K%d_L%d_r%s.png' %
-                        (n_atoms, n_times_atom, reg), dpi=150)
+            this_save_name = (save_name + '_bench_K%d_L%d_r%s' %
+                              (n_atoms, n_times_atom, reg))
+            this_save_name = this_save_name.replace(' ', '_').replace('.', '')
+            this_save_name = this_save_name.replace(',', '').replace('=', '')
+            this_save_name = this_save_name.replace('(', '').replace(')', '')
+            fig.savefig(this_save_name + '.png', dpi=150)
 
 
 def plot_barplot(all_results_df, threshold, normalize_method, save_name):
@@ -212,6 +236,8 @@ def plot_barplot(all_results_df, threshold, normalize_method, save_name):
 
         labels = this_to_plot_df['label'].unique()
         width = 1. / (labels.size + 2)  # the width of the bars
+        colors = color_palette(len(labels))
+
         regs = this_to_plot_df['reg'].unique()
         regs.sort()
         x_positions = np.arange(regs.size)
@@ -226,7 +252,7 @@ def plot_barplot(all_results_df, threshold, normalize_method, save_name):
 
             rect = ax.bar(left=x_positions + i * width,
                           height=np.array(this_df['mean']), width=width,
-                          label=label, hatch=hatch)
+                          label=label, hatch=hatch, color=colors[i])
             rect_list.append(rect)
             # yerr=np.array(this_df['std']),
 
@@ -251,7 +277,7 @@ def plot_barplot(all_results_df, threshold, normalize_method, save_name):
         labels = [text.get_text() for text in ax.get_legend().get_texts()]
         if len(labels) > 3:
             ncol = 2
-            top = 0.80
+            top = 0.75
         else:
             ncol = 3
             top = 0.85
@@ -260,7 +286,11 @@ def plot_barplot(all_results_df, threshold, normalize_method, save_name):
         ax.legend_.remove()
         fig.subplots_adjust(top=top)
 
-        fig.savefig('%s_%s.png' % (save_name, setting))
+        this_save_name = '%s_%s' % (save_name, setting)
+        this_save_name = this_save_name.replace(' ', '_').replace('.', '')
+        this_save_name = this_save_name.replace(',', '').replace('=', '')
+        this_save_name = this_save_name.replace('(', '').replace(')', '')
+        fig.savefig(this_save_name + '.png')
 
 
 def change_label(data_frame, old, new):
