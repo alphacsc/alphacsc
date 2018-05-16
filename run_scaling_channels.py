@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import scipy.sparse as sp
 from sklearn.externals.joblib import Parallel, delayed, Memory
+from sporco.admm.cbpdndl import ConvBPDNDictLearn
 
 from alphacsc.utils.profile_this import profile_this  # noqa
 from alphacsc.utils import check_random_state, get_D
@@ -71,6 +72,57 @@ def run_multivariate(X, D_init, reg, n_iter, random_state,
         raise_on_increase=False)
 
 
+# @profile_this
+def run_cbpdn(X, ds_init, reg, n_iter, random_state, label, n_channels):
+    # use only one thread in fft
+    import sporco.linalg
+    sporco.linalg.pyfftw_threads = 1
+
+    n_atoms, n_channels_n_times_atom = ds_init.shape
+    n_times_atom = n_channels_n_times_atom - n_channels
+    ds_init = get_D(ds_init, n_channels)
+
+    if X.ndim == 2:
+        ds_init = np.swapaxes(ds_init, 0, 1)[:, None, :]
+        X = np.swapaxes(X, 0, 1)[:, None, :]
+        single_channel = True
+    else:
+        ds_init = np.swapaxes(ds_init, 0, 2)
+        X = np.swapaxes(X, 0, 2)
+        single_channel = False
+
+    options = {
+        'Verbose': verbose > 0,
+        'MaxMainIter': n_iter,
+        'CBPDN': dict(NonNegCoef=True),
+        'CCMOD': dict(ZeroMean=False),
+        'DictSize': ds_init.shape,
+    }
+
+    # wohlberg / convolutional basis pursuit
+    opt = ConvBPDNDictLearn.Options(options)
+    cbpdn = ConvBPDNDictLearn(ds_init, X, reg, opt, dimN=1)
+    results = cbpdn.solve()
+    times = np.cumsum(cbpdn.getitstat().Time)
+
+    d_hat, pobj = results
+    if single_channel:
+        d_hat = d_hat.squeeze().T
+        n_atoms, n_times_atom = d_hat.shape
+    else:
+        d_hat = d_hat.squeeze().swapaxes(0, 2)
+        n_atoms, n_channels, n_times_atom = d_hat.shape
+
+    z_hat = cbpdn.getcoef().squeeze().swapaxes(0, 2)
+    times = np.concatenate([[0], times])
+
+    # z_hat.shape = (n_atoms, n_trials, n_times)
+    z_hat = z_hat[:, :, :-n_times_atom + 1]
+    # z_hat.shape = (n_atoms, n_trials, n_times_valid)
+
+    return pobj, times, d_hat, z_hat
+
+
 def one_run(X, n_channels, method, n_atoms, n_times_atom, random_state, reg):
     func, label, n_iter = method
     current_time = time.time() - START
@@ -112,6 +164,8 @@ if __name__ == '__main__':
                         help='number of cores used to run the experiment')
     parser.add_argument('--dense', action="store_true",
                         help='run the experiment for multivariate')
+    parser.add_argument('--wohlberg', action="store_true",
+                        help='run the experiment for wohlberg')
 
     args = parser.parse_args()
 
@@ -132,9 +186,16 @@ if __name__ == '__main__':
     methods = [
         [run_multichannel, 'rank1', n_iter],
         # [run_multivariate, 'dense', n_iter],
+        # [run_multivariate, 'wohlberg', n_iter],
     ]
+
     if args.dense:
         methods = [[run_multivariate, 'dense', n_iter]]
+        span_channels = np.unique(np.floor(
+            np.logspace(0, np.log10(n_channels), 10)).astype(int))[:5]
+
+    if args.wohlberg:
+        methods = [[run_cbpdn, 'wohlberg', n_iter]]
         span_channels = np.unique(np.floor(
             np.logspace(0, np.log10(n_channels), 10)).astype(int))[:5]
 
@@ -151,11 +212,16 @@ if __name__ == '__main__':
         all_results.extend(results)
 
     # save even intermediate results
+    suffix = ""
+    if args.dense:
+        suffix = "_dense"
+    if args.wohlberg:
+        suffix = "_wohlberg"
+
     all_results_df = pd.DataFrame(
         all_results, columns='n_channels random_state label pobj times '
         'd_hat z_hat n_atoms n_times_atom n_trials n_times reg'.split(' '))
-    all_results_df.to_pickle(save_name.format(
-        reg, "_dense" if args.dense else ""))
+    all_results_df.to_pickle(save_name.format(reg, suffix))
     import IPython
     IPython.embed()
 
