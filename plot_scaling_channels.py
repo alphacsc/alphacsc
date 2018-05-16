@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-fontsize = 18
+fontsize = 14
 font = {'size': 14}
 matplotlib.rc('font', **font)
 

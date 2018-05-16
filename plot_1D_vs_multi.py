@@ -62,7 +62,7 @@ if __name__ == "__main__":
     # cbarlabel = r'# of channels $P$'
     # cbar.set_label(cbarlabel, fontsize=20)
 
-    fontsize = 18
+    fontsize = 14
 
     plt.legend(loc=2, fontsize=fontsize)
     plt.ylabel("score($\widehat v$)", fontsize=fontsize)
