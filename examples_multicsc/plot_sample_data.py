@@ -13,35 +13,37 @@ Z_hat = data['Z_hat']
 
 n_times_atom = uv_hat.shape[-1] - n_channels
 
-atoms_idx = [7, 18, 4]
+atoms_idx = [7, 9, 18, 4]
 # Plot interesting atoms
 times = np.arange(n_times_atom) / sfreq
-fig = plt.figure(figsize=(7, 8))
+fig = plt.figure(figsize=(12, 7))
 for idx, atom_idx in enumerate(atoms_idx):
 
-    ax1 = plt.subplot2grid((len(atoms_idx) + 1, 3), (idx, 0), colspan=2)
-    ax1.plot(times, uv_hat[atoms_idx[idx], n_channels:].T, color=COLORS[0])
-    ax1.grid('on')
+    ax1 = plt.subplot2grid((len(atoms_idx), 9), (idx, 0), colspan=3)
+    ax1.plot(times, uv_hat[atoms_idx[idx], n_channels:],
+             color=COLORS[idx % len(COLORS)])
+    ax1.grid('on', linestyle='-', alpha=0.3)
+    ax1.set_yticklabels([])
 
-    ax2 = plt.subplot2grid((len(atoms_idx) + 1, 3), (idx, 2), colspan=1)
+    ax2 = plt.subplot2grid((len(atoms_idx), 9), (idx, 3), colspan=4)
+    ax2.grid('on', linestyle='-', alpha=0.3)
+    times_Z = np.arange(2231, 6693) / sfreq
+    ax2.plot(times_Z, Z_hat[atom_idx, 0, 2231:6693],
+             color=COLORS[idx % len(COLORS)])
+    ax2.set_ylim(0, 0.2)
+
+    ax3 = plt.subplot2grid((len(atoms_idx), 9), (idx, 7), colspan=2)
     mne.viz.plot_topomap(uv_hat[atom_idx, :n_channels], info,
-                         axes=ax2)
+                         axes=ax3)
 
     if idx == 0:
         ax1.set_title('A. Temporal waveform', fontsize=16)
-        ax2.set_title('B. Spatial pattern', fontsize=16)
-ax1.set_xlabel('Time (s)')
-ax3 = plt.subplot2grid((len(atoms_idx) + 1, 3), (idx + 1, 0), colspan=3)
-ax3.grid('on')
-times = np.arange(4462) / sfreq
-ax3.plot(times, Z_hat[atoms_idx[2], 0, :4462], color=COLORS[0])
-ax3.set_title('            C. Activations', fontsize=16)
-ax3.set_xlabel('Time (s)')
-# time_diff = np.diff(np.where(
-#     Z_hat[atoms_idx[2], 0, :] > 0.15)[0]) / raw.info['sfreq']
-# time_diff = time_diff[time_diff > 0.1]
-# print('Average pulse %f / min' % (1 / time_diff.mean() * 60))
+        ax2.set_title('B. Activations', fontsize=16)
+        ax3.set_title('C. Spatial pattern', fontsize=16)
 
-# fig.tight_layout()
-fig.subplots_adjust(hspace=0.4)
+ax1.set_xlabel('Time (s)')
+ax2.set_xlabel('Time (s)')
+
+fig.tight_layout()
+# fig.subplots_adjust(hspace=0.2)
 fig.savefig('figures/atoms_sample.pdf')
