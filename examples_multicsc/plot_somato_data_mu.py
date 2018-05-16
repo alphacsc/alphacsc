@@ -16,8 +16,11 @@ from alphacsc.utils.viz import COLORS
 matplotlib.rc('font', size=14)
 mem = Memory(cachedir='.', verbose=0)
 
+separate_figures = True
+
 atoms_idx = 4
-evoked = mne.read_evokeds('examples_multicsc/atom_multi_somato-ave.fif')[atoms_idx]
+evoked = mne.read_evokeds(
+    'examples_multicsc/atom_multi_somato-ave.fif')[atoms_idx]
 
 data_path = mne.datasets.somato.data_path()
 subjects_dir = op.join(data_path, 'subjects')
@@ -44,6 +47,7 @@ def compute_dipole():
     # Fit a dipole
     dip = mne.fit_dipole(evoked, cov, fname_bem, fname_trans)[0]
     return dip
+
 
 # Plot interesting atoms
 uv_hat = get_uv(evoked.data[None, ...])
@@ -92,13 +96,17 @@ ax4.set_yticks([])
 ax4.set_zticks([])
 ax4.set(xlabel='', ylabel='', zlabel='')
 
-ax1.set_title('A. Temporal waveform')
-ax2.set_title('B. Spatial pattern')
-ax3.set_title('C. PSD (dB)')
-plt.title('D. Dipole fit', y=1.09)
-
 ax1.set_xlabel('Time (s)')
 plt.suptitle('')
 plt.tight_layout(w_pad=0.)
 plt.tight_layout(w_pad=0.)
-fig.savefig('figures/atoms_somato.pdf')
+
+if separate_figures:
+    labels = ['a', 'b', 'c', 'd']
+    for ax, label in zip([ax1, ax2, ax3, ax4], labels):
+        extent = ax.get_tightbbox(
+            fig.canvas.renderer).transformed(fig.dpi_scale_trans.inverted())
+        fig.savefig('figures/atoms_somato_%s.pdf' % label, bbox_inches=extent,
+                    dpi=10)
+else:
+    fig.savefig('figures/atoms_somato.pdf')
