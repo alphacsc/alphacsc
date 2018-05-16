@@ -58,55 +58,46 @@ n_times_atom = uv_hat.shape[-1] - n_channels
 v_hat = uv_hat[0, n_channels:]
 
 times = np.arange(n_times_atom) / evoked.info['sfreq']
-fig = plt.figure(figsize=(12, 3))
 atoms_idx = [4]
 
-ax1 = plt.subplot2grid((10, 4), (0, 0), colspan=1, rowspan=9)
-ax1.plot(times, -v_hat.T, color=COLORS[0], linewidth=1.5)
-ax1.grid('on', linestyle='-', alpha=0.3)
+plt.figure(figsize=(4, 3))
+plt.plot(times, -v_hat.T, color=COLORS[0], linewidth=1.5)
+plt.grid('on', linestyle='-', alpha=0.3)
+plt.xlabel('Time (s)')
+plt.gcf().savefig('figures/atoms_somato_a.pdf')
 
-ax2 = plt.subplot2grid((10, 4), (0, 1), colspan=1, rowspan=9)
+plt.figure(figsize=(3, 3))
 mne.viz.plot_topomap(uv_hat[0, :n_channels], evoked.info,
-                     axes=ax2)
+                     axes=plt.gca())
+plt.savefig('figures/atoms_somato_b.pdf')
 
-ax3 = plt.subplot2grid((10, 4), (0, 2), colspan=1, rowspan=9)
+plt.figure(figsize=(3, 3))
 psd = np.abs(np.fft.rfft(v_hat)) ** 2
-ax3.set(xlabel='Frequencies (Hz)')
+plt.xlabel('Frequencies (Hz)')
 frequencies = np.linspace(0, evoked.info['sfreq'] / 2.0, len(psd))
-ax3.plot(frequencies, 10 * np.log10(psd), color=COLORS[0], linewidth=1.5)
-ax3.grid('on', linestyle='-', alpha=0.3)
-ax3.set_xlim(0, 25)
-ax3.set_ylim(-30, 20)
+plt.plot(frequencies, 10 * np.log10(psd), color=COLORS[0], linewidth=1.5)
+plt.grid('on', linestyle='-', alpha=0.3)
+plt.xlim(0, 25)
+plt.ylim(-30, 20)
 fmax = frequencies[np.argmax(psd)]
-ax3.axvline(fmax, linestyle='--', color=COLORS[1], linewidth=1.5)
-ax3.axvline(2 * fmax, linestyle='--', color=COLORS[1], linewidth=1.5)
+plt.axvline(fmax, linestyle='--', color=COLORS[1], linewidth=1.5)
+plt.axvline(2 * fmax, linestyle='--', color=COLORS[1], linewidth=1.5)
+plt.savefig('figures/atoms_somato_c.pdf')
 
-ax4 = plt.subplot2grid((10, 4), (0, 3), colspan=1, projection='3d', rowspan=10)
+fig = plt.figure(figsize=(3, 3))
+ax = fig.add_subplot(111, projection='3d')
 fname_trans = op.join(data_path, 'MEG', 'somato', 'sef_raw_sss-trans.fif')
 dip = compute_dipole()
-dip.plot_locations(fname_trans, 'somato', subjects_dir, ax=ax4,
+dip.plot_locations(fname_trans, 'somato', subjects_dir, ax=ax,
                    mode='orthoview')
 best_idx = np.argmax(dip.gof)
 best_time = dip.times[best_idx]
 print('Dipole fit (Highest GOF=%0.1f%%)' % dip.gof[best_idx])
 
 # Boom
-ax4.set_xticks([])
-ax4.set_yticks([])
-ax4.set_zticks([])
-ax4.set(xlabel='', ylabel='', zlabel='')
-
-ax1.set_xlabel('Time (s)')
+ax.set_xticks([])
+ax.set_yticks([])
+ax.set_zticks([])
+ax.set(xlabel='', ylabel='', zlabel='')
 plt.suptitle('')
-plt.tight_layout(w_pad=0.)
-plt.tight_layout(w_pad=0.)
-
-if separate_figures:
-    labels = ['a', 'b', 'c', 'd']
-    for ax, label in zip([ax1, ax2, ax3, ax4], labels):
-        extent = ax.get_tightbbox(
-            fig.canvas.renderer).transformed(fig.dpi_scale_trans.inverted())
-        fig.savefig('figures/atoms_somato_%s.pdf' % label, bbox_inches=extent,
-                    dpi=10)
-else:
-    fig.savefig('figures/atoms_somato.pdf')
+plt.savefig('figures/atoms_somato_d.pdf', bbox_inches='tight')
