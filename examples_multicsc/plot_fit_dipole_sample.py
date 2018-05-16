@@ -1,6 +1,7 @@
-# Run plot_sample_data_eyeblink.py before this to generate
+# Run compute_sample_data.py before this to generate
 # the evoked file
 
+import matplotlib
 from os import path as op
 import numpy as np
 import matplotlib.pyplot as plt
@@ -8,8 +9,9 @@ from mpl_toolkits.mplot3d import Axes3D
 
 import mne
 
-from alphacsc.utils import get_uv
 from alphacsc.utils.viz import COLORS
+
+matplotlib.rc('font', size=14)
 
 data_path = mne.datasets.sample.data_path()
 subjects_dir = op.join(data_path, 'subjects')
@@ -32,13 +34,17 @@ evoked = mne.EvokedArray(uv_hat[atom_idx, :n_channels][:, None], info)
 dip = mne.fit_dipole(evoked, fname_cov, fname_bem, fname_trans)[0]
 
 # Plot the result in 3D brain with the MRI image.
-fig = plt.figure(figsize=plt.figaspect(.5))
+fig = plt.figure(figsize=(8, 4))
 ax = fig.add_subplot(1, 2, 1, projection='3d')
 dip.plot_locations(fname_trans, 'sample', subjects_dir, ax=ax,
                    mode='orthoview')
 best_idx = np.argmax(dip.gof)
 best_time = dip.times[best_idx]
-ax.set_title('Dipole fit')
+ax.set_yticks([])
+ax.set_xticks([])
+ax.set_zticks([])
+ax.set(xlabel='', ylabel='', zlabel='')
+plt.title('Dipole fit', y=1.08)
 print('GOF = %f' % dip.gof[best_idx])
 
 # add PSD
