@@ -110,7 +110,10 @@ def run_cbpdn(X, ds_init, reg, n_iter, random_state, label, n_channels):
         d_hat = d_hat.squeeze().T
         n_atoms, n_times_atom = d_hat.shape
     else:
-        d_hat = d_hat.squeeze().swapaxes(0, 2)
+        d_hat = d_hat.squeeze()
+        if d_hat.ndim == 2:
+            d_hat = d_hat[:, None]
+        d_hat = d_hat.swapaxes(0, 2)
         n_atoms, n_channels, n_times_atom = d_hat.shape
 
     z_hat = cbpdn.getcoef().squeeze().swapaxes(0, 2)
