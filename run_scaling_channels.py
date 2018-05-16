@@ -26,7 +26,7 @@ n_times_atom = 128  # L
 n_times = 20000  # T
 n_atoms = 2  # K
 
-save_name = 'methods_scaling_reg{}.pkl'
+save_name = 'methods_scaling_reg{}{}.pkl'
 if not os.path.exists("figures"):
     os.mkdir("figures")
 save_name = os.path.join('figures', save_name)
@@ -67,7 +67,8 @@ def run_multivariate(X, D_init, reg, n_iter, random_state,
         solver_d='lbfgs', solver_d_kwargs=dict(max_iter=50),
         solver_z='gcd', solver_z_kwargs=solver_z_kwargs, use_sparse_z=False,
         name="dense-{}-{}".format(n_channels, random_state),
-        random_state=random_state, n_jobs=1, verbose=verbose)
+        random_state=random_state, n_jobs=1, verbose=verbose,
+        raise_on_increase=False)
 
 
 def one_run(X, n_channels, method, n_atoms, n_times_atom, random_state, reg):
@@ -109,6 +110,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser('Programme to launch experiemnt')
     parser.add_argument('--njobs', type=int, default=1,
                         help='number of cores used to run the experiment')
+    parser.add_argument('--dense', action="store_true",
+                        help='run the experiment for multivariate')
 
     args = parser.parse_args()
 
@@ -130,6 +133,10 @@ if __name__ == '__main__':
         [run_multichannel, 'rank1', n_iter],
         # [run_multivariate, 'dense', n_iter],
     ]
+    if args.dense:
+        methods = [[run_multivariate, 'dense', n_iter]]
+        span_channels = np.unique(np.floor(
+            np.logspace(0, np.log10(n_channels), 10)).astype(int))[:5]
 
     with Parallel(n_jobs=args.njobs) as parallel:
 
@@ -147,7 +154,8 @@ if __name__ == '__main__':
     all_results_df = pd.DataFrame(
         all_results, columns='n_channels random_state label pobj times '
         'd_hat z_hat n_atoms n_times_atom n_trials n_times reg'.split(' '))
-    all_results_df.to_pickle(save_name.format(reg))
+    all_results_df.to_pickle(save_name.format(
+        reg, "_dense" if args.dense else ""))
     import IPython
     IPython.embed()
 
