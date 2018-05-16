@@ -66,12 +66,12 @@ if __name__ == "__main__":
 
     plt.legend(loc=2, fontsize=fontsize)
     plt.ylabel("score($\widehat v$)", fontsize=fontsize)
-    plt.xlabel("Noise level $\sigma$", fontsize=fontsize)
+    plt.xlabel("Noise level $\eta$", fontsize=fontsize)
     plt.tight_layout()
     plt.savefig(fname.replace("pkl", "png"), dpi=150)
 
     sig = all_results_df.sigma.unique()[12]
-    print("sigma = {:.2e}".format(sig))
+    print("eta = {:.2e}".format(sig))
     for P in span_n_channels:
         if P == 1:
             continue

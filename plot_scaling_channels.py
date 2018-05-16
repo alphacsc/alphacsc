@@ -10,6 +10,17 @@ font = {'size': 14}
 matplotlib.rc('font', **font)
 
 
+def color_palette(n_colors=4, cmap='viridis', extrema=False):
+    if extrema:
+        bins = np.linspace(0, 1, n_colors)
+    else:
+        bins = np.linspace(0, 1, n_colors * 2 - 1 + 2)[1:-1:2]
+
+    cmap = plt.get_cmap(cmap)
+    palette = list(map(tuple, cmap(bins)[:, :3]))
+    return palette
+
+
 def aggregate_timing(times, aggregate_method='mean'):
     if aggregate_method == 'mean':
         return np.mean(times), np.std(times)
@@ -62,11 +73,12 @@ def plot_scaling_channels(all_results_df, aggregate_method, save_name):
 
                 # ax.set_yscale('log')
                 plots = [
-                    (z_update, "C0", "z step"),
-                    (d_update, "C1", "d step"),
-                    (full_update, "C2", "z+d steps")
+                    (z_update, "z step"),
+                    (d_update, "d step"),
+                    (full_update, "z+d steps")
                 ]
-                for timing, color, name in plots:
+                colors = color_palette(len(plots))
+                for (timing, name), color in zip(plots, colors):
                     plt.plot(span_channels, timing[:, 0], c=color, label=name)
                     # m, std = timing[:, 0], timing[:, 1]
                     # plt.fill_between(span_channels, m - std, m + std,
