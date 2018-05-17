@@ -6,8 +6,10 @@ import numpy as np
 import pandas as pd
 
 fontsize = 14
-font = {'size': 14}
+font = {'size': fontsize}
 matplotlib.rc('font', **font)
+
+figsize = (6, 3.4)
 
 
 def color_palette(n_colors=4, cmap='viridis', extrema=False):
@@ -47,8 +49,7 @@ def plot_scaling_channels(all_results_df, aggregate_method, save_name):
                     continue
 
                 # draw a different figure for each setting
-                fig = plt.figure(figsize=(6, 4))
-                ax = fig.gca()
+                fig = plt.figure(figsize=figsize)
                 plt.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
                 z_update, d_update, full_update = [], [], []
                 for n_channels in span_channels:
@@ -115,8 +116,10 @@ if __name__ == '__main__':
     
     import argparse
     parser = argparse.ArgumentParser(
-        'Plot the scaling of multichannel CSC relatively to the number of channels P.')
-    parser.add_argument('--fname', type=str, default='figures/methods_scaling_reg0.005.pkl',
+        'Plot the scaling of multichannel CSC relatively to the number of '
+        'channels P.')
+    parser.add_argument('--fname', type=str,
+                        default='figures/methods_scaling_reg0.005.pkl',
                         help='Name of the file to plot from.')
     args = parser.parse_args()
 

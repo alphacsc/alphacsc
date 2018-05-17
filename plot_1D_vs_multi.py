@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 
 
+fontsize = 14
+figsize = (6, 3.4)
 mpl.rc('mathtext', fontset='cm')
 
 
@@ -28,7 +30,7 @@ if __name__ == "__main__":
     normalize = mcolors.LogNorm(vmin=1, vmax=50)
     colormap = plt.cm.get_cmap('viridis')
 
-    fig = plt.figure(figsize=(6, 4))
+    fig = plt.figure(figsize=figsize)
     span_n_channels = all_results_df.run_n_channels.unique()
     span_sigma = all_results_df.sigma.unique()
     for n_channels in span_n_channels:
@@ -62,8 +64,6 @@ if __name__ == "__main__":
     # cbarlabel = r'# of channels $P$'
     # cbar.set_label(cbarlabel, fontsize=20)
 
-    fontsize = 14
-
     plt.legend(loc=2, fontsize=fontsize)
     plt.ylabel("score($\widehat v$)", fontsize=fontsize)
     plt.xlabel("Noise level $\eta$", fontsize=fontsize)
@@ -75,7 +75,7 @@ if __name__ == "__main__":
     for P in span_n_channels:
         if P == 1:
             continue
-        plt.figure(figsize=(6, 4))
+        plt.figure(figsize=figsize)
         res_sig = all_results_df[all_results_df.sigma == sig]
         lines = []
         for n_chan, color in [(1, 'C0'), (P, 'C1')]:
