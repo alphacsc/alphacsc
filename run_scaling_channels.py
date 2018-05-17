@@ -179,7 +179,7 @@ if __name__ == '__main__':
     from alphacsc.datasets.somato import load_data
     X, info = load_data(epoch=False, n_jobs=args.njobs)
 
-    reg = .001
+    reg = .005
     n_iter = 50
     # number of random states
     n_states = 5
@@ -200,7 +200,7 @@ if __name__ == '__main__':
     if args.wohlberg:
         methods = [[run_cbpdn, 'wohlberg', n_iter]]
         span_channels = np.unique(np.floor(
-            np.logspace(0, np.log10(n_channels), 10)).astype(int))[:5]
+            np.logspace(0, np.log10(n_channels), 10)).astype(int))[:-3]
 
     with Parallel(n_jobs=args.njobs) as parallel:
 

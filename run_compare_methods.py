@@ -41,7 +41,7 @@ if debug:
     n_times_atom_list = [128]
     reg_list = [0.3]
 else:
-    base_name = 'run_5'
+    base_name = 'run_5b'
     # n_jobs for the parallel running of single core methods
     n_jobs = 30
     # number of random states
@@ -49,8 +49,8 @@ else:
     # loop over parameters
     n_times_atom_list = [128]
     n_atoms_list = [8]
-    n_channel_list = [1, 5]
-    reg_list = [1., 0.3]
+    n_channel_list = [1]
+    reg_list = [0.3, 1.0]
 
 ##############################
 # methods

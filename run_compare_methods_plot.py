@@ -27,7 +27,7 @@ def normalize_pobj(pobj, best_pobj=None, normalize_method='best'):
         pobj = (pobj - best_pobj) / best_pobj
     elif normalize_method == 'last':
         pobj = [(p - p.min()) / p.min() for p in pobj]
-        pobj = [p / p[0] if p[0] != 0 else p for p in pobj]
+        # pobj = [p / p[0] if p[0] != 0 else p for p in pobj]
     elif normalize_method == 'diff':
         pobj = [-np.diff(p) for p in pobj]
     elif normalize_method in [None, 'short']:
@@ -216,8 +216,10 @@ def plot_barplot(all_results_df, threshold, normalize_method, save_name):
             if idx.size != 0:
                 first_time_list.append(times_[idx[0]])
         first_time_list = np.array(first_time_list)
-        to_plot.append((reg, first_time_list, first_time_list.mean(),
-                        first_time_list.std(), label, setting))
+
+        mean = np.exp(np.mean(np.log(first_time_list)))
+        std = None
+        to_plot.append((reg, first_time_list, mean, std, label, setting))
 
     to_plot_df = pd.DataFrame(to_plot, columns=[
         'reg', 'first_time', 'mean', 'std', 'label', 'setting'
@@ -291,6 +293,7 @@ def plot_barplot(all_results_df, threshold, normalize_method, save_name):
         this_save_name = this_save_name.replace(',', '').replace('=', '')
         this_save_name = this_save_name.replace('(', '').replace(')', '')
         fig.savefig(this_save_name + '.png')
+        fig.savefig(this_save_name + '.pdf')
 
 
 def change_label(data_frame, old, new):
@@ -315,6 +318,8 @@ def clean_data_frame(data_frame):
     data_frame = change_label(data_frame, old='Jas & al (2017) FISTA',
                               new='Jas et al (2017) FISTA')
 
+    data_frame = change_label(data_frame, old='Proposed (multichannel)',
+                              new='Proposed (rank-1)')
     return data_frame
 
 
@@ -323,7 +328,8 @@ def clean_data_frame(data_frame):
 all_results_df = None
 for load_name in os.listdir('figures'):
     load_name = os.path.join('figures', load_name)
-    if load_name[-4:] == '.pkl':
+    if (load_name[-4:] == '.pkl' and
+            ('run' in load_name or 'debug' in load_name)):
         print("load %s" % load_name)
         data_frame = pd.read_pickle(load_name)
     else:
@@ -346,7 +352,7 @@ for load_name in os.listdir('figures'):
         # plot_convergence(data_frame, threshold, normalize_method, save_name)
         plt.close('all')
 
-threshold = 1e-2
+threshold = 1e-3
 normalize_method = 'last'
 save_name = os.path.join('figures', 'all')
 

@@ -114,7 +114,7 @@ def plot_scaling_channels(all_results_df, aggregate_method, save_name,
 
 
 if __name__ == '__main__':
-    
+
     import argparse
     parser = argparse.ArgumentParser(
         'Plot the scaling of multichannel CSC relatively to the number of '
