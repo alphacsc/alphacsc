@@ -34,7 +34,8 @@ def aggregate_timing(times, aggregate_method='mean'):
         raise ValueError('unknown aggregate_time: {}'.format(aggregate_method))
 
 
-def plot_scaling_channels(all_results_df, aggregate_method, save_name):
+def plot_scaling_channels(all_results_df, aggregate_method, save_name,
+                          extension):
     save_name += '_{}'.format(aggregate_method)
     span_channels = all_results_df['n_channels'].unique()
     for n_atoms in all_results_df['n_atoms'].unique():
@@ -108,8 +109,8 @@ def plot_scaling_channels(all_results_df, aggregate_method, save_name):
                 plt.pause(.001)
                 plt.tight_layout()
 
-                fig.savefig(save_name + '_%s_K%d_L%d.png' %
-                            (label, n_atoms, n_times_atom), dpi=150)
+                fig.savefig(save_name + '_{}_K{}_L{}.{}'.format(
+                    label, n_atoms, n_times_atom, extension), dpi=150)
 
 
 if __name__ == '__main__':
@@ -121,12 +122,17 @@ if __name__ == '__main__':
     parser.add_argument('--fname', type=str,
                         default='figures/methods_scaling_reg0.005.pkl',
                         help='Name of the file to plot from.')
+    parser.add_argument('--pdf', action='store_true',
+                        help='Output pdf figures for final form.')
     args = parser.parse_args()
 
     ##############################################################################
     # load the results from file
 
     load_name = args.fname
+    extension = "png"
+    if args.pdf:
+        extension = "pdf"
 
     all_results_df = pd.read_pickle(load_name)
 
@@ -135,7 +141,8 @@ if __name__ == '__main__':
     save_name = save_name.replace(".", "_")
 
     for aggregate_method in ['mean', 'median', 'max']:
-        plot_scaling_channels(all_results_df, aggregate_method, save_name)
+        plot_scaling_channels(all_results_df, aggregate_method, save_name,
+                              extension=extension)
 
     # plt.show()
     plt.close('all')

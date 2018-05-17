@@ -20,11 +20,18 @@ if __name__ == "__main__":
                         help='Name of the file to plot from.')
     parser.add_argument('--bck', action='store_true',
                         help='Generate back-up figure.')
+    parser.add_argument('--pdf', action='store_true',
+                        help='Output pdf figures for final form.')
 
     args = parser.parse_args()
     fname = args.fname
     if args.bck:
         fname = "figures/1D_vs_multi.pkl"
+
+    extension = "png"
+    if args.pdf:
+        extension = "pdf"
+
     all_results_df = pd.read_pickle(fname)
 
     normalize = mcolors.LogNorm(vmin=1, vmax=50)
@@ -68,7 +75,7 @@ if __name__ == "__main__":
     plt.ylabel("score($\widehat v$)", fontsize=fontsize)
     plt.xlabel("Noise level $\eta$", fontsize=fontsize)
     plt.tight_layout()
-    plt.savefig(fname.replace("pkl", "png"), dpi=150)
+    plt.savefig(fname.replace("pkl", extension), dpi=150)
 
     sig = all_results_df.sigma.unique()[12]
     print("eta = {:.2e}".format(sig))
@@ -98,5 +105,5 @@ if __name__ == "__main__":
         plt.xlabel("Times", fontsize=fontsize)
         plt.ylabel("Atoms", fontsize=fontsize)
         plt.tight_layout()
-        plt.savefig(fname.replace(".pkl", "_uv_hat_P{}.png").format(P),
-                    dpi=150)
+        plt.savefig(fname.replace(".pkl", "_uv_hat_P{}.{}").format(
+            P, extension), dpi=150)
