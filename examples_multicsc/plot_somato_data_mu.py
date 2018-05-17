@@ -18,7 +18,7 @@ mem = Memory(cachedir='.', verbose=0)
 
 separate_figures = True
 
-atoms_idx = 4
+atoms_idx = 1
 evoked = mne.read_evokeds(
     'examples_multicsc/atom_multi_somato-ave.fif')[atoms_idx]
 
@@ -26,7 +26,6 @@ data_path = mne.datasets.somato.data_path()
 subjects_dir = op.join(data_path, 'subjects')
 
 
-@mem.cache()
 def compute_dipole():
 
     fname_ave = 'examples_multicsc/atom_multi_somato-ave.fif'
@@ -36,8 +35,7 @@ def compute_dipole():
     fname_trans = op.join(data_path, 'MEG', 'somato',
                           'sef_raw_sss-trans.fif')
 
-    atom_idx = 4
-    evoked = mne.read_evokeds(fname_ave, baseline=None)[atom_idx]
+    evoked = mne.read_evokeds(fname_ave, baseline=None)[atoms_idx]
     evoked.crop(tmin=evoked.times[42], tmax=evoked.times[42])
     evoked.pick_types(meg=True, eeg=False)
 
@@ -58,10 +56,9 @@ n_times_atom = uv_hat.shape[-1] - n_channels
 v_hat = uv_hat[0, n_channels:]
 
 times = np.arange(n_times_atom) / evoked.info['sfreq']
-atoms_idx = [4]
 
 plt.figure(figsize=(4, 3))
-plt.plot(times, -v_hat.T, color=COLORS[0], linewidth=1.5)
+plt.plot(times, v_hat.T, color=COLORS[0], linewidth=1.5)
 plt.grid('on', linestyle='-', alpha=0.3)
 plt.xlabel('Time (s)')
 plt.gcf().savefig('figures/atoms_somato_a.pdf')
@@ -72,7 +69,7 @@ mne.viz.plot_topomap(uv_hat[0, :n_channels], evoked.info,
 plt.savefig('figures/atoms_somato_b.pdf')
 
 plt.figure(figsize=(3, 3))
-psd = np.abs(np.fft.rfft(v_hat)) ** 2
+psd = np.abs(np.fft.rfft(v_hat, n=2 * n_times_atom)) ** 2
 plt.xlabel('Frequencies (Hz)')
 frequencies = np.linspace(0, evoked.info['sfreq'] / 2.0, len(psd))
 plt.plot(frequencies, 10 * np.log10(psd), color=COLORS[0], linewidth=1.5)
