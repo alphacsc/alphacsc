@@ -7,6 +7,8 @@ import matplotlib
 matplotlib.use('agg')
 
 import mne
+from mne.io import write_info
+
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.externals.joblib import Memory
@@ -147,8 +149,6 @@ plt.show()
 
 pobj, times, uv_hat, Z_hat, uv_init = res
 
-D = get_D(uv_hat, n_channels)
-evokeds = list()
-for idx in range(n_atoms):
-    evokeds.append(mne.EvokedArray(D[idx], info, comment='Atom %d' % idx))
-mne.write_evokeds('examples_multicsc/atom_multi_somato-ave.fif', evokeds)
+np.savez('examples_multicsc/multi_somato-ave.npz', Z_hat=Z_hat,
+         uv_hat=uv_hat, sfreq=info['sfreq'], n_channels=n_channels)
+write_info('examples_multicsc/info_sample.fif', info)
