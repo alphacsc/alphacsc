@@ -151,4 +151,4 @@ pobj, times, uv_hat, Z_hat, uv_init = res
 
 np.savez('examples_multicsc/multi_somato-ave.npz', Z_hat=Z_hat,
          uv_hat=uv_hat, sfreq=info['sfreq'], n_channels=n_channels)
-write_info('examples_multicsc/info_sample.fif', info)
+write_info('examples_multicsc/info_somato.fif', info)
