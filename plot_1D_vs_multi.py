@@ -77,7 +77,9 @@ if __name__ == "__main__":
     plt.tight_layout()
     plt.savefig(fname.replace("pkl", extension), dpi=150)
 
-    sig = all_results_df.sigma.unique()[12]
+    sig = all_results_df.sigma.unique()[5]
+    if args.bck:
+        sig = all_results_df.sigma.unique()[12]
     print("eta = {:.2e}".format(sig))
     for P in span_n_channels:
         if P == 1:
@@ -89,6 +91,7 @@ if __name__ == "__main__":
             res = res_sig[res_sig.run_n_channels == n_chan]
             i0 = res.score.idxmin()
             uv_hat = res.uv_hat[i0]
+            print("[P={}] Best lmbd {}".format(n_chan, res.reg[i0]))
             uv = res.uv[i0]
             s = np.dot(uv[:, -64:], uv_hat[:, -64:].T)
             if np.trace(abs(s)) >= np.trace(abs(s)[::-1]):
