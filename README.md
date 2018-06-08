@@ -13,11 +13,23 @@ These are the dependencies
 * matplotlib
 * scipy
 * joblib
+* mne
+* cython
+
+Installation
+------------
+
+To install this package, the easiest way is using `pip`. As this package contains
+multiple cython file, please run `bash install_multicsc.sh`.
 
 Cite
 ----
 
 If you use this code in your project, please cite::
+
+	Dupré La Tour, T., Moreau, T., Jas, M. & Gramfort, A. (2017).
+    Multivariate Convolutional Sparse Coding for Electromagnetic Brain Signals.
+    preprint ArXiv 1805.09654
 
 	Jas, M., Dupré La Tour, T., Şimşekli, U., & Gramfort, A. (2017).
     Learning the Morphology of Brain Signals Using Alpha-Stable Convolutional
