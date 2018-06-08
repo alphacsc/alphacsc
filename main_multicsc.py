@@ -9,10 +9,10 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 from joblib import Memory, Parallel, delayed
 
-from alphacsc.learn_d_z_multi import learn_d_z_multi
-from alphacsc.utils.viz import get_callback_csc, DEFAULT_CB
-from alphacsc.utils.plot_output import DEFAULT_OUTPUT, PLOTS
-from alphacsc.datasets import DATASETS
+from multicsc.learn_d_z_multi import learn_d_z_multi
+from multicsc.utils.viz import get_callback_csc, DEFAULT_CB
+from multicsc.utils.plot_output import DEFAULT_OUTPUT, PLOTS
+from multicsc.datasets import DATASETS
 
 
 mem = Memory(cachedir='.', verbose=0)
@@ -75,13 +75,13 @@ if __name__ == "__main__":
     output_config = getattr(exp, 'output_config', DEFAULT_OUTPUT)
 
     if exp.dataset == 'simu':
-        from alphacsc.datasets.simulate import load_data
+        from multicsc.datasets.simulate import load_data
         dataset_kwargs = getattr(exp, 'dataset_kwargs', {})
         X, info = load_data(**dataset_kwargs)
 
     elif exp.dataset == 'somato':
 
-        from alphacsc.datasets.somato import load_data
+        from multicsc.datasets.somato import load_data
         X, info = load_data(sfreq=sfreq, epoch=False, n_jobs=args.n_jobs)
 
     else:

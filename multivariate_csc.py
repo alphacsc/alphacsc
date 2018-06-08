@@ -2,10 +2,10 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 
-from alphacsc.simulate import get_atoms, get_activations
-from alphacsc.utils import construct_X_multi, get_D
-from alphacsc.learn_d_z_multi import learn_d_z_multi
-from alphacsc.update_d_multi import prox_uv
+from multicsc.simulate import get_atoms, get_activations
+from multicsc.utils import construct_X_multi, get_D
+from multicsc.learn_d_z_multi import learn_d_z_multi
+from multicsc.update_d_multi import prox_uv
 
 
 parser = argparse.ArgumentParser('Programme to launch experiment on multi csc')

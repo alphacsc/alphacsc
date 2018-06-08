@@ -1,10 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from alphacsc import check_random_state
-from alphacsc.simulate import simulate_data
-from alphacsc.learn_d_z_multi import learn_d_z_multi
-from alphacsc.learn_d_z import learn_d_z
+from multicsc import check_random_state
+from multicsc.simulate import simulate_data
+from multicsc.learn_d_z_multi import learn_d_z_multi
+from multicsc.learn_d_z import learn_d_z
 
 ###############################################################################
 n_times_atom = 64  # L

@@ -9,10 +9,10 @@ import scipy.sparse as sp
 from sklearn.externals.joblib import Parallel, delayed, Memory
 from sporco.admm.cbpdndl import ConvBPDNDictLearn
 
-from alphacsc.utils.profile_this import profile_this  # noqa
-from alphacsc.utils import check_random_state, get_D
-from alphacsc.learn_d_z_multi import learn_d_z_multi
-from alphacsc.utils.dictionary import get_lambda_max
+from multicsc.utils.profile_this import profile_this  # noqa
+from multicsc.utils import check_random_state, get_D
+from multicsc.learn_d_z_multi import learn_d_z_multi
+from multicsc.utils.dictionary import get_lambda_max
 
 mem = Memory(cachedir='.', verbose=0)
 
@@ -176,7 +176,7 @@ if __name__ == '__main__':
 
     all_results = []
     # load somato data
-    from alphacsc.datasets.somato import load_data
+    from multicsc.datasets.somato import load_data
     X, info = load_data(epoch=False, n_jobs=args.njobs)
 
     reg = .005

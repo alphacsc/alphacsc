@@ -9,7 +9,7 @@ from mpl_toolkits.mplot3d import Axes3D
 
 import mne
 
-from alphacsc.utils.viz import COLORS
+from multicsc.utils.viz import COLORS
 
 matplotlib.rc('font', size=14)
 

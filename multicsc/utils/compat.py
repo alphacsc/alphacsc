@@ -18,6 +18,6 @@ except ImportError:
     numba.int64 = dummy_numba_type()
     numba.float64 = dummy_numba_type()
 
-    warnings.warn("numba is not installed on your system. The alphacsc will "
+    warnings.warn("numba is not installed on your system. The multicsc will "
                   "be slow. Please use `pip install numba` to have a faster "
                   "computations.")

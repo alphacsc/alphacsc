@@ -2,10 +2,10 @@ import pytest
 import numpy as np
 
 
-from alphacsc.utils import check_random_state, get_D
-from alphacsc.utils.whitening import whitening, apply_whitening
-from alphacsc.utils.compute_constants import compute_DtD, compute_ZtZ
-from alphacsc.utils.convolution import tensordot_convolve, construct_X_multi
+from multicsc.utils import check_random_state, get_D
+from multicsc.utils.whitening import whitening, apply_whitening
+from multicsc.utils.compute_constants import compute_DtD, compute_ZtZ
+from multicsc.utils.convolution import tensordot_convolve, construct_X_multi
 
 
 def test_DtD():

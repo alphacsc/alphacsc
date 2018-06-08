@@ -2,8 +2,8 @@ import numpy as np
 from scipy import sparse
 from numpy.testing import assert_allclose
 
-from alphacsc.utils import check_random_state
-from alphacsc.cython.coordinate_descent import update_dz_opt
+from multicsc.utils import check_random_state
+from multicsc.cython.coordinate_descent import update_dz_opt
 
 
 def test_dz_opt_sparse_update():

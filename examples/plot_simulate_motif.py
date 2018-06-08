@@ -4,7 +4,7 @@ MoTIF on simulated data
 =======================
 
 This example demonstrates MoTIF [1] on simulated data. In the
-alphacsc module, we are offering all the alternatives for the users
+multicsc module, we are offering all the alternatives for the users
 to try. Please cite our paper [2] if you use this implementation.
 
 [1] Jost, Philippe, et al.
@@ -28,8 +28,8 @@ to try. Please cite our paper [2] if you use this implementation.
 # Let us first import the modules.
 
 import matplotlib.pyplot as plt
-from alphacsc.simulate import simulate_data
-from alphacsc.other.motif import learn_atoms
+from multicsc.simulate import simulate_data
+from multicsc.other.motif import learn_atoms
 
 ###############################################################################
 # and define the relevant parameters. Note we choose a large n_times
@@ -56,7 +56,7 @@ max_shift = 11  # after this, the algorithm breaks
 # Note, how we use constant_amplitude=True since
 # MoTIF cannot handle atoms of varying amplitudes. Check out our examples
 # on :ref:`vanilla CSC <sphx_glr_auto_examples_plot_simulate_csc.py>` and
-# :ref:`alphaCSC <sphx_glr_auto_examples_plot_simulate_alphacsc.py>` to learn
+# :ref:`alphaCSC <sphx_glr_auto_examples_plot_simulate_multicsc.py>` to learn
 # how to deal with such cases.
 # Finally, let us estimate the atoms.
 

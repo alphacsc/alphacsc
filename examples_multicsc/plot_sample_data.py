@@ -2,7 +2,7 @@ import mne
 import matplotlib.pyplot as plt
 import numpy as np
 
-from alphacsc.utils.viz import COLORS
+from multicsc.utils.viz import COLORS
 
 data = np.load('examples_multicsc/multi_sample-ave.npz')
 info = mne.io.read_info('examples_multicsc/info_sample.fif')

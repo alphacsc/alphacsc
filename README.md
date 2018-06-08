@@ -1,6 +1,6 @@
 # αcsc
-[![TravisCI](https://api.travis-ci.org/alphacsc/alphacsc.svg?branch=master)](https://travis-ci.org/alphacsc/alphacsc)
-[![Codecov](https://codecov.io/github/alphacsc/alphacsc/coverage.svg?precision=0)](https://codecov.io/gh/alphacsc/alphacsc)
+[![TravisCI](https://api.travis-ci.org/multicsc/multicsc.svg?branch=master)](https://travis-ci.org/multicsc/multicsc)
+[![Codecov](https://codecov.io/github/multicsc/multicsc/coverage.svg?precision=0)](https://codecov.io/gh/multicsc/multicsc)
 
 [Convolutional dictionary learning for noisy signals using αCSC](https://papers.nips.cc/paper/6710-learning-the-morphology-of-brain-signals-using-alpha-stable-convolutional-sparse-coding)
 

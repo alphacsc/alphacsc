@@ -1,0 +1,6 @@
+mne
+numba
+numpy
+scipy
+joblib
+matplotlib

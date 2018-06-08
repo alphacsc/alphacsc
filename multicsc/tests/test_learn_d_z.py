@@ -6,15 +6,15 @@ from scipy import linalg
 from numpy.testing import assert_allclose
 from nose.tools import assert_equal, assert_true
 
-from alphacsc.learn_d_z import learn_d_z
-from alphacsc.utils.optim import power_iteration
-from alphacsc.update_d import update_d, update_d_block
-from alphacsc.update_z import update_z, gram_block_circulant
-from alphacsc.update_d import solve_unit_norm_dual, solve_unit_norm_primal
+from multicsc.learn_d_z import learn_d_z
+from multicsc.utils.optim import power_iteration
+from multicsc.update_d import update_d, update_d_block
+from multicsc.update_z import update_z, gram_block_circulant
+from multicsc.update_d import solve_unit_norm_dual, solve_unit_norm_primal
 
 
-from alphacsc.simulate import simulate_data
-from alphacsc.utils import construct_X, check_random_state
+from multicsc.simulate import simulate_data
+from multicsc.utils import construct_X, check_random_state
 
 _dummy = unittest.TestCase('__init__')
 assert_raises = _dummy.assertRaises

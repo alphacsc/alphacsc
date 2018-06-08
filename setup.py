@@ -4,13 +4,21 @@ from numpy.distutils.core import setup
 
 descr = """Convolutional dictionary learning for noisy signals"""
 
-DISTNAME = 'alphacsc'
+DISTNAME = 'multicsc'
 DESCRIPTION = descr
 MAINTAINER = 'Mainak Jas'
 MAINTAINER_EMAIL = 'mainakjas@gmail.com'
 LICENSE = 'BSD (3-clause)'
-DOWNLOAD_URL = 'https://github.com/alphacsc/alphacsc.git'
+DOWNLOAD_URL = 'https://github.com/multicsc/multicsc.git'
 VERSION = '0.1.dev0'
+
+
+def get_requirements():
+    """Return the requirements of the projects in requirements.txt"""
+    with open('requirements.txt') as f:
+        requirements = [r.strip() for r in f.readlines()]
+    return [r for r in requirements if r != '']
+
 
 if __name__ == "__main__":
     setup(name=DISTNAME,
@@ -35,6 +43,7 @@ if __name__ == "__main__":
           ],
           platforms='any',
           packages=[
-              'alphacsc'
+              'multicsc'
           ],
+          install_requires=get_requirements()
           )

@@ -3,15 +3,15 @@ import numpy as np
 from scipy import optimize
 
 
-from alphacsc.utils import construct_X_multi
-from alphacsc.utils.whitening import whitening
-from alphacsc.loss_and_gradient import compute_X_and_objective_multi
-from alphacsc.loss_and_gradient import gradient_d
-from alphacsc.loss_and_gradient import gradient_zi
+from multicsc.utils import construct_X_multi
+from multicsc.utils.whitening import whitening
+from multicsc.loss_and_gradient import compute_X_and_objective_multi
+from multicsc.loss_and_gradient import gradient_d
+from multicsc.loss_and_gradient import gradient_zi
 
-from alphacsc.tests.helper_functions import gradient_checker
+from multicsc.tests.helper_functions import gradient_checker
 
-from alphacsc.utils import get_D
+from multicsc.utils import get_D
 
 
 def _gradient_zi(X, Z, D, loss, loss_params, flatten=False):

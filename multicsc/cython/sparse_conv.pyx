@@ -6,7 +6,7 @@ import numpy as np
 cimport numpy as cnp
 cnp.import_array()
 
-from alphacsc.utils import get_D
+from multicsc.utils import get_D
 
 
 cdef _sparse_conv_d(object[:] Zi_data,

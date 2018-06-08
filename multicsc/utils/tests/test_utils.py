@@ -2,13 +2,13 @@ import numpy as np
 from scipy import sparse
 from numpy.testing import assert_allclose
 
-from alphacsc.utils.convolution import _sparse_convolve, _dense_convolve
-from alphacsc.utils.convolution import _choose_convolve
-from alphacsc.utils import check_random_state
-from alphacsc.utils import construct_X_multi
-from alphacsc.utils.dictionary import get_D, get_uv
+from multicsc.utils.convolution import _sparse_convolve, _dense_convolve
+from multicsc.utils.convolution import _choose_convolve
+from multicsc.utils import check_random_state
+from multicsc.utils import construct_X_multi
+from multicsc.utils.dictionary import get_D, get_uv
 
-from alphacsc.update_d_multi import prox_uv
+from multicsc.update_d_multi import prox_uv
 
 
 def test_sparse_convolve():
@@ -76,7 +76,7 @@ def test_patch_reconstruction_error():
 
     X = construct_X_multi(Z, D=uv, n_channels=n_channels)
 
-    from alphacsc.utils.dictionary import _patch_reconstruction_error
+    from multicsc.utils.dictionary import _patch_reconstruction_error
 
     rec = _patch_reconstruction_error(X, Z, uv)
     assert rec.shape == (n_trials, n_times_valid)

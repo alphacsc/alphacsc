@@ -9,10 +9,10 @@ from mne.utils import _reject_data_segments
 from mne.preprocessing import ICA, create_eog_epochs
 from mne import EvokedArray
 
-from alphacsc.learn_d_z_multi import learn_d_z_multi
-from alphacsc.utils import construct_X_multi, _choose_convolve
-from alphacsc.utils import plot_callback, get_D
-from alphacsc.utils.viz import COLORS
+from multicsc.learn_d_z_multi import learn_d_z_multi
+from multicsc.utils import construct_X_multi, _choose_convolve
+from multicsc.utils import plot_callback, get_D
+from multicsc.utils.viz import COLORS
 
 parser = argparse.ArgumentParser('Programme to launch experiment on multi csc')
 parser.add_argument('--profile', action='store_true',

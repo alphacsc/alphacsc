@@ -1,10 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from alphacsc.simulate import get_atoms, get_activations
-from alphacsc.utils import construct_X_multi, get_D
-from alphacsc.update_d_multi import prox_uv
-from alphacsc import learn_d_z
+from multicsc.simulate import get_atoms, get_activations
+from multicsc.utils import construct_X_multi, get_D
+from multicsc.update_d_multi import prox_uv
+from multicsc import learn_d_z
 
 from sklearn.decomposition import FastICA
 

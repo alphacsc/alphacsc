@@ -2,11 +2,11 @@ import pytest
 import numpy as np
 from scipy import sparse
 
-from alphacsc.update_z_multi import update_z_multi
-from alphacsc.update_z_multi import compute_DtD, _coordinate_descent_idx
-from alphacsc.loss_and_gradient import compute_X_and_objective_multi
-from alphacsc.utils.whitening import whitening
-from alphacsc.utils import construct_X_multi
+from multicsc.update_z_multi import update_z_multi
+from multicsc.update_z_multi import compute_DtD, _coordinate_descent_idx
+from multicsc.loss_and_gradient import compute_X_and_objective_multi
+from multicsc.utils.whitening import whitening
+from multicsc.utils import construct_X_multi
 
 
 @pytest.mark.parametrize('loss', ['l2', 'dtw', 'whitening'])

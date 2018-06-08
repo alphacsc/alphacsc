@@ -7,7 +7,7 @@ from sklearn.externals.joblib import Memory
 try:
     from ..utils import check_random_state
 except ValueError:
-    from alphacsc.utils import check_random_state
+    from multicsc.utils import check_random_state
 
 
 mem = Memory(cachedir='.', verbose=0)

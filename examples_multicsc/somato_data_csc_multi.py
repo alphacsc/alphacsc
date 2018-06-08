@@ -5,9 +5,9 @@ import itertools
 from sklearn.externals.joblib import Memory, Parallel, delayed
 
 
-from alphacsc.learn_d_z_multi import learn_d_z_multi
-from alphacsc.utils.viz import get_callback_csc, DEFAULT_CB
-from alphacsc.datasets.somato import load_data
+from multicsc.learn_d_z_multi import learn_d_z_multi
+from multicsc.utils.viz import get_callback_csc, DEFAULT_CB
+from multicsc.datasets.somato import load_data
 
 
 mem = Memory(cachedir='.', verbose=0)

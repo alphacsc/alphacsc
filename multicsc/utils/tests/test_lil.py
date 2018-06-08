@@ -2,10 +2,10 @@ import numpy as np
 
 from numpy.testing import assert_allclose
 
-from alphacsc.utils.lil import convert_to_list_of_lil
-from alphacsc.utils.lil import convert_from_list_of_lil
-from alphacsc.utils.lil import safe_sum, get_Z_shape, scale_Z_by_atom
-from alphacsc.utils.lil import is_list_of_lil, is_lil
+from multicsc.utils.lil import convert_to_list_of_lil
+from multicsc.utils.lil import convert_from_list_of_lil
+from multicsc.utils.lil import safe_sum, get_Z_shape, scale_Z_by_atom
+from multicsc.utils.lil import is_list_of_lil, is_lil
 
 
 def test_is_list_of_lil():

@@ -1,8 +1,8 @@
 import pytest
 import numpy as np
 
-from alphacsc.learn_d_z_multi import learn_d_z_multi
-from alphacsc.utils import check_random_state
+from multicsc.learn_d_z_multi import learn_d_z_multi
+from multicsc.utils import check_random_state
 
 
 @pytest.mark.parametrize('loss', ['l2', 'dtw', 'whitening'])

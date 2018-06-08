@@ -1,4 +1,4 @@
-.. alphacsc documentation master file, created by
+.. multicsc documentation master file, created by
    sphinx-quickstart on Thu Jun  1 00:35:01 2017.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
@@ -32,20 +32,20 @@ where :math:`w_n` are the weights which are learned using an `EM algorithm <http
 Installation
 ============
 
-We recommend the `Anaconda Python distribution <https://www.continuum.io/downloads>`_. To install ``alphacsc``, you first need to install its dependencies::
+We recommend the `Anaconda Python distribution <https://www.continuum.io/downloads>`_. To install ``multicsc``, you first need to install its dependencies::
 
 	$ pip install numpy matplotlib scipy
 
-Then install alphacsc::
+Then install multicsc::
 
-	$ pip install git+https://github.com/alphacsc/alphacsc.git#egg=alphacsc
+	$ pip install git+https://github.com/multicsc/multicsc.git#egg=multicsc
 
 If you do not have admin privileges on the computer, use the ``--user`` flag
 with `pip`. To upgrade, use the ``--upgrade`` flag provided by `pip`.
 
 To check if everything worked fine, you can do::
 
-	$ python -c 'import alphacsc'
+	$ python -c 'import multicsc'
 
 and it should not give any error messages.
 
@@ -58,14 +58,14 @@ The penalty parameter `reg` controls the sparsity in the activations estimated.
 
 .. code:: python
 
->>> from alphacsc import learn_d_z
+>>> from multicsc import learn_d_z
 >>> n_atoms, n_times_atom, n_iter = 2, 64, 60
 >>> pobj, times, d_hat, Z_hat = learn_d_z(X, n_atoms, n_times_atom, reg=reg, n_iter=n_iter)  # doctest: +SKIP
 
 Bug reports
 ===========
 
-Use the `github issue tracker <https://github.com/alphacsc/alphacsc/issues>`_ to report bugs.
+Use the `github issue tracker <https://github.com/multicsc/multicsc/issues>`_ to report bugs.
 
 Cite
 ====

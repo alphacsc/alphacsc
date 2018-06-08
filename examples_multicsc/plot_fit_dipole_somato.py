@@ -8,9 +8,9 @@ from mpl_toolkits.mplot3d import Axes3D
 
 import mne
 
-from alphacsc.datasets.somato import load_data
-from alphacsc.utils import get_uv
-from alphacsc.utils.viz import COLORS
+from multicsc.datasets.somato import load_data
+from multicsc.utils import get_uv
+from multicsc.utils.viz import COLORS
 
 data_path = mne.datasets.somato.data_path()
 subjects_dir = op.join(data_path, 'subjects')

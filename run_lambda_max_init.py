@@ -1,9 +1,9 @@
 import numpy as np
 
-from alphacsc.datasets.somato import load_data
-from alphacsc.utils.dictionary import get_lambda_max
-from alphacsc.init_dict import init_dictionary
-from alphacsc.learn_d_z_multi import learn_d_z_multi
+from multicsc.datasets.somato import load_data
+from multicsc.utils.dictionary import get_lambda_max
+from multicsc.init_dict import init_dictionary
+from multicsc.learn_d_z_multi import learn_d_z_multi
 
 X, info = load_data(epoch=False, n_trials=2)
 X = X[:, :, :10000]

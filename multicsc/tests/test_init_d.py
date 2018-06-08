@@ -4,10 +4,10 @@ import functools
 from numpy.testing import assert_allclose
 
 
-from alphacsc.init_dict import init_dictionary
-from alphacsc.update_d_multi import prox_uv, prox_d
-from alphacsc.learn_d_z_multi import learn_d_z_multi
-from alphacsc.utils import check_random_state
+from multicsc.init_dict import init_dictionary
+from multicsc.update_d_multi import prox_uv, prox_d
+from multicsc.learn_d_z_multi import learn_d_z_multi
+from multicsc.utils import check_random_state
 
 
 @pytest.mark.parametrize("rank1", [True, False])

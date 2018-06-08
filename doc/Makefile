@@ -87,9 +87,9 @@ qthelp:
 	@echo
 	@echo "Build finished; now you can run "qcollectiongenerator" with the" \
 		  ".qhcp project file in $(BUILDDIR)/qthelp, like this:"
-	@echo "# qcollectiongenerator $(BUILDDIR)/qthelp/alphacsc.qhcp"
+	@echo "# qcollectiongenerator $(BUILDDIR)/qthelp/multicsc.qhcp"
 	@echo "To view the help file:"
-	@echo "# assistant -collectionFile $(BUILDDIR)/qthelp/alphacsc.qhc"
+	@echo "# assistant -collectionFile $(BUILDDIR)/qthelp/multicsc.qhc"
 
 .PHONY: latex
 latex:
@@ -132,19 +132,19 @@ coverage:
 		  "results in $(BUILDDIR)/coverage/python.txt."
 
 install:
-	rm -rf _build/doctrees _build/alphacsc.github.io
-	# first clone the alphacsc/alphacsc.github.io repo because it may ask
+	rm -rf _build/doctrees _build/multicsc.github.io
+	# first clone the multicsc/multicsc.github.io repo because it may ask
 	# for password and we don't want to delay this long build in
 	# the middle of it
 	# --no-checkout just fetches the root folder without content
 	# --depth 1 is a speed optimization since we don't need the
 	# history prior to the last commit
-	git clone --no-checkout --depth 1 https://github.com/alphacsc/alphacsc.github.io.git _build/alphacsc.github.io
-	touch _build/alphacsc.github.io/.nojekyll
+	git clone --no-checkout --depth 1 https://github.com/multicsc/multicsc.github.io.git _build/multicsc.github.io
+	touch _build/multicsc.github.io/.nojekyll
 	make html
 	cd _build/ && \
-	cp -r html/* alphacsc.github.io && \
-	cd alphacsc.github.io && \
+	cp -r html/* multicsc.github.io && \
+	cd multicsc.github.io && \
 	git add * && \
 	git add .nojekyll && \
 	git commit -a -m 'Make install' && \

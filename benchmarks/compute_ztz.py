@@ -7,9 +7,9 @@ import matplotlib.pyplot as plt
 from sklearn.externals.joblib import Memory
 from scipy.stats.mstats import gmean
 
-from alphacsc.utils.compat import numba, jit
-from alphacsc.cython import _fast_compute_ztz_lil
-from alphacsc.cython import _fast_compute_ztz_csr
+from multicsc.utils.compat import numba, jit
+from multicsc.cython import _fast_compute_ztz_lil
+from multicsc.cython import _fast_compute_ztz_csr
 
 memory = Memory(cachedir='', verbose=0)
 

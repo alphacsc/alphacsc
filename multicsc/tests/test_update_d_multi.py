@@ -2,12 +2,12 @@ import pytest
 import numpy as np
 from scipy import optimize, signal
 
-from alphacsc.loss_and_gradient import compute_objective
-from alphacsc.loss_and_gradient import gradient_d, gradient_uv
-from alphacsc.update_d_multi import update_uv, prox_uv, _get_d_update_constants
-from alphacsc.utils.whitening import whitening
-from alphacsc.utils.optim import fista
-from alphacsc.utils import construct_X_multi
+from multicsc.loss_and_gradient import compute_objective
+from multicsc.loss_and_gradient import gradient_d, gradient_uv
+from multicsc.update_d_multi import update_uv, prox_uv, _get_d_update_constants
+from multicsc.utils.whitening import whitening
+from multicsc.utils.optim import fista
+from multicsc.utils import construct_X_multi
 
 
 DEBUG = True
@@ -230,7 +230,7 @@ def test_constants_d():
     X = rng.normal(size=(n_trials, n_channels, n_times))
     Z = rng.normal(size=(n_atoms, n_trials, n_times - n_times_atom + 1))
 
-    from alphacsc.update_d_multi import _get_d_update_constants
+    from multicsc.update_d_multi import _get_d_update_constants
     constants = _get_d_update_constants(X, Z)
 
     ZtX = np.sum([[[np.convolve(zik[::-1], xip, mode='valid') for xip in xi]

@@ -6,8 +6,8 @@ from scipy.signal import tukey
 import mne
 from mne.preprocessing import compute_proj_ecg, compute_proj_eog
 
-from alphacsc.learn_d_z_multi import learn_d_z_multi
-from alphacsc.utils import (construct_X_multi, _choose_convolve,
+from multicsc.learn_d_z_multi import learn_d_z_multi
+from multicsc.utils import (construct_X_multi, _choose_convolve,
                             plot_callback)
 
 # Trying to do something like:

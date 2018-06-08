@@ -2,11 +2,11 @@ import numpy as np
 from scipy import sparse
 from numpy.testing import assert_allclose
 
-from alphacsc.utils.convolution import _dense_convolve_multi
-from alphacsc.utils.convolution import _dense_convolve_multi_uv
-from alphacsc.utils import check_random_state
-from alphacsc.cython import _fast_sparse_convolve_multi
-from alphacsc.cython import _fast_sparse_convolve_multi_uv
+from multicsc.utils.convolution import _dense_convolve_multi
+from multicsc.utils.convolution import _dense_convolve_multi_uv
+from multicsc.utils import check_random_state
+from multicsc.cython import _fast_sparse_convolve_multi
+from multicsc.cython import _fast_sparse_convolve_multi_uv
 
 
 def test_sparse_convolve():

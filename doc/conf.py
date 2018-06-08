@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# alphacsc documentation build configuration file, created by
+# multicsc documentation build configuration file, created by
 # sphinx-quickstart on Thu Jun  1 00:35:01 2017.
 #
 # This file is execfile()d with the current directory set to its
@@ -53,7 +53,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'alphacsc'
+project = u'multicsc'
 copyright = u'2017, Mainak Jas'
 author = u'Mainak Jas'
 
@@ -98,7 +98,7 @@ html_theme_options = {
     'navbar_links': [
         ("Examples", "auto_examples/index"),
         ("API", "api"),
-        ("GitHub", "https://github.com/alphacsc/alphacsc", True)
+        ("GitHub", "https://github.com/multicsc/multicsc", True)
     ],
     'bootswatch_theme': "united"
 }
@@ -115,7 +115,7 @@ html_static_path = ['_static']
 # -- Options for HTMLHelp output ------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'alphacscdoc'
+htmlhelp_basename = 'multicscdoc'
 
 
 # -- Options for LaTeX output ---------------------------------------------
@@ -142,7 +142,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'alphacsc.tex', u'alphacsc Documentation',
+    (master_doc, 'multicsc.tex', u'multicsc Documentation',
      u'Mainak Jas', 'manual'),
 ]
 
@@ -152,7 +152,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'alphacsc', u'alphacsc Documentation',
+    (master_doc, 'multicsc', u'multicsc Documentation',
      [author], 1)
 ]
 
@@ -163,8 +163,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'alphacsc', u'alphacsc Documentation',
-     author, 'alphacsc', 'One line description of project.',
+    (master_doc, 'multicsc', u'multicsc Documentation',
+     author, 'multicsc', 'One line description of project.',
      'Miscellaneous'),
 ]
 
@@ -173,7 +173,7 @@ sphinx_gallery_conf = {
     'gallery_dirs': 'auto_examples',
     'reference_url': {
         'mne': 'http://martinos.org/mne/stable',
-        'alphacsc': 'http://alphacsc.github.io/',
+        'multicsc': 'http://multicsc.github.io/',
         'numpy': 'http://docs.scipy.org/doc/numpy-1.9.1',
         'scipy': 'http://docs.scipy.org/doc/scipy-0.17.0/reference',
         'mayavi': 'http://docs.enthought.com/mayavi/mayavi'}
