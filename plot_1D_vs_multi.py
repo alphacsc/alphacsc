@@ -87,11 +87,11 @@ if __name__ == "__main__":
         plt.figure(figsize=figsize)
         res_sig = all_results_df[all_results_df.sigma == sig]
         lines = []
-        for n_chan, color in [(1, 'C0'), (P, 'C1')]:
-            res = res_sig[res_sig.run_n_channels == n_chan]
+        for n_channels, color in [(1, 'C0'), (P, 'C1')]:
+            res = res_sig[res_sig.run_n_channels == n_channels]
             i0 = res.score.idxmin()
             uv_hat = res.uv_hat[i0]
-            print("[P={}] Best lmbd {}".format(n_chan, res.reg[i0]))
+            print("[P={}] Best lmbd {}".format(n_channels, res.reg[i0]))
             uv = res.uv[i0]
             s = np.dot(uv[:, -64:], uv_hat[:, -64:].T)
             if np.trace(abs(s)) >= np.trace(abs(s)[::-1]):
@@ -99,7 +99,7 @@ if __name__ == "__main__":
             else:
                 uv_hat *= np.sign(np.diag(s[::-1]))[:, None]
 
-            ll = plt.plot(uv_hat[:, -64:].T, color=color, label=n_chan)
+            ll = plt.plot(uv_hat[:, -64:].T, color=color, label=n_channels)
             lines += [ll[0]]
         ll = plt.plot(uv[:, -64:].T, "k--", label="GT")
         lines += [ll[0]]

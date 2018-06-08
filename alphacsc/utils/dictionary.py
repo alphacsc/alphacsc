@@ -1,21 +1,21 @@
 import numpy as np
 
 
-def get_D(uv_hat, n_chan):
+def get_D(uv_hat, n_channels):
     """Compute the rank 1 dictionary associated with the given uv
 
     Parameter
     ---------
-    uv: array (n_atoms, n_chan + n_times_atom)
-    n_chan: int
+    uv: array (n_atoms, n_channels + n_times_atom)
+    n_channels: int
         number of channels in the original multivariate series
 
     Return
     ------
-    D: array (n_atoms, n_chan, n_times_atom)
+    D: array (n_atoms, n_channels, n_times_atom)
     """
 
-    return uv_hat[:, :n_chan, None] * uv_hat[:, None, n_chan:]
+    return uv_hat[:, :n_channels, None] * uv_hat[:, None, n_channels:]
 
 
 def get_uv(D):
@@ -23,14 +23,14 @@ def get_uv(D):
 
     Parameter
     ---------
-    D: array (n_atoms, n_chan, n_times_atom)
+    D: array (n_atoms, n_channels, n_times_atom)
 
     Return
     ------
-    uv: array (n_atoms, n_chan + n_times_atom)
+    uv: array (n_atoms, n_channels + n_times_atom)
     """
-    n_atoms, n_chan, n_times_atom = D.shape
-    uv = np.zeros((n_atoms, n_chan + n_times_atom))
+    n_atoms, n_channels, n_times_atom = D.shape
+    uv = np.zeros((n_atoms, n_channels + n_times_atom))
     for k, d in enumerate(D):
         U, s, V = np.linalg.svd(d)
         uv[k] = np.r_[U[:, 0], V[0]]

@@ -43,9 +43,9 @@ def load_data(sfreq=sfreq):
     epochs.pick_types(meg='grad', eog=False)
     epochs.resample(sfreq, npad='auto')
 
-    # define n_chan, n_trials, n_times
+    # define n_channels, n_trials, n_times
     X = epochs.get_data()
-    n_trials, n_chan, n_times = X.shape
+    n_trials, n_channels, n_times = X.shape
     X *= tukey(n_times, alpha=0.1)[None, None, :]
     X /= np.std(X)
     return X

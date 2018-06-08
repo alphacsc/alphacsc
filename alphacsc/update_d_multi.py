@@ -19,27 +19,27 @@ from .loss_and_gradient import compute_objective, compute_X_and_objective_multi
 from .loss_and_gradient import gradient_uv, gradient_d
 
 
-def prox_uv(uv, uv_constraint='joint', n_chan=None, return_norm=False):
+def prox_uv(uv, uv_constraint='joint', n_channels=None, return_norm=False):
     if uv_constraint == 'joint':
         norm_uv = np.maximum(1, np.linalg.norm(uv, axis=1))
         uv /= norm_uv[:, None]
 
     elif uv_constraint == 'separate':
-        assert n_chan is not None
-        norm_u = np.maximum(1, np.linalg.norm(uv[:, :n_chan], axis=1))
-        norm_v = np.maximum(1, np.linalg.norm(uv[:, n_chan:], axis=1))
+        assert n_channels is not None
+        norm_u = np.maximum(1, np.linalg.norm(uv[:, :n_channels], axis=1))
+        norm_v = np.maximum(1, np.linalg.norm(uv[:, n_channels:], axis=1))
 
-        uv[:, :n_chan] /= norm_u[:, None]
-        uv[:, n_chan:] /= norm_v[:, None]
+        uv[:, :n_channels] /= norm_u[:, None]
+        uv[:, n_channels:] /= norm_v[:, None]
         norm_uv = norm_u * norm_v
 
     elif uv_constraint == 'box':
-        assert n_chan is not None
-        norm_u = np.maximum(1, np.max(uv[:, :n_chan], axis=1))
-        norm_v = np.maximum(1, np.max(uv[:, n_chan:], axis=1))
+        assert n_channels is not None
+        norm_u = np.maximum(1, np.max(uv[:, :n_channels], axis=1))
+        norm_v = np.maximum(1, np.max(uv[:, n_channels:], axis=1))
 
-        uv[:, :n_chan] /= norm_u[:, None]
-        uv[:, n_chan:] /= norm_v[:, None]
+        uv[:, :n_channels] /= norm_u[:, None]
+        uv[:, n_channels:] /= norm_v[:, None]
         norm_uv = norm_u * norm_v
     else:
         raise ValueError('Unknown uv_constraint: %s.' % (uv_constraint, ))
@@ -67,7 +67,7 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
 
     Parameters
     ----------
-    X : array, shape (n_trials, n_times)
+    X : array, shape (n_trials, n_channels, n_times)
         The data for sparse coding
     Z : array, shape (n_atoms, n_trials, n_times - n_times_atom + 1)
         Can also be a list of n_trials LIL-sparse matrix of shape
@@ -104,7 +104,7 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
         The atoms to learn from the data.
     """
     n_atoms, n_trials, n_times_valid = get_Z_shape(Z)
-    _, n_chan, n_times = X.shape
+    _, n_channels, n_times = X.shape
 
     if solver_d == 'lbfgs':
         msg = "L-BFGS sovler only works with box constraints"
@@ -133,7 +133,8 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
                                loss_params=loss_params)
 
         def prox(uv):
-            return prox_uv(uv, uv_constraint=uv_constraint, n_chan=n_chan)
+            return prox_uv(uv, uv_constraint=uv_constraint,
+                           n_channels=n_channels)
 
         uv_hat, pobj = fista(objective, grad, prox, None, uv_hat0, max_iter,
                              verbose=verbose, momentum=momentum, eps=eps,
@@ -146,7 +147,7 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
         adaptive_step_size = (solver_d == 'alternate_adaptive')
 
         uv_hat = uv_hat0.copy()
-        u_hat, v_hat = uv_hat[:, :n_chan], uv_hat[:, n_chan:]
+        u_hat, v_hat = uv_hat[:, :n_channels], uv_hat[:, n_channels:]
 
         def prox(u):
             u /= np.maximum(1., np.linalg.norm(u, axis=1))[:, None]
@@ -162,7 +163,7 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
                 uv = np.c_[u, v_hat]
                 grad_d = gradient_d(uv, X=X, Z=Z, constants=constants,
                                     loss=loss, loss_params=loss_params)
-                return (grad_d * uv[:, None, n_chan:]).sum(axis=2)
+                return (grad_d * uv[:, None, n_channels:]).sum(axis=2)
 
             if adaptive_step_size:
                 Lu = 1
@@ -185,7 +186,7 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
                 uv = np.c_[u_hat, v]
                 grad_d = gradient_d(uv, X=X, Z=Z, constants=constants,
                                     loss=loss, loss_params=loss_params)
-                return (grad_d * uv[:, :n_chan, None]).sum(axis=1)
+                return (grad_d * uv[:, :n_channels, None]).sum(axis=1)
 
             if adaptive_step_size:
                 Lv = 1
@@ -218,9 +219,9 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
             plt.figure('lbfgs')
             ax = plt.gca()
             if ax.lines == []:
-                plt.plot(uv[:, n_chan:].T)
+                plt.plot(uv[:, n_channels:].T)
             else:
-                for line, this in zip(ax.lines, uv[:, n_chan:]):
+                for line, this in zip(ax.lines, uv[:, n_channels:]):
                     line.set_ydata(this)
             ax.relim()  # make sure all the data fits
             ax.autoscale_view(True, True, True)
@@ -284,7 +285,7 @@ def update_d(X, Z, D_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
         The atoms to learn from the data.
     """
     n_atoms, n_trials, n_times_valid = get_Z_shape(Z)
-    _, n_chan, n_times = X.shape
+    _, n_channels, n_times = X.shape
 
     if loss == 'l2':
         constants = _get_d_update_constants(X, Z)
@@ -342,7 +343,7 @@ def update_d(X, Z, D_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
 
 def _get_d_update_constants(X, Z):
     n_atoms, n_trials, n_times_valid = get_Z_shape(Z)
-    n_trials, n_chan, n_times = X.shape
+    n_trials, n_channels, n_times = X.shape
     n_times_atom = n_times - n_times_valid + 1
 
     if is_list_of_lil(Z):
@@ -355,40 +356,40 @@ def _get_d_update_constants(X, Z):
     constants = {}
     constants['ZtX'] = ZtX
     constants['ZtZ'] = ZtZ
-    constants['n_chan'] = X.shape[1]
+    constants['n_channels'] = X.shape[1]
     constants['XtX'] = np.sum(X * X)
     return constants
 
 
 def compute_lipschitz(uv0, constants, variable, b_hat_0=None):
 
-    n_chan = constants['n_chan']
-    u0, v0 = uv0[:, :n_chan], uv0[:, n_chan:]
+    n_channels = constants['n_channels']
+    u0, v0 = uv0[:, :n_channels], uv0[:, n_channels:]
     n_atoms = uv0.shape[0]
-    n_times_atom = uv0.shape[1] - n_chan
+    n_times_atom = uv0.shape[1] - n_channels
     if b_hat_0 is None:
         b_hat_0 = np.random.randn(uv0.size)
 
     def op_Hu(u):
-        u = np.reshape(u, (n_atoms, n_chan))
+        u = np.reshape(u, (n_atoms, n_channels))
         uv = np.c_[u, v0]
         H_d = numpy_convolve_uv(constants['ZtZ'], uv)
-        H_u = (H_d * uv[:, None, n_chan:]).sum(axis=2)
+        H_u = (H_d * uv[:, None, n_channels:]).sum(axis=2)
         return H_u.ravel()
 
     def op_Hv(v):
         v = np.reshape(v, (n_atoms, n_times_atom))
         uv = np.c_[u0, v]
         H_d = numpy_convolve_uv(constants['ZtZ'], uv)
-        H_v = (H_d * uv[:, :n_chan, None]).sum(axis=1)
+        H_v = (H_d * uv[:, :n_channels, None]).sum(axis=1)
         return H_v.ravel()
 
     if variable == 'u':
-        b_hat_u0 = b_hat_0.reshape(n_atoms, -1)[:, :n_chan].ravel()
-        n_points = n_atoms * n_chan
+        b_hat_u0 = b_hat_0.reshape(n_atoms, -1)[:, :n_channels].ravel()
+        n_points = n_atoms * n_channels
         L = power_iteration(op_Hu, n_points, b_hat_0=b_hat_u0)
     elif variable == 'v':
-        b_hat_v0 = b_hat_0.reshape(n_atoms, -1)[:, n_chan:].ravel()
+        b_hat_v0 = b_hat_0.reshape(n_atoms, -1)[:, n_channels:].ravel()
         n_points = n_atoms * n_times_atom
         L = power_iteration(op_Hv, n_points, b_hat_0=b_hat_v0)
     return L

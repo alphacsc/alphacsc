@@ -30,7 +30,7 @@ raw.crop(tmax=30.)  # take only 30 s of data
 raw.pick_types(meg='mag')
 X = raw[:][0]
 
-# define n_chan, n_times, n_trials
+# define n_channels, n_times, n_trials
 n_channels, n_times = X.shape
 n_times_atom = int(round(raw.info['sfreq'] * 0.4))  # 400. ms
 

@@ -95,7 +95,7 @@ def compute_X_and_objective_multi(X, Z_hat, D_hat=None, reg=None, loss='l2',
             # project to unit norm
             from .update_d_multi import prox_uv
             D_hat, norm = prox_uv(D_hat, uv_constraint=uv_constraint,
-                                  n_chan=n_channels, return_norm=True)
+                                  n_channels=n_channels, return_norm=True)
         else:
             D_hat = D_hat.copy()
             # project to unit norm
@@ -177,7 +177,7 @@ def gradient_uv(uv, X=None, Z=None, constants=None, reg=None, loss='l2',
         n_channels = X.shape[1]
     else:
         n_atoms = constants['ZtZ'].shape[0]
-        n_channels = constants['n_chan']
+        n_channels = constants['n_channels']
 
     if is_list_of_lil(Z) and loss != 'l2':
         raise NotImplementedError()
@@ -285,7 +285,7 @@ def gradient_d(D=None, X=None, Z=None, constants=None, reg=None,
     if flatten:
         if Z is None:
             n_atoms = constants['ZtZ'].shape[0]
-            n_channels = constants['n_chan']
+            n_channels = constants['n_channels']
         else:
             n_atoms = get_Z_shape(Z)[0]
             n_channels = X.shape[1]
@@ -387,11 +387,11 @@ def _l2_objective(X=None, X_hat=None, D=None, constants=None):
         assert D is not None, "D is needed to fast compute the objective."
         if D.ndim == 2:
             # rank 1 dictionry, use uv computation
-            n_chan = constants['n_chan']
+            n_channels = constants['n_channels']
             grad_d = .5 * numpy_convolve_uv(constants['ZtZ'], D)
             grad_d -= constants['ZtX']
-            cost = (grad_d * D[:, None, n_chan:]).sum(axis=2)
-            cost = np.dot(cost.ravel(), D[:, :n_chan].ravel())
+            cost = (grad_d * D[:, None, n_channels:]).sum(axis=2)
+            cost = np.dot(cost.ravel(), D[:, :n_channels].ravel())
         else:
             grad_d = .5 * tensordot_convolve(constants['ZtZ'], D)
             grad_d -= constants['ZtX']
@@ -502,12 +502,12 @@ def _dense_transpose_convolve_z(residual, Z):
 
     Parameters
     ----------
-    residual : array, shape (n_trials, n_chan, n_times)
+    residual : array, shape (n_trials, n_channels, n_times)
     Z : array, shape (n_atoms, n_trials, n_times_valid)
 
     Return
     ------
-    grad_D : array, shape (n_atoms, n_chan, n_times_atom)
+    grad_D : array, shape (n_atoms, n_channels, n_times_atom)
 
     """
     if is_list_of_lil(Z):
@@ -515,7 +515,7 @@ def _dense_transpose_convolve_z(residual, Z):
 
     return np.sum([[[np.convolve(res_ip, zik[::-1],
                                  mode='valid')  # n_times_atom
-                     for res_ip in res_i]                       # n_chan
+                     for res_ip in res_i]                       # n_channnels
                     for zik, res_i in zip(zk, residual)]        # n_trials
                    for zk in Z], axis=1)                        # n_atoms
 
@@ -525,7 +525,7 @@ def _dense_transpose_convolve_d(residual_i, D=None, n_channels=None):
 
     Parameters
     ----------
-    residual_i : array, shape (n_chan, n_times)
+    residual_i : array, shape (n_channels, n_times)
     D : array, shape (n_atoms, n_channels, n_times_atom) or
                shape (n_atoms, n_channels + n_times_atom)
 

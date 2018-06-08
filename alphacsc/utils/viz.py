@@ -171,7 +171,7 @@ def plot_data(X, plot_types=None):
 
 
 def plot_callback(X, info, n_atoms, layout=None):
-    n_trials, n_chan, n_times = X.shape
+    n_trials, n_channels, n_times = X.shape
 
     n_atoms_plot = min(15, n_atoms)
 
@@ -190,13 +190,13 @@ def plot_callback(X, info, n_atoms, layout=None):
 
     def callback(X, uv_hat, Z_hat, reg):
         n_times_valid = Z_hat.shape[-1]
-        n_times_atom = uv_hat.shape[1] - n_chan
+        n_times_atom = uv_hat.shape[1] - n_channels
         times_Z = np.arange(n_times_valid) / info['sfreq']
         times_v = np.arange(n_times_atom) / info['sfreq']
 
         this_info = cp.deepcopy(info)
         this_info['sfreq'] = 1.
-        patterns = mne.EvokedArray(uv_hat[:n_atoms_plot, :n_chan].T,
+        patterns = mne.EvokedArray(uv_hat[:n_atoms_plot, :n_channels].T,
                                    this_info, tmin=0)
         patterns.plot_topomap(times=np.arange(n_atoms_plot),
                               layout=layout, axes=axes_topo, time_unit='s',
@@ -204,11 +204,11 @@ def plot_callback(X, info, n_atoms, layout=None):
 
         if axes[0].lines == []:
             for k in range(n_atoms):
-                axes[k].plot(times_v, uv_hat[k, n_chan:].T)
+                axes[k].plot(times_v, uv_hat[k, n_channels:].T)
                 axes[k].grid(True)
         else:
             for ax, uv in zip(axes, uv_hat):
-                ax.lines[0].set_ydata(uv[n_chan:])
+                ax.lines[0].set_ydata(uv[n_channels:])
                 ax.relim()  # make sure all the data fits
                 ax.autoscale_view(True, True, True)
         if n_trials == 1:

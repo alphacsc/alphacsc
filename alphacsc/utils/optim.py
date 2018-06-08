@@ -9,12 +9,12 @@ from . import check_random_state
 
 def _support_least_square(X, uv, Z, debug=False):
     """WIP, not fonctional!"""
-    n_trials, n_chan, n_times = X.shape
+    n_trials, n_channels, n_times = X.shape
     n_atoms, _, n_times_valid = Z.shape
     n_times_atom = n_times - n_times_valid + 1
 
     # Compute DtD
-    DtD = compute_DtD(uv, n_chan)
+    DtD = compute_DtD(uv, n_channels)
     t0 = n_times_atom - 1
     Z_hat = np.zeros(Z.shape)
 
@@ -32,8 +32,8 @@ def _support_least_square(X, uv, Z, debug=False):
                 dt = t_i - t_j
                 if abs(dt) < n_times_atom:
                     rhs[i, j] = DtD[k_i, k_j, t0 + dt]
-            aux_i = np.dot(uv[k_i, :n_chan], Xi[:, t_i:t_i + n_times_atom])
-            lhs[i] = np.dot(uv[k_i, n_chan:], aux_i)
+            aux_i = np.dot(uv[k_i, :n_channels], Xi[:, t_i:t_i + n_times_atom])
+            lhs[i] = np.dot(uv[k_i, n_channels:], aux_i)
 
         # Solve the non-negative least-square with nnls
         z_star, a = optimize.nnls(rhs, lhs)

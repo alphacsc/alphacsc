@@ -55,7 +55,7 @@ def construct_X_multi(Z, D=None, n_channels=None):
 
     Returns
     -------
-    X : array, shape (n_trials, n_chan, n_times)
+    X : array, shape (n_trials, n_channels, n_times)
     """
     n_atoms, n_trials, n_times_valid = get_Z_shape(Z)
     assert n_atoms == D.shape[0]
@@ -87,10 +87,10 @@ def _sparse_convolve(Zi, ds):
 
 def _sparse_convolve_multi(Zi, ds):
     """Same as _dense_convolve, but use the sparsity of zi."""
-    n_atoms, n_chan, n_times_atom = ds.shape
+    n_atoms, n_channels, n_times_atom = ds.shape
     n_atoms, n_times_valid = Zi.shape
     n_times = n_times_valid + n_times_atom - 1
-    Xi = np.zeros(shape=(n_chan, n_times))
+    Xi = np.zeros(shape=(n_channels, n_times))
     for zik, dk in zip(Zi, ds):
         for nnz in np.where(zik != 0)[0]:
             Xi[:, nnz:nnz + n_times_atom] += zik[nnz] * dk

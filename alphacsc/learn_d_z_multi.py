@@ -113,7 +113,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
         "lmbd_max should be in {'fixed', 'per_atom', 'shared'}"
     )
 
-    n_trials, n_chan, n_times = X.shape
+    n_trials, n_channels, n_times = X.shape
     n_times_valid = n_times - n_times_atom + 1
 
     # initialization
@@ -123,7 +123,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
     D_hat = init_dictionary(X, n_atoms, n_times_atom, D_init=D_init,
                             rank1=rank1, uv_constraint=uv_constraint,
                             kmeans_params=kmeans_params, random_state=rng)
-    b_hat_0 = rng.randn(n_atoms * (n_chan + n_times_atom))
+    b_hat_0 = rng.randn(n_atoms * (n_channels + n_times_atom))
     init_duration = time.time() - start
 
     if use_sparse_z:

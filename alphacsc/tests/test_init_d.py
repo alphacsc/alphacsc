@@ -21,7 +21,7 @@ def test_init_array(rank1, uv_constraint):
     if rank1:
         expected_shape = (n_atoms, n_channels + n_times_atom)
         prox = functools.partial(prox_uv, uv_constraint=uv_constraint,
-                                 n_chan=n_channels)
+                                 n_channels=n_channels)
     else:
         expected_shape = (n_atoms, n_channels, n_times_atom)
         prox = prox_d
@@ -59,7 +59,7 @@ def test_init_random(rank1, uv_constraint):
     if rank1:
         expected_shape = (n_atoms, n_channels + n_times_atom)
         prox = functools.partial(prox_uv, uv_constraint=uv_constraint,
-                                 n_chan=n_channels)
+                                 n_channels=n_channels)
     else:
         expected_shape = (n_atoms, n_channels, n_times_atom)
         prox = prox_d

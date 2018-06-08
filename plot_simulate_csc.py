@@ -25,7 +25,7 @@ X += 0.01 * rng.randn(*X.shape)
 n_times_atom += 32
 ###############################################################################
 # Multichannel CSC
-n_chan = 1
+n_channels = 1
 fig, axes = plt.subplots(nrows=2, num='atoms', figsize=(10, 8))
 
 
@@ -33,7 +33,7 @@ def callback(X, uv_hat, Z_hat, reg):
     plt.figure('atoms')
     if axes[0].lines == []:
         axes[0].plot(Z_hat.sum(axis=1).T)
-        axes[1].plot(uv_hat[:, n_chan:].T)
+        axes[1].plot(uv_hat[:, n_channels:].T)
         axes[0].grid(True)
         axes[1].grid(True)
         axes[0].set_title('activations')
@@ -42,7 +42,7 @@ def callback(X, uv_hat, Z_hat, reg):
         for line_0, line_1, uv, z in zip(axes[0].lines, axes[1].lines, uv_hat,
                                          Z_hat):
             line_0.set_ydata(z.sum(axis=0))
-            line_1.set_ydata(uv[n_chan:])
+            line_1.set_ydata(uv[n_channels:])
     for ax in axes:
         ax.relim()  # make sure all the data fits
         ax.autoscale_view(True, True, True)

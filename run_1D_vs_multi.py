@@ -117,7 +117,7 @@ def get_signals(n_channels=50, n_times_atom=64, n_times_valid=640,
     X = X + sigma * rng.randn(*X.shape)
 
     uv_init = rng.randn(n_atoms, n_channels + n_times_atom)
-    uv_init = prox_uv(uv_init, uv_constraint='separate', n_chan=n_channels)
+    uv_init = prox_uv(uv_init, uv_constraint='separate', n_channels=n_channels)
 
     return X, uv, uv_init
 
@@ -134,7 +134,7 @@ def run_one(reg, sigma, n_atoms, n_times_atom, max_n_channels, n_times_valid,
     uv_init_ = prox_uv(np.c_[uv_init[:, :run_n_channels],
                              uv_init[:, max_n_channels:]])
     uv_ = prox_uv(np.c_[uv[:, :run_n_channels], uv[:, max_n_channels:]],
-                  uv_constraint='separate', n_chan=max_n_channels)
+                  uv_constraint='separate', n_channels=max_n_channels)
 
     def cb(X, uv_hat, Z_hat, pobj):
         it = len(pobj) // 2

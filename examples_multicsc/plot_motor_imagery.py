@@ -40,7 +40,7 @@ epochs = Epochs(raw, events, event_id, tmin, tmax, proj=True, picks=picks,
 
 n_times_atom = int(round(0.3 * raw.info['sfreq']))
 X = epochs.get_data()
-n_trials, n_chan, n_times = X.shape
+n_trials, n_channels, n_times = X.shape
 X *= tukey(n_times, alpha=0.1)[None, None, :]
 X /= np.std(X)
 

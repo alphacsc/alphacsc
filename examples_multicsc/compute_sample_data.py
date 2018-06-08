@@ -59,7 +59,7 @@ X = raw[:][0]
 X, _ = _reject_data_segments(X, reject, flat=None, decim=None,
                              info=raw.info, tstep=0.3)
 
-# define n_chan, n_times, n_trials
+# define n_channels, n_times, n_trials
 n_channels, n_times = X.shape
 n_times_atom = int(round(raw.info['sfreq'] * 0.8))  # 400. ms
 

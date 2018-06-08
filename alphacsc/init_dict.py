@@ -100,7 +100,8 @@ def init_dictionary(X, n_atoms, n_times_atom, D_init=None, rank1=True,
                                   ' parameter {}.'.format(D_init))
 
     if rank1:
-        D_hat = prox_uv(D_hat, uv_constraint=uv_constraint, n_chan=n_channels)
+        D_hat = prox_uv(D_hat, uv_constraint=uv_constraint,
+                        n_channels=n_channels)
     else:
         D_hat = prox_d(D_hat)
     return D_hat

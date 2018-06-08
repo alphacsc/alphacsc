@@ -55,7 +55,7 @@ def test_uv_D():
     n_channels = 30
 
     uv = rng.randn(n_atoms, n_channels + n_times_atoms)
-    uv = prox_uv(uv, uv_constraint='separate', n_chan=n_channels)
+    uv = prox_uv(uv, uv_constraint='separate', n_channels=n_channels)
     ds = get_D(uv, n_channels)
     uv_hat = get_uv(ds)
 

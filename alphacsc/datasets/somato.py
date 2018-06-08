@@ -74,8 +74,8 @@ def load_data(sfreq=None, epoch=True, n_jobs=1, filt=[2., None], n_trials=10,
     # info['event_id'] = event_id
     # info['events'] = events
 
-    # define n_chan, n_trials, n_times
-    n_trials, n_chan, n_times = X.shape
+    # define n_channels, n_trials, n_times
+    n_trials, n_channels, n_times = X.shape
     X *= tukey(n_times, alpha=0.1)[None, None, :]
     X /= np.std(X)
     return X, info

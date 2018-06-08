@@ -208,9 +208,9 @@ if __name__ == '__main__':
         # run the methods for different random_state
         delayed_one_run = delayed(cached_one_run)
         results = parallel(
-            delayed_one_run(X, n_chan, method, n_atoms,
+            delayed_one_run(X, n_channels, method, n_atoms,
                             n_times_atom, rst, reg)
-            for rst, method, n_chan in iterator)
+            for rst, method, n_channels in iterator)
 
         all_results.extend(results)
 

@@ -89,10 +89,10 @@ def compute_ZtX(Z, X):
     ZtX.shape = n_atoms, n_channels, n_times_atom
     """
     n_atoms, n_trials, n_times_valid = Z.shape
-    _, n_chan, n_times = X.shape
+    _, n_channels, n_times = X.shape
     n_times_atom = n_times - n_times_valid + 1
 
-    ZtX = np.zeros((n_atoms, n_chan, n_times_atom))
+    ZtX = np.zeros((n_atoms, n_channels, n_times_atom))
     for k, n, t in zip(*Z.nonzero()):
         ZtX[k, :, :] += Z[k, n, t] * X[n, :, t:t + n_times_atom]
 
