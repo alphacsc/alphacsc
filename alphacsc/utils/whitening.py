@@ -2,9 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy import signal
 
-# pip install git+https://github.com/pactools/pactools.git#egg=pactools
-from pactools.utils.arma import Arma
-from pactools.utils.pink_noise import almost_pink_noise
+from .arma import Arma
 
 
 def whitening(X, ordar=10, block_length=256, sfreq=1., zero_phase=True,
@@ -121,28 +119,3 @@ def unwhitening(ar_model, X_white, estimate=True, zero_phase=True, plot=False):
                               'signal unwhite'], fscale='lin')
         plt.legend(loc='lower left')
     return X_unwhite
-
-
-if __name__ == '__main__':
-    sfreq = 300.
-    n_times = 1000
-
-    X_init = almost_pink_noise(n_times, slope=2.)
-    X_init /= X_init.std()
-    X_init = X_init[None, None, :]
-
-    ar_model, X_white = whitening(X_init, sfreq=sfreq, plot=True)
-    X_unwhite = unwhitening(ar_model, X_white, plot=True)
-    plt.show()
-
-    plt.figure()
-    X_unwhite /= X_unwhite.std()
-
-    for x in [
-            X_init[0, 0],
-            X_white[0, 0],
-            X_unwhite[0, 0]
-    ]:
-        plt.plot(x)
-    plt.legend(['init', 'white', 'unwhite'])
-    plt.show()
