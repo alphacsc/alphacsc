@@ -9,7 +9,7 @@
 import numpy as np
 
 from .compat import numba, jit
-from .lil import get_Z_shape, is_list_of_lil, is_lil
+from .lil import get_Z_shape, is_lil
 from ..cython import _fast_sparse_convolve_multi_uv
 from ..cython import _fast_sparse_convolve_multi
 
@@ -34,7 +34,7 @@ def construct_X(Z, ds):
 
     X = np.zeros((n_trials, n_times))
     for i in range(n_trials):
-        X[i] = _choose_convolve(Z[:, i, :], ds)
+        X[i] = _choose_convolve(Z[:, i], ds)
     return X
 
 
@@ -42,7 +42,7 @@ def construct_X_multi(Z, D=None, n_channels=None):
     """
     Parameters
     ----------
-    Z : array, shape (n_atoms, n_trials, n_times_valid)
+    Z : array, shape (n_trials, n_atoms, n_times_valid)
         Can also be a list of n_trials LIL-sparse matrix of shape
             (n_atoms, n_times - n_times_atom + 1)
         The activations
@@ -57,7 +57,7 @@ def construct_X_multi(Z, D=None, n_channels=None):
     -------
     X : array, shape (n_trials, n_channels, n_times)
     """
-    n_atoms, n_trials, n_times_valid = get_Z_shape(Z)
+    n_trials, n_atoms, n_times_valid = get_Z_shape(Z)
     assert n_atoms == D.shape[0]
     if D.ndim == 2:
         n_times_atom = D.shape[1] - n_channels
@@ -67,9 +67,8 @@ def construct_X_multi(Z, D=None, n_channels=None):
 
     X = np.zeros((n_trials, n_channels, n_times))
     for i in range(n_trials):
-        Zi = Z[i] if is_list_of_lil(Z) else Z[:, i, :]
         X[i] = _choose_convolve_multi(
-            Zi, D=D, n_channels=n_channels)
+            Z[i], D=D, n_channels=n_channels)
     return X
 
 

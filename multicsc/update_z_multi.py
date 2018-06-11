@@ -15,14 +15,15 @@ from joblib import Parallel, delayed
 from .loss_and_gradient import gradient_zi
 from .utils.optim import fista
 from .utils.lil import is_list_of_lil, is_lil
-from .utils.compute_constants import compute_DtD
 from .utils.convolution import _choose_convolve_multi
+from .cython import _fast_compute_ztz, _fast_compute_ztx
+from .utils.compute_constants import compute_DtD, compute_ZtZ, compute_ZtX
 from .cython.coordinate_descent import update_dz_opt, subtract_zhat_to_beta
 
 
 def update_z_multi(X, D, reg, z0=None, debug=False, parallel=None,
                    solver='l_bfgs', solver_kwargs=dict(), loss='l2',
-                   loss_params=dict(), freeze_support=False):
+                   loss_params=dict(), freeze_support=False, timing=False):
     """Update Z using L-BFGS with positivity constraints
 
     Parameters
@@ -35,7 +36,7 @@ def update_z_multi(X, D, reg, z0=None, debug=False, parallel=None,
         the spatial and temporal atoms uv (n_atoms, n_channels + n_times_atom).
     reg : float
         The regularization constant
-    z0 : None | array, shape (n_atoms, n_trials, n_times_valid) |
+    z0 : None | array, shape (n_trials, n_atoms, n_times_valid) |
          list of sparse lil_matrices, shape (n_atoms, n_times_valid)
         Init for z (can be used for warm restart).
     debug : bool
@@ -52,10 +53,13 @@ def update_z_multi(X, D, reg, z0=None, debug=False, parallel=None,
         Parameters of the loss
     freeze_support : boolean
         If True, the support of z0 is frozen.
+    timing : boolean
+        If True, returns the cost function value at each iteration and the
+        time taken by each iteration for each signal.
 
     Returns
     -------
-    z : array, shape (n_atoms, n_trials, n_times - n_times_atom + 1)
+    z : array, shape (n_trials, n_atoms, n_times - n_times_atom + 1)
         The true codes.
     """
     n_trials, n_channels, n_times = X.shape
@@ -67,33 +71,55 @@ def update_z_multi(X, D, reg, z0=None, debug=False, parallel=None,
     n_times_valid = n_times - n_times_atom + 1
 
     # now estimate the codes
-    my_update_z = delayed(_update_z_multi_idx)
+    delayed_update_z = delayed(_update_z_multi_idx)
     if parallel is None:
         parallel = Parallel(n_jobs=1)
 
-    zhats = parallel(
-        my_update_z(X, D, reg, z0, i, debug, solver, solver_kwargs,
-                    freeze_support, loss, loss_params=loss_params)
-        for i in np.array_split(np.arange(n_trials), parallel.n_jobs))
+    results = parallel(
+        delayed_update_z(X[i], D, reg, z0[i], debug, solver, solver_kwargs,
+                         freeze_support, loss, loss_params=loss_params,
+                         timing=timing)
+        for i in np.arange(n_trials))
+
+    # Initialize return args
+    z_hats, pobj, times = [], [], []
+    ztz = np.zeros((n_atoms, n_atoms, 2 * n_times_atom - 1))
+    ztx = np.zeros((n_atoms, n_channels, n_times_atom))
+    for z_hat, ztz_i, ztx_i, pobj_i, times_i in results:
+        z_hats.append(z_hat), pobj.append(pobj_i), times.append(times_i)
+        ztz += ztz_i
+        ztx += ztx_i
 
     # If Z_hat is a ndarray, stack and reorder the columns
     if not is_list_of_lil(z0):
-        z_hat = np.vstack(zhats)
+        z_hats = np.array(z_hats).reshape(n_trials, n_atoms, n_times_valid)
 
-        z_hat2 = z_hat.reshape((n_trials, n_atoms, n_times_valid))
-        z_hat2 = np.swapaxes(z_hat2, 0, 1)
-
-        return z_hat2
-    # When using the lil_matrices, return a list of lil_matrices
-    else:
-        return [zi for zis in zhats for zi in zis]
+    return z_hats, ztz, ztx
 
 
-def _update_z_multi_idx(X, D, reg, z0, idxs, debug, solver="l_bfgs",
+class BoundGenerator(object):
+    def __init__(self, length):
+        self.length = length
+        self.current_index = 0
+
+    def __len__(self):
+        return self.length
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.current_index == self.length:
+            raise StopIteration()
+        self.current_index += 1
+        return (0, np.inf)
+
+
+def _update_z_multi_idx(X_i, D, reg, z0_i, debug, solver="l_bfgs",
                         solver_kwargs=dict(), freeze_support=False, loss='l2',
                         loss_params=dict(), timing=False):
-    start = time.time()
-    n_trials, n_channels, n_times = X.shape
+    t_start = time.time()
+    n_channels, n_times = X_i.shape
     if D.ndim == 2:
         n_atoms, n_channels_n_times_atom = D.shape
         n_times_atom = n_channels_n_times_atom - n_channels
@@ -101,142 +127,112 @@ def _update_z_multi_idx(X, D, reg, z0, idxs, debug, solver="l_bfgs",
         n_atoms, n_channels, n_times_atom = D.shape
     n_times_valid = n_times - n_times_atom + 1
 
-    assert not (freeze_support and z0 is None), 'Impossible !'
+    assert not (freeze_support and z0_i is None), 'Impossible !'
 
-    if is_list_of_lil(z0) and solver != "gcd":
+    if is_lil(z0_i) and solver != "gcd":
         raise NotImplementedError()
 
     constants = {}
-    zhats = []
-
     if solver == "gcd":
         constants['DtD'] = compute_DtD(D=D, n_channels=n_channels)
+    init_timing = time.time() - t_start
 
-    init_timing = time.time() - start
+    def func_and_grad(zi):
+        return gradient_zi(Xi=X_i, zi=zi, D=D, constants=constants,
+                           reg=reg, return_func=True, flatten=True,
+                           loss=loss, loss_params=loss_params)
 
-    for i in idxs:
-
-        def func_and_grad(zi):
-            return gradient_zi(Xi=X[i], zi=zi, D=D, constants=constants,
-                               reg=reg, return_func=True, flatten=True,
-                               loss=loss, loss_params=loss_params)
-
-        if z0 is None:
-            f0 = np.zeros(n_atoms * n_times_valid)
-        elif is_list_of_lil(z0):
-            f0 = z0[i]
-        else:
-            f0 = z0[:, i, :].reshape(n_atoms * n_times_valid)
-
-        if timing:
-            times = [init_timing]
-            pobj = [func_and_grad(f0)[0]]
-            start = [time.time()]
-
-        if debug:
-
-            def pobj(zi):
-                return func_and_grad(zi)[0]
-
-            def fprime(zi):
-                return func_and_grad(zi)[1]
-
-            try:
-                assert optimize.check_grad(pobj, fprime, f0) < 1e-2
-            except AssertionError:
-                grad_approx = optimize.approx_fprime(f0, pobj, 2e-8)
-                grad_z = fprime(f0)
-
-                import matplotlib.pyplot as plt
-                plt.semilogy(abs(grad_approx - grad_z))
-                plt.figure()
-                plt.plot(grad_approx, label="approx")
-                plt.plot(grad_z, '--', label="grad")
-                plt.legend()
-                plt.show()
-
-                raise
-
-        if solver == "l_bfgs":
-            if freeze_support:
-                bounds = [(0, 0) if z == 0 else (0, None) for z in f0]
-            else:
-                bounds = [(0, None) for idx in range(n_atoms * n_times_valid)]
-            if timing:
-                def callback(xk):
-                    times.append(time.time() - start[0])
-                    pobj.append(func_and_grad(xk)[0])
-                    # use a reference to have access inside this function
-                    start[0] = time.time()
-
-            else:
-                callback = None
-            factr = solver_kwargs.get('factr', 1e15)  # default value
-            maxiter = solver_kwargs.get('maxiter', 15000)  # default value
-            zhat, f, d = optimize.fmin_l_bfgs_b(func_and_grad, f0, fprime=None,
-                                                args=(), approx_grad=False,
-                                                bounds=bounds, factr=factr,
-                                                maxiter=maxiter,
-                                                callback=callback)
-
-        elif solver in ("ista", "fista"):
-            max_iter = solver_kwargs.get('max_iter', 100)
-            eps = solver_kwargs.get('eps', None)
-            verbose = solver_kwargs.get('verbose', 0)
-            restart = solver_kwargs.get('restart', None)
-            scipy_line_search = solver_kwargs.get('scipy_line_search', False)
-            momentum = (solver == "fista")
-
-            def objective(zhat):
-                return func_and_grad(zhat)[0]
-
-            def grad(zhat):
-                return func_and_grad(zhat)[1]
-
-            def prox(zhat,):
-                return np.maximum(zhat, 0.)
-
-            output = fista(objective, grad, prox, None, f0, max_iter,
-                           verbose=verbose, momentum=momentum, eps=eps,
-                           adaptive_step_size=True, debug=debug,
-                           scipy_line_search=scipy_line_search,
-                           name="Update Z", timing=timing, restart=restart)
-            if timing:
-                zhat, pobj, times = output
-                times[0] += init_timing
-            else:
-                zhat, pobj = output
-
-        elif solver == "gcd":
-            if not sparse.isspmatrix_lil(f0):
-                f0 = f0.reshape(n_atoms, n_times_valid)
-
-            # Default values
-            tol = solver_kwargs.get('tol', 1e-1)
-            n_seg = solver_kwargs.get('n_seg', 'auto')
-            max_iter = solver_kwargs.get('max_iter', 1e15)
-            strategy = solver_kwargs.get('strategy', 'greedy')
-            output = _coordinate_descent_idx(
-                X[i], D, constants, reg=reg, z0=f0,
-                freeze_support=freeze_support, tol=tol, max_iter=max_iter,
-                n_seg=n_seg, strategy=strategy, timing=timing)
-            if timing:
-                zhat, pobj, times = output
-                times[0] += init_timing
-            else:
-                zhat = output
-        else:
-            raise ValueError("Unrecognized solver %s. Must be 'ista', 'fista',"
-                             " or 'l_bfgs'." % solver)
-
-        zhats.append(zhat)
-
-    if timing:
-        return np.vstack(zhats), pobj, times
-    if is_list_of_lil(zhats):
-        return zhats
+    if z0_i is None:
+        f0 = np.zeros(n_atoms * n_times_valid)
+    elif is_lil(z0_i):
+        f0 = z0_i
     else:
-        return np.vstack(zhats)
+        f0 = z0_i.reshape(n_atoms * n_times_valid)
+
+    times, pobj = None, None
+    if timing:
+        times = [init_timing]
+        pobj = [func_and_grad(f0)[0]]
+        t_start = [time.time()]
+
+    if solver == "l_bfgs":
+        if freeze_support:
+            bounds = [(0, 0) if z == 0 else (0, None) for z in f0]
+        else:
+            bounds = BoundGenerator(n_atoms * n_times_valid)
+        if timing:
+            def callback(xk):
+                times.append(time.time() - t_start[0])
+                pobj.append(func_and_grad(xk)[0])
+                # use a reference to have access inside this function
+                t_start[0] = time.time()
+        else:
+            callback = None
+        factr = solver_kwargs.get('factr', 1e15)  # default value
+        maxiter = solver_kwargs.get('maxiter', 15000)  # default value
+        z_hat, f, d = optimize.fmin_l_bfgs_b(
+            func_and_grad, f0, fprime=None, args=(), approx_grad=False,
+            bounds=bounds, factr=factr, maxiter=maxiter, callback=callback)
+
+    elif solver in ("ista", "fista"):
+        # Default args
+        fista_kwargs = dict(
+            max_iter=100, eps=None, verbose=0, restart=None,
+            scipy_line_search=False,
+            momentum=(solver == "fista")
+        )
+        fista_kwargs.update(solver_kwargs)
+
+        def objective(z_hat):
+            return func_and_grad(z_hat)[0]
+
+        def grad(z_hat):
+            return func_and_grad(z_hat)[1]
+
+        def prox(z_hat,):
+            return np.maximum(z_hat, 0.)
+
+        output = fista(objective, grad, prox, None, f0,
+                       adaptive_step_size=True, timing=timing,
+                       name="Update Z", **fista_kwargs)
+        if timing:
+            z_hat, pobj, times = output
+            times[0] += init_timing
+        else:
+            z_hat, pobj = output
+
+    elif solver == "gcd":
+        if not sparse.isspmatrix_lil(f0):
+            f0 = f0.reshape(n_atoms, n_times_valid)
+
+        # Default values
+        tol = solver_kwargs.get('tol', 1e-1)
+        n_seg = solver_kwargs.get('n_seg', 'auto')
+        max_iter = solver_kwargs.get('max_iter', 1e15)
+        strategy = solver_kwargs.get('strategy', 'greedy')
+        output = _coordinate_descent_idx(
+            X_i, D, constants, reg=reg, z0=f0,
+            freeze_support=freeze_support, tol=tol, max_iter=max_iter,
+            n_seg=n_seg, strategy=strategy, timing=timing)
+        if timing:
+            z_hat, pobj, times = output
+            times[0] += init_timing
+        else:
+            z_hat = output
+    else:
+        raise ValueError("Unrecognized solver %s. Must be 'ista', 'fista',"
+                         " or 'l_bfgs'." % solver)
+
+    if not is_lil(z_hat):
+
+        z_hat = z_hat.reshape(n_atoms, n_times_valid)
+        ztz = compute_ZtZ(z_hat[None], n_times_atom)
+        ztx = compute_ZtX(z_hat[None], X_i[None])
+    else:
+        ztz = _fast_compute_ztz([z_hat], n_times_atom)
+        ztx = _fast_compute_ztx([z_hat], X_i[None])
+
+    return z_hat, ztz, ztx, pobj, times
 
 
 def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
@@ -256,7 +252,7 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
     constants : dict
         Constants containing DtD to speedup computation
     z0 : array, shape (n_atoms, n_times_valid)
-        Initial estimate of the coding signal, to warm start the algorithm.
+        Initial estimate of the coding signal, to warm t_start the algorithm.
     tol : float
         Tolerance for the stopping criterion of the algorithm
     max_iter : int
@@ -268,9 +264,12 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
         performed successively on each of these segments.
     freeze_support : boolean
         If set to True, only update the coefficient that are non-zero in z0.
+    debug : boolean
+        Activate extra check in the algorithm to assert that we have
+        implemented the correct algorithm.
     """
     if timing:
-        start = time.time()
+        t_start = time.time()
     n_channels, n_times = Xi.shape
     if D.ndim == 2:
         n_atoms, n_times_atom = D.shape
@@ -304,13 +303,11 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
 
     DtD = constants["DtD"]
     norm_Dk = np.array([DtD[k, k, t0] for k in range(n_atoms)])[:, None]
-    if debug:
-        pobj = [objective(z_hat)]
 
     if timing:
-        times = [time.time() - start]
+        times = [time.time() - t_start]
         pobj = [objective(z_hat)]
-        start = time.time()
+        t_start = time.time()
 
     beta, dz_opt = _init_beta(Xi, z_hat, D, constants, reg, norm_Dk,
                               tol, use_sparse_dz=False)
@@ -356,13 +353,10 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
             accumulator -= 1
             active_segs[i_seg] = False
 
-        if debug:
-            pobj.append(objective(z_hat))
-
         if timing and (ii % max(100, n_seg // 100) == 0):
-            times.append(time.time() - start)
+            times.append(time.time() - t_start)
             pobj.append(objective(z_hat))
-            start = time.time()
+            t_start = time.time()
 
         # check stopping criterion
         if strategy == 'greedy':
@@ -389,8 +383,6 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
     if verbose > 10:
         print('[CD] update z computed %d iterations' % (ii + 1))
 
-    if debug:
-        return z_hat, pobj
     if timing:
         return z_hat, pobj, times
     return z_hat
@@ -399,8 +391,6 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
 def _init_beta(Xi, z_hat, D, constants, reg, norm_Dk, tol,
                use_sparse_dz=False):
     # Init beta with -DtX
-    # beta = _fprime(uv, z_hat.ravel(), Xi=Xi, reg=None, return_func=False)
-    # beta = beta.reshape(n_atoms, n_times_valid)
     beta = gradient_zi(Xi, z_hat, D=D, reg=None, loss='l2',
                        return_func=False, constants=constants)
     if is_lil(z_hat):
@@ -422,41 +412,6 @@ def _init_beta(Xi, z_hat, D, constants, reg, norm_Dk, tol,
         dz_opt = sparse.lil_matrix(dz_opt)
 
     return beta, dz_opt
-
-
-def _select_coordinate(strategy, dz_opt, active_seg, n_atoms, n_times_valid,
-                       n_times_seg, seg_bounds):
-    # Pick a coordinate to update
-    if strategy == 'random':
-        k0 = np.random.randint(n_atoms)
-        t0 = np.random.randint(n_times_valid)
-        dz = dz_opt[k0, t0]
-
-    elif strategy == 'cyclic':
-        t0 += 1
-        if t0 >= n_times_valid:
-            t0 = 0
-            k0 += 1
-            if k0 >= n_atoms:
-                k0 = 0
-        dz = dz_opt[k0, t0]
-
-    elif strategy == 'greedy':
-        # if dZs[i_seg] > tol:
-        t_start_seg, t_end_seg = seg_bounds
-        if active_seg:
-            i0 = abs(dz_opt[:, t_start_seg:t_end_seg]).argmax()
-            n_times_current = min(n_times_seg, n_times_valid - t_start_seg)
-            k0, t0 = np.unravel_index(i0, (n_atoms, n_times_current))
-            t0 += t_start_seg
-            dz = dz_opt[k0, t0]
-        else:
-            k0, t0, dz = None, None, 0
-    else:
-        raise ValueError("'The coordinate selection method should be in "
-                         "{'greedy' | 'random' | 'cyclic'}. Got '%s'."
-                         % (strategy, ))
-    return k0, t0, dz
 
 
 def _update_beta(beta, dz_opt, accumulator, active_segs, z_hat, DtD, norm_Dk,
@@ -503,9 +458,46 @@ def _update_beta(beta, dz_opt, accumulator, active_segs, z_hat, DtD, norm_Dk,
         else:
             mask = z0[:, t_start_up:t_end_up] == 0
         dz_opt[:, t_start_up:t_end_up][mask] = 0
+
         if debug:
+            # Check that we do not changed the support while updating beta
             nnz_z0 = list(zip(*z0[:, t_start_up:t_end_up].nonzero()))
             nnz_dz = list(zip(*dz_opt[:, t_start_up:t_end_up].nonzero()))
             assert all([nnz in nnz_z0 for nnz in nnz_dz])
 
     return beta, dz_opt, accumulator, active_segs
+
+
+def _select_coordinate(strategy, dz_opt, active_seg, n_atoms, n_times_valid,
+                       n_times_seg, seg_bounds):
+    # Pick a coordinate to update
+    if strategy == 'random':
+        k0 = np.random.randint(n_atoms)
+        t0 = np.random.randint(n_times_valid)
+        dz = dz_opt[k0, t0]
+
+    elif strategy == 'cyclic':
+        t0 += 1
+        if t0 >= n_times_valid:
+            t0 = 0
+            k0 += 1
+            if k0 >= n_atoms:
+                k0 = 0
+        dz = dz_opt[k0, t0]
+
+    elif strategy == 'greedy':
+        # if dZs[i_seg] > tol:
+        t_start_seg, t_end_seg = seg_bounds
+        if active_seg:
+            i0 = abs(dz_opt[:, t_start_seg:t_end_seg]).argmax()
+            n_times_current = min(n_times_seg, n_times_valid - t_start_seg)
+            k0, t0 = np.unravel_index(i0, (n_atoms, n_times_current))
+            t0 += t_start_seg
+            dz = dz_opt[k0, t0]
+        else:
+            k0, t0, dz = None, None, 0
+    else:
+        raise ValueError("'The coordinate selection method should be in "
+                         "{'greedy' | 'random' | 'cyclic'}. Got '%s'."
+                         % (strategy, ))
+    return k0, t0, dz

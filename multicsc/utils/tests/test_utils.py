@@ -38,7 +38,7 @@ def test_construct_X():
     density = 0.1
     zi = sparse.random(n_atoms * n_trials, n_times_valid, density,
                        random_state=rng).toarray().reshape(
-                           (n_atoms, n_trials, n_times_valid))
+                           (n_trials, n_atoms, n_times_valid))
     uv = rng.randn(n_atoms, n_channels + n_times_atoms)
     ds = get_D(uv, n_channels)
 
@@ -71,7 +71,7 @@ def test_patch_reconstruction_error():
     density = 0.1
     Z = sparse.random(n_atoms * n_trials, n_times_valid, density,
                       random_state=rng).toarray().reshape(
-                          (n_atoms, n_trials, n_times_valid))
+                          (n_trials, n_atoms, n_times_valid))
     uv = rng.randn(n_atoms, n_channels + n_times_atoms)
 
     X = construct_X_multi(Z, D=uv, n_channels=n_channels)

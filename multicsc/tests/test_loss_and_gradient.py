@@ -15,7 +15,7 @@ from multicsc.utils import get_D
 
 
 def _gradient_zi(X, Z, D, loss, loss_params, flatten=False):
-    return gradient_zi(X[0], Z[:, 0], D, loss=loss, flatten=flatten,
+    return gradient_zi(X[0], Z[0], D, loss=loss, flatten=flatten,
                        loss_params=loss_params)
 
 
@@ -48,7 +48,7 @@ def test_consistency(loss, func):
     n_times_valid = n_times - n_times_atom + 1
 
     X = np.random.randn(n_trials, n_channels, n_times)
-    Z = np.random.randn(n_atoms, n_trials, n_times_valid)
+    Z = np.random.randn(n_trials, n_atoms, n_times_valid)
 
     uv = np.random.randn(n_atoms, n_channels + n_times_atom)
     D = get_D(uv, n_channels)
@@ -77,7 +77,7 @@ def test_gradients(loss):
     n_times_valid = n_times - n_times_atom + 1
 
     X = np.random.randn(n_trials, n_channels, n_times)
-    Z = np.random.randn(n_atoms, n_trials, n_times_valid)
+    Z = np.random.randn(n_trials, n_atoms, n_times_valid)
 
     uv = np.random.randn(n_atoms, n_channels + n_times_atom)
     D = get_D(uv, n_channels)
@@ -100,11 +100,11 @@ def test_gradients(loss):
                      rtol=1e-4)
 
     # Test gradient Z
-    assert Z[:, 0].shape == _gradient_zi(
+    assert Z[0].shape == _gradient_zi(
         X, Z, D, loss, loss_params=loss_params).shape
 
     def pobj(zs):
-        return _objective(X[:1], zs.reshape(n_atoms, 1, -1), D, loss,
+        return _objective(X[:1], zs.reshape(1, n_atoms, -1), D, loss,
                           loss_params=loss_params)
 
     def grad(zs):

@@ -49,7 +49,7 @@ def test_gradient_d(loss):
 
     rng = np.random.RandomState()
     X = rng.normal(size=(n_trials, n_channels, n_times))
-    Z = rng.normal(size=(n_atoms, n_trials, n_times - n_times_atom + 1))
+    Z = rng.normal(size=(n_trials, n_atoms, n_times - n_times_atom + 1))
     d = rng.normal(size=(n_atoms, n_channels, n_times_atom)).ravel()
 
     if loss == 'whitening':
@@ -94,7 +94,7 @@ def test_gradient_uv(loss):
 
     rng = np.random.RandomState()
     X = rng.normal(size=(n_trials, n_channels, n_times))
-    Z = rng.normal(size=(n_atoms, n_trials, n_times - n_times_atom + 1))
+    Z = rng.normal(size=(n_trials, n_atoms, n_times - n_times_atom + 1))
     uv = rng.normal(size=(n_atoms, n_channels + n_times_atom)).ravel()
 
     if loss == 'whitening':
@@ -151,7 +151,7 @@ def test_update_uv(solver_d, uv_constraint):
     n_trials = 3
 
     rng = np.random.RandomState()
-    Z = rng.normal(size=(n_atoms, n_trials, n_times - n_times_atom + 1))
+    Z = rng.normal(size=(n_trials, n_atoms, n_times - n_times_atom + 1))
     uv0 = rng.normal(size=(n_atoms, n_channels + n_times_atom))
     uv1 = rng.normal(size=(n_atoms, n_channels + n_times_atom))
 
@@ -201,7 +201,7 @@ def test_fast_cost():
 
     rng = np.random.RandomState()
     X = rng.normal(size=(n_trials, n_channels, n_times))
-    Z = rng.normal(size=(n_atoms, n_trials, n_times - n_times_atom + 1))
+    Z = rng.normal(size=(n_trials, n_atoms, n_times - n_times_atom + 1))
 
     constants = _get_d_update_constants(X, Z)
 
@@ -228,19 +228,19 @@ def test_constants_d():
 
     rng = np.random.RandomState()
     X = rng.normal(size=(n_trials, n_channels, n_times))
-    Z = rng.normal(size=(n_atoms, n_trials, n_times - n_times_atom + 1))
+    Z = rng.normal(size=(n_trials, n_atoms, n_times - n_times_atom + 1))
 
     from multicsc.update_d_multi import _get_d_update_constants
     constants = _get_d_update_constants(X, Z)
 
     ZtX = np.sum([[[np.convolve(zik[::-1], xip, mode='valid') for xip in xi]
-                   for zik, xi in zip(zk, X)] for zk in Z], axis=1)
+                   for zik in zi] for zi, xi in zip(Z, X)], axis=0)
 
     assert np.allclose(ZtX, constants['ZtX'])
 
     ZtZ = np.zeros(shape=(n_atoms, n_atoms, 2 * n_times_atom - 1))
     t0 = n_times_atom - 1
-    axes = ([1, 2], [1, 2])
+    axes = ([0, 2], [0, 2])
 
     for t in range(n_times_atom):
         if t == 0:

@@ -61,39 +61,39 @@ def _compute_DtD_D(D):
 def compute_ZtZ(Z, n_times_atom):
     """
     ZtZ.shape = n_atoms, n_atoms, 2 * n_times_atom - 1
-    Z.shape = n_atoms, n_trials, n_times - n_times_atom + 1)
+    Z.shape = n_trials, n_atoms, n_times - n_times_atom + 1)
     """
     # TODO: benchmark the cross correlate function of numpy
-    n_atoms, n_trials, n_times_valid = Z.shape
+    n_trials, n_atoms, n_times_valid = Z.shape
 
     ZtZ = np.zeros(shape=(n_atoms, n_atoms, 2 * n_times_atom - 1))
     t0 = n_times_atom - 1
-    for k0 in range(n_atoms):
-        for k in range(n_atoms):
-            for i in range(n_trials):
+    for i in range(n_trials):
+        for k0 in range(n_atoms):
+            for k in range(n_atoms):
                 for t in range(n_times_atom):
                     if t == 0:
-                        ZtZ[k0, k, t0] += (Z[k0, i] * Z[k, i]).sum()
+                        ZtZ[k0, k, t0] += (Z[i, k0] * Z[i, k]).sum()
                     else:
                         ZtZ[k0, k, t0 + t] += (
-                            Z[k0, i, :-t] * Z[k, i, t:]).sum()
+                            Z[i, k0, :-t] * Z[i, k, t:]).sum()
                         ZtZ[k0, k, t0 - t] += (
-                            Z[k0, i, t:] * Z[k, i, :-t]).sum()
+                            Z[i, k0, t:] * Z[i, k, :-t]).sum()
     return ZtZ
 
 
 def compute_ZtX(Z, X):
     """
-    Z.shape = n_atoms, n_trials, n_times - n_times_atom + 1)
+    Z.shape = n_trials, n_atoms, n_times - n_times_atom + 1)
     X.shape = n_trials, n_channels, n_times
     ZtX.shape = n_atoms, n_channels, n_times_atom
     """
-    n_atoms, n_trials, n_times_valid = Z.shape
+    n_trials, n_atoms, n_times_valid = Z.shape
     _, n_channels, n_times = X.shape
     n_times_atom = n_times - n_times_valid + 1
 
     ZtX = np.zeros((n_atoms, n_channels, n_times_atom))
-    for k, n, t in zip(*Z.nonzero()):
-        ZtX[k, :, :] += Z[k, n, t] * X[n, :, t:t + n_times_atom]
+    for n, k, t in zip(*Z.nonzero()):
+        ZtX[k, :, :] += Z[n, k, t] * X[n, :, t:t + n_times_atom]
 
     return ZtX

@@ -69,7 +69,7 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
     ----------
     X : array, shape (n_trials, n_channels, n_times)
         The data for sparse coding
-    Z : array, shape (n_atoms, n_trials, n_times - n_times_atom + 1)
+    Z : array, shape (n_trials, n_atoms, n_times - n_times_atom + 1)
         Can also be a list of n_trials LIL-sparse matrix of shape
             (n_atoms, n_times - n_times_atom + 1)
         The code for which to learn the atoms
@@ -103,7 +103,7 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
     uv_hat : array, shape (n_atoms, n_channels + n_times_atom)
         The atoms to learn from the data.
     """
-    n_atoms, n_trials, n_times_valid = get_Z_shape(Z)
+    n_trials, n_atoms, n_times_valid = get_Z_shape(Z)
     _, n_channels, n_times = X.shape
 
     if solver_d == 'lbfgs':
@@ -254,9 +254,9 @@ def update_d(X, Z, D_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
 
     Parameters
     ----------
-    X : array, shape (n_trials, n_times)
+    X : array, shape (n_trials, n_channels, n_times)
         The data for sparse coding
-    Z : array, shape (n_atoms, n_trials, n_times - n_times_atom + 1)
+    Z : array, shape (n_trials, n_atoms, n_times - n_times_atom + 1)
         Can also be a list of n_trials LIL-sparse matrix of shape
             (n_atoms, n_times - n_times_atom + 1)
         The code for which to learn the atoms
@@ -284,7 +284,7 @@ def update_d(X, Z, D_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
     D_hat : array, shape (n_atoms, n_channels, n_times_atom)
         The atoms to learn from the data.
     """
-    n_atoms, n_trials, n_times_valid = get_Z_shape(Z)
+    n_trials, n_atoms, n_times_valid = get_Z_shape(Z)
     _, n_channels, n_times = X.shape
 
     if loss == 'l2':
@@ -342,7 +342,7 @@ def update_d(X, Z, D_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
 
 
 def _get_d_update_constants(X, Z):
-    n_atoms, n_trials, n_times_valid = get_Z_shape(Z)
+    n_trials, n_atoms, n_times_valid = get_Z_shape(Z)
     n_trials, n_channels, n_times = X.shape
     n_times_atom = n_times - n_times_valid + 1
 

@@ -5,11 +5,11 @@ from scipy import sparse
 
 
 def convert_to_list_of_lil(Z):
-    return [sparse.lil_matrix(zi) for zi in np.swapaxes(Z, 0, 1)]
+    return [sparse.lil_matrix(zi) for zi in Z]
 
 
 def convert_from_list_of_lil(Z_lil):
-    return np.swapaxes(np.array([zi_lil.toarray() for zi_lil in Z_lil]), 0, 1)
+    return np.array([zi_lil.toarray() for zi_lil in Z_lil])
 
 
 def get_Z_shape(Z):
@@ -17,8 +17,8 @@ def get_Z_shape(Z):
         n_trials = len(Z)
         n_atoms, n_times_valid = Z[0].shape
     else:
-        n_atoms, n_trials, n_times_valid = Z.shape
-    return n_atoms, n_trials, n_times_valid
+        n_trials, n_atoms, n_times_valid = Z.shape
+    return n_trials, n_atoms, n_times_valid
 
 
 def is_list_of_lil(Z):
@@ -33,7 +33,7 @@ def scale_Z_by_atom(Z, scale, copy=True):
     """
     Parameters
     ----------
-    Z_ : array, shape (n_atoms, n_trials, n_times - n_times_atom + 1)
+    Z_ : array, shape (n_trials, n_atoms, n_times - n_times_atom + 1)
         Can also be a list of n_trials LIL-sparse matrix of shape
             (n_atoms, n_times - n_times_atom + 1)
         The sparse activation matrix.
@@ -41,7 +41,7 @@ def scale_Z_by_atom(Z, scale, copy=True):
         The scales to apply on Z.
     """
     if is_list_of_lil(Z):
-        n_atoms, n_trials, n_times_valid = get_Z_shape(Z)
+        n_trials, n_atoms, n_times_valid = get_Z_shape(Z)
         assert n_atoms == len(scale)
 
         if copy:
@@ -54,13 +54,13 @@ def scale_Z_by_atom(Z, scale, copy=True):
     else:
         if copy:
             Z = Z.copy()
-        Z *= scale[:, None, None]
+        Z *= scale[None, :, None]
 
     return Z
 
 
 def safe_sum(Z, axis=None):
-    n_atoms, n_trials, n_times_valid = get_Z_shape(Z)
+    n_trials, n_atoms, n_times_valid = get_Z_shape(Z)
     if is_list_of_lil(Z):
         # n_trials = len(Z) and (n_atoms, n_times_valid) = Z[0].shape
         if axis is None:
@@ -69,7 +69,7 @@ def safe_sum(Z, axis=None):
         axis = list(axis)
         axis.sort()
 
-        if axis == [1, 2]:
+        if axis == [0, 2]:
             res = np.zeros(n_atoms)
             for Zi in Z:
                 res += np.squeeze(np.array(Zi.sum(axis=1)))
@@ -77,5 +77,5 @@ def safe_sum(Z, axis=None):
         else:
             raise NotImplementedError()
     else:
-        # (n_atoms, n_trials, n_times_valid) = Z.shape
+        # (n_trials, n_atoms, n_times_valid) = Z.shape
         return Z.sum(axis=axis)

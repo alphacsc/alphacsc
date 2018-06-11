@@ -36,7 +36,7 @@ def test_ZtZ(use_whitening):
     rng = check_random_state(random_state)
 
     X = rng.randn(n_trials, n_channels, n_times)
-    Z = rng.randn(n_atoms, n_trials, n_times_valid)
+    Z = rng.randn(n_trials, n_atoms, n_times_valid)
     D = rng.randn(n_atoms, n_channels, n_times_atom)
 
     if use_whitening:

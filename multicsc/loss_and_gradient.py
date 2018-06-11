@@ -67,7 +67,7 @@ def compute_X_and_objective_multi(X, Z_hat, D_hat=None, reg=None, loss='l2',
     ----------
     X : array, shape (n_trials, n_channels, n_times)
         The data on which to perform CSC.
-    Z_hat : array, shape (n_atoms, n_trials, n_times - n_times_atom + 1)
+    Z_hat : array, shape (n_trials, n_atoms, n_times - n_times_atom + 1)
         Can also be a list of n_trials LIL-sparse matrix of shape
             (n_atoms, n_times - n_times_atom + 1)
         The sparse activation matrix.
@@ -126,7 +126,7 @@ def compute_gradient_norm(X, Z_hat, D_hat, reg, loss='l2', loss_params=dict(),
 
     grad_norm_z = 0
     for i in range(X.shape[0]):
-        grad_zi = gradient_zi(X[i], Z_hat[:, i], D=D_hat, reg=reg,
+        grad_zi = gradient_zi(X[i], Z_hat[i], D=D_hat, reg=reg,
                               loss=loss, loss_params=loss_params)
         grad_norm_z += np.dot(grad_zi.ravel(), grad_zi.ravel())
 
@@ -173,7 +173,7 @@ def gradient_uv(uv, X=None, Z=None, constants=None, reg=None, loss='l2',
     """
     if Z is not None:
         assert X is not None
-        n_atoms = get_Z_shape(Z)[0]
+        n_atoms = get_Z_shape(Z)[1]
         n_channels = X.shape[1]
     else:
         n_atoms = constants['ZtZ'].shape[0]
@@ -287,7 +287,7 @@ def gradient_d(D=None, X=None, Z=None, constants=None, reg=None,
             n_atoms = constants['ZtZ'].shape[0]
             n_channels = constants['n_channels']
         else:
-            n_atoms = get_Z_shape(Z)[0]
+            n_atoms = get_Z_shape(Z)[1]
             n_channels = X.shape[1]
         D = D.reshape((n_atoms, n_channels, -1))
 
@@ -358,7 +358,7 @@ def _dtw_gradient_d(D, X=None, Z=None, loss_params={}):
 
 def _dtw_gradient_zi(Xi, Zi, D=None, loss_params={}):
     n_channels = Xi.shape[0]
-    cost_i, grad_Xi_hat = _dtw_gradient(Xi[None], Zi[:, None], D=D,
+    cost_i, grad_Xi_hat = _dtw_gradient(Xi[None], Zi[None], D=D,
                                         loss_params=loss_params)
 
     return cost_i, _dense_transpose_convolve_d(
@@ -472,7 +472,7 @@ def _whitening_gradient_zi(Xi, zi, D, loss_params, return_func=False):
     n_channels, n_times = Xi.shape
 
     # Construct Xi_hat and compute the gradient relatively to X_hat
-    Xi_hat = construct_X_multi(zi[:, None], D=D, n_channels=n_channels)
+    Xi_hat = construct_X_multi(zi[None], D=D, n_channels=n_channels)
     hTh_res, func = _whitening_gradient(Xi[None], Xi_hat, loss_params,
                                         return_func=return_func)
 
@@ -503,7 +503,7 @@ def _dense_transpose_convolve_z(residual, Z):
     Parameters
     ----------
     residual : array, shape (n_trials, n_channels, n_times)
-    Z : array, shape (n_atoms, n_trials, n_times_valid)
+    Z : array, shape (n_trials, n_atoms, n_times_valid)
 
     Return
     ------
@@ -516,8 +516,8 @@ def _dense_transpose_convolve_z(residual, Z):
     return np.sum([[[np.convolve(res_ip, zik[::-1],
                                  mode='valid')  # n_times_atom
                      for res_ip in res_i]                       # n_channnels
-                    for zik, res_i in zip(zk, residual)]        # n_trials
-                   for zk in Z], axis=1)                        # n_atoms
+                    for zik in zi]        # n_atoms
+                   for zi, res_i in zip(Z, residual)], axis=0)                        # n_atoms
 
 
 def _dense_transpose_convolve_d(residual_i, D=None, n_channels=None):

@@ -105,7 +105,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
         The cumulative time for each iteration of the coordinate descent.
     uv_hat : array, shape (n_atoms, n_channels + n_times_atom)
         The atoms to learn from the data.
-    Z_hat : array, shape (n_atoms, n_trials, n_times_valid)
+    Z_hat : array, shape (n_trials, n_atoms, n_times_valid)
         The sparse activation matrix.
     """
 
@@ -130,7 +130,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
         Z_hat = [sparse.lil_matrix((n_atoms, n_times_valid))
                  for _ in range(n_trials)]
     else:
-        Z_hat = np.zeros((n_atoms, n_trials, n_times_valid))
+        Z_hat = np.zeros((n_trials, n_atoms, n_times_valid))
 
     z_kwargs = dict(verbose=verbose)
     z_kwargs.update(solver_z_kwargs)
@@ -229,7 +229,8 @@ def _batch_learn(X, D_hat, Z_hat, compute_z_func, compute_d_func,
 
         # Compute Z update
         start = time.time()
-        Z_hat = compute_z_func(X, Z_hat, D_hat, reg=reg_, parallel=parallel)
+        Z_hat, ztz, ztx = compute_z_func(X, Z_hat, D_hat, reg=reg_,
+                                         parallel=parallel)
 
         # monitor cost function
         times.append(time.time() - start)
@@ -240,7 +241,7 @@ def _batch_learn(X, D_hat, Z_hat, compute_z_func, compute_d_func,
                              ).sum(axis=0)
             Z_size = len(Z_hat) * np.prod(Z_hat[0].shape)
         else:
-            Z_nnz = np.sum(Z_hat != 0, axis=(1, 2))
+            Z_nnz = np.sum(Z_hat != 0, axis=(0, 2))
             Z_size = Z_hat.size
 
         if verbose > 5:
