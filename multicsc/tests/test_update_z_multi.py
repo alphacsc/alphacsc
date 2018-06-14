@@ -40,8 +40,9 @@ def test_update_z_multi_decrease_cost_function(loss, solver):
                                            loss=loss, loss_params=loss_params)
     assert loss_1 < loss_0
 
-    assert np.allclose(ztz, compute_ztz(z_hat, n_times_atom))
-    assert np.allclose(ztX, compute_ztX(z_hat, X))
+    if loss == 'l2':
+        assert np.allclose(ztz, compute_ztz(z_hat, n_times_atom))
+        assert np.allclose(ztX, compute_ztX(z_hat, X))
 
 
 def test_support_least_square():

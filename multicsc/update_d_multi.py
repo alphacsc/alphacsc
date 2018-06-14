@@ -60,9 +60,10 @@ def prox_d(D, return_norm=False):
         return D
 
 
-def update_uv(X, z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
-              solver_d='alternate', momentum=False, uv_constraint='separate',
-              loss='l2', loss_params=dict(), verbose=0):
+def update_uv(X, z, uv_hat0, constants=None, b_hat_0=None, debug=False,
+              max_iter=300, eps=None, solver_d='alternate', momentum=False,
+              uv_constraint='separate', loss='l2', loss_params=dict(),
+              verbose=0):
     """Learn d's in time domain.
 
     Parameters
@@ -75,6 +76,9 @@ def update_uv(X, z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
         The code for which to learn the atoms
     uv_hat0 : array, shape (n_atoms, n_channels + n_times_atom)
         The initial atoms.
+    constants : dict or None
+        Dictionary of constants to accelerate the computation of the gradients.
+        It should only be given for loss='l2' and should contain ztz and ztX.
     b_hat_0 : array, shape (n_atoms * (n_channels + n_times_atom))
         Init eigen-vector vector used in power_iteration, used in warm start.
     debug : bool
@@ -113,10 +117,8 @@ def update_uv(X, z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
         msg = "alternate solver should be used with separate constraints"
         assert uv_constraint == 'separate', msg
 
-    if loss == 'l2':
+    if loss == 'l2' and constants is None:
         constants = _get_d_update_constants(X, z)
-    else:
-        constants = None
 
     def objective(uv):
         if loss == 'l2':
@@ -247,9 +249,9 @@ def update_uv(X, z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
     return uv_hat
 
 
-def update_d(X, z, D_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
-             solver_d='fista', momentum=False, uv_constraint='joint',
-             loss='l2', loss_params=dict(), verbose=0):
+def update_d(X, z, D_hat0, constants=None, b_hat_0=None, debug=False,
+             max_iter=300, eps=None, solver_d='fista', momentum=False,
+             uv_constraint='joint', loss='l2', loss_params=dict(), verbose=0):
     """Learn d's in time domain.
 
     Parameters
@@ -262,6 +264,9 @@ def update_d(X, z, D_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
         The code for which to learn the atoms
     D_hat0 : array, shape (n_atoms, n_channels, n_times_atom)
         The initial atoms.
+    constants : dict or None
+        Dictionary of constants to accelerate the computation of the gradients.
+        It should only be given for loss='l2' and should contain ztz and ztX.
     b_hat_0 : array, shape (n_atoms * (n_channels + n_times_atom))
         Init eigen-vector vector used in power_iteration, used in warm start.
     debug : bool
@@ -287,10 +292,8 @@ def update_d(X, z, D_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
     n_trials, n_atoms, n_times_valid = get_z_shape(z)
     _, n_channels, n_times = X.shape
 
-    if loss == 'l2':
+    if loss == 'l2' and constants is None:
         constants = _get_d_update_constants(X, z)
-    else:
-        constants = None
 
     def objective(D, full=False):
         if loss == 'l2':
@@ -341,18 +344,17 @@ def update_d(X, z, D_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
     return D_hat
 
 
-def _get_d_update_constants(X, z, ztX=None, ztz=None):
+def _get_d_update_constants(X, z):
     n_trials, n_atoms, n_times_valid = get_z_shape(z)
     n_trials, n_channels, n_times = X.shape
     n_times_atom = n_times - n_times_valid + 1
 
-    if ztz is None:
-        if is_list_of_lil(z):
-            ztX = _fast_compute_ztX(z, X)
-            ztz = _fast_compute_ztz(z, n_times_atom)
-        else:
-            ztX = compute_ztX(z, X)
-            ztz = compute_ztz(z, n_times_atom)
+    if is_list_of_lil(z):
+        ztX = _fast_compute_ztX(z, X)
+        ztz = _fast_compute_ztz(z, n_times_atom)
+    else:
+        ztX = compute_ztX(z, X)
+        ztz = compute_ztz(z, n_times_atom)
 
     constants = {}
     constants['ztX'] = ztX

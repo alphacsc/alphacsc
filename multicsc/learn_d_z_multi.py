@@ -154,15 +154,17 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
     d_kwargs = dict(verbose=verbose, eps=1e-8)
     d_kwargs.update(solver_d_kwargs)
 
-    def compute_d_func(X, z_hat, D_hat):
+    def compute_d_func(X, z_hat, D_hat, constants):
         if rank1:
-            return update_uv(X, z_hat, uv_hat0=D_hat, b_hat_0=b_hat_0,
-                             solver_d=solver_d, uv_constraint=uv_constraint,
-                             loss=loss, loss_params=loss_params, **d_kwargs)
+            return update_uv(X, z_hat, uv_hat0=D_hat, constants=constants,
+                             b_hat_0=b_hat_0, solver_d=solver_d,
+                             uv_constraint=uv_constraint, loss=loss,
+                             loss_params=loss_params, **d_kwargs)
         else:
-            return update_d(X, z_hat, D_hat0=D_hat, b_hat_0=b_hat_0,
-                            solver_d=solver_d, uv_constraint=uv_constraint,
-                            loss=loss, loss_params=loss_params, **d_kwargs)
+            return update_d(X, z_hat, D_hat0=D_hat, constants=constants,
+                            b_hat_0=b_hat_0, solver_d=solver_d,
+                            uv_constraint=uv_constraint, loss=loss,
+                            loss_params=loss_params, **d_kwargs)
 
     end_iter_func = get_iteration_func(eps, stopping_pobj, callback, lmbd_max,
                                        name, verbose, raise_on_increase)
@@ -207,6 +209,11 @@ def _batch_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
 
     reg_ = reg
 
+    # Initialize constants dictionary
+    constants = {}
+    constants['n_channels'] = X.shape[1]
+    constants['XtX'] = np.dot(X.ravel(), X.ravel())
+
     # monitor cost function
     times = [0]
     pobj = [obj_func(X, z_hat, D_hat, reg=reg_)]
@@ -229,8 +236,8 @@ def _batch_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
 
         # Compute z update
         start = time.time()
-        z_hat, ztz, ztX = compute_z_func(X, z_hat, D_hat, reg=reg_,
-                                         parallel=parallel)
+        z_hat, constants['ztz'], constants['ztX'] = compute_z_func(
+            X, z_hat, D_hat, reg=reg_, parallel=parallel)
 
         # monitor cost function
         times.append(time.time() - start)
@@ -258,7 +265,7 @@ def _batch_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
 
         # Compute D update
         start = time.time()
-        D_hat = compute_d_func(X, z_hat, D_hat)
+        D_hat = compute_d_func(X, z_hat, D_hat, constants)
 
         # monitor cost function
         times.append(time.time() - start)

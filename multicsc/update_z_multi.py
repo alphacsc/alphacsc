@@ -81,14 +81,18 @@ def update_z_multi(X, D, reg, z0=None, debug=False, parallel=None,
                          timing=timing)
         for i in np.arange(n_trials))
 
-    # Initialize return args
+    # Post process the results to get separate objects
     z_hats, pobj, times = [], [], []
-    ztz = np.zeros((n_atoms, n_atoms, 2 * n_times_atom - 1))
-    ztX = np.zeros((n_atoms, n_channels, n_times_atom))
+    if loss == 'l2':
+        ztz = np.zeros((n_atoms, n_atoms, 2 * n_times_atom - 1))
+        ztX = np.zeros((n_atoms, n_channels, n_times_atom))
+    else:
+        ztz, ztX = None, None
     for z_hat, ztz_i, ztX_i, pobj_i, times_i in results:
         z_hats.append(z_hat), pobj.append(pobj_i), times.append(times_i)
-        ztz += ztz_i
-        ztX += ztX_i
+        if loss == 'l2':
+            ztz += ztz_i
+            ztX += ztX_i
 
     # If z_hat is a ndarray, stack and reorder the columns
     if not is_list_of_lil(z0):
@@ -224,13 +228,17 @@ def _update_z_multi_idx(X_i, D, reg, z0_i, debug, solver="l_bfgs",
                          " or 'l_bfgs'." % solver)
 
     if not is_lil(z_hat):
-
         z_hat = z_hat.reshape(n_atoms, n_times_valid)
-        ztz = compute_ztz(z_hat[None], n_times_atom)
-        ztX = compute_ztX(z_hat[None], X_i[None])
+
+    if loss == 'l2':
+        if not is_lil(z_hat):
+            ztz = compute_ztz(z_hat[None], n_times_atom)
+            ztX = compute_ztX(z_hat[None], X_i[None])
+        else:
+            ztz = _fast_compute_ztz([z_hat], n_times_atom)
+            ztX = _fast_compute_ztX([z_hat], X_i[None])
     else:
-        ztz = _fast_compute_ztz([z_hat], n_times_atom)
-        ztX = _fast_compute_ztX([z_hat], X_i[None])
+        ztz, ztX = None, None
 
     return z_hat, ztz, ztX, pobj, times
 
