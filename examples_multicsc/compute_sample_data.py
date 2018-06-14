@@ -5,14 +5,13 @@ import matplotlib.pyplot as plt
 from scipy.signal import tukey
 
 import mne
+from mne.io import write_info
 from mne.utils import _reject_data_segments
 from mne.preprocessing import ICA, create_eog_epochs
-from mne import EvokedArray
 
 from multicsc.learn_d_z_multi import learn_d_z_multi
 from multicsc.utils import construct_X_multi, _choose_convolve
-from multicsc.utils import plot_callback, get_D
-from multicsc.utils.viz import COLORS
+from multicsc.utils import plot_callback
 
 parser = argparse.ArgumentParser('Programme to launch experiment on multi csc')
 parser.add_argument('--profile', action='store_true',
@@ -103,8 +102,8 @@ if debug:
     # (we have only one trial, so full time series)
     X_hat_k = np.zeros((n_atoms, n_times))
     for k in range(n_atoms):
-        X_hat_k[k] = _choose_convolve(z_hat[k, 0, :][None, :],
-                                      uv_hat[k, n_channels:][None, :])
+        X_hat_k[k] = _choose_convolve(z_hat[:1, k],
+                                      uv_hat[k:k + 1, n_channels:])
     ch_names = ['atom %d' % ii for ii in range(n_atoms)]
     info = mne.create_info(ch_names, sfreq=raw.info['sfreq'])
     raw_atoms = mne.io.RawArray(X_hat_k, info, first_samp=raw.first_samp)
@@ -120,7 +119,6 @@ if debug:
     plt.plot(freqs, psd.T)
     plt.gca().set(xscale='log')
 
-from mne.io import write_info
 np.savez('examples_multicsc/multi_sample-ave.npz', z_hat=z_hat,
          uv_hat=uv_hat, sfreq=raw.info['sfreq'], n_channels=n_channels)
 write_info('examples_multicsc/info_sample.fif', raw.info)

@@ -1,6 +1,5 @@
 import os
 import time
-import itertools
 from functools import partial
 
 import matplotlib
@@ -12,12 +11,10 @@ from mne.io import write_info
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.externals.joblib import Memory
-from scipy.signal import tukey
 
-from multicsc.learn_d_z_multi import learn_d_z_multi
-from multicsc.utils.viz import plot_activations_density, COLORS
-from multicsc.utils import get_D
+from multicsc.utils.viz import COLORS
 from multicsc.datasets.somato import load_data
+from multicsc.learn_d_z_multi import learn_d_z_multi
 
 figure_path = 'figures'
 mem = Memory(cachedir='.', verbose=0)

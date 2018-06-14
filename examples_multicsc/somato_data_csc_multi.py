@@ -14,7 +14,7 @@ mem = Memory(cachedir='.', verbose=0)
 
 
 def run_one(X, csc_kwargs, topo=False, info={}, run=0):
-    config = DEFAULT_CD
+    config = DEFAULT_CB
     if topo is not None:
         config['topo'] = dict(share=False)
     return learn_d_z_multi(

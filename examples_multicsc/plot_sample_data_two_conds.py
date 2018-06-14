@@ -95,8 +95,8 @@ plt.show()
 # (we have only one trial, so full time series)
 X_hat_k = np.zeros((n_atoms, n_times))
 for k in range(n_atoms):
-    X_hat_k[k] = _choose_convolve(z_hat[k, 0, :][None, :],
-                                  uv_hat[k, n_channels:][None, :])
+    X_hat_k[k] = _choose_convolve(z_hat[:1, k, :],
+                                  uv_hat[k:k + 1, n_channels:])
 ch_names = ['atom %d' % ii for ii in range(n_atoms)]
 info = mne.create_info(ch_names, sfreq=raw.info['sfreq'])
 

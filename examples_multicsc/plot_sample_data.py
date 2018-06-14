@@ -28,7 +28,7 @@ for idx, atom_idx in enumerate(atoms_idx):
     ax2 = plt.subplot2grid((len(atoms_idx), 9), (idx, 3), colspan=4)
     ax2.grid('on', linestyle='-', alpha=0.3)
     times_z = np.arange(2231, 6693) / sfreq
-    ax2.plot(times_z, z_hat[atom_idx, 0, 2231:6693],
+    ax2.plot(times_z, z_hat[0, atom_idx, 2231:6693],
              color=COLORS[idx % len(COLORS)])
     ax2.set_ylim(0, 0.2)
 

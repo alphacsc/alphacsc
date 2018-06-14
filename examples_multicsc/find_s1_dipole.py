@@ -11,7 +11,6 @@ from joblib import Memory
 
 from multicsc.utils import get_uv
 from multicsc.datasets.somato import load_data
-from multicsc.utils.viz import COLORS
 
 matplotlib.rc('font', size=14)
 mem = Memory(cachedir='.', verbose=0)
