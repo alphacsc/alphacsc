@@ -24,14 +24,14 @@ csc_kwargs = dict(
     algorithm='batch', lmbd_max='fixed'
 )
 
-# Callback config display atom shape and KDE of Z_hat
+# Callback config display atom shape and KDE of z_hat
 config = DEFAULT_CB
 
 callback = get_callback_csc(csc_kwargs, config=config, info=info)
 
 
 try:
-    pobj, times, uv_hat, Z_hat = learn_d_z_multi(
+    pobj, times, uv_hat, z_hat = learn_d_z_multi(
         X, n_jobs=n_jobs, callback=callback,
         **csc_kwargs)
 except KeyboardInterrupt:

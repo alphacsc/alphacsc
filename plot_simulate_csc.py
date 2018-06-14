@@ -16,7 +16,7 @@ n_iter = 50
 reg = 0.1
 
 random_state_simulate = 1
-X, ds_true, Z_true = simulate_data(n_trials, n_times, n_times_atom, n_atoms,
+X, ds_true, z_true = simulate_data(n_trials, n_times, n_times_atom, n_atoms,
                                    random_state_simulate)
 
 rng = check_random_state(random_state_simulate)
@@ -29,10 +29,10 @@ n_channels = 1
 fig, axes = plt.subplots(nrows=2, num='atoms', figsize=(10, 8))
 
 
-def callback(X, uv_hat, Z_hat, reg):
+def callback(X, uv_hat, z_hat, reg):
     plt.figure('atoms')
     if axes[0].lines == []:
-        axes[0].plot(Z_hat.sum(axis=1).T)
+        axes[0].plot(z_hat.sum(axis=1).T)
         axes[1].plot(uv_hat[:, n_channels:].T)
         axes[0].grid(True)
         axes[1].grid(True)
@@ -40,7 +40,7 @@ def callback(X, uv_hat, Z_hat, reg):
         axes[1].set_title('temporal atom')
     else:
         for line_0, line_1, uv, z in zip(axes[0].lines, axes[1].lines, uv_hat,
-                                         Z_hat):
+                                         z_hat):
             line_0.set_ydata(z.sum(axis=0))
             line_1.set_ydata(uv[n_channels:])
     for ax in axes:
@@ -60,7 +60,7 @@ ds_init = rng.randn(n_atoms, n_times_atom)
 D_init = np.hstack([np.ones((n_atoms, 1)), ds_init])
 
 if True:
-    pobj, times, uv_hat, Z_hat = learn_d_z_multi(
+    pobj, times, uv_hat, z_hat = learn_d_z_multi(
         X[:, None, :], n_atoms, n_times_atom, reg=reg_, n_iter=n_iter,
         solver_z_kwargs={'factr': 1e10}, random_state=random_state, n_jobs=1,
         verbose=1, callback=callback, solver_d='joint',
@@ -79,9 +79,9 @@ if True:
 fig, axes = plt.subplots(nrows=2, num='atoms', figsize=(10, 8))
 
 
-def callback(X, uv_hat, Z_hat, reg):
+def callback(X, uv_hat, z_hat, reg):
     if axes[0].lines == []:
-        axes[0].plot(Z_hat.sum(axis=1).T)
+        axes[0].plot(z_hat.sum(axis=1).T)
         axes[1].plot(uv_hat[:, :].T)
         axes[0].grid(True)
         axes[1].grid(True)
@@ -89,7 +89,7 @@ def callback(X, uv_hat, Z_hat, reg):
         axes[1].set_title('temporal atom')
     else:
         for line_0, line_1, uv, z in zip(axes[0].lines, axes[1].lines, uv_hat,
-                                         Z_hat):
+                                         z_hat):
             line_0.set_ydata(z.sum(axis=0))
             line_1.set_ydata(uv[:])
     for ax in axes:
@@ -100,7 +100,7 @@ def callback(X, uv_hat, Z_hat, reg):
 
 
 if True:
-    pobj, times, d_hat, Z_hat = learn_d_z(
+    pobj, times, d_hat, z_hat = learn_d_z(
         X, n_atoms, n_times_atom, reg=reg, n_iter=n_iter, solver_d_kwargs=dict(
             factr=100), random_state=random_state, n_jobs=1, verbose=1,
         ds_init=ds_init, callback=callback)

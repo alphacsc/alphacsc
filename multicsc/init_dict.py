@@ -9,7 +9,7 @@ from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 
 from .utils import check_random_state
-from .utils.lil import get_Z_shape
+from .utils.lil import get_z_shape
 from .utils.viz import COLORS
 from .other.k_medoids import KMedoids
 from .other.kmc2 import custom_distances
@@ -287,7 +287,7 @@ def _embed(x, dim, lag=1):
     return X.T
 
 
-def get_max_error_dict(X, Z, D):
+def get_max_error_dict(X, z, D):
     """Get the maximal reconstruction error patch from the data as a new atom
 
     This idea is used for instance in [Yellin2017]
@@ -296,7 +296,7 @@ def get_max_error_dict(X, Z, D):
     ----------
     X: array, shape (n_trials, n_channels, n_times)
         Signals encoded in the CSC.
-    Z: array, shape (n_atoms, n_trials, n_times_valid)
+    z: array, shape (n_atoms, n_trials, n_times_valid)
         Current estimate of the coding signals.
     uv: array, shape (n_atoms, n_channels + n_times_atom)
         Current estimate of the rank1 multivariate dictionary.
@@ -315,9 +315,9 @@ def get_max_error_dict(X, Z, D):
         n_times_atom = D.shape[1] - n_channels
     else:
         n_times_atom = D.shape[2]
-    patch_rec_error = _patch_reconstruction_error(X, Z, D)
+    patch_rec_error = _patch_reconstruction_error(X, z, D)
     i0 = patch_rec_error.argmax()
-    n_atoms, n_trials, n_times_valid = get_Z_shape(Z)
+    n_atoms, n_trials, n_times_valid = get_z_shape(z)
     n0, t0 = np.unravel_index(i0, (n_trials, n_times_valid))
 
     d0 = X[n0, :, t0:t0 + n_times_atom][None]

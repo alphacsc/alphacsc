@@ -22,9 +22,9 @@ for D_init in ['kmeans', 'ssa', 'chunk', 'random']:
         lambda_max = get_lambda_max(X, D_hat).max()
         print(D_init, random_state, lambda_max)
 
-        Z_hat = np.zeros((n_atoms, n_trials, n_times_valid))
+        z_hat = np.zeros((n_atoms, n_trials, n_times_valid))
         for i in range(2):
-            pobj, times, D_hat, Z_hat = learn_d_z_multi(
+            pobj, times, D_hat, z_hat = learn_d_z_multi(
                 X, n_atoms, n_times_atom, reg=lambda_max / 10., n_iter=1,
                 D_init=D_hat, verbose=0, n_jobs=2)
             lambda_max = get_lambda_max(X, D_hat).max()

@@ -20,7 +20,7 @@ def test_learn_d_z_multi(loss, solver_d, uv_constraint):
 
     rng = check_random_state(42)
     X = rng.randn(n_trials, n_channels, n_times)
-    pobj, times, uv_hat, Z_hat = learn_d_z_multi(
+    pobj, times, uv_hat, z_hat = learn_d_z_multi(
         X, n_atoms, n_times_atom, uv_constraint=uv_constraint,
         solver_d=solver_d, random_state=0, n_iter=30,
         solver_z="l_bfgs",

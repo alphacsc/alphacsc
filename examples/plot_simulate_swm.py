@@ -41,7 +41,7 @@ from multicsc import check_random_state # noqa
 from multicsc.simulate import simulate_data # noqa
 
 random_state_simulate = 1
-X, ds_true, Z_true = simulate_data(n_trials, n_times, n_times_atom,
+X, ds_true, z_true = simulate_data(n_trials, n_times, n_times_atom,
                                    n_atoms, random_state_simulate,
                                    constant_amplitude=True)
 

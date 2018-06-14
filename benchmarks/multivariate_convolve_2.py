@@ -13,10 +13,10 @@ from multicsc.cython import _fast_sparse_convolve_multi_uv
 memory = Memory(cachedir='', verbose=0)
 
 
-def _dense_convolve_multi(Zi, ds):
-    """Convolve Zi[k] and ds[k] for each atom k, and return the sum
+def _dense_convolve_multi(z_i, ds):
+    """Convolve z_i[k] and ds[k] for each atom k, and return the sum
 
-    Zi : array, shape(n_atoms, n_times_valid)
+    z_i : array, shape(n_atoms, n_times_valid)
         Activations
     ds : array, shape(n_atoms, n_channels, n_times_atom)
         Dictionary
@@ -27,13 +27,13 @@ def _dense_convolve_multi(Zi, ds):
         Result of the convolution
     """
     return np.sum([[np.convolve(zik, dkp) for dkp in dk]
-                   for zik, dk in zip(Zi, ds)], 0)
+                   for zik, dk in zip(z_i, ds)], 0)
 
 
-def _dense_convolve_multi_uv(Zi, uv, n_channels):
-    """Convolve Zi[k] and uv[k] for each atom k, and return the sum
+def _dense_convolve_multi_uv(z_i, uv, n_channels):
+    """Convolve z_i[k] and uv[k] for each atom k, and return the sum
 
-    Zi : array, shape(n_atoms, n_times_valid)
+    z_i : array, shape(n_atoms, n_times_valid)
         Activations
     uv : array, shape(n_atoms, n_channels + n_times_atom)
         Dictionary
@@ -47,40 +47,40 @@ def _dense_convolve_multi_uv(Zi, uv, n_channels):
     """
     u = uv[:, :n_channels]
     v = uv[:, n_channels:]
-    n_atoms, n_times_valid = Zi.shape
+    n_atoms, n_times_valid = z_i.shape
     n_atoms, n_times_atom = v.shape
     n_times = n_times_valid + n_times_atom - 1
 
     Xi = np.zeros((n_channels, n_times))
-    for zik, uk, vk in zip(Zi, u, v):
+    for zik, uk, vk in zip(z_i, u, v):
         zik_vk = np.convolve(zik, vk)
         Xi += zik_vk[None, :] * uk[:, None]
 
     return Xi
 
 
-def _sparse_convolve_multi(Zi, ds):
+def _sparse_convolve_multi(z_i, ds):
     """Same as _dense_convolve, but use the sparsity of zi."""
     n_atoms, n_channels, n_times_atom = ds.shape
-    n_atoms, n_times_valid = Zi.shape
+    n_atoms, n_times_valid = z_i.shape
     n_times = n_times_valid + n_times_atom - 1
     Xi = np.zeros(shape=(n_channels, n_times))
-    for zik, dk in zip(Zi, ds):
+    for zik, dk in zip(z_i, ds):
         for nnz in np.where(zik != 0)[0]:
             Xi[:, nnz:nnz + n_times_atom] += zik[nnz] * dk
     return Xi
 
 
-def _sparse_convolve_multi_uv(Zi, uv, n_channels):
+def _sparse_convolve_multi_uv(z_i, uv, n_channels):
     """Same as _dense_convolve, but use the sparsity of zi."""
     u = uv[:, :n_channels]
     v = uv[:, n_channels:]
-    n_atoms, n_times_valid = Zi.shape
+    n_atoms, n_times_valid = z_i.shape
     n_atoms, n_times_atom = v.shape
     n_times = n_times_valid + n_times_atom - 1
 
     Xi = np.zeros(shape=(n_channels, n_times))
-    for zik, uk, vk in zip(Zi, u, v):
+    for zik, uk, vk in zip(z_i, u, v):
         zik_vk = np.zeros(n_times)
         for nnz in np.where(zik != 0)[0]:
             zik_vk[nnz:nnz + n_times_atom] += zik[nnz] * vk
@@ -102,12 +102,12 @@ all_func = [
 
 def test_equality():
     n_atoms, n_channels, n_times_atom, n_times_valid = 5, 10, 15, 100
-    Zi = np.random.randn(n_atoms, n_times_valid)
+    z_i = np.random.randn(n_atoms, n_times_valid)
     u = np.random.randn(n_atoms, n_channels)
     v = np.random.randn(n_atoms, n_times_atom)
     D = u[:, :, None] * v[:, None, :]
 
-    reference = all_func[0](Zi, D)
+    reference = all_func[0](z_i, D)
     for func in all_func:
         if 'uv' in func.__name__:
             kwargs = dict(uv=np.hstack([u, v]), n_channels=n_channels)
@@ -115,16 +115,16 @@ def test_equality():
             kwargs = dict(ds=D)
 
         if 'fast' in func.__name__:
-            Zi = sparse.lil_matrix(Zi)
+            z_i = sparse.lil_matrix(z_i)
 
-        result = func(Zi, **kwargs)
+        result = func(z_i, **kwargs)
         assert np.allclose(result, reference)
 
 
 @memory.cache
 def run_one(n_atoms, sparsity, n_times_atom, n_times_valid, func):
     n_channels = 4
-    Zi = sparse.random(n_atoms, n_times_valid, density=sparsity, format='lil')
+    z_i = sparse.random(n_atoms, n_times_valid, density=sparsity, format='lil')
 
     if 'uv' in func.__name__:
         uv = np.random.randn(n_atoms, n_channels + n_times_atom)
@@ -133,10 +133,10 @@ def run_one(n_atoms, sparsity, n_times_atom, n_times_valid, func):
         kwargs = dict(ds=np.random.randn(n_atoms, n_channels, n_times_atom))
 
     if 'fast' not in func.__name__:
-        Zi = Zi.toarray()
+        z_i = z_i.toarray()
 
     start = time.time()
-    func(Zi, **kwargs)
+    func(z_i, **kwargs)
     duration = time.time() - start
     return (n_atoms, sparsity, n_times_atom, n_times_valid, func.__name__,
             duration)

@@ -16,15 +16,15 @@ from .loss_and_gradient import gradient_zi
 from .utils.optim import fista
 from .utils.lil import is_list_of_lil, is_lil
 from .utils.convolution import _choose_convolve_multi
-from .cython import _fast_compute_ztz, _fast_compute_ztx
-from .utils.compute_constants import compute_DtD, compute_ZtZ, compute_ZtX
+from .cython import _fast_compute_ztz, _fast_compute_ztX
+from .utils.compute_constants import compute_DtD, compute_ztz, compute_ztX
 from .cython.coordinate_descent import update_dz_opt, subtract_zhat_to_beta
 
 
 def update_z_multi(X, D, reg, z0=None, debug=False, parallel=None,
                    solver='l_bfgs', solver_kwargs=dict(), loss='l2',
                    loss_params=dict(), freeze_support=False, timing=False):
-    """Update Z using L-BFGS with positivity constraints
+    """Update z using L-BFGS with positivity constraints
 
     Parameters
     ----------
@@ -84,17 +84,17 @@ def update_z_multi(X, D, reg, z0=None, debug=False, parallel=None,
     # Initialize return args
     z_hats, pobj, times = [], [], []
     ztz = np.zeros((n_atoms, n_atoms, 2 * n_times_atom - 1))
-    ztx = np.zeros((n_atoms, n_channels, n_times_atom))
-    for z_hat, ztz_i, ztx_i, pobj_i, times_i in results:
+    ztX = np.zeros((n_atoms, n_channels, n_times_atom))
+    for z_hat, ztz_i, ztX_i, pobj_i, times_i in results:
         z_hats.append(z_hat), pobj.append(pobj_i), times.append(times_i)
         ztz += ztz_i
-        ztx += ztx_i
+        ztX += ztX_i
 
-    # If Z_hat is a ndarray, stack and reorder the columns
+    # If z_hat is a ndarray, stack and reorder the columns
     if not is_list_of_lil(z0):
         z_hats = np.array(z_hats).reshape(n_trials, n_atoms, n_times_valid)
 
-    return z_hats, ztz, ztx
+    return z_hats, ztz, ztX
 
 
 class BoundGenerator(object):
@@ -226,13 +226,13 @@ def _update_z_multi_idx(X_i, D, reg, z0_i, debug, solver="l_bfgs",
     if not is_lil(z_hat):
 
         z_hat = z_hat.reshape(n_atoms, n_times_valid)
-        ztz = compute_ZtZ(z_hat[None], n_times_atom)
-        ztx = compute_ZtX(z_hat[None], X_i[None])
+        ztz = compute_ztz(z_hat[None], n_times_atom)
+        ztX = compute_ztX(z_hat[None], X_i[None])
     else:
         ztz = _fast_compute_ztz([z_hat], n_times_atom)
-        ztx = _fast_compute_ztx([z_hat], X_i[None])
+        ztX = _fast_compute_ztX([z_hat], X_i[None])
 
-    return z_hat, ztz, ztx, pobj, times
+    return z_hat, ztz, ztX, pobj, times
 
 
 def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,

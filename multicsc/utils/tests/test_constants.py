@@ -4,7 +4,7 @@ import numpy as np
 
 from multicsc.utils import check_random_state, get_D
 from multicsc.utils.whitening import whitening, apply_whitening
-from multicsc.utils.compute_constants import compute_DtD, compute_ZtZ
+from multicsc.utils.compute_constants import compute_DtD, compute_ztz
 from multicsc.utils.convolution import tensordot_convolve, construct_X_multi
 
 
@@ -24,7 +24,7 @@ def test_DtD():
 
 
 @pytest.mark.parametrize('use_whitening', [False, True])
-def test_ZtZ(use_whitening):
+def test_ztz(use_whitening):
     n_atoms = 7
     n_trials = 3
     n_channels = 5
@@ -36,24 +36,24 @@ def test_ZtZ(use_whitening):
     rng = check_random_state(random_state)
 
     X = rng.randn(n_trials, n_channels, n_times)
-    Z = rng.randn(n_trials, n_atoms, n_times_valid)
+    z = rng.randn(n_trials, n_atoms, n_times_valid)
     D = rng.randn(n_atoms, n_channels, n_times_atom)
 
     if use_whitening:
         ar_model, X = whitening(X)
-        Zw = apply_whitening(ar_model, Z, mode="full")
-        ZtZ = compute_ZtZ(Zw, n_times_atom)
+        zw = apply_whitening(ar_model, z, mode="full")
+        ztz = compute_ztz(zw, n_times_atom)
         grad = np.zeros(D.shape)
         for t in range(n_times_atom):
-            grad[:, :, t] = np.tensordot(ZtZ[:, :, t:t + n_times_atom],
+            grad[:, :, t] = np.tensordot(ztz[:, :, t:t + n_times_atom],
                                          D[:, :, ::-1],
                                          axes=([1, 2], [0, 2]))
     else:
-        ZtZ = compute_ZtZ(Z, n_times_atom)
-        grad = tensordot_convolve(ZtZ, D)
+        ztz = compute_ztz(z, n_times_atom)
+        grad = tensordot_convolve(ztz, D)
     cost = np.dot(D.ravel(), grad.ravel())
 
-    X_hat = construct_X_multi(Z, D)
+    X_hat = construct_X_multi(z, D)
     if use_whitening:
         X_hat = apply_whitening(ar_model, X_hat, mode="full")
 

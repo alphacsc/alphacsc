@@ -60,7 +60,7 @@ The penalty parameter `reg` controls the sparsity in the activations estimated.
 
 >>> from multicsc import learn_d_z
 >>> n_atoms, n_times_atom, n_iter = 2, 64, 60
->>> pobj, times, d_hat, Z_hat = learn_d_z(X, n_atoms, n_times_atom, reg=reg, n_iter=n_iter)  # doctest: +SKIP
+>>> pobj, times, d_hat, z_hat = learn_d_z(X, n_atoms, n_times_atom, reg=reg, n_iter=n_iter)  # doctest: +SKIP
 
 Bug reports
 ===========

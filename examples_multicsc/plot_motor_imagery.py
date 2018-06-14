@@ -49,7 +49,7 @@ plt.close('all')
 callback = plot_callback(X, epochs.info, n_atoms, layout=layout)
 
 
-pobj, times, uv_hat, Z_hat = learn_d_z_multi(
+pobj, times, uv_hat, z_hat = learn_d_z_multi(
     X, n_atoms, n_times_atom, random_state=42, n_iter=60, n_jobs=1, reg=5e-2,
     eps=1e-10, solver_z_kwargs={'factr': 1e12},
     solver_d_kwargs={'max_iter': 300}, uv_constraint='separate',

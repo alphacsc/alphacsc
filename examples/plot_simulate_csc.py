@@ -33,7 +33,7 @@ reg = 0.1
 from multicsc.simulate import simulate_data # noqa
 
 random_state_simulate = 1
-X, ds_true, Z_true = simulate_data(n_trials, n_times, n_times_atom,
+X, ds_true, z_true = simulate_data(n_trials, n_times, n_times_atom,
                                    n_atoms, random_state_simulate)
 
 ###############################################################################
@@ -68,7 +68,7 @@ from multicsc import learn_d_z # noqa
 
 random_state = 60
 
-pobj, times, d_hat, Z_hat = learn_d_z(
+pobj, times, d_hat, z_hat = learn_d_z(
     X, n_atoms, n_times_atom, reg=reg, n_iter=n_iter,
     solver_d_kwargs=dict(factr=100), random_state=random_state,
     n_jobs=1, verbose=1)
@@ -85,7 +85,7 @@ plt.plot(ds_true.T, 'k--')
 ###############################################################################
 # We can also visualize the learned activations
 
-plot_data([Z[:10] for Z in Z_hat], ['stem'] * n_atoms)
+plot_data([z[:10] for z in z_hat], ['stem'] * n_atoms)
 
 ###############################################################################
 # Note if the data is corrupted with impulsive noise, this method may not
@@ -98,7 +98,7 @@ noise_level = 0.005
 X[idx_corrupted] += levy_stable.rvs(alpha, 0, loc=0, scale=noise_level,
                                     size=(n_corrupted_trials, n_times),
                                     random_state=random_state_simulate)
-pobj, times, d_hat, Z_hat = learn_d_z(
+pobj, times, d_hat, z_hat = learn_d_z(
     X, n_atoms, n_times_atom, reg=reg, n_iter=n_iter,
     solver_d_kwargs=dict(factr=100), random_state=random_state,
     n_jobs=1, verbose=1)

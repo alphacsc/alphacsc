@@ -44,14 +44,14 @@ D = get_D(uv, n_channels)
 
 # add atoms
 rng = np.random.RandomState(27)
-shape_Z = (n_atoms, n_trials, n_times_atom)
-Z = get_activations(rng, shape_Z)
+shape_z = (n_atoms, n_trials, n_times_atom)
+z = get_activations(rng, shape_z)
 
 
 fig, axes = plt.subplots(nrows=2, num='atoms', figsize=(10, 8))
 
 
-def callback(X, uv_hat, Z_hat, reg):
+def callback(X, uv_hat, z_hat, reg):
     if axes[0].lines == []:
         axes[0].plot(uv_hat[:, :n_channels].T)
         axes[1].plot(uv_hat[:, n_channels:].T)
@@ -70,12 +70,12 @@ def callback(X, uv_hat, Z_hat, reg):
     plt.pause(0.001)
 
 
-X = construct_X_multi(Z, uv, n_channels=n_channels)
+X = construct_X_multi(z, uv, n_channels=n_channels)
 
 pobjs, uv_hats = list(), list()
 
 for random_state in range(n_states):
-    pobj, times, uv_hat, Z_hat = learn_d_z_multi(
+    pobj, times, uv_hat, z_hat = learn_d_z_multi(
         X, n_atoms, n_times_atom, random_state=random_state, callback=callback,
         n_iter=n_iter, n_jobs=1, reg=reg, uv_constraint='separate',
         solver_d='alternate_adaptive', solver_z="l_bfgs",
@@ -108,7 +108,7 @@ for i, d_hat in enumerate(D_hat):
     plt.plot(d_hat.T, 'r')
     plt.plot(D[i].T, 'k--')
 
-X_hat = construct_X_multi(Z_hat, uv_hats[best_state], n_channels=n_channels)
+X_hat = construct_X_multi(z_hat, uv_hats[best_state], n_channels=n_channels)
 
 plt.figure("X")
 plt.plot(X[0, 0])

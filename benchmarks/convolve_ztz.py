@@ -15,12 +15,12 @@ memory = Memory(cachedir='', verbose=0)
 
 
 @jit((numba.float64[:, :, :], numba.float64[:, :]), cache=True)
-def numpy_convolve_uv(ZtZ, uv):
-    """Compute the multivariate (valid) convolution of ZtZ and D
+def numpy_convolve_uv(ztz, uv):
+    """Compute the multivariate (valid) convolution of ztz and D
 
     Parameters
     ----------
-    ZtZ: array, shape = (n_atoms, n_atoms, 2 * n_times_atom - 1)
+    ztz: array, shape = (n_atoms, n_atoms, 2 * n_times_atom - 1)
         Activations
     uv: array, shape = (n_atoms, n_channels + n_times_atom)
         Dictionnary
@@ -31,8 +31,8 @@ def numpy_convolve_uv(ZtZ, uv):
         Gradient
     """
     assert uv.ndim == 2
-    n_times_atom = (ZtZ.shape[2] + 1) // 2
-    n_atoms = ZtZ.shape[0]
+    n_times_atom = (ztz.shape[2] + 1) // 2
+    n_atoms = ztz.shape[0]
     n_channels = uv.shape[1] - n_times_atom
 
     u = uv[:, :n_channels]
@@ -42,19 +42,19 @@ def numpy_convolve_uv(ZtZ, uv):
     for k0 in range(n_atoms):
         for k1 in range(n_atoms):
             G[k0, :, :] += (
-                np.convolve(ZtZ[k0, k1], v[k1], mode='valid')[None, :]
+                np.convolve(ztz[k0, k1], v[k1], mode='valid')[None, :]
                 * u[k1, :][:, None])
 
     return G
 
 
 @jit((numba.float64[:, :, :], numba.float64[:, :]), cache=True, nopython=True)
-def numpy_convolve_uv_nopython(ZtZ, uv):
-    """Compute the multivariate (valid) convolution of ZtZ and D
+def numpy_convolve_uv_nopython(ztz, uv):
+    """Compute the multivariate (valid) convolution of ztz and D
 
     Parameters
     ----------
-    ZtZ: array, shape = (n_atoms, n_atoms, 2 * n_times_atom - 1)
+    ztz: array, shape = (n_atoms, n_atoms, 2 * n_times_atom - 1)
         Activations
     uv: array, shape = (n_atoms, n_channels + n_times_atom)
         Dictionnary
@@ -65,8 +65,8 @@ def numpy_convolve_uv_nopython(ZtZ, uv):
         Gradient
     """
     assert uv.ndim == 2
-    n_times_atom = (ZtZ.shape[2] + 1) // 2
-    n_atoms = ZtZ.shape[0]
+    n_times_atom = (ztz.shape[2] + 1) // 2
+    n_atoms = ztz.shape[0]
     n_channels = uv.shape[1] - n_times_atom
 
     u = uv[:, :n_channels]
@@ -77,7 +77,7 @@ def numpy_convolve_uv_nopython(ZtZ, uv):
         for k1 in range(n_atoms):
             for t in range(n_times_atom):
                 G[k0, :, t] += (
-                    np.sum(ZtZ[k0, k1, t:t + n_times_atom] * v[k1]) * u[k1, :])
+                    np.sum(ztz[k0, k1, t:t + n_times_atom] * v[k1]) * u[k1, :])
 
     return G
 
@@ -91,23 +91,23 @@ all_func = [
 
 def test_equality():
     n_atoms, n_channels, n_times_atom = 5, 10, 50
-    ZtZ = np.random.randn(n_atoms, n_atoms, 2 * n_times_atom - 1)
+    ztz = np.random.randn(n_atoms, n_atoms, 2 * n_times_atom - 1)
     uv = np.random.randn(n_atoms, n_channels + n_times_atom)
 
-    reference = all_func[0](ZtZ, uv)
+    reference = all_func[0](ztz, uv)
     for func in all_func:
 
-        assert np.allclose(func(ZtZ, uv), reference)
+        assert np.allclose(func(ztz, uv), reference)
 
 
 @memory.cache
 def run_one(n_atoms, n_channels, n_times_atom, func):
 
-    ZtZ = np.random.randn(n_atoms, n_atoms, 2 * n_times_atom - 1)
+    ztz = np.random.randn(n_atoms, n_atoms, 2 * n_times_atom - 1)
     uv = np.random.randn(n_atoms, n_channels + n_times_atom)
 
     start = time.time()
-    func(ZtZ, uv)
+    func(ztz, uv)
     duration = time.time() - start
     label = func.__name__
     if label[0] == '_':

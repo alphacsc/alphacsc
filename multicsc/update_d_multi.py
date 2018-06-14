@@ -9,11 +9,11 @@
 import numpy as np
 from scipy import optimize
 
-from .utils.lil import get_Z_shape, is_list_of_lil
+from .utils.lil import get_z_shape, is_list_of_lil
 from .utils.optim import fista, power_iteration
 from .utils.convolution import numpy_convolve_uv
-from .utils.compute_constants import compute_ZtZ, compute_ZtX
-from .cython import _fast_compute_ztz, _fast_compute_ztx
+from .utils.compute_constants import compute_ztz, compute_ztX
+from .cython import _fast_compute_ztz, _fast_compute_ztX
 
 from .loss_and_gradient import compute_objective, compute_X_and_objective_multi
 from .loss_and_gradient import gradient_uv, gradient_d
@@ -60,7 +60,7 @@ def prox_d(D, return_norm=False):
         return D
 
 
-def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
+def update_uv(X, z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
               solver_d='alternate', momentum=False, uv_constraint='separate',
               loss='l2', loss_params=dict(), verbose=0):
     """Learn d's in time domain.
@@ -69,7 +69,7 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
     ----------
     X : array, shape (n_trials, n_channels, n_times)
         The data for sparse coding
-    Z : array, shape (n_trials, n_atoms, n_times - n_times_atom + 1)
+    z : array, shape (n_trials, n_atoms, n_times - n_times_atom + 1)
         Can also be a list of n_trials LIL-sparse matrix of shape
             (n_atoms, n_times - n_times_atom + 1)
         The code for which to learn the atoms
@@ -103,7 +103,7 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
     uv_hat : array, shape (n_atoms, n_channels + n_times_atom)
         The atoms to learn from the data.
     """
-    n_trials, n_atoms, n_times_valid = get_Z_shape(Z)
+    n_trials, n_atoms, n_times_valid = get_z_shape(z)
     _, n_channels, n_times = X.shape
 
     if solver_d == 'lbfgs':
@@ -114,14 +114,14 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
         assert uv_constraint == 'separate', msg
 
     if loss == 'l2':
-        constants = _get_d_update_constants(X, Z)
+        constants = _get_d_update_constants(X, z)
     else:
         constants = None
 
     def objective(uv):
         if loss == 'l2':
             return compute_objective(D=uv, constants=constants)
-        return compute_X_and_objective_multi(X, Z, D_hat=uv, loss=loss,
+        return compute_X_and_objective_multi(X, z, D_hat=uv, loss=loss,
                                              loss_params=loss_params,
                                              feasible_evaluation=False)
 
@@ -129,7 +129,7 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
         # use FISTA on joint [u, v], with an adaptive step size
 
         def grad(uv):
-            return gradient_uv(uv=uv, X=X, Z=Z, constants=constants, loss=loss,
+            return gradient_uv(uv=uv, X=X, z=z, constants=constants, loss=loss,
                                loss_params=loss_params)
 
         def prox(uv):
@@ -161,7 +161,7 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
 
             def grad_u(u):
                 uv = np.c_[u, v_hat]
-                grad_d = gradient_d(uv, X=X, Z=Z, constants=constants,
+                grad_d = gradient_d(uv, X=X, z=z, constants=constants,
                                     loss=loss, loss_params=loss_params)
                 return (grad_d * uv[:, None, n_channels:]).sum(axis=2)
 
@@ -184,7 +184,7 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
 
             def grad_v(v):
                 uv = np.c_[u_hat, v]
-                grad_d = gradient_d(uv, X=X, Z=Z, constants=constants,
+                grad_d = gradient_d(uv, X=X, z=z, constants=constants,
                                     loss=loss, loss_params=loss_params)
                 return (grad_d * uv[:, :n_channels, None]).sum(axis=1)
 
@@ -247,7 +247,7 @@ def update_uv(X, Z, uv_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
     return uv_hat
 
 
-def update_d(X, Z, D_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
+def update_d(X, z, D_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
              solver_d='fista', momentum=False, uv_constraint='joint',
              loss='l2', loss_params=dict(), verbose=0):
     """Learn d's in time domain.
@@ -256,7 +256,7 @@ def update_d(X, Z, D_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
     ----------
     X : array, shape (n_trials, n_channels, n_times)
         The data for sparse coding
-    Z : array, shape (n_trials, n_atoms, n_times - n_times_atom + 1)
+    z : array, shape (n_trials, n_atoms, n_times - n_times_atom + 1)
         Can also be a list of n_trials LIL-sparse matrix of shape
             (n_atoms, n_times - n_times_atom + 1)
         The code for which to learn the atoms
@@ -284,25 +284,25 @@ def update_d(X, Z, D_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
     D_hat : array, shape (n_atoms, n_channels, n_times_atom)
         The atoms to learn from the data.
     """
-    n_trials, n_atoms, n_times_valid = get_Z_shape(Z)
+    n_trials, n_atoms, n_times_valid = get_z_shape(z)
     _, n_channels, n_times = X.shape
 
     if loss == 'l2':
-        constants = _get_d_update_constants(X, Z)
+        constants = _get_d_update_constants(X, z)
     else:
         constants = None
 
     def objective(D, full=False):
         if loss == 'l2':
             return compute_objective(D=D, constants=constants)
-        return compute_X_and_objective_multi(X, Z, D_hat=D, loss=loss,
+        return compute_X_and_objective_multi(X, z, D_hat=D, loss=loss,
                                              loss_params=loss_params)
 
     if solver_d == 'fista':
         # use FISTA on joint [u, v], with an adaptive step size
 
         def grad(D):
-            return gradient_d(D=D, X=X, Z=Z, constants=constants, loss=loss,
+            return gradient_d(D=D, X=X, z=z, constants=constants, loss=loss,
                               loss_params=loss_params)
 
         def prox(D):
@@ -341,23 +341,24 @@ def update_d(X, Z, D_hat0, b_hat_0=None, debug=False, max_iter=300, eps=None,
     return D_hat
 
 
-def _get_d_update_constants(X, Z):
-    n_trials, n_atoms, n_times_valid = get_Z_shape(Z)
+def _get_d_update_constants(X, z, ztX=None, ztz=None):
+    n_trials, n_atoms, n_times_valid = get_z_shape(z)
     n_trials, n_channels, n_times = X.shape
     n_times_atom = n_times - n_times_valid + 1
 
-    if is_list_of_lil(Z):
-        ZtX = _fast_compute_ztx(Z, X)
-        ZtZ = _fast_compute_ztz(Z, n_times_atom)
-    else:
-        ZtX = compute_ZtX(Z, X)
-        ZtZ = compute_ZtZ(Z, n_times_atom)
+    if ztz is None:
+        if is_list_of_lil(z):
+            ztX = _fast_compute_ztX(z, X)
+            ztz = _fast_compute_ztz(z, n_times_atom)
+        else:
+            ztX = compute_ztX(z, X)
+            ztz = compute_ztz(z, n_times_atom)
 
     constants = {}
-    constants['ZtX'] = ZtX
-    constants['ZtZ'] = ZtZ
+    constants['ztX'] = ztX
+    constants['ztz'] = ztz
     constants['n_channels'] = X.shape[1]
-    constants['XtX'] = np.sum(X * X)
+    constants['XtX'] = np.dot(X.ravel(), X.ravel())
     return constants
 
 
@@ -373,14 +374,14 @@ def compute_lipschitz(uv0, constants, variable, b_hat_0=None):
     def op_Hu(u):
         u = np.reshape(u, (n_atoms, n_channels))
         uv = np.c_[u, v0]
-        H_d = numpy_convolve_uv(constants['ZtZ'], uv)
+        H_d = numpy_convolve_uv(constants['ztz'], uv)
         H_u = (H_d * uv[:, None, n_channels:]).sum(axis=2)
         return H_u.ravel()
 
     def op_Hv(v):
         v = np.reshape(v, (n_atoms, n_times_atom))
         uv = np.c_[u0, v]
-        H_d = numpy_convolve_uv(constants['ZtZ'], uv)
+        H_d = numpy_convolve_uv(constants['ztz'], uv)
         H_v = (H_d * uv[:, :n_channels, None]).sum(axis=1)
         return H_v.ravel()
 

@@ -16,7 +16,7 @@ COLORS = ["#4C72B0", "#55A868", "#C44E52", "#8172B2", "#CCB974", "#64B5CD"]
 
 DEFAULT_CB = {
     'atom': {},
-    'Zhat': {},
+    'z_hat': {},
     'pobj': {}
 }
 PRINT_KWARGS = {
@@ -40,13 +40,13 @@ def kde_sklearn(x, x_grid, bandwidth):
     return np.convolve(x, window, 'same')
 
 
-def plot_activations_density(Z_hat, n_times_atom, sfreq=1., threshold=0.01,
+def plot_activations_density(z_hat, n_times_atom, sfreq=1., threshold=0.01,
                              bandwidth='auto', axes=None, t_min=0,
                              plot_activations=False, colors=None):
     """
     Parameters
     ----------
-    Z_hat : array, shape (n_atoms, n_trials, n_times_valid)
+    z_hat : array, shape (n_atoms, n_trials, n_times_valid)
         The sparse activation matrix.
     n_times_atom : int
         The support of the atom.
@@ -65,10 +65,10 @@ def plot_activations_density(Z_hat, n_times_atom, sfreq=1., threshold=0.01,
     colors : list of matplotlib compatible colors
         Colors of the plots
     """
-    n_atoms, n_trials, n_times_valid = Z_hat.shape
+    n_atoms, n_trials, n_times_valid = z_hat.shape
 
     # sum activations over all trials
-    Z_hat_sum = Z_hat.sum(axis=1)
+    z_hat_sum = z_hat.sum(axis=1)
 
     if bandwidth == 'auto':
         bandwidth = n_times_atom
@@ -80,10 +80,10 @@ def plot_activations_density(Z_hat, n_times_atom, sfreq=1., threshold=0.01,
 
     if colors is None:
         colors = itertools.cycle(COLORS)
-    for ax, activations, color in zip(axes.ravel(), Z_hat_sum, colors):
+    for ax, activations, color in zip(axes.ravel(), z_hat_sum, colors):
         ax.clear()
         time_instants = np.arange(n_times_valid) / float(sfreq) + t_min
-        selection = activations > threshold * Z_hat_sum.max()
+        selection = activations > threshold * z_hat_sum.max()
         n_elements = selection.sum()
 
         if n_elements == 0:
@@ -106,11 +106,11 @@ def plot_activations_density(Z_hat, n_times_atom, sfreq=1., threshold=0.01,
 
 def try_plot_activations_density():
     """Just try it"""
-    Z_hat = np.random.randn(3, 1, 1000)
-    Z_hat[Z_hat < 2] = 0
-    Z_hat[:, :, :500] /= 6.
+    z_hat = np.random.randn(3, 1, 1000)
+    z_hat[z_hat < 2] = 0
+    z_hat[:, :, :500] /= 6.
 
-    plot_activations_density(Z_hat, 150, plot_activations=True)
+    plot_activations_density(z_hat, 150, plot_activations=True)
     plt.show()
 
 
@@ -124,7 +124,7 @@ def plot_data(X, plot_types=None):
         E.g., one could give [X, X_hat]
     plot_types : list of str
         If None, plt.plot for all.
-        E.g., plot_data([X, Z], ['plot', 'stem'])
+        E.g., plot_data([X, z], ['plot', 'stem'])
     """
     import matplotlib.pyplot as plt
 
@@ -176,22 +176,22 @@ def plot_callback(X, info, n_atoms, layout=None):
     n_atoms_plot = min(15, n_atoms)
 
     fig, axes = plt.subplots(nrows=n_atoms, num='atoms', figsize=(10, 8))
-    fig_Z, axes_Z = plt.subplots(nrows=n_atoms, num='Z', figsize=(10, 8),
+    fig_z, axes_z = plt.subplots(nrows=n_atoms, num='z', figsize=(10, 8),
                                  sharex=True, sharey=True)
     fig_topo, axes_topo = plt.subplots(1, n_atoms_plot, figsize=(12, 3))
 
     if n_atoms == 1:
         axes_topo, axes = [axes_topo], [axes]
         if n_trials == 1:
-            axes_Z = [axes_Z]
+            axes_z = [axes_z]
 
     if layout is None:
         layout = mne.channels.find_layout(info)
 
-    def callback(X, uv_hat, Z_hat, reg):
-        n_times_valid = Z_hat.shape[-1]
+    def callback(X, uv_hat, z_hat, reg):
+        n_times_valid = z_hat.shape[-1]
         n_times_atom = uv_hat.shape[1] - n_channels
-        times_Z = np.arange(n_times_valid) / info['sfreq']
+        times_z = np.arange(n_times_valid) / info['sfreq']
         times_v = np.arange(n_times_atom) / info['sfreq']
 
         this_info = cp.deepcopy(info)
@@ -212,28 +212,28 @@ def plot_callback(X, info, n_atoms, layout=None):
                 ax.relim()  # make sure all the data fits
                 ax.autoscale_view(True, True, True)
         if n_trials == 1:
-            if axes_Z[0].lines == []:
+            if axes_z[0].lines == []:
                 for k in range(n_atoms):
-                    axes_Z[k].plot(times_Z, Z_hat[k, 0])
-                    axes_Z[k].grid(True)
+                    axes_z[k].plot(times_z, z_hat[0, k])
+                    axes_z[k].grid(True)
             else:
-                for ax, z in zip(axes_Z, Z_hat[:, 0]):
+                for ax, z in zip(axes_z, z_hat[0, :]):
                     ax.lines[0].set_ydata(z)
                     ax.relim()  # make sure all the data fits
                     ax.autoscale_view(True, True, True)
         else:
-            extent = [times_Z[0], times_Z[-1], 1, len(Z_hat[0])]
+            extent = [times_z[0], times_z[-1], 1, len(z_hat[0])]
             for k in range(n_atoms):
-                im = axes_Z[k].imshow(Z_hat[k], cmap='hot', origin='lower',
+                im = axes_z[k].imshow(z_hat[:, k], cmap='hot', origin='lower',
                                       extent=extent,
-                                      clim=(0.0, Z_hat.max()), aspect='auto')
-            fig_Z.subplots_adjust(right=0.8)
-            cbar_ax = fig_Z.add_axes([0.86, 0.10, 0.03, 0.8])
-            fig_Z.colorbar(im, ax=None, cax=cbar_ax)
+                                      clim=(0.0, z_hat.max()), aspect='auto')
+            fig_z.subplots_adjust(right=0.8)
+            cbar_ax = fig_z.add_axes([0.86, 0.10, 0.03, 0.8])
+            fig_z.colorbar(im, ax=None, cax=cbar_ax)
 
         fig.canvas.draw()
         fig_topo.canvas.draw()
-        fig_Z.canvas.draw()
+        fig_z.canvas.draw()
         plt.pause(.001)
 
     return callback
@@ -280,7 +280,7 @@ def get_callback_csc(csc_kwargs, config=DEFAULT_CB, info={}):
     info : dict
         Information on the signal.
     config : dict
-        The key should be in {'atom', 'Xhat', 'Zhat', 'topo'}. and the value
+        The key should be in {'atom', 'Xhat', 'z_hat', 'topo'}. and the value
         should be a configuration dictionary. The considered config are:
             'share': If True, share X and Y axis for all the axes.
             'info': Required for 'topo', should be the epoch.info.
@@ -323,7 +323,7 @@ def get_callback_csc(csc_kwargs, config=DEFAULT_CB, info={}):
 
     figs = {}
     for name, conf in config.items():
-        assert name in ['atom', 'Zhat', 'Xhat', 'topo', 'pobj']
+        assert name in ['atom', 'z_hat', 'Xhat', 'topo', 'pobj']
 
         fname = "{} - {}".format(name, os.getpid())
         shared_axes = conf.get('share', True)
@@ -354,7 +354,7 @@ def get_callback_csc(csc_kwargs, config=DEFAULT_CB, info={}):
         f.canvas.draw()
     plt.pause(.001)
 
-    def callback(X, uv_hat, Z_hat, pobj):
+    def callback(X, uv_hat, z_hat, pobj):
 
         n_channels = X.shape[1]
 
@@ -376,14 +376,14 @@ def get_callback_csc(csc_kwargs, config=DEFAULT_CB, info={}):
                     [uv_hat[k, i0[k]] for k in range(n_atoms)], axes)
 
         if 'Xhat' in figs:
-            X_hat = [np.convolve(Zk, uvk[n_channels:])
-                     for Zk, uvk in zip(Z_hat[:, 0], uv_hat)]
+            X_hat = [np.convolve(z_k, uvk[n_channels:])
+                     for z_k, uvk in zip(z_hat[0], uv_hat)]
             axes = figs['Xhat'][1].ravel()
             plot_or_replot(X_hat, axes)
 
-        if 'Zhat' in figs:
-            axes = figs['Zhat'][1]
-            plot_activations_density(Z_hat, n_times_atom, sfreq=sfreq,
+        if 'z_hat' in figs:
+            axes = figs['z_hat'][1]
+            plot_activations_density(z_hat, n_times_atom, sfreq=sfreq,
                                      plot_activations=False, axes=axes,
                                      bandwidth='auto', t_min=t_min)
 

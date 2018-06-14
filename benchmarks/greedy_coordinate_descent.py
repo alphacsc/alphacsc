@@ -27,10 +27,10 @@ def _general_cd(X, D, reg, n_iter, strategy, n_seg):
     solver_kwargs = dict(strategy=strategy, n_seg=n_seg, max_iter=max_iter,
                          tol=tol)
 
-    Z, pobj, times = _update_z_multi_idx(
+    z, pobj, times = _update_z_multi_idx(
         X, D, reg=reg, z0=None, idxs=np.arange(n_trials), debug=False,
         solver='gcd', timing=True, solver_kwargs=solver_kwargs)
-    return Z, pobj, times
+    return z, pobj, times
 
 
 def gcd(X, D, reg, n_iter):
@@ -61,24 +61,24 @@ def _other_solver(X, D, reg, n_iter, solver, solver_kwargs):
     n_trials, n_channels, n_times = X.shape
     n_atoms, n_channels, n_times_atom = D.shape
     n_times_valid = n_times - n_times_atom + 1
-    Z0 = np.zeros((n_atoms, 1, n_times_valid))
+    z0 = np.zeros((n_atoms, 1, n_times_valid))
 
-    Z, pobj, times = _update_z_multi_idx(
-        X, D, reg, Z0, idxs=np.arange(n_trials), debug=False, solver=solver,
+    z, pobj, times = _update_z_multi_idx(
+        X, D, reg, z0, idxs=np.arange(n_trials), debug=False, solver=solver,
         solver_kwargs=solver_kwargs, timing=True)
 
-    return Z, pobj, times
+    return z, pobj, times
 
 
 def lbfgs(X, D, reg, n_iter):
     solver = 'l_bfgs'
     solver_kwargs = dict(factr=1e1, maxiter=n_iter - 1)
 
-    Z, pobj, times = _other_solver(X, D, reg, n_iter, solver, solver_kwargs)
+    z, pobj, times = _other_solver(X, D, reg, n_iter, solver, solver_kwargs)
     # Issue: The check in lbfgs of parameter 'bounds'
     # (which change np.inf into None) adds an small overhead.
 
-    return Z, pobj, times
+    return z, pobj, times
 
 
 def ista(X, D, reg, n_iter):
@@ -108,7 +108,7 @@ all_func = [
 
 
 def run_one(func, n_times, n_atoms, n_times_atom, reg, n_iter, X, D):
-    Z, pobj, times = func(X, D, reg, n_iter)
+    z, pobj, times = func(X, D, reg, n_iter)
     times = np.cumsum(times)
 
     return (func.__name__, n_times, n_atoms, n_times_atom, reg, times, pobj)

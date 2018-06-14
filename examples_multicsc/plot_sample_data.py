@@ -9,7 +9,7 @@ info = mne.io.read_info('examples_multicsc/info_sample.fif')
 n_channels = data['n_channels']
 uv_hat = data['uv_hat']
 sfreq = data['sfreq']
-Z_hat = data['Z_hat']
+z_hat = data['z_hat']
 
 n_times_atom = uv_hat.shape[-1] - n_channels
 
@@ -27,8 +27,8 @@ for idx, atom_idx in enumerate(atoms_idx):
 
     ax2 = plt.subplot2grid((len(atoms_idx), 9), (idx, 3), colspan=4)
     ax2.grid('on', linestyle='-', alpha=0.3)
-    times_Z = np.arange(2231, 6693) / sfreq
-    ax2.plot(times_Z, Z_hat[atom_idx, 0, 2231:6693],
+    times_z = np.arange(2231, 6693) / sfreq
+    ax2.plot(times_z, z_hat[atom_idx, 0, 2231:6693],
              color=COLORS[idx % len(COLORS)])
     ax2.set_ylim(0, 0.2)
 

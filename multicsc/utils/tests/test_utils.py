@@ -69,22 +69,22 @@ def test_patch_reconstruction_error():
     n_trials, n_channels = 29, 7
     n_times_valid = n_times - n_times_atoms + 1
     density = 0.1
-    Z = sparse.random(n_atoms * n_trials, n_times_valid, density,
+    z = sparse.random(n_atoms * n_trials, n_times_valid, density,
                       random_state=rng).toarray().reshape(
                           (n_trials, n_atoms, n_times_valid))
     uv = rng.randn(n_atoms, n_channels + n_times_atoms)
 
-    X = construct_X_multi(Z, D=uv, n_channels=n_channels)
+    X = construct_X_multi(z, D=uv, n_channels=n_channels)
 
     from multicsc.utils.dictionary import _patch_reconstruction_error
 
-    rec = _patch_reconstruction_error(X, Z, uv)
+    rec = _patch_reconstruction_error(X, z, uv)
     assert rec.shape == (n_trials, n_times_valid)
     assert_allclose(rec, 0)
 
     uv = rng.randn(n_atoms, n_channels + n_times_atoms)
-    rec = _patch_reconstruction_error(X, Z, uv)
-    X_hat = construct_X_multi(Z, D=uv, n_channels=n_channels)
+    rec = _patch_reconstruction_error(X, z, uv)
+    X_hat = construct_X_multi(z, D=uv, n_channels=n_channels)
 
     for i in range(10):
         for j in range(10):

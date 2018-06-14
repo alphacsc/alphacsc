@@ -47,15 +47,15 @@ def simulate_data(n_trials, n_times, n_times_atom, n_atoms, random_state=42,
         ds[idx, :] = get_atoms(shape, n_times_atom, n_cycles=n_cycles)
     ds /= np.linalg.norm(ds, axis=1)[:, None]
 
-    Z = get_activations(rng, (n_atoms, n_trials, n_times - n_times_atom + 1),
+    z = get_activations(rng, (n_atoms, n_trials, n_times - n_times_atom + 1),
                         constant_amplitude=constant_amplitude)
-    X = construct_X(Z, ds)
+    X = construct_X(z, ds)
 
     assert X.shape == (n_trials, n_times)
-    assert Z.shape == (n_atoms, n_trials, n_times - n_times_atom + 1)
+    assert z.shape == (n_atoms, n_trials, n_times - n_times_atom + 1)
     assert ds.shape == (n_atoms, n_times_atom)
 
-    return X, ds, Z
+    return X, ds, z
 
 
 def cycler(n_atoms, n_times_atom):
@@ -70,22 +70,22 @@ def cycler(n_atoms, n_times_atom):
             break
 
 
-def get_activations(rng, shape_Z, constant_amplitude=False):
+def get_activations(rng, shape_z, constant_amplitude=False):
     starts = list()
-    n_atoms, n_trials, n_times_valid = shape_Z
+    n_atoms, n_trials, n_times_valid = shape_z
     for idx in range(n_atoms):
         starts.append(rng.randint(low=0, high=n_times_valid,
                       size=(n_trials,)))
     # add activations
-    Z = np.zeros(shape_Z)
+    z = np.zeros(shape_z)
     for i in range(n_trials):
         for k_idx, start in enumerate(starts):
             if constant_amplitude:
                 randnum = 1.
             else:
                 randnum = rng.uniform()
-            Z[k_idx, i, starts[k_idx][i]] = randnum
-    return Z
+            z[k_idx, i, starts[k_idx][i]] = randnum
+    return z
 
 
 def get_atoms(shape, n_times_atom, zero_mean=True, n_cycles=1):

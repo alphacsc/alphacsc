@@ -54,7 +54,7 @@ n_iter = 50
 random_state = 42
 
 print('fitting CSC model...')
-pobj, times, uv_hat, Z_hat = learn_d_z_multi(
+pobj, times, uv_hat, z_hat = learn_d_z_multi(
     X=X_white,
     n_iter=n_iter,
     solver_d='joint',

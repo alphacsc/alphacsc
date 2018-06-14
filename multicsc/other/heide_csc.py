@@ -58,7 +58,7 @@ def update_d(z_hat, d_hat, size_z, size_x, rho, d, v_D,
 
 
 def update_z(z, z_hat, d_hat, u_Z, v_Z, d_Z, lambdas,
-             gammas_Z, Mtb, M, size_x, size_z, xi_Z, xi_Z_hat, b,
+             gammas_Z, Mtb, M, size_x, size_z, xi_Z, xi_z_hat, b,
              lambda_prior, lambda_residual, psf_radius, verbose, max_it_z):
     """Z-STEP"""
     # Precompute what is necessary for later
@@ -91,12 +91,12 @@ def update_z(z, z_hat, d_hat, u_Z, v_Z, d_Z, lambdas,
         xi_Z[0] = u_Z[0] + d_Z[0]
         xi_Z[1] = u_Z[1] + d_Z[1]
 
-        xi_Z_hat[0] = fft(xi_Z[0])
-        xi_Z_hat[1] = fft(xi_Z[1])
+        xi_z_hat[0] = fft(xi_Z[0])
+        xi_z_hat[1] = fft(xi_Z[1])
 
         # Solve convolutional inverse
         z_hat = solve_conv_term_Z(
-            dhatT_flat, dhatTdhat_flat, xi_Z_hat, gammas_Z, size_z)
+            dhatT_flat, dhatTdhat_flat, xi_z_hat, gammas_Z, size_z)
         z = np.real(ifft(z_hat))
 
     return z, z_hat
@@ -192,7 +192,7 @@ def learn_conv_sparse_coder(b, size_kernel, max_it, tol,
     xi_Z = [np.zeros(varsize_Z[0], dtype=real_type),
             np.zeros(varsize_Z[1], dtype=real_type)]
 
-    xi_Z_hat = [np.zeros(varsize_Z[0], dtype=imaginary_type),
+    xi_z_hat = [np.zeros(varsize_Z[0], dtype=imaginary_type),
                 np.zeros(varsize_Z[1], dtype=imaginary_type)]
 
     u_Z = [np.zeros(varsize_Z[0], dtype=real_type),
@@ -230,7 +230,7 @@ def learn_conv_sparse_coder(b, size_kernel, max_it, tol,
         start = time.time()
         z, z_hat = update_z(
             z, z_hat, d_hat, u_Z, v_Z, d_Z, lambdas,
-            gammas_Z, Mtb, M, size_x, size_z, xi_Z, xi_Z_hat, b,
+            gammas_Z, Mtb, M, size_x, size_z, xi_Z, xi_z_hat, b,
             lambda_prior, lambda_residual, psf_radius, verbose, max_it_z)
         times.append(time.time() - start)
 
@@ -329,7 +329,7 @@ def precompute_D_step(z_hat, size_z, rho, verbose):
         (zhat_mat.shape[0], n, n), dtype=imaginary_type)
     z_hat_mat_t = np.transpose(np.ma.conjugate(zhat_mat), [0, 2, 1])
 
-    # Compute Z_hat * Z_hat^T for each pixel
+    # Compute z_hat * z_hat^T for each pixel
     z_hat_z_hat_t = np.einsum('knm,kmj->knj', zhat_mat, z_hat_mat_t)
 
     for i in range(zhat_mat.shape[0]):
@@ -481,6 +481,6 @@ def construct_X(Z, ds):
     return X
 
 
-def objective(X, X_hat, Z_hat, reg):
-    obj = 0.5 * linalg.norm(X - X_hat, 'fro')**2 + reg * Z_hat.sum()
+def objective(X, X_hat, z_hat, reg):
+    obj = 0.5 * linalg.norm(X - X_hat, 'fro')**2 + reg * z_hat.sum()
     return obj

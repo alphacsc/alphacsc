@@ -68,9 +68,9 @@ def _run(random_state, reg, **kwargs):
         **kwargs)
 
     _, _, uv_init, _ = learn_d_z_multi(n_iter=0, **params)
-    pobj, times, uv_hat, Z_hat = learn_d_z_multi(n_iter=n_iter, **params)
+    pobj, times, uv_hat, z_hat = learn_d_z_multi(n_iter=n_iter, **params)
 
-    return pobj, times, uv_hat, Z_hat, uv_init
+    return pobj, times, uv_hat, z_hat, uv_init
 
 
 def one_run(method, random_state, reg):
@@ -97,7 +97,7 @@ labels = [
 
 
 def plot_psd_final(res, ax, i_atom):
-    pobj, times, uv_hat, Z_hat, uv_init = res
+    pobj, times, uv_hat, z_hat, uv_init = res
     v_hat = uv_hat[i_atom, n_channels:]
     psd = np.abs(np.fft.rfft(v_hat)) ** 2
     frequencies = np.linspace(0, sfreq / 2.0, len(psd))
@@ -108,7 +108,7 @@ def plot_psd_final(res, ax, i_atom):
 
 
 def plot_atom_final(res, ax, i_atom):
-    pobj, times, uv_hat, Z_hat, uv_init = res
+    pobj, times, uv_hat, z_hat, uv_init = res
     v_hat = uv_hat[i_atom, n_channels:]
     ax.plot(
         np.arange(v_hat.size) / sfreq, v_hat,
@@ -118,7 +118,7 @@ def plot_atom_final(res, ax, i_atom):
 
 
 def plot_topo_final(res, ax, i_atom):
-    pobj, times, uv_hat, Z_hat, uv_init = res
+    pobj, times, uv_hat, z_hat, uv_init = res
     u_hat = uv_hat[i_atom, :n_channels]
     mne.viz.plot_topomap(u_hat, info, axes=ax, show=False)
     ax.set(title='Learned spatial pattern')
@@ -147,8 +147,8 @@ for label, res in zip(labels, results):
 plt.close('all')
 plt.show()
 
-pobj, times, uv_hat, Z_hat, uv_init = res
+pobj, times, uv_hat, z_hat, uv_init = res
 
-np.savez('examples_multicsc/multi_somato-ave.npz', Z_hat=Z_hat,
+np.savez('examples_multicsc/multi_somato-ave.npz', z_hat=z_hat,
          uv_hat=uv_hat, sfreq=info['sfreq'], n_channels=n_channels)
 write_info('examples_multicsc/info_somato.fif', info)

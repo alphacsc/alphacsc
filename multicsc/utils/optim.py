@@ -7,20 +7,20 @@ from .compute_constants import compute_DtD
 from . import check_random_state
 
 
-def _support_least_square(X, uv, Z, debug=False):
+def _support_least_square(X, uv, z, debug=False):
     """WIP, not fonctional!"""
     n_trials, n_channels, n_times = X.shape
-    n_atoms, _, n_times_valid = Z.shape
+    n_atoms, _, n_times_valid = z.shape
     n_times_atom = n_times - n_times_valid + 1
 
     # Compute DtD
     DtD = compute_DtD(uv, n_channels)
     t0 = n_times_atom - 1
-    Z_hat = np.zeros(Z.shape)
+    z_hat = np.zeros(z.shape)
 
     for idx in range(n_trials):
         Xi = X[idx]
-        support_i = Z[:, idx].nonzero()
+        support_i = z[:, idx].nonzero()
         n_support = len(support_i[0])
         if n_support == 0:
             continue
@@ -38,9 +38,9 @@ def _support_least_square(X, uv, Z, debug=False):
         # Solve the non-negative least-square with nnls
         z_star, a = optimize.nnls(rhs, lhs)
         for i, (k_i, t_i) in enumerate(zip(*support_i)):
-            Z_hat[k_i, idx, t_i] = z_star[i]
+            z_hat[k_i, idx, t_i] = z_star[i]
 
-    return Z_hat
+    return z_hat
 
 
 def fista(f_obj, f_grad, f_prox, step_size, x0, max_iter, verbose=0,

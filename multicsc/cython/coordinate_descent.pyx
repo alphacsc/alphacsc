@@ -6,12 +6,12 @@ import numpy as np
 cimport numpy as cnp
 cnp.import_array()
 
-def _locally_greedy_coordinate_selection(Zi, t_start, t_end, tol):
+def _locally_greedy_coordinate_selection(z_i, t_start, t_end, tol):
     """Greedily select a coordiante on the segment t_start:t_end for lil matrix
 
     Parameters
     ----------
-    Zi : scipy.sparse.lil_matrix
+    z_i : scipy.sparse.lil_matrix
         The array to select the coordinate from
     t_start, t_end: int
         The segment boundaries for the coordinate selection
@@ -19,10 +19,10 @@ def _locally_greedy_coordinate_selection(Zi, t_start, t_end, tol):
         The minimal coordinate update selected
 
     """
-    return _select_argmax_segment(Zi.data, Zi.rows, t_start, t_end, tol)
+    return _select_argmax_segment(z_i.data, z_i.rows, t_start, t_end, tol)
 
-cdef _select_argmax_segment(object[:] Zi_data,
-                            object[:] Zi_rows,
+cdef _select_argmax_segment(object[:] z_i_data,
+                            object[:] z_i_rows,
                             int t_start,
                             int t_end,
                             double tol):
@@ -30,8 +30,8 @@ cdef _select_argmax_segment(object[:] Zi_data,
     cdef int k, t, i_slice
     cdef int k0 = -1, t0 = -1
     cdef double zk, dz, adz = tol
-    for k, (Zk, Zk_row) in enumerate(zip(Zi_data, Zi_rows)):
-        for zk, t in zip(Zk, Zk_row):
+    for k, (z_k, z_k_row) in enumerate(zip(z_i_data, z_i_rows)):
+        for zk, t in zip(z_k, z_k_row):
             if t < t_start:
                 continue
             if t >= t_end:
@@ -46,12 +46,12 @@ cdef _select_argmax_segment(object[:] Zi_data,
 
 
 
-def update_dz_opt(Zi, beta, dz_opt, norm_D, reg, t_start, t_end):
-    """Update dz_opt for Zi encoded as lil_matrix
+def update_dz_opt(z_i, beta, dz_opt, norm_D, reg, t_start, t_end):
+    """Update dz_opt for z_i encoded as lil_matrix
 
     Parameters
     ----------
-    Zi : scipy.sparse.lil_matrix
+    z_i : scipy.sparse.lil_matrix
         The array to select the coordinate from
     dz_opt, beta: ndarray, shape (n_atoms, n_times_valid)
         The auxillariay variable to update
@@ -59,12 +59,12 @@ def update_dz_opt(Zi, beta, dz_opt, norm_D, reg, t_start, t_end):
         The segment boundaries for the coordinate selection
 
     """
-    return _update_dz_opt(Zi.data, Zi.rows, beta, dz_opt, norm_D, reg, t_start,
+    return _update_dz_opt(z_i.data, z_i.rows, beta, dz_opt, norm_D, reg, t_start,
                           t_end)
 
 
-cdef _update_dz_opt(object[:] Zi_data,
-                    object[:] Zi_rows,
+cdef _update_dz_opt(object[:] z_i_data,
+                    object[:] z_i_rows,
                     cnp.ndarray[double, ndim=2] beta,
                     cnp.ndarray[double, ndim=2] dz_opt,
                     cnp.ndarray[double, ndim=1] norm_D,
@@ -72,10 +72,10 @@ cdef _update_dz_opt(object[:] Zi_data,
     cdef double zk, tmp
     cdef int k, t, tk
 
-    for k, (Zk, Zk_row) in enumerate(zip(Zi_data, Zi_rows)):
+    for k, (z_k, z_k_row) in enumerate(zip(z_i_data, z_i_rows)):
         norm_Dk = norm_D[k]
         current_t = t_start
-        for tk, zk in zip(Zk_row, Zk):
+        for tk, zk in zip(z_k_row, z_k):
             if tk < t_start:
                 continue
             elif tk >= t_end:
@@ -102,14 +102,14 @@ def subtract_zhat_to_beta(beta, z_hat, norm_Dk):
 
 
 cdef _subtract_zhat_to_beta(cnp.ndarray[double, ndim=2] beta,
-                            cnp.ndarray[list, ndim=1] Zi_data,
-                            cnp.ndarray[list, ndim=1] Zi_rows,
+                            cnp.ndarray[list, ndim=1] z_i_data,
+                            cnp.ndarray[list, ndim=1] z_i_rows,
                             cnp.ndarray[double, ndim=1] norm_Dk):
     cdef double z
     cdef int k, t
 
-    for k, (Zk, Zk_row) in enumerate(zip(Zi_data, Zi_rows)):
-        for t, z in zip(Zk_row, Zk):
+    for k, (z_k, z_k_row) in enumerate(zip(z_i_data, z_i_rows)):
+        for t, z in zip(z_k_row, z_k):
             beta[k, t] -= z * norm_Dk[k]
 
     return beta

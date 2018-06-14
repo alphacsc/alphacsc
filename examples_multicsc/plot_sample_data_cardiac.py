@@ -47,7 +47,7 @@ if args.profile:
     callback = None
     pr = cProfile.Profile()
     pr.enable()
-pobj, times, uv_hat, Z_hat = learn_d_z_multi(
+pobj, times, uv_hat, z_hat = learn_d_z_multi(
     X, n_atoms, n_times_atom, random_state=42, n_iter=60, n_jobs=1, reg=2e-2,
     eps=1e-3, solver_z_kwargs={'factr': 1e12},
     solver_d_kwargs={'max_iter': 300}, uv_constraint='separate',
@@ -60,7 +60,7 @@ if args.profile:
 plt.figure("Final atom")
 plt.plot(uv_hat[0, n_channels:])
 
-X_hat = construct_X_multi(Z_hat, uv_hat, n_channels=n_channels)
+X_hat = construct_X_multi(z_hat, uv_hat, n_channels=n_channels)
 
 plt.figure("X")
 plt.plot(X.mean(axis=1)[0])

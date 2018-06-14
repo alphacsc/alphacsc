@@ -80,7 +80,7 @@ if args.profile:
     callback = None
     pr = cProfile.Profile()
     pr.enable()
-pobj, times, uv_hat, Z_hat = learn_d_z_multi(
+pobj, times, uv_hat, z_hat = learn_d_z_multi(
     X, n_atoms, n_times_atom, random_state=42, n_iter=200, n_jobs=1, reg=0.1,
     eps=1e-5, solver_z_kwargs={'factr': 1e12},
     D_init='chunk',
@@ -91,7 +91,7 @@ if args.profile:
     pr.disable()
     pr.dump_stats('.profile')
 
-X_hat = construct_X_multi(Z_hat, uv_hat, n_channels=n_channels)
+X_hat = construct_X_multi(z_hat, uv_hat, n_channels=n_channels)
 
 if debug:
     plt.figure("X")
@@ -99,11 +99,11 @@ if debug:
     plt.plot(X_hat.mean(axis=1)[0])
     plt.show()
 
-    # Look at v * Z for one trial
+    # Look at v * z for one trial
     # (we have only one trial, so full time series)
     X_hat_k = np.zeros((n_atoms, n_times))
     for k in range(n_atoms):
-        X_hat_k[k] = _choose_convolve(Z_hat[k, 0, :][None, :],
+        X_hat_k[k] = _choose_convolve(z_hat[k, 0, :][None, :],
                                       uv_hat[k, n_channels:][None, :])
     ch_names = ['atom %d' % ii for ii in range(n_atoms)]
     info = mne.create_info(ch_names, sfreq=raw.info['sfreq'])
@@ -121,7 +121,7 @@ if debug:
     plt.gca().set(xscale='log')
 
 from mne.io import write_info
-np.savez('examples_multicsc/multi_sample-ave.npz', Z_hat=Z_hat,
+np.savez('examples_multicsc/multi_sample-ave.npz', z_hat=z_hat,
          uv_hat=uv_hat, sfreq=raw.info['sfreq'], n_channels=n_channels)
 write_info('examples_multicsc/info_sample.fif', raw.info)
 

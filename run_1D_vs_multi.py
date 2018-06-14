@@ -107,12 +107,12 @@ def get_signals(n_channels=50, n_times_atom=64, n_times_valid=640,
     uv = prox_uv(uv, 'separate', n_channels)
 
     # add atoms
-    Z = np.array([sparse.random(n_atoms, n_times_valid, density=.05,
+    z = np.array([sparse.random(n_atoms, n_times_valid, density=.05,
                                 random_state=random_state).toarray()
                  for _ in range(n_trials)])
-    Z = np.swapaxes(Z, 0, 1)
+    z = np.swapaxes(z, 0, 1)
 
-    X = construct_X_multi(Z, uv, n_channels=n_channels)
+    X = construct_X_multi(z, uv, n_channels=n_channels)
 
     X = X + sigma * rng.randn(*X.shape)
 
@@ -136,14 +136,14 @@ def run_one(reg, sigma, n_atoms, n_times_atom, max_n_channels, n_times_valid,
     uv_ = prox_uv(np.c_[uv[:, :run_n_channels], uv[:, max_n_channels:]],
                   uv_constraint='separate', n_channels=max_n_channels)
 
-    def cb(X, uv_hat, Z_hat, pobj):
+    def cb(X, uv_hat, z_hat, pobj):
         it = len(pobj) // 2
         if it % 10 == 0:
             print("[channels{}] iter{} score sig={:.2e}: {:.3e}".format(
                 run_n_channels, it, sigma,
                 score_uv(uv_, uv_hat, run_n_channels)))
 
-    pobj, times, uv_hat, Z_hat = learn_d_z_multi(
+    pobj, times, uv_hat, z_hat = learn_d_z_multi(
         X[:, :run_n_channels, :], n_atoms, n_times_atom,
         random_state=random_state,
         # callback=cb,

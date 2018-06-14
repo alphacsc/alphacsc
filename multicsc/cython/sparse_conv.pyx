@@ -9,8 +9,8 @@ cnp.import_array()
 from multicsc.utils import get_D
 
 
-cdef _sparse_conv_d(object[:] Zi_data,
-                    object[:] Zi_rows,
+cdef _sparse_conv_d(object[:] z_i_data,
+                    object[:] z_i_rows,
                     cnp.ndarray[double, ndim=3] D,
                     cnp.ndarray[double, ndim=2] Xi):
 
@@ -20,15 +20,15 @@ cdef _sparse_conv_d(object[:] Zi_data,
     cdef int n_times_atom = D.shape[2]
     assert n_channels == Xi.shape[0]
 
-    for dk, zk, tk in zip(D, Zi_data, Zi_rows):
+    for dk, zk, tk in zip(D, z_i_data, z_i_rows):
         for zkt, t in zip(zk, tk):
             Xi[:, t:t + n_times_atom] += zkt * dk
 
     return Xi
 
 
-cdef _sparse_conv_uv(object[:] Zi_data,
-                     object[:] Zi_rows,
+cdef _sparse_conv_uv(object[:] z_i_data,
+                     object[:] z_i_rows,
                      cnp.ndarray[double, ndim=2] u,
                      cnp.ndarray[double, ndim=2] v,
                      cnp.ndarray[double, ndim=2] Xi):
@@ -41,7 +41,7 @@ cdef _sparse_conv_uv(object[:] Zi_data,
     cdef int n_times_atom = v.shape[1]
     assert n_channels == Xi.shape[0]
 
-    for uk, vk, zk, tk in zip(u, v, Zi_data, Zi_rows):
+    for uk, vk, zk, tk in zip(u, v, z_i_data, z_i_rows):
         zik_vk = np.zeros(n_times)
         for zkt, t in zip(zk, tk):
             zik_vk[t:t + n_times_atom] += zkt * vk

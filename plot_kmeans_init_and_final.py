@@ -79,25 +79,25 @@ def load_data(sfreq=sfreq):
     return X, raw.info, events
 
 
-def make_epochs(Z_hat, info, events, n_times_atom):
+def make_epochs(z_hat, info, events, n_times_atom):
     """Make Epochs on the activations of atoms.
-    n_atoms, n_splits, n_times_valid = Z_hat.shape
-    n_atoms, n_trials, n_times_epoch = Z_hat_epoched.shape
+    n_atoms, n_splits, n_times_valid = z_hat.shape
+    n_atoms, n_trials, n_times_epoch = z_hat_epoched.shape
     """
-    n_atoms, n_splits, n_times_valid = Z_hat.shape
+    n_atoms, n_splits, n_times_valid = z_hat.shape
     n_times = n_times_valid + n_times_atom - 1
     # pad with zeros
     padding = np.zeros((n_atoms, n_splits, n_times_atom - 1))
-    Z_hat = np.concatenate([Z_hat, padding], axis=2)
+    z_hat = np.concatenate([z_hat, padding], axis=2)
     # reshape into an unique time-serie per atom
-    Z_hat = np.reshape(Z_hat, (n_atoms, n_splits * n_times))
+    z_hat = np.reshape(z_hat, (n_atoms, n_splits * n_times))
 
     # create trials around the events, using mne
     new_info = mne.create_info(ch_names=n_atoms, sfreq=info['sfreq'])
-    rawarray = mne.io.RawArray(data=Z_hat, info=new_info)
+    rawarray = mne.io.RawArray(data=z_hat, info=new_info)
     epochs = mne.Epochs(rawarray, events, event_id, tmin, tmax)
-    Z_hat_epoched = np.swapaxes(epochs.get_data(), axis1=0, axis2=1)
-    return Z_hat_epoched
+    z_hat_epoched = np.swapaxes(epochs.get_data(), axis1=0, axis2=1)
+    return z_hat_epoched
 
 
 def time_string():
@@ -125,11 +125,11 @@ def _run(random_state, reg, **kwargs):
         **kwargs, )
 
     _, _, uv_init, _ = learn_d_z_multi(n_iter=0, **params)
-    pobj, times, uv_hat, Z_hat = learn_d_z_multi(n_iter=n_iter, **params)
+    pobj, times, uv_hat, z_hat = learn_d_z_multi(n_iter=n_iter, **params)
 
-    Z_hat = make_epochs(Z_hat, info, events, n_times_atom)
+    z_hat = make_epochs(z_hat, info, events, n_times_atom)
 
-    return pobj, times, uv_hat, Z_hat, uv_init
+    return pobj, times, uv_hat, z_hat, uv_init
 
 
 def one_run(method, random_state, reg):
@@ -176,7 +176,7 @@ for method in all_methods_:
             figsize=(2 + n_atoms * 3, len(results) * 3))
         axes = np.atleast_1d(axes).reshape(len(results), n_atoms)
         for i_func, (label, res) in enumerate(zip(labels, results)):
-            pobj, times, uv_hat, Z_hat, uv_init = res
+            pobj, times, uv_hat, z_hat, uv_init = res
             v_init = uv_init[:, n_channels:]
             for i_atom in range(n_atoms):
                 ax = axes[i_func, i_atom]
@@ -196,7 +196,7 @@ for method in all_methods_:
             figsize=(2 + n_atoms * 3, len(results) * 3))
         axes = np.atleast_1d(axes).reshape(len(results), n_atoms)
         for i_func, (label, res) in enumerate(zip(labels, results)):
-            pobj, times, uv_hat, Z_hat, uv_init = res
+            pobj, times, uv_hat, z_hat, uv_init = res
             v_hat = uv_hat[:, n_channels:]
             for i_atom in range(n_atoms):
                 ax = axes[i_func, i_atom]
@@ -215,7 +215,7 @@ for method in all_methods_:
         # compute the best pobj over all methods
         best_pobj = np.inf
         for label, res in zip(labels, results):
-            pobj, times, uv_hat, Z_hat, uv_init = res
+            pobj, times, uv_hat, z_hat, uv_init = res
             pobj_min = np.array(pobj).min()
             if pobj_min < best_pobj:
                 best_pobj = pobj_min
@@ -232,7 +232,7 @@ for method in all_methods_:
             for _ in range(n_states)
         ]
         for label, res, color in zip(labels, results, method_colors):
-            pobj, times, uv_hat, Z_hat, uv_init = res
+            pobj, times, uv_hat, z_hat, uv_init = res
             plt.semilogx(
                 np.cumsum(times), pobj, '.-', alpha=0.5, label=label,
                 color=color)
@@ -253,8 +253,8 @@ for method in all_methods_:
             figsize=(2 + n_atoms * 3, len(results) * 3))
         axes = np.atleast_1d(axes).reshape(len(results), n_atoms)
         for i_func, (label, res) in enumerate(zip(labels, results)):
-            pobj, times, uv_hat, Z_hat, uv_init = res
-            plot_activations_density(Z_hat, n_times_atom, sfreq=sfreq,
+            pobj, times, uv_hat, z_hat, uv_init = res
+            plot_activations_density(z_hat, n_times_atom, sfreq=sfreq,
                                      axes=axes[i_func], plot_activations=False)
             axes[i_func][0].set_title(label)
         plt.tight_layout()
@@ -267,7 +267,7 @@ for method in all_methods_:
         axes = np.atleast_1d(axes).reshape(len(results), n_atoms)
 
         for i_func, (label, res) in enumerate(zip(labels, results)):
-            pobj, times, uv_hat, Z_hat, uv_init = res
+            pobj, times, uv_hat, z_hat, uv_init = res
             for i_atom in range(n_atoms):
                 ax = axes[i_func, i_atom]
                 mne.viz.plot_topomap(uv_hat[i_atom, :n_channels], info,
@@ -279,7 +279,7 @@ for method in all_methods_:
         # ------------ plot many representations of the atoms init/final
 
         def plot_psd_init(res, ax, i_atom):
-            pobj, times, uv_hat, Z_hat, uv_init = res
+            pobj, times, uv_hat, z_hat, uv_init = res
             v_init = uv_init[i_atom, n_channels:]
             psd = np.abs(np.fft.rfft(v_init)) ** 2
             frequencies = np.linspace(0, sfreq / 2.0, len(psd))
@@ -289,7 +289,7 @@ for method in all_methods_:
             ax.set_xlim(0, 30)
 
         def plot_psd_final(res, ax, i_atom):
-            pobj, times, uv_hat, Z_hat, uv_init = res
+            pobj, times, uv_hat, z_hat, uv_init = res
             v_hat = uv_hat[i_atom, n_channels:]
             psd = np.abs(np.fft.rfft(v_hat)) ** 2
             frequencies = np.linspace(0, sfreq / 2.0, len(psd))
@@ -299,7 +299,7 @@ for method in all_methods_:
             ax.set_xlim(0, 30)
 
         def plot_atom_init(res, ax, i_atom):
-            pobj, times, uv_hat, Z_hat, uv_init = res
+            pobj, times, uv_hat, z_hat, uv_init = res
             v_init = uv_init[i_atom, n_channels:]
             ax.plot(
                 np.arange(v_init.size) / sfreq, v_init,
@@ -308,7 +308,7 @@ for method in all_methods_:
             ax.grid('on')
 
         def plot_atom_final(res, ax, i_atom):
-            pobj, times, uv_hat, Z_hat, uv_init = res
+            pobj, times, uv_hat, z_hat, uv_init = res
             v_hat = uv_hat[i_atom, n_channels:]
             ax.plot(
                 np.arange(v_hat.size) / sfreq, v_hat,
@@ -317,20 +317,20 @@ for method in all_methods_:
             ax.grid('on')
 
         def plot_topo_init(res, ax, i_atom):
-            pobj, times, uv_hat, Z_hat, uv_init = res
+            pobj, times, uv_hat, z_hat, uv_init = res
             u_init = uv_init[i_atom, :n_channels]
             mne.viz.plot_topomap(u_init, info, axes=ax, show=False)
             ax.set(title='Topomap init')
 
         def plot_topo_final(res, ax, i_atom):
-            pobj, times, uv_hat, Z_hat, uv_init = res
+            pobj, times, uv_hat, z_hat, uv_init = res
             u_hat = uv_hat[i_atom, :n_channels]
             mne.viz.plot_topomap(u_hat, info, axes=ax, show=False)
             ax.set(title='Topomap final')
 
         def plot_activations(res, ax, i_atom):
-            pobj, times, uv_hat, Z_hat, uv_init = res
-            z_hat = Z_hat[i_atom][None, ...]
+            pobj, times, uv_hat, z_hat, uv_init = res
+            z_hat = z_hat[i_atom][None, ...]
             plot_activations_density(z_hat, n_times_atom, sfreq=sfreq,
                                      axes=[ax],
                                      colors=[COLORS[i_atom % len(COLORS)]])

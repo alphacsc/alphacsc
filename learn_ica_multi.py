@@ -37,10 +37,10 @@ D = get_D(uv, n_channels)
 
 # add atoms
 rng = np.random.RandomState(27)
-shape_Z = (n_atoms, n_trials, n_times - n_times_atom + 1)
-Z = get_activations(rng, shape_Z)
+shape_z = (n_atoms, n_trials, n_times - n_times_atom + 1)
+z = get_activations(rng, shape_z)
 
-X = construct_X_multi(Z, uv, n_channels=n_channels)
+X = construct_X_multi(z, uv, n_channels=n_channels)
 X = X.swapaxes(0, 1).reshape((n_channels, -1))
 
 X += np.random.randn(*X.shape) * 0.1 * X.std()
@@ -59,7 +59,7 @@ XT = ica.fit_transform(X.T)
 # plt.plot(ica.mixing_)
 # plt.show()
 
-pobj, times, v_hat, Z_hat = learn_d_z(
+pobj, times, v_hat, z_hat = learn_d_z(
     XT[:, 0][None, :], 1, n_times_atom, reg=reg, n_iter=n_iter,
     solver_d_kwargs=dict(factr=100), random_state=random_state,
     n_jobs=1, verbose=1)

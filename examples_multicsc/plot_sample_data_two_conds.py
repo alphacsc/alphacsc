@@ -78,24 +78,24 @@ X /= np.std(X)
 plt.close('all')
 callback = plot_callback(X, raw.info, n_atoms)
 
-pobj, times, uv_hat, Z_hat = learn_d_z_multi(
+pobj, times, uv_hat, z_hat = learn_d_z_multi(
     X, n_atoms, n_times_atom, random_state=42, n_iter=60, n_jobs=1, reg=5e-2,
     eps=1e-10, solver_z_kwargs={'factr': 1e12},
     solver_d_kwargs={'max_iter': 300}, uv_constraint='separate',
     solver_d='alternate_adaptive', callback=callback)
 
-X_hat = construct_X_multi(Z_hat, uv_hat, n_channels=n_channels)
+X_hat = construct_X_multi(z_hat, uv_hat, n_channels=n_channels)
 
 plt.figure("X")
 plt.plot(X.mean(axis=1)[0])
 plt.plot(X_hat.mean(axis=1)[0])
 plt.show()
 
-# Look at v * Z for one trial
+# Look at v * z for one trial
 # (we have only one trial, so full time series)
 X_hat_k = np.zeros((n_atoms, n_times))
 for k in range(n_atoms):
-    X_hat_k[k] = _choose_convolve(Z_hat[k, 0, :][None, :],
+    X_hat_k[k] = _choose_convolve(z_hat[k, 0, :][None, :],
                                   uv_hat[k, n_channels:][None, :])
 ch_names = ['atom %d' % ii for ii in range(n_atoms)]
 info = mne.create_info(ch_names, sfreq=raw.info['sfreq'])

@@ -7,31 +7,31 @@ import matplotlib.pyplot as plt
 from sklearn.externals.joblib import Memory
 from scipy.stats.mstats import gmean
 
-from multicsc.cython import _fast_compute_ztx
+from multicsc.cython import _fast_compute_ztX
 
 memory = Memory(cachedir='', verbose=0)
 
 
-def compute_ZtX(Z, X):
+def compute_ztX(z, X):
     """
-    Z.shape = n_atoms, n_trials, n_times - n_times_atom + 1)
+    z.shape = n_atoms, n_trials, n_times - n_times_atom + 1)
     X.shape = n_trials, n_channels, n_times
-    ZtX.shape = n_atoms, n_channels, n_times_atom
+    ztX.shape = n_atoms, n_channels, n_times_atom
     """
-    n_atoms, n_trials, n_times_valid = Z.shape
+    n_atoms, n_trials, n_times_valid = z.shape
     _, n_channels, n_times = X.shape
     n_times_atom = n_times - n_times_valid + 1
 
-    ZtX = np.zeros((n_atoms, n_channels, n_times_atom))
-    for k, n, t in zip(*Z.nonzero()):
-        ZtX[k, :, :] += Z[k, n, t] * X[n, :, t:t + n_times_atom]
+    ztX = np.zeros((n_atoms, n_channels, n_times_atom))
+    for k, n, t in zip(*z.nonzero()):
+        ztX[k, :, :] += z[k, n, t] * X[n, :, t:t + n_times_atom]
 
-    return ZtX
+    return ztX
 
 
 all_func = [
-    compute_ZtX,
-    _fast_compute_ztx,
+    compute_ztX,
+    _fast_compute_ztX,
 ]
 
 
@@ -40,34 +40,34 @@ def test_equality():
     n_atoms, n_trials, n_times_atom, n_times_valid = 5, 10, 20, 150
     n_times = n_times_valid + n_times_atom - 1
     X = np.random.randn(n_trials, n_channels, n_times)
-    Z = np.random.randn(n_atoms, n_trials, n_times_valid)
+    z = np.random.randn(n_atoms, n_trials, n_times_valid)
 
-    reference = all_func[0](Z, X)
+    reference = all_func[0](z, X)
     for func in all_func:
 
         if 'fast' in func.__name__:
-            Z_ = [sparse.lil_matrix(zi) for zi in np.swapaxes(Z, 0, 1)]
+            z_ = [sparse.lil_matrix(zi) for zi in np.swapaxes(z, 0, 1)]
         else:
-            Z_ = Z
+            z_ = z
 
-        assert np.allclose(func(Z_, X), reference)
+        assert np.allclose(func(z_, X), reference)
 
 
 @memory.cache
 def run_one(n_atoms, sparsity, n_times_atom, n_times_valid, func):
     n_trials = 4
-    Z = sparse.random(n_atoms, n_trials * n_times_valid, density=sparsity)
-    Z = Z.toarray().reshape(n_atoms, n_trials, n_times_valid)
+    z = sparse.random(n_atoms, n_trials * n_times_valid, density=sparsity)
+    z = z.toarray().reshape(n_atoms, n_trials, n_times_valid)
 
     n_channels = 3
     n_times = n_times_valid + n_times_atom - 1
     X = np.random.randn(n_trials, n_channels, n_times)
 
     if 'fast' in func.__name__:
-        Z = [sparse.lil_matrix(zi) for zi in np.swapaxes(Z, 0, 1)]
+        z = [sparse.lil_matrix(zi) for zi in np.swapaxes(z, 0, 1)]
 
     start = time.time()
-    func(Z, X)
+    func(z, X)
     duration = time.time() - start
     label = func.__name__
     if label[0] == '_':

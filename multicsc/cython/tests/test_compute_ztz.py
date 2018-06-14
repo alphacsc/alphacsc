@@ -1,9 +1,8 @@
-import numpy as np
 from scipy import sparse
 from numpy.testing import assert_allclose
 
 from multicsc.cython import _fast_compute_ztz
-from multicsc.utils.compute_constants import compute_ZtZ
+from multicsc.utils.compute_constants import compute_ztz
 from multicsc.utils.lil import convert_to_list_of_lil
 
 
@@ -14,11 +13,11 @@ def test_sparse_convolve():
     n_times_valid = n_times - n_times_atom + 1
     density = 0.1
     n_trials = 4
-    Z = sparse.random(n_trials, n_atoms * n_times_valid, density=density,
+    z = sparse.random(n_trials, n_atoms * n_times_valid, density=density,
                       random_state=0)
-    Z = Z.toarray().reshape(n_trials, n_atoms, n_times_valid)
-    Z_lil = convert_to_list_of_lil(Z)
+    z = z.toarray().reshape(n_trials, n_atoms, n_times_valid)
+    z_lil = convert_to_list_of_lil(z)
 
-    ztz_0 = _fast_compute_ztz(Z_lil, n_times_atom)
-    ztz_1 = compute_ZtZ(Z, n_times_atom)
+    ztz_0 = _fast_compute_ztz(z_lil, n_times_atom)
+    ztz_1 = compute_ztz(z, n_times_atom)
     assert_allclose(ztz_0, ztz_1, atol=1e-16)

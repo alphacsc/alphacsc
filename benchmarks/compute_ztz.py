@@ -14,75 +14,75 @@ from multicsc.cython import _fast_compute_ztz_csr
 memory = Memory(cachedir='', verbose=0)
 
 
-def naive_sum(Z, n_times_atom):
+def naive_sum(z, n_times_atom):
     """
-    ZtZ.shape = n_atoms, n_atoms, 2 * n_times_atom - 1
-    Z.shape = n_atoms, n_trials, n_times - n_times_atom + 1)
+    ztz.shape = n_atoms, n_atoms, 2 * n_times_atom - 1
+    z.shape = n_atoms, n_trials, n_times - n_times_atom + 1)
     """
-    n_atoms, n_trials, n_times_valid = Z.shape
+    n_atoms, n_trials, n_times_valid = z.shape
 
-    ZtZ = np.zeros(shape=(n_atoms, n_atoms, 2 * n_times_atom - 1))
+    ztz = np.zeros(shape=(n_atoms, n_atoms, 2 * n_times_atom - 1))
     t0 = n_times_atom - 1
     for k0 in range(n_atoms):
         for k in range(n_atoms):
             for i in range(n_trials):
                 for t in range(n_times_atom):
                     if t == 0:
-                        ZtZ[k0, k, t0] += (Z[k0, i] * Z[k, i]).sum()
+                        ztz[k0, k, t0] += (z[k0, i] * z[k, i]).sum()
                     else:
-                        ZtZ[k0, k, t0 + t] += (
-                            Z[k0, i, :-t] * Z[k, i, t:]).sum()
-                        ZtZ[k0, k, t0 - t] += (
-                            Z[k0, i, t:] * Z[k, i, :-t]).sum()
-    return ZtZ
+                        ztz[k0, k, t0 + t] += (
+                            z[k0, i, :-t] * z[k, i, t:]).sum()
+                        ztz[k0, k, t0 - t] += (
+                            z[k0, i, t:] * z[k, i, :-t]).sum()
+    return ztz
 
 
 @jit((numba.float64[:, :, :], numba.int64))
-def sum_numba(Z, n_times_atom):
+def sum_numba(z, n_times_atom):
     """
-    ZtZ.shape = n_atoms, n_atoms, 2 * n_times_atom - 1
-    Z.shape = n_atoms, n_trials, n_times - n_times_atom + 1)
+    ztz.shape = n_atoms, n_atoms, 2 * n_times_atom - 1
+    z.shape = n_atoms, n_trials, n_times - n_times_atom + 1)
     """
-    n_atoms, n_trials, n_times_valid = Z.shape
+    n_atoms, n_trials, n_times_valid = z.shape
 
-    ZtZ = np.zeros(shape=(n_atoms, n_atoms, 2 * n_times_atom - 1))
+    ztz = np.zeros(shape=(n_atoms, n_atoms, 2 * n_times_atom - 1))
     t0 = n_times_atom - 1
     for k0 in range(n_atoms):
         for k in range(n_atoms):
             for i in range(n_trials):
                 for t in range(n_times_atom):
                     if t == 0:
-                        ZtZ[k0, k, t0] += (Z[k0, i] * Z[k, i]).sum()
+                        ztz[k0, k, t0] += (z[k0, i] * z[k, i]).sum()
                     else:
-                        ZtZ[k0, k, t0 + t] += (
-                            Z[k0, i, :-t] * Z[k, i, t:]).sum()
-                        ZtZ[k0, k, t0 - t] += (
-                            Z[k0, i, t:] * Z[k, i, :-t]).sum()
-    return ZtZ
+                        ztz[k0, k, t0 + t] += (
+                            z[k0, i, :-t] * z[k, i, t:]).sum()
+                        ztz[k0, k, t0 - t] += (
+                            z[k0, i, t:] * z[k, i, :-t]).sum()
+    return ztz
 
 
-def tensordot(Z, n_times_atom):
+def tensordot(z, n_times_atom):
     """
-    ZtZ.shape = n_atoms, n_atoms, 2 * n_times_atom - 1
-    Z.shape = n_atoms, n_trials, n_times - n_times_atom + 1)
+    ztz.shape = n_atoms, n_atoms, 2 * n_times_atom - 1
+    z.shape = n_atoms, n_trials, n_times - n_times_atom + 1)
     """
-    n_atoms, n_trials, n_times_valid = Z.shape
+    n_atoms, n_trials, n_times_valid = z.shape
 
-    ZtZ = np.zeros(shape=(n_atoms, n_atoms, 2 * n_times_atom - 1))
+    ztz = np.zeros(shape=(n_atoms, n_atoms, 2 * n_times_atom - 1))
     t0 = n_times_atom - 1
 
     axes = ([1, 2], [1, 2])
 
     for t in range(n_times_atom):
         if t == 0:
-            ZtZ[:, :, t0] += np.tensordot(Z, Z, axes=axes)
+            ztz[:, :, t0] += np.tensordot(z, z, axes=axes)
         else:
-            tmp = np.tensordot(Z[:, :, :-t], Z[:, :, t:], axes=axes)
-            ZtZ[:, :, t0 + t] += tmp
-            tmp = np.tensordot(Z[:, :, t:], Z[:, :, :-t], axes=axes)
-            ZtZ[:, :, t0 - t] += tmp
+            tmp = np.tensordot(z[:, :, :-t], z[:, :, t:], axes=axes)
+            ztz[:, :, t0 + t] += tmp
+            tmp = np.tensordot(z[:, :, t:], z[:, :, :-t], axes=axes)
+            ztz[:, :, t0 - t] += tmp
 
-    return ZtZ
+    return ztz
 
 
 all_func = [
@@ -96,30 +96,30 @@ all_func = [
 
 def test_equality():
     n_atoms, n_trials, n_times_atom, n_times_valid = 5, 10, 20, 50
-    Z = np.random.randn(n_atoms, n_trials, n_times_valid)
+    z = np.random.randn(n_atoms, n_trials, n_times_valid)
 
-    reference = all_func[0](Z, n_times_atom)
+    reference = all_func[0](z, n_times_atom)
     for func in all_func:
 
         if 'fast' in func.__name__:
-            Z_ = [sparse.lil_matrix(zi) for zi in np.swapaxes(Z, 0, 1)]
+            z_ = [sparse.lil_matrix(zi) for zi in np.swapaxes(z, 0, 1)]
         else:
-            Z_ = Z
+            z_ = z
 
-        assert np.allclose(func(Z_, n_times_atom), reference)
+        assert np.allclose(func(z_, n_times_atom), reference)
 
 
 @memory.cache
 def run_one(n_atoms, sparsity, n_times_atom, n_times_valid, func):
     n_trials = 4
-    Z = sparse.random(n_atoms, n_trials * n_times_valid, density=sparsity)
-    Z = Z.toarray().reshape(n_atoms, n_trials, n_times_valid)
+    z = sparse.random(n_atoms, n_trials * n_times_valid, density=sparsity)
+    z = z.toarray().reshape(n_atoms, n_trials, n_times_valid)
 
     if 'fast' in func.__name__:
-        Z = [sparse.lil_matrix(zi) for zi in np.swapaxes(Z, 0, 1)]
+        z = [sparse.lil_matrix(zi) for zi in np.swapaxes(z, 0, 1)]
 
     start = time.time()
-    func(Z, n_times_atom)
+    func(z, n_times_atom)
     duration = time.time() - start
     label = func.__name__
     if label[0] == '_':

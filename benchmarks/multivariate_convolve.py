@@ -13,9 +13,9 @@ from numba import jit
 memory = Memory(cachedir='', verbose=0)
 
 
-def scipy_fftconvolve(ZtZ, D):
+def scipy_fftconvolve(ztz, D):
     """
-    ZtZ.shape = n_atoms, n_atoms, 2 * n_times_atom - 1
+    ztz.shape = n_atoms, n_atoms, 2 * n_times_atom - 1
     D.shape = n_atoms, n_channels, n_times_atom
     """
     n_atoms, n_channels, n_times_atom = D.shape
@@ -25,13 +25,13 @@ def scipy_fftconvolve(ZtZ, D):
     for k0 in range(n_atoms):
         for k1 in range(n_atoms):
             for p in range(n_channels):
-                G[k0, p] += fftconvolve(ZtZ[k0, k1], D[k1, p], mode='valid')
+                G[k0, p] += fftconvolve(ztz[k0, k1], D[k1, p], mode='valid')
     return G
 
 
-def numpy_convolve(ZtZ, D):
+def numpy_convolve(ztz, D):
     """
-    ZtZ.shape = n_atoms, n_atoms, 2 * n_times_atom - 1
+    ztz.shape = n_atoms, n_atoms, 2 * n_times_atom - 1
     D.shape = n_atoms, n_channels, n_times_atom
     """
     n_atoms, n_channels, n_times_atom = D.shape
@@ -40,14 +40,14 @@ def numpy_convolve(ZtZ, D):
     for k0 in range(n_atoms):
         for k1 in range(n_atoms):
             for p in range(n_channels):
-                G[k0, p] += convolve(ZtZ[k0, k1], D[k1, p], mode='valid')
+                G[k0, p] += convolve(ztz[k0, k1], D[k1, p], mode='valid')
     return G
 
 
 @jit(nogil=True)
-def dot_and_numba(ZtZ, D):
+def dot_and_numba(ztz, D):
     """
-    ZtZ.shape = n_atoms, n_atoms, 2 * n_times_atom - 1
+    ztz.shape = n_atoms, n_atoms, 2 * n_times_atom - 1
     D.shape = n_atoms, n_channels, n_times_atom
     """
     n_atoms, n_channels, n_times_atom = D.shape
@@ -56,15 +56,15 @@ def dot_and_numba(ZtZ, D):
         for k1 in range(n_atoms):
             for p in range(n_channels):
                 for t in range(n_times_atom):
-                    G[k0, p, t] += np.dot(ZtZ[k0, k1, t:t + n_times_atom],
+                    G[k0, p, t] += np.dot(ztz[k0, k1, t:t + n_times_atom],
                                           D[k1, p, ::-1])
     return G
 
 
 @jit(nogil=True)
-def sum_and_numba(ZtZ, D):
+def sum_and_numba(ztz, D):
     """
-    ZtZ.shape = n_atoms, n_atoms, 2 * n_times_atom - 1
+    ztz.shape = n_atoms, n_atoms, 2 * n_times_atom - 1
     D.shape = n_atoms, n_channels, n_times_atom
     """
     n_atoms, n_channels, n_times_atom = D.shape
@@ -74,13 +74,13 @@ def sum_and_numba(ZtZ, D):
         for p in range(n_channels):
             for t in range(n_times_atom):
                 G[k0, p, t] += np.sum(
-                    ZtZ[k0, :, t:t + n_times_atom] * D[:, p, ::-1])
+                    ztz[k0, :, t:t + n_times_atom] * D[:, p, ::-1])
     return G
 
 
-def tensordot(ZtZ, D):
+def tensordot(ztz, D):
     """
-    ZtZ.shape = n_atoms, n_atoms, 2 * n_times_atom - 1
+    ztz.shape = n_atoms, n_atoms, 2 * n_times_atom - 1
     D.shape = n_atoms, n_channels, n_times_atom
     """
     n_atoms, n_channels, n_times_atom = D.shape
@@ -88,19 +88,19 @@ def tensordot(ZtZ, D):
 
     G = np.zeros(D.shape)
     for t in range(n_times_atom):
-        G[:, :, t] = np.tensordot(ZtZ[:, :, t:t + n_times_atom], D,
+        G[:, :, t] = np.tensordot(ztz[:, :, t:t + n_times_atom], D,
                                   axes=([1, 2], [0, 2]))
     return G
 
 
-def numpy_convolve_uv(ZtZ, uv):
+def numpy_convolve_uv(ztz, uv):
     """
-    ZtZ.shape = n_atoms, n_atoms, 2 * n_times_atom - 1
+    ztz.shape = n_atoms, n_atoms, 2 * n_times_atom - 1
     uv.shape = n_atoms, n_channels + n_times_atom
     """
     assert uv.ndim == 2
-    n_times_atom = (ZtZ.shape[2] + 1) // 2
-    n_atoms = ZtZ.shape[0]
+    n_times_atom = (ztz.shape[2] + 1) // 2
+    n_atoms = ztz.shape[0]
     n_channels = uv.shape[1] - n_times_atom
 
     u = uv[:, :n_channels]
@@ -109,7 +109,7 @@ def numpy_convolve_uv(ZtZ, uv):
     G = np.zeros((n_atoms, n_channels, n_times_atom))
     for k0 in range(n_atoms):
         for k1 in range(n_atoms):
-            G[k0, :, :] += (convolve(ZtZ[k0, k1], v[k1], mode='valid')[None, :]
+            G[k0, :, :] += (convolve(ztz[k0, k1], v[k1], mode='valid')[None, :]
                             * u[k1, :][:, None])
 
     return G
@@ -128,9 +128,9 @@ try:
     from numba import jit
 
     @jit(nogil=True)
-    def dot_and_numba(ZtZ, D):
+    def dot_and_numba(ztz, D):
         """
-        ZtZ.shape = n_atoms, n_atoms, 2 * n_times_atom - 1
+        ztz.shape = n_atoms, n_atoms, 2 * n_times_atom - 1
         D.shape = n_atoms, n_channels, n_times_atom
         """
         n_atoms, n_channels, n_times_atom = D.shape
@@ -139,14 +139,14 @@ try:
             for k1 in range(n_atoms):
                 for p in range(n_channels):
                     for t in range(n_times_atom):
-                        G[k0, p, t] += np.dot(ZtZ[k0, k1, t:t + n_times_atom],
+                        G[k0, p, t] += np.dot(ztz[k0, k1, t:t + n_times_atom],
                                               D[k1, p, ::-1])
         return G
 
     @jit(nogil=True)
-    def sum_and_numba(ZtZ, D):
+    def sum_and_numba(ztz, D):
         """
-        ZtZ.shape = n_atoms, n_atoms, 2 * n_times_atom - 1
+        ztz.shape = n_atoms, n_atoms, 2 * n_times_atom - 1
         D.shape = n_atoms, n_channels, n_times_atom
         """
         n_atoms, n_channels, n_times_atom = D.shape
@@ -156,7 +156,7 @@ try:
             for p in range(n_channels):
                 for t in range(n_times_atom):
                     G[k0, p, t] += np.sum(
-                        ZtZ[k0, :, t:t + n_times_atom] * D[:, p, ::-1])
+                        ztz[k0, :, t:t + n_times_atom] * D[:, p, ::-1])
         return G
 
     all_func.extend([dot_and_numba, sum_and_numba])
@@ -169,21 +169,21 @@ try:
     import tensorflow as tf
     raise ImportError()
 
-    def tensorflow_conv(ZtZ, D):
+    def tensorflow_conv(ztz, D):
         """
-        ZtZ.shape = n_atoms, n_atoms, 2 * n_times_atom - 1
+        ztz.shape = n_atoms, n_atoms, 2 * n_times_atom - 1
         D.shape = n_atoms, n_channels, n_times_atom
         """
         n_atoms, n_channels, n_times_atom = D.shape
         with tf.Session() as session:
             tf_D = tf.placeholder(tf.float32,
                                   shape=(n_times_atom, n_atoms, n_channels))
-            tf_ZtZ = tf.placeholder(tf.float32, shape=(ZtZ.shape))
+            tf_ztz = tf.placeholder(tf.float32, shape=(ztz.shape))
 
-            res = tf.nn.convolution(tf_ZtZ, tf_D, padding="VALID",
+            res = tf.nn.convolution(tf_ztz, tf_D, padding="VALID",
                                     data_format="NCW")
             return session.run(res, feed_dict={
-                tf_D: np.moveaxis(D, -1, 0)[::-1], tf_ZtZ: ZtZ})
+                tf_D: np.moveaxis(D, -1, 0)[::-1], tf_ztz: ztz})
 
     all_func.append(tensorflow_conv)
 
@@ -193,14 +193,14 @@ except ImportError:
 try:
     import torch
 
-    def torch_conv(ZtZ, D):
+    def torch_conv(ztz, D):
         """
-        ZtZ.shape = n_atoms, n_atoms, 2 * n_times_atom - 1
+        ztz.shape = n_atoms, n_atoms, 2 * n_times_atom - 1
         D.shape = n_atoms, n_channels, n_times_atom
         """
         D = D.swapaxes(0, 1)[:, :, ::-1].copy()
         filters = torch.autograd.Variable(torch.from_numpy(D))
-        inputs = torch.autograd.Variable(torch.from_numpy(ZtZ))
+        inputs = torch.autograd.Variable(torch.from_numpy(ztz))
         return torch.nn.functional.conv1d(inputs, filters).data.numpy()
         # set convolution filter to D
 
@@ -214,23 +214,23 @@ except ImportError:
 
 def test_equality():
     n_atoms, n_channels, n_times_atom = 5, 10, 15
-    ZtZ = np.random.randn(n_atoms, n_atoms, 2 * n_times_atom - 1)
+    ztz = np.random.randn(n_atoms, n_atoms, 2 * n_times_atom - 1)
     u = np.random.randn(n_atoms, n_channels)
     v = np.random.randn(n_atoms, n_times_atom)
     D = u[:, :, None] * v[:, None, :]
 
-    reference = all_func[0](ZtZ, D)
+    reference = all_func[0](ztz, D)
     for func in all_func:
         if 'uv' in func.__name__:
-            result = func(ZtZ, uv=np.hstack([u, v]))
+            result = func(ztz, uv=np.hstack([u, v]))
         else:
-            result = func(ZtZ, D=D)
+            result = func(ztz, D=D)
         assert np.allclose(result, reference)
 
 
 @memory.cache
 def run_one(n_atoms, n_channels, n_times_atom, func):
-    ZtZ = np.random.randn(n_atoms, n_atoms, 2 * n_times_atom - 1)
+    ztz = np.random.randn(n_atoms, n_atoms, 2 * n_times_atom - 1)
 
     if 'uv' in func.__name__:
         uv = np.random.randn(n_atoms, n_channels + n_times_atom)
@@ -239,7 +239,7 @@ def run_one(n_atoms, n_channels, n_times_atom, func):
         D = np.random.randn(n_atoms, n_channels, n_times_atom)
 
     start = time.time()
-    func(ZtZ, D)
+    func(ztz, D)
     duration = time.time() - start
     return (n_atoms, n_channels, n_times_atom, func.__name__, duration)
 

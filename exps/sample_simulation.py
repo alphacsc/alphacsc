@@ -32,8 +32,8 @@ csc_kwargs = dict(
     random_state=27,
 )
 
-# Callback config display atom shape and KDE of Z_hat
+# Callback config display atom shape and KDE of z_hat
 config = {
     'atom': {},
-    'Zhat': {}
+    'z_hat': {}
 }
