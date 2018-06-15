@@ -34,6 +34,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
                     loss_params=dict(gamma=.1, sakoe_chiba_band=10, ordar=10),
                     use_sparse_z=False, lmbd_max='fixed', verbose=10,
                     callback=None, random_state=None, name="DL",
+                    alpha=.8, batch_size=1, batch_selection='random',
                     raise_on_increase=True):
     """Learn atoms and activations using Convolutional Sparse Coding.
 
@@ -94,6 +95,22 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
         coordinate descent.
     random_state : int | None
         The random state.
+    alpha : float
+        Forgetting factor for online learning. If set to 0, the learning is
+        stochastic and each D-step is independent from the previous steps.
+        When set to 1, each the previous values z_hat - computed with different
+        dictionary - have the same weight as the current one. This factor
+        should be large enough to ensure convergence but to large factor can
+        lead to sub-optimal minima.
+    batch_section : 'random' | 'cyclic'
+        The batch selection strategy for online learning. The batch are either
+        selected randomly among all samples (without replacement) or in a
+        cyclic way.
+    batch_size : int in [1, n_truials]
+        Size of the batch used in online learning. Increasing it regularizes
+        the dictionary learning as there is less variance for the successive
+        estimates. But it also increases the computational cost as more coding
+        signals z_hat must be estimate at each iteration.
     raise_on_increase : boolean
         Raise an error if the objective function increase
 
@@ -181,8 +198,13 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
             raise NotImplementedError(
                 "Algorithm greedy is not implemented yet.")
         elif algorithm == "online":
-            raise NotImplementedError(
-                "Algorithm online is not implemented yet.")
+            pobj, times, D_hat, z_hat = _online_learn(
+                X, D_hat, z_hat, compute_z_func, compute_d_func, obj_func,
+                end_iter_func, n_iter=n_iter, n_jobs=n_jobs, verbose=verbose,
+                random_state=random_state, parallel=parallel, reg=reg,
+                lmbd_max=lmbd_max, name=name, alpha=alpha,
+                batch_selection=batch_selection, batch_size=batch_size
+            )
         else:
             raise NotImplementedError("Algorithm {} is not implemented to "
                                       "dictionary atoms.".format(algorithm))
@@ -238,6 +260,107 @@ def _batch_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
         start = time.time()
         z_hat, constants['ztz'], constants['ztX'] = compute_z_func(
             X, z_hat, D_hat, reg=reg_, parallel=parallel)
+
+        # monitor cost function
+        times.append(time.time() - start)
+        pobj.append(obj_func(X, z_hat, D_hat, reg=reg_))
+
+        if is_list_of_lil(z_hat):
+            z_nnz = np.array([[len(d) for d in z.data] for z in z_hat]
+                             ).sum(axis=0)
+            z_size = len(z_hat) * np.prod(z_hat[0].shape)
+        else:
+            z_nnz = np.sum(z_hat != 0, axis=(0, 2))
+            z_size = z_hat.size
+
+        if verbose > 5:
+            print("[{}] sparsity: {:.3e}".format(
+                name, z_nnz.sum() / z_size))
+            print('[{}] Objective (z) : {:.3e}'.format(name, pobj[-1]))
+
+        if np.all(z_nnz == 0):
+            import warnings
+            warnings.warn("Regularization parameter `reg` is too large "
+                          "and all the activations are zero. No atoms has"
+                          " been learned.", UserWarning)
+            break
+
+        # Compute D update
+        start = time.time()
+        D_hat = compute_d_func(X, z_hat, D_hat, constants)
+
+        # monitor cost function
+        times.append(time.time() - start)
+        pobj.append(obj_func(X, z_hat, D_hat, reg=reg_))
+
+        null_atom_indices = np.where(z_nnz == 0)[0]
+        if len(null_atom_indices) > 0:
+            k0 = null_atom_indices[0]
+            D_hat[k0] = get_max_error_dict(X, z_hat, D_hat)[0]
+            if verbose > 1:
+                print('[{}] Resampled atom {}'.format(name, k0))
+
+        if verbose > 5:
+            print('[{}] Objective (d) : {:.3e}'.format(name, pobj[-1]))
+
+        if end_iter_func(X, z_hat, D_hat, pobj, ii):
+            break
+
+    return pobj, times, D_hat, z_hat
+
+
+def _online_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
+                  obj_func, end_iter_func, n_iter=100, n_jobs=1, verbose=0,
+                  random_state=None, parallel=None, lmbd_max='fixed', reg=None,
+                  alpha=.8, batch_selection='random', batch_size=1, name="online"):
+
+    reg_ = reg
+
+    # Initialize constants dictionary
+    constants = {}
+    n_trials = X.shape[0]
+    n_atoms, n_channels, n_times_atom = D_hat.shape
+    constants['n_channels'] = n_channels
+    constants['XtX'] = np.dot(X.ravel(), X.ravel())
+    constants['ztz'] = np.zeros((n_atoms, n_atoms, 2 * n_times_atom - 1))
+    constants['ztX'] = np.zeros(D_hat.shape)
+
+    # monitor cost function
+    times = [0]
+    pobj = [obj_func(X, z_hat, D_hat, reg=reg_)]
+
+    for ii in range(n_iter):  # outer loop of coordinate descent
+        if verbose == 1:
+            msg = '.' if (ii % 50 != 0) else 'M_%d/%d ' % (ii, n_iter)
+            print(msg, end='')
+            sys.stdout.flush()
+        if verbose > 1:
+            print('[{}] CD iterations {} / {}'.format(name, ii, n_iter))
+
+        if lmbd_max != 'fixed':
+            reg_ = reg * get_lambda_max(X, D_hat)
+            if lmbd_max == 'shared':
+                reg_ = reg_.max()
+
+        if verbose > 5:
+            print('[{}] lambda = {:.3e}'.format(name, np.mean(reg_)))
+
+        # Compute z update
+        start = time.time()
+        if batch_selection == 'random':
+            i0 = np.random.choice(n_trials, batch_size, replace=False)
+        elif batch_selection == 'cyclic':
+            i_slice = (ii * batch_size) % n_trials
+            i0 = slice(i_slice, i_slice + batch_size)
+        else:
+            raise NotImplementedError(
+                "the {} batch_selection strategy for the online learning is not "
+                "implemented.".format(batch_selection))
+        z_hat[i0], ztz, ztX = compute_z_func(
+            X[i0], z_hat[i0], D_hat, reg=reg_, parallel=parallel)
+
+        constants['ztz'] = alpha * constants['ztz'] + ztz
+        constants['ztX'] = alpha * constants['ztX'] + ztX
 
         # monitor cost function
         times.append(time.time() - start)
