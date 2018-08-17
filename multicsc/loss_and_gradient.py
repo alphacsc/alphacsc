@@ -386,7 +386,7 @@ def _l2_objective(X=None, X_hat=None, D=None, constants=None):
         # Fast compute the l2 objective when updating uv/D
         assert D is not None, "D is needed to fast compute the objective."
         if D.ndim == 2:
-            # rank 1 dictionry, use uv computation
+            # rank 1 dictionary, use uv computation
             n_channels = constants['n_channels']
             grad_d = .5 * numpy_convolve_uv(constants['ztz'], D)
             grad_d -= constants['ztX']
