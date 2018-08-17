@@ -170,6 +170,11 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
 
     d_kwargs = dict(verbose=verbose, eps=1e-8)
     d_kwargs.update(solver_d_kwargs)
+    if algorithm == "stochastic":
+        # The typical stochastic algorithm samples one signal, compute the
+        # associated value z and then perform one step of gradient descent
+        # for D.
+        d_kwargs["max_iter"] = 1
 
     def compute_d_func(X, z_hat, D_hat, constants):
         if rank1:
@@ -205,9 +210,21 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
                 lmbd_max=lmbd_max, name=name, alpha=alpha,
                 batch_selection=batch_selection, batch_size=batch_size
             )
+        elif algorithm == "stochastic":
+            # For stochastic learning, set forgetting factor alpha of the
+            # online algorithm to 0, making each step independent of previous
+            # steps and set D-update max_iter to a low value (typically 1).
+            pobj, times, D_hat, z_hat = _online_learn(
+                X, D_hat, z_hat, compute_z_func, compute_d_func, obj_func,
+                end_iter_func, n_iter=n_iter, n_jobs=n_jobs, verbose=verbose,
+                random_state=random_state, parallel=parallel, reg=reg,
+                lmbd_max=lmbd_max, name=name, alpha=0,
+                batch_selection=batch_selection, batch_size=batch_size
+            )
         else:
-            raise NotImplementedError("Algorithm {} is not implemented to "
-                                      "dictionary atoms.".format(algorithm))
+            raise NotImplementedError(
+                "Algorithm '{}' is not implemented to learn dictionary atoms."
+                .format(algorithm))
 
         # recompute z_hat with no regularization and keeping the support fixed
         t_start = time.time()
@@ -312,7 +329,8 @@ def _batch_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
 def _online_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
                   obj_func, end_iter_func, n_iter=100, n_jobs=1, verbose=0,
                   random_state=None, parallel=None, lmbd_max='fixed', reg=None,
-                  alpha=.8, batch_selection='random', batch_size=1, name="online"):
+                  alpha=.8, batch_selection='random', batch_size=1,
+                  name="online"):
 
     reg_ = reg
 
@@ -354,8 +372,8 @@ def _online_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
             i0 = slice(i_slice, i_slice + batch_size)
         else:
             raise NotImplementedError(
-                "the {} batch_selection strategy for the online learning is not "
-                "implemented.".format(batch_selection))
+                "the '{}' batch_selection strategy for the online learning is "
+                "not implemented.".format(batch_selection))
         z_hat[i0], ztz, ztX = compute_z_func(
             X[i0], z_hat[i0], D_hat, reg=reg_, parallel=parallel)
 
