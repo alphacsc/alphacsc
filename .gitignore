@@ -1,12 +1,20 @@
-*.pyc
-*.so
+# Files
 *.o
-*.egg-info
-__pycache__
-.cache
-.pytest_cache/
+*.so
+*.pyc
 *.profile
-joblib/
-figures/
-*build/
-/save_exp/
+*.egg-info
+
+
+# Exps directories
+build
+figures
+save_exp
+
+# tools directories
+joblib
+.cache
+.vscode
+__pycache__
+.pytest_cache
+
