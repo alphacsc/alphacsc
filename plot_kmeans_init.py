@@ -52,17 +52,17 @@ def load_data(sfreq=sfreq):
 all_func = [
     partial(init_dictionary, D_init='random'),
     partial(init_dictionary, D_init='chunk'),
-    partial(init_dictionary, D_init='kmeans', kmeans_params=dict(
+    partial(init_dictionary, D_init='kmeans', D_init_params=dict(
         max_iter=0, distances='euclidean')),
-    partial(init_dictionary, D_init='kmeans', kmeans_params=dict(
+    partial(init_dictionary, D_init='kmeans', D_init_params=dict(
         max_iter=100, distances='euclidean')),
-    partial(init_dictionary, D_init='kmeans', kmeans_params=dict(
+    partial(init_dictionary, D_init='kmeans', D_init_params=dict(
         max_iter=0, distances='roll_inv')),
-    partial(init_dictionary, D_init='kmeans', kmeans_params=dict(
+    partial(init_dictionary, D_init='kmeans', D_init_params=dict(
         max_iter=100, distances='roll_inv')),
-    partial(init_dictionary, D_init='kmeans', kmeans_params=dict(
+    partial(init_dictionary, D_init='kmeans', D_init_params=dict(
         max_iter=0, distances='trans_inv')),
-    partial(init_dictionary, D_init='kmeans', kmeans_params=dict(
+    partial(init_dictionary, D_init='kmeans', D_init_params=dict(
         max_iter=100, distances='trans_inv')),
 ]
 

@@ -18,7 +18,7 @@ csc_kwargs = dict(
     random_state=random_state, n_iter=50, reg=reg, eps=1e-3,
     solver_z="gcd", solver_z_kwargs={'max_iter': 1000},
     solver_d='alternate_adaptive', solver_d_kwargs={'max_iter': 100},
-    D_init='kmeans', kmeans_params=dict(distances='trans_inv'),
+    D_init='kmeans', D_init_params=dict(distances='trans_inv'),
     uv_constraint='separate', loss='l2',
     loss_params=dict(gamma=0.005, sakoe_chiba_band=10),
     algorithm='batch', lmbd_max='fixed'

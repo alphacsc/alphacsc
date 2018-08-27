@@ -144,9 +144,9 @@ n_trials, n_channels, n_times = X.shape
 all_methods_ = [
     ('chunk', partial(_run, D_init='chunk')),
     ('ssa', partial(_run, D_init='ssa')),
-    ('roll_inv_0', partial(_run, D_init='kmeans', kmeans_params=dict(
+    ('roll_inv_0', partial(_run, D_init='kmeans', D_init_params=dict(
         max_iter=0, distances='roll_inv'))),
-    ('trans_inv_0', partial(_run, D_init='kmeans', kmeans_params=dict(
+    ('trans_inv_0', partial(_run, D_init='kmeans', D_init_params=dict(
         max_iter=0, distances='trans_inv'))),
 ]
 

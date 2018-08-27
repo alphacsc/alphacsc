@@ -29,7 +29,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
                     solver_z='l-bfgs', solver_z_kwargs=dict(),
                     solver_d='alternate_adaptive', solver_d_kwargs=dict(),
                     rank1=True, uv_constraint='separate',
-                    eps=1e-10, D_init=None, kmeans_params=dict(),
+                    eps=1e-10, D_init=None, D_init_params=dict(),
                     stopping_pobj=None, algorithm='batch', loss='l2',
                     loss_params=dict(gamma=.1, sakoe_chiba_band=10, ordar=10),
                     use_sparse_z=False, lmbd_max='fixed', verbose=10,
@@ -76,7 +76,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
                            shape (n_atoms, n_channels, n_times_atom)
         The initial atoms or an initialization scheme in {'kmeans' | 'ssa' |
         'chunks' | 'random'}.
-    kmeans_params : dict
+    D_init_params : dict
         Dictionnary of parameters for the kmeans init method.
     algorithm : 'batch' | 'greedy' | 'online'
         Dictionary learning algorithm.
@@ -102,7 +102,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
         dictionary - have the same weight as the current one. This factor
         should be large enough to ensure convergence but to large factor can
         lead to sub-optimal minima.
-    batch_section : 'random' | 'cyclic'
+    batch_selection : 'random' | 'cyclic'
         The batch selection strategy for online learning. The batch are either
         selected randomly among all samples (without replacement) or in a
         cyclic way.
@@ -139,7 +139,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
 
     D_hat = init_dictionary(X, n_atoms, n_times_atom, D_init=D_init,
                             rank1=rank1, uv_constraint=uv_constraint,
-                            kmeans_params=kmeans_params, random_state=rng)
+                            D_init_params=D_init_params, random_state=rng)
     b_hat_0 = rng.randn(n_atoms * (n_channels + n_times_atom))
     init_duration = time.time() - start
 

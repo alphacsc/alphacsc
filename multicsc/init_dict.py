@@ -21,7 +21,7 @@ tied = custom_distances.translation_invariant_euclidean_distances
 
 
 def init_dictionary(X, n_atoms, n_times_atom, D_init=None, rank1=True,
-                    uv_constraint='separate', kmeans_params=dict(),
+                    uv_constraint='separate', D_init_params=dict(),
                     random_state=None):
     """Return an initial dictionary for the signals X
 
@@ -45,7 +45,7 @@ def init_dictionary(X, n_atoms, n_times_atom, D_init=None, rank1=True,
         If 'joint', the constraint is norm_2([u, v]) <= 1
         If 'separate', the constraint is norm_2(u) <= 1 and norm_2(v) <= 1
         If 'box', the constraint is norm_inf([u, v]) <= 1
-    kmeans_params : dict
+    D_init_params : dict
         Dictionnary of parameters for the kmeans init method.
     random_state : int | None
         The random state.
@@ -81,7 +81,7 @@ def init_dictionary(X, n_atoms, n_times_atom, D_init=None, rank1=True,
 
     elif D_init == "kmeans":
         D_hat = kmeans_init(X, n_atoms, n_times_atom, random_state=rng,
-                            **kmeans_params)
+                            **D_init_params)
         if not rank1:
             D_hat = get_D(D_hat, n_channels)
 

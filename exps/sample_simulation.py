@@ -22,7 +22,7 @@ csc_kwargs = dict(
     solver_d='fista',
     solver_d_kwargs={'max_iter': 100},
     D_init='ssa',
-    kmeans_params=dict(distances='trans_inv'),
+    D_init_params=dict(distances='trans_inv'),
     uv_constraint='separate',
     rank1=True,
     loss='l2',

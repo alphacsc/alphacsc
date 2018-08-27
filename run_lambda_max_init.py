@@ -17,7 +17,7 @@ for D_init in ['kmeans', 'ssa', 'chunk', 'random']:
     for random_state in range(3):
         D_hat = init_dictionary(X, n_atoms, n_times_atom, D_init=D_init,
                                 rank1=True, uv_constraint='separate',
-                                kmeans_params=dict(),
+                                D_init_params=dict(),
                                 random_state=random_state)
         lambda_max = get_lambda_max(X, D_hat).max()
         print(D_init, random_state, lambda_max)
