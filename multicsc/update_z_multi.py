@@ -21,7 +21,7 @@ from .utils.compute_constants import compute_DtD, compute_ztz, compute_ztX
 
 
 def update_z_multi(X, D, reg, z0=None, debug=False, parallel=None,
-                   solver='l_bfgs', solver_kwargs=dict(), loss='l2',
+                   solver='l-bfgs', solver_kwargs=dict(), loss='l2',
                    loss_params=dict(), freeze_support=False, timing=False):
     """Update z using L-BFGS with positivity constraints
 
@@ -42,7 +42,7 @@ def update_z_multi(X, D, reg, z0=None, debug=False, parallel=None,
         If True, check the grad.
     parallel : instance of Parallel
         Context manager for running joblibs in a loop.
-    solver : 'l_bfgs' | 'gcd'
+    solver : 'l-bfgs' | 'gcd'
         The solver to use.
     solver_kwargs : dict
         Parameters for the solver
@@ -118,7 +118,7 @@ class BoundGenerator(object):
         return (0, np.inf)
 
 
-def _update_z_multi_idx(X_i, D, reg, z0_i, debug, solver="l_bfgs",
+def _update_z_multi_idx(X_i, D, reg, z0_i, debug, solver='l-bfgs',
                         solver_kwargs=dict(), freeze_support=False, loss='l2',
                         loss_params=dict(), timing=False):
     t_start = time.time()
@@ -158,7 +158,7 @@ def _update_z_multi_idx(X_i, D, reg, z0_i, debug, solver="l_bfgs",
         pobj = [func_and_grad(f0)[0]]
         t_start = [time.time()]
 
-    if solver == "l_bfgs":
+    if solver == 'l-bfgs':
         if freeze_support:
             bounds = [(0, 0) if z == 0 else (0, None) for z in f0]
         else:
@@ -224,7 +224,7 @@ def _update_z_multi_idx(X_i, D, reg, z0_i, debug, solver="l_bfgs",
             z_hat = output
     else:
         raise ValueError("Unrecognized solver %s. Must be 'ista', 'fista',"
-                         " or 'l_bfgs'." % solver)
+                         " or 'l-bfgs'." % solver)
 
     if not is_lil(z_hat):
         z_hat = z_hat.reshape(n_atoms, n_times_valid)

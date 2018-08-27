@@ -43,7 +43,7 @@ def test_learn_codes():
 
     X, ds, z = simulate_data(n_trials, n_times, n_times_atom, n_atoms)
 
-    for solver in ('l_bfgs', 'ista', 'fista'):
+    for solver in ('l-bfgs', 'ista', 'fista'):
         z_hat = update_z(X, ds, reg, solver=solver,
                          solver_kwargs=dict(factr=1e11, max_iter=50))
 
@@ -70,7 +70,7 @@ def test_learn_codes_atoms():
     func_d_0 = partial(update_d_block, projection='dual', n_iter=5)
     func_d_1 = partial(update_d_block, projection='primal', n_iter=5)
     for func_d in [func_d_0, func_d_1, update_d]:
-        for solver_z in ('l_bfgs', 'ista', 'fista'):
+        for solver_z in ('l-bfgs', 'ista', 'fista'):
             pobj, times, d_hat, _ = learn_d_z(
                 X, n_atoms, n_times_atom, func_d=func_d, solver_z=solver_z,
                 reg=reg, n_iter=n_iter, verbose=0, random_state=random_state,
@@ -161,7 +161,7 @@ def test_update_z_sample_weights():
     # sample_weights=None and a scaled regularization
     factor = 1.6
     sample_weights = np.ones_like(X) * factor
-    for solver in ('l_bfgs', 'ista', 'fista'):
+    for solver in ('l-bfgs', 'ista', 'fista'):
         z_0 = update_z(X, ds, reg * factor, solver=solver,
                        solver_kwargs=dict(factr=1e7, max_iter=50),
                        b_hat_0=b_hat_0.copy(), sample_weights=sample_weights)
@@ -174,7 +174,7 @@ def test_update_z_sample_weights():
     sample_weights = np.abs(rng.randn(*X.shape))
     sample_weights /= sample_weights.mean()
     z_list = []
-    for solver in ('l_bfgs', 'ista', 'fista'):
+    for solver in ('l-bfgs', 'ista', 'fista'):
         z_hat = update_z(X, ds, reg, solver=solver,
                          solver_kwargs=dict(factr=1e7, max_iter=2000),
                          b_hat_0=b_hat_0.copy(), sample_weights=sample_weights)
@@ -251,7 +251,7 @@ def test_learn_codes_atoms_sample_weights():
     # sample_weights all equal to one is equivalent to sample_weights=None.
     sample_weights = np.ones_like(X)
     for func_d in func_d_list:
-        for solver_z in ('l_bfgs', 'ista', 'fista'):
+        for solver_z in ('l-bfgs', 'ista', 'fista'):
             pobj_0, _, _, _ = learn_d_z(
                 X, n_atoms, n_times_atom, func_d=func_d, solver_z=solver_z,
                 reg=reg, n_iter=n_iter, random_state=0, verbose=0,
@@ -272,7 +272,7 @@ def test_learn_codes_atoms_sample_weights():
     sample_weights[:n_duplicated] = 2
     X_duplicated = np.vstack([X[:n_duplicated], X])
     for func_d in [update_d, update_d_block]:
-        for solver_z in ('l_bfgs', 'ista', 'fista'):
+        for solver_z in ('l-bfgs', 'ista', 'fista'):
             pobj_0, _, d_hat_0, z_hat_0 = learn_d_z(
                 X, n_atoms, n_times_atom, func_d=func_d, solver_z=solver_z,
                 reg=reg, n_iter=n_iter, random_state=0, verbose=0,

@@ -146,13 +146,13 @@ def run_fista(X, ds_init, reg, n_iter, random_state, label):
     return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
 
 
-def run_lbfgs(X, ds_init, reg, n_iter, random_state, label, factr_d=1e7,
+def run_l_bfgs(X, ds_init, reg, n_iter, random_state, label, factr_d=1e7,
               factr_z=1e14):
     assert X.ndim == 2
     n_atoms, n_times_atom = ds_init.shape
     pobj, times, d_hat, z_hat = learn_d_z(
         X, n_atoms, n_times_atom,
-        func_d=update_d_block, solver_z='l_bfgs', solver_z_kwargs=dict(
+        func_d=update_d_block, solver_z='l-bfgs', solver_z_kwargs=dict(
             factr=factr_z), reg=reg, n_iter=n_iter, solver_d_kwargs=dict(
                 factr=factr_d), random_state=random_state, ds_init=ds_init,
         n_jobs=1, verbose=verbose)
@@ -202,7 +202,7 @@ def run_multichannel_gcd_fullrank(X, ds_init, reg, n_iter, random_state,
     return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
 
 
-def run_multichannel_lbfgs(X, ds_init, reg, n_iter, random_state, label):
+def run_multichannel_l_bfgs(X, ds_init, reg, n_iter, random_state, label):
     if X.ndim == 2:
         n_atoms, n_times_atom = ds_init.shape
         ds_init = np.c_[np.ones((n_atoms, 1)), ds_init]
@@ -250,13 +250,13 @@ def run_multichannel_gcd_sparse(X, ds_init, reg, n_iter, random_state, label):
 
 n_iter = 1000
 methods_univariate = [
-    # [run_multichannel_alt_lbfgs, 'find_best_pobj', n_iter * 5],
+    # [run_multichannel_alt_l_bfgs, 'find_best_pobj', n_iter * 5],
     # [run_admm, 'Heide et al (2015)', n_iter // 2],  # FIXME: going up
     [run_cbpdn, 'Garcia-Cardona et al (2017)', n_iter * 2],
     # [run_ista, 'Jas et al (2017) ISTA', n_iter * 3]],
     [run_fista, 'Jas et al (2017) FISTA', n_iter],
-    [run_lbfgs, 'Jas et al (2017) LBFGS', n_iter],
-    # [run_multichannel_lbfgs, 'multiCSC LBFGS', n_iter],
+    [run_l_bfgs, 'Jas et al (2017) LBFGS', n_iter],
+    # [run_multichannel_l_bfgs, 'multiCSC LBFGS', n_iter],
     [run_multichannel_gcd, 'Proposed (univariate)', n_iter],
     # [run_multichannel_gcd_sparse, 'multiCSC LGCD sparse', n_iter],
 ]

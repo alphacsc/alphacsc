@@ -13,7 +13,7 @@ from multicsc.utils.compute_constants import compute_ztz, compute_ztX
 
 
 @pytest.mark.parametrize('loss', ['l2', 'dtw', 'whitening'])
-@pytest.mark.parametrize('solver', ['l_bfgs', 'ista', 'fista'])
+@pytest.mark.parametrize('solver', ['l-bfgs', 'ista', 'fista'])
 def test_update_z_multi_decrease_cost_function(loss, solver):
     n_trials, n_channels, n_times = 2, 3, 100
     n_times_atom, n_atoms = 10, 4
@@ -60,14 +60,14 @@ def test_support_least_square():
                                            feasible_evaluation=False)
 
     # The loss after updating z should be lower
-    z_hat, ztz, ztX = update_z_multi(X, uv, reg, z0=z, solver='l_bfgs',
+    z_hat, ztz, ztX = update_z_multi(X, uv, reg, z0=z, solver='l-bfgs',
                                      solver_kwargs={'factr': 1e7})
     loss_1 = compute_X_and_objective_multi(X, z_hat=z_hat, D_hat=uv, reg=reg,
                                            feasible_evaluation=False)
     assert loss_1 < loss_0
 
     # Here we recompute z on the support of z_hat, with reg=0
-    z_hat_2, ztz, ztX = update_z_multi(X, uv, reg=0, z0=z_hat, solver='l_bfgs',
+    z_hat_2, ztz, ztX = update_z_multi(X, uv, reg=0, z0=z_hat, solver='l-bfgs',
                                        solver_kwargs={'factr': 1e7},
                                        freeze_support=True)
     loss_2 = compute_X_and_objective_multi(X, z_hat_2, uv, reg,
@@ -76,7 +76,7 @@ def test_support_least_square():
 
     # Here we recompute z with reg=0, but with no support restriction
     z_hat_3, ztz, ztX = update_z_multi(X, uv, reg=0, z0=np.ones(z.shape),
-                                       solver='l_bfgs',
+                                       solver='l-bfgs',
                                        solver_kwargs={'factr': 1e7},
                                        freeze_support=True)
     loss_3 = compute_X_and_objective_multi(X, z_hat_3, uv, reg,

@@ -90,11 +90,11 @@ def update_uv(X, z, uv_hat0, constants=None, b_hat_0=None, debug=False,
         If 'joint', the constraint is norm_2([u, v]) <= 1
         If 'separate', the constraint is norm_2(u) <= 1 and norm_2(v) <= 1
         If 'box', the constraint is norm_inf([u, v]) <= 1
-    solver_d : str in {'alternate', 'joint', 'lbfgs'}
+    solver_d : str in {'alternate', 'joint', 'l-bfgs'}
         The type of solver to update d:
         If 'alternate', the solver alternates between u then v
         If 'joint', the solver jointly optimize uv with a line search
-        If 'lbfgs', the solver uses lbfgs with box constraints
+        If 'l-bfgs', the solver uses l-bfgs with box constraints
     loss : str in {'l2' | 'dtw' | 'whitening'}
         The data-fit
     loss_params : dict
@@ -110,7 +110,7 @@ def update_uv(X, z, uv_hat0, constants=None, b_hat_0=None, debug=False,
     n_trials, n_atoms, n_times_valid = get_z_shape(z)
     _, n_channels, n_times = X.shape
 
-    if solver_d == 'lbfgs':
+    if solver_d == 'l-bfgs':
         msg = "L-BFGS sovler only works with box constraints"
         assert uv_constraint == 'box', msg
     elif solver_d == 'alternate':
@@ -205,7 +205,7 @@ def update_uv(X, z, uv_hat0, constants=None, b_hat_0=None, debug=False,
             if debug:
                 pobj.extend(pobj_v)
 
-    elif solver_d == 'lbfgs':
+    elif solver_d == 'l-bfgs':
         # use L-BFGS on joint [u, v] with a box constraint (L_inf norm <= 1)
 
         def func(uv):
@@ -218,7 +218,7 @@ def update_uv(X, z, uv_hat0, constants=None, b_hat_0=None, debug=False,
         def callback(uv):
             import matplotlib.pyplot as plt
             uv = np.reshape(uv, uv_hat0.shape)
-            plt.figure('lbfgs')
+            plt.figure('l-bfgs')
             ax = plt.gca()
             if ax.lines == []:
                 plt.plot(uv[:, n_channels:].T)
@@ -273,10 +273,10 @@ def update_d(X, z, D_hat0, constants=None, b_hat_0=None, debug=False,
         If True, return the cost at each iteration.
     momentum : bool
         If True, use an accelerated version of the proximal gradient descent.
-    solver_d : str in {'fista', 'lbfgs'}
+    solver_d : str in {'fista', 'l-bfgs'}
         The type of solver to update d:
         If 'fista', the solver optimize D with fista and line search
-        If 'lbfgs', the solver uses lbfgs with box constraints
+        If 'l-bfgs', the solver uses l-bfgs with box constraints
     loss : str in {'l2' | 'dtw' | 'whitening'}
         The data-fit
     loss_params : dict
@@ -315,7 +315,7 @@ def update_d(X, z, D_hat0, constants=None, b_hat_0=None, debug=False,
                          verbose=verbose, momentum=momentum, eps=eps,
                          adaptive_step_size=True, debug=debug, name="Update D")
 
-    elif solver_d == 'lbfgs':
+    elif solver_d == 'l-bfgs':
         # use L-BFGS on joint [u, v] with a box constraint (L_inf norm <= 1)
 
         def func(D):

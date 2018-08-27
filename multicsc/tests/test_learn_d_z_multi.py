@@ -8,7 +8,7 @@ from multicsc.utils import check_random_state
 @pytest.mark.parametrize('loss', ['l2', 'dtw', 'whitening'])
 @pytest.mark.parametrize('solver_d, uv_constraint', [
     ('joint', 'joint'), ('joint', 'separate'),
-    # ('alternate', 'separate'), ('lbfgs', 'box'),
+    # ('alternate', 'separate'), ('l-bfgs', 'box'),
     ('alternate_adaptive', 'separate')
 ])
 def test_learn_d_z_multi(loss, solver_d, uv_constraint):
@@ -23,7 +23,7 @@ def test_learn_d_z_multi(loss, solver_d, uv_constraint):
     pobj, times, uv_hat, z_hat = learn_d_z_multi(
         X, n_atoms, n_times_atom, uv_constraint=uv_constraint,
         solver_d=solver_d, random_state=0, n_iter=30,
-        solver_z="l_bfgs",
+        solver_z='l-bfgs',
         loss=loss, loss_params=loss_params)
 
     msg = "Cost function does not go down for uv_constraint {}".format(

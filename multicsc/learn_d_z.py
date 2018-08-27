@@ -44,7 +44,7 @@ def compute_X_and_objective(X, z_hat, d_hat, reg, sample_weights=None,
 
 
 def learn_d_z(X, n_atoms, n_times_atom, func_d=update_d_block, reg=0.1,
-              n_iter=60, random_state=None, n_jobs=1, solver_z='l_bfgs',
+              n_iter=60, random_state=None, n_jobs=1, solver_z='l-bfgs',
               solver_d_kwargs=dict(), solver_z_kwargs=dict(), ds_init=None,
               sample_weights=None, verbose=10, callback=None,
               stopping_pobj=None):
@@ -70,7 +70,7 @@ def learn_d_z(X, n_atoms, n_times_atom, func_d=update_d_block, reg=0.1,
         The number of parallel jobs.
     solver_z : str
         The solver to use for the z update. Options are
-        'l_bfgs' (default) | 'ista' | 'fista'
+        'l-bfgs' (default) | 'ista' | 'fista'
     solver_d_kwargs : dict
         Additional keyword arguments to provide to update_d
     solver_z_kwargs : dict

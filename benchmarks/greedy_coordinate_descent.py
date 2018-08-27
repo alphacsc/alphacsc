@@ -70,12 +70,12 @@ def _other_solver(X, D, reg, n_iter, solver, solver_kwargs):
     return z, pobj, times
 
 
-def lbfgs(X, D, reg, n_iter):
-    solver = 'l_bfgs'
+def l_bfgs(X, D, reg, n_iter):
+    solver = 'l-bfgs'
     solver_kwargs = dict(factr=1e1, maxiter=n_iter - 1)
 
     z, pobj, times = _other_solver(X, D, reg, n_iter, solver, solver_kwargs)
-    # Issue: The check in lbfgs of parameter 'bounds'
+    # Issue: The check in l_bfgs of parameter 'bounds'
     # (which change np.inf into None) adds an small overhead.
 
     return z, pobj, times
@@ -101,7 +101,7 @@ all_func = [
     (rcd, 20),
     (gcd, 10),
     (lgcd, 10),
-    (lbfgs, 200),
+    (l_bfgs, 200),
     (ista, 200),
     (fista, 200),
 ]

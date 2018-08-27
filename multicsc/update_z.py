@@ -17,7 +17,7 @@ from .utils import check_consistent_shape
 
 
 def update_z(X, ds, reg, z0=None, debug=False, parallel=None,
-             solver='l_bfgs', b_hat_0=None, solver_kwargs=dict(),
+             solver='l-bfgs', b_hat_0=None, solver_kwargs=dict(),
              sample_weights=None):
     """Update Z using L-BFGS with positivity constraints
 
@@ -35,7 +35,7 @@ def update_z(X, ds, reg, z0=None, debug=False, parallel=None,
         If True, check the grad.
     parallel : instance of Parallel
         Context manager for running joblibs in a loop.
-    solver : 'l_bfgs' | 'ista' | 'fista'
+    solver : 'l-bfgs' | 'ista' | 'fista'
         The solver to use.
     b_hat_0 : array, shape ((n_times - n_times_atom + 1) * n_atoms)
         init vector for power_iteration with 'ista' solver
@@ -135,7 +135,7 @@ def _fprime(ds, zi, Xi=None, sample_weights=None, reg=None, return_func=False):
         return grad
 
 
-def _update_z_idx(X, ds, reg, z0, idxs, debug, solver="l_bfgs", b_hat_0=None,
+def _update_z_idx(X, ds, reg, z0, idxs, debug, solver='l-bfgs', b_hat_0=None,
                   solver_kwargs=dict(), sample_weights=None, timing=False):
 
     n_trials, n_times = X.shape
@@ -179,7 +179,7 @@ def _update_z_idx(X, ds, reg, z0, idxs, debug, solver="l_bfgs", b_hat_0=None,
 
             assert optimize.check_grad(pobj, fprime, f0) < 1e-5
 
-        if solver == "l_bfgs":
+        if solver == 'l-bfgs':
             if timing:
                 def callback(xk):
                     times.append(time.time() - start[0])
@@ -255,7 +255,7 @@ def _update_z_idx(X, ds, reg, z0, idxs, debug, solver="l_bfgs", b_hat_0=None,
             zhat = x_new
         else:
             raise ValueError("Unrecognized solver %s. Must be 'ista', 'fista',"
-                             " or 'l_bfgs'." % solver)
+                             " or 'l-bfgs'." % solver)
 
         zhats.append(zhat)
     if timing:

@@ -26,7 +26,7 @@ from .utils.whitening import whitening
 
 
 def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
-                    solver_z='l_bfgs', solver_z_kwargs=dict(),
+                    solver_z='l-bfgs', solver_z_kwargs=dict(),
                     solver_d='alternate_adaptive', solver_d_kwargs=dict(),
                     rank1=True, uv_constraint='separate',
                     eps=1e-10, D_init=None, kmeans_params=dict(),
@@ -54,12 +54,12 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
         The number of parallel jobs.
     solver_z : str
         The solver to use for the z update. Options are
-        'l_bfgs' (default) | 'gcd'
+        'l-bfgs' (default) | 'gcd'
     solver_z_kwargs : dict
         Additional keyword arguments to pass to update_z_multi
     solver_d : str
         The solver to use for the d update. Options are
-        'alternate' | 'alternate_adaptive' (default) | 'joint' | 'lbfgs'
+        'alternate' | 'alternate_adaptive' (default) | 'joint' | 'l-bfgs'
     solver_d_kwargs : dict
         Additional keyword arguments to provide to update_d
     rank1 : boolean
