@@ -1,6 +1,7 @@
 # Files
 *.o
 *.so
+*.mat
 *.pyc
 *.profile
 *.egg-info
