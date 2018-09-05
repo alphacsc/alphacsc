@@ -13,10 +13,14 @@ from .utils.lil import get_z_shape, is_list_of_lil
 from .utils.optim import fista, power_iteration
 from .utils.convolution import numpy_convolve_uv
 from .utils.compute_constants import compute_ztz, compute_ztX
-from .cython import _fast_compute_ztz, _fast_compute_ztX
 
 from .loss_and_gradient import compute_objective, compute_X_and_objective_multi
 from .loss_and_gradient import gradient_uv, gradient_d
+
+try:
+    from . import cython
+except ImportError:
+    cython = None
 
 
 def prox_uv(uv, uv_constraint='joint', n_channels=None, return_norm=False):
@@ -350,8 +354,8 @@ def _get_d_update_constants(X, z):
     n_times_atom = n_times - n_times_valid + 1
 
     if is_list_of_lil(z):
-        ztX = _fast_compute_ztX(z, X)
-        ztz = _fast_compute_ztz(z, n_times_atom)
+        ztX = cython._fast_compute_ztX(z, X)
+        ztz = cython._fast_compute_ztz(z, n_times_atom)
     else:
         ztX = compute_ztX(z, X)
         ztz = compute_ztz(z, n_times_atom)

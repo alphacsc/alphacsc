@@ -14,6 +14,7 @@ import numpy as np
 from scipy import sparse
 from joblib import Parallel
 
+from .utils import _assert_cython
 from .utils import check_random_state
 from .utils.lil import is_list_of_lil
 from .utils.whitening import whitening
@@ -23,6 +24,11 @@ from .utils.dictionary import get_lambda_max
 from .update_d_multi import update_uv, update_d
 from .init_dict import init_dictionary, get_max_error_dict
 from .loss_and_gradient import compute_X_and_objective_multi
+
+try:
+    from . import cython
+except ImportError:
+    cython = None
 
 
 def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
@@ -149,6 +155,9 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
     init_duration = time.time() - start
 
     if use_sparse_z:
+        if cython is None:
+            raise NotImplementedError("Need cython to be able to use sparse "
+                                      "matrices.")
         z_hat = [sparse.lil_matrix((n_atoms, n_times_valid))
                  for _ in range(n_trials)]
     else:

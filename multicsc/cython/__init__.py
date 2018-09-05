@@ -1,5 +1,6 @@
 # flake8: noqa F401
 import numpy
+
 import pyximport
 pyximport.install(setup_args={"include_dirs": numpy.get_include()})
 
