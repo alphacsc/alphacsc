@@ -27,16 +27,22 @@ import numpy as np
 import matplotlib.pyplot as plt
 from multicsc import BatchCDL, OnlineCDL
 
+# Define the different dimensions of the problem
 n_atoms = 10
 n_times_atom = 50
 n_channels = 5
 n_trials = 10
 n_times = 1000
+
+# Generate a random set of signals
 X = np.random.randn(n_trials, n_channels, n_times)
 
-cdl = OnlineCDL(n_atoms, n_times_atom)
+# Learn a dictionary with online algorithm and rank1 constraints. Note that
+# BatchCDL learn the atoms using a batch algorithm.
+cdl = OnlineCDL(n_atoms, n_times_atom, rank1=True)
 cdl.fit(X)
 
+# Display the learned atoms
 fig, axes = plt.subplots(n_atoms, 2, num="Dictionary")
 for k in range(n_atoms):
     axes[k, 0].plot(cdl.u_hat_[k])
@@ -44,6 +50,9 @@ for k in range(n_atoms):
 
 axes[0, 0].set_title("Spatial map")
 axes[0, 1].set_title("Temporal map")
+for ax in axes.ravel():
+    ax.set_xticklabels([])
+    ax.set_yticklabels([])
 
 plt.show()
 
