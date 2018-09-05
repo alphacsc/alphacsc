@@ -60,7 +60,7 @@ def compute_objective(X=None, X_hat=None, z_hat=None, D=None,
 
 def compute_X_and_objective_multi(X, z_hat, D_hat=None, reg=None, loss='l2',
                                   loss_params=dict(), feasible_evaluation=True,
-                                  uv_constraint='joint'):
+                                  uv_constraint='joint', return_X_hat=False):
     """Compute X and return the value of the objective function
 
     Parameters
@@ -107,8 +107,12 @@ def compute_X_and_objective_multi(X, z_hat, D_hat=None, reg=None, loss='l2',
 
     X_hat = construct_X_multi(z_hat, D=D_hat, n_channels=n_channels)
 
-    return compute_objective(X=X, X_hat=X_hat, z_hat=z_hat, reg=reg, loss=loss,
+
+    cost = compute_objective(X=X, X_hat=X_hat, z_hat=z_hat, reg=reg, loss=loss,
                              loss_params=loss_params)
+    if return_X_hat:
+        return cost, X_hat
+    return cost
 
 
 def compute_gradient_norm(X, z_hat, D_hat, reg, loss='l2', loss_params=dict(),

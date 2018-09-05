@@ -16,25 +16,27 @@ from joblib import Parallel
 
 from .utils import check_random_state
 from .utils.lil import is_list_of_lil
-from .loss_and_gradient import compute_X_and_objective_multi
+from .utils.whitening import whitening
 from .update_z_multi import update_z_multi
-from .update_d_multi import update_uv, update_d
-from .init_dict import init_dictionary, get_max_error_dict
 from .utils.profile_this import profile_this  # noqa
 from .utils.dictionary import get_lambda_max
-from .utils.whitening import whitening
+from .update_d_multi import update_uv, update_d
+from .init_dict import init_dictionary, get_max_error_dict
+from .loss_and_gradient import compute_X_and_objective_multi
 
 
 def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
+                    loss='l2', loss_params=dict(gamma=.1, sakoe_chiba_band=10,
+                                                ordar=10),
+                    rank1=True, uv_constraint='separate', eps=1e-10,
+                    algorithm='batch', algorithm_params=dict(
+                        alpha=.8, batch_size=1, batch_selection='random',),
+                    detrending=None, detrending_params=dict(),
                     solver_z='l-bfgs', solver_z_kwargs=dict(),
                     solver_d='alternate_adaptive', solver_d_kwargs=dict(),
-                    rank1=True, uv_constraint='separate',
-                    eps=1e-10, D_init=None, D_init_params=dict(),
-                    stopping_pobj=None, algorithm='batch', loss='l2',
-                    loss_params=dict(gamma=.1, sakoe_chiba_band=10, ordar=10),
-                    use_sparse_z=False, lmbd_max='fixed', verbose=10,
-                    callback=None, random_state=None, name="DL",
-                    alpha=.8, batch_size=1, batch_selection='random',
+                    D_init=None, D_init_params=dict(),
+                    stopping_pobj=None, use_sparse_z=False, lmbd_max='fixed',
+                    verbose=10, callback=None, random_state=None, name="DL",
                     raise_on_increase=True):
     """Learn atoms and activations using Convolutional Sparse Coding.
 
@@ -52,16 +54,10 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
         The number of coordinate-descent iterations.
     n_jobs : int
         The number of parallel jobs.
-    solver_z : str
-        The solver to use for the z update. Options are
-        'l-bfgs' (default) | 'gcd'
-    solver_z_kwargs : dict
-        Additional keyword arguments to pass to update_z_multi
-    solver_d : str
-        The solver to use for the d update. Options are
-        'alternate' | 'alternate_adaptive' (default) | 'joint' | 'l-bfgs'
-    solver_d_kwargs : dict
-        Additional keyword arguments to provide to update_d
+    loss : 'l2' | 'dtw'
+        Loss for the data-fit term. Either the norm l2 or the soft-DTW.
+    loss_params : dict
+        Parameters of the loss
     rank1 : boolean
         If set to True, learn rank 1 dictionary atoms.
     uv_constraint : str in {'joint', 'separate', 'box'}
@@ -72,18 +68,43 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
     eps : float
         Stopping criterion. If the cost descent after a uv and a z update is
         smaller than eps, return.
+    algorithm : 'batch' | 'greedy' | 'online'
+        Dictionary learning algorithm.
+    algorithm_params : dict
+        Parameters for the global algorithm used to learn the dictionary:
+        alpha : float
+            Forgetting factor for online learning. If set to 0, the learning is
+            stochastic and each D-step is independent from the previous steps.
+            When set to 1, each the previous values z_hat - computed with
+            different dictionary - have the same weight as the current one.
+            This factor should be large enough to ensure convergence but to
+            large factor can lead to sub-optimal minima.
+        batch_selection : 'random' | 'cyclic'
+            The batch selection strategy for online learning. The batch are
+            either selected randomly among all samples (without replacement) or
+            in a cyclic way.
+        batch_size : int in [1, n_trials]
+            Size of the batch used in online learning. Increasing it
+            regularizes the dictionary learning as there is less variance for
+            the successive estimates. But it also increases the computational
+            cost as more coding signals z_hat must be estimate at each
+            iteration.
+    solver_z : str
+        The solver to use for the z update. Options are
+        'l-bfgs' (default) | 'gcd'
+    solver_z_kwargs : dict
+        Additional keyword arguments to pass to update_z_multi
+    solver_d : str
+        The solver to use for the d update. Options are
+        'alternate' | 'alternate_adaptive' (default) | 'joint' | 'l-bfgs'
+    solver_d_kwargs : dict
+        Additional keyword arguments to provide to update_d
     D_init : str or array, shape (n_atoms, n_channels + n_times_atoms) or
                            shape (n_atoms, n_channels, n_times_atom)
         The initial atoms or an initialization scheme in {'kmeans' | 'ssa' |
         'chunks' | 'random'}.
     D_init_params : dict
         Dictionnary of parameters for the kmeans init method.
-    algorithm : 'batch' | 'greedy' | 'online'
-        Dictionary learning algorithm.
-    loss : 'l2' | 'dtw'
-        Loss for the data-fit term. Either the norm l2 or the soft-DTW.
-    loss_params : dict
-        Parameters of the loss
     use_sparse_z : boolean
         Use sparse lil_matrices to store the activations.
     lmbd_max : 'fixed' | 'per_atom' | 'shared'
@@ -95,22 +116,6 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
         coordinate descent.
     random_state : int | None
         The random state.
-    alpha : float
-        Forgetting factor for online learning. If set to 0, the learning is
-        stochastic and each D-step is independent from the previous steps.
-        When set to 1, each the previous values z_hat - computed with different
-        dictionary - have the same weight as the current one. This factor
-        should be large enough to ensure convergence but to large factor can
-        lead to sub-optimal minima.
-    batch_selection : 'random' | 'cyclic'
-        The batch selection strategy for online learning. The batch are either
-        selected randomly among all samples (without replacement) or in a
-        cyclic way.
-    batch_size : int in [1, n_truials]
-        Size of the batch used in online learning. Increasing it regularizes
-        the dictionary learning as there is less variance for the successive
-        estimates. But it also increases the computational cost as more coding
-        signals z_hat must be estimate at each iteration.
     raise_on_increase : boolean
         Raise an error if the objective function increase
 
@@ -161,12 +166,13 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
                               solver=solver_z, solver_kwargs=z_kwargs,
                               loss=loss, loss_params=loss_params)
 
-    def obj_func(X, z_hat, D_hat, reg=None):
+    def obj_func(X, z_hat, D_hat, reg=None, return_X_hat=False):
         return compute_X_and_objective_multi(X, z_hat, D_hat,
                                              reg=reg, loss=loss,
                                              loss_params=loss_params,
                                              uv_constraint=uv_constraint,
-                                             feasible_evaluation=True)
+                                             feasible_evaluation=True,
+                                             return_X_hat=return_X_hat)
 
     d_kwargs = dict(verbose=verbose, eps=1e-8)
     d_kwargs.update(solver_d_kwargs)
@@ -194,10 +200,11 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
     with Parallel(n_jobs=n_jobs) as parallel:
         if algorithm == 'batch':
             pobj, times, D_hat, z_hat = _batch_learn(
-                X, D_hat, z_hat, compute_z_func, compute_d_func, obj_func,
-                end_iter_func, n_iter=n_iter, n_jobs=n_jobs, verbose=verbose,
-                random_state=random_state, parallel=parallel, reg=reg,
-                lmbd_max=lmbd_max, name=name
+                X, D_hat, z_hat, compute_z_func, compute_d_func,
+                obj_func, end_iter_func, n_iter=n_iter,
+                n_jobs=n_jobs, verbose=verbose, random_state=random_state,
+                parallel=parallel, reg=reg, lmbd_max=lmbd_max, name=name,
+                **algorithm_params
             )
         elif algorithm == "greedy":
             raise NotImplementedError(
@@ -207,8 +214,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
                 X, D_hat, z_hat, compute_z_func, compute_d_func, obj_func,
                 end_iter_func, n_iter=n_iter, n_jobs=n_jobs, verbose=verbose,
                 random_state=random_state, parallel=parallel, reg=reg,
-                lmbd_max=lmbd_max, name=name, alpha=alpha,
-                batch_selection=batch_selection, batch_size=batch_size
+                lmbd_max=lmbd_max, name=name, **algorithm_params
             )
         elif algorithm == "stochastic":
             # For stochastic learning, set forgetting factor alpha of the
@@ -218,8 +224,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
                 X, D_hat, z_hat, compute_z_func, compute_d_func, obj_func,
                 end_iter_func, n_iter=n_iter, n_jobs=n_jobs, verbose=verbose,
                 random_state=random_state, parallel=parallel, reg=reg,
-                lmbd_max=lmbd_max, name=name, alpha=0,
-                batch_selection=batch_selection, batch_size=batch_size
+                lmbd_max=lmbd_max, name=name, **algorithm_params
             )
         else:
             raise NotImplementedError(
@@ -242,9 +247,9 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
 
 
 def _batch_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
-                 obj_func, end_iter_func, n_iter=100, n_jobs=1, verbose=0,
-                 random_state=None, parallel=None, lmbd_max='fixed', reg=None,
-                 name="batch"):
+                 obj_func, end_iter_func, n_iter=100,
+                 lmbd_max='fixed', reg=None, _jobs=1, verbose=0,
+                 random_state=None, parallel=None, name="batch"):
 
     reg_ = reg
 
@@ -280,7 +285,8 @@ def _batch_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
 
         # monitor cost function
         times.append(time.time() - start)
-        pobj.append(obj_func(X, z_hat, D_hat, reg=reg_))
+        cost, X_hat = obj_func(X, z_hat, D_hat, reg=reg_, return_X_hat=True)
+        pobj.append(cost)
 
         if is_list_of_lil(z_hat):
             z_nnz = np.array([[len(d) for d in z.data] for z in z_hat]
