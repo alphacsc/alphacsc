@@ -1,14 +1,23 @@
 import numpy as np
 
-from sdtw import SoftDTW
-from sdtw.distance import SquaredEuclidean
-
 from .utils.convolution import numpy_convolve_uv
 from .utils.convolution import tensordot_convolve
 from .utils.convolution import _choose_convolve_multi
 from .utils.whitening import apply_whitening
 from .utils.lil import scale_z_by_atom, safe_sum, get_z_shape, is_list_of_lil
 from .utils import construct_X_multi
+
+try:
+    from .other import sdtw as _sdtw
+except ImportError:
+    _sdtw = None
+
+
+def _assert_dtw():
+    if _sdtw is None:
+        raise NotImplementedError("Could not import multicsc.other.sdtw. This "
+                                  "module must be compiled with cython to "
+                                  "make loss='dtw' available.")
 
 
 def compute_objective(X=None, X_hat=None, z_hat=None, D=None,
@@ -38,6 +47,7 @@ def compute_objective(X=None, X_hat=None, z_hat=None, D=None,
     if loss == 'l2':
         obj = _l2_objective(X=X, X_hat=X_hat, D=D, constants=constants)
     elif loss == 'dtw':
+        _assert_dtw()
         obj = _dtw_objective(X, X_hat, loss_params=loss_params)
     elif loss == 'whitening':
         ar_model = loss_params['ar_model']
@@ -192,6 +202,7 @@ def gradient_uv(uv, X=None, z=None, constants=None, reg=None, loss='l2',
     if loss == 'l2':
         cost, grad_d = _l2_gradient_d(D=uv, X=X, z=z, constants=constants)
     elif loss == 'dtw':
+        _assert_dtw()
         cost, grad_d = _dtw_gradient_d(D=uv, X=X, z=z, loss_params=loss_params)
     elif loss == 'whitening':
         cost, grad_d = _whitening_gradient_d(D=uv, X=X, z=z,
@@ -225,6 +236,7 @@ def gradient_zi(Xi, zi, D=None, constants=None, reg=None, loss='l2',
     if loss == 'l2':
         cost, grad = _l2_gradient_zi(Xi, zi, D=D, return_func=return_func)
     elif loss == 'dtw':
+        _assert_dtw()
         cost, grad = _dtw_gradient_zi(Xi, zi, D=D, loss_params=loss_params)
     elif loss == 'whitening':
         cost, grad = _whitening_gradient_zi(Xi, zi, D=D,
@@ -301,6 +313,7 @@ def gradient_d(D=None, X=None, z=None, constants=None, reg=None,
     if loss == 'l2':
         cost, grad_d = _l2_gradient_d(D=D, X=X, z=z, constants=constants)
     elif loss == 'dtw':
+        _assert_dtw()
         cost, grad_d = _dtw_gradient_d(D=D, X=X, z=z, loss_params=loss_params)
     elif loss == 'whitening':
         cost, grad_d = _whitening_gradient_d(D=D, X=X, z=z,
@@ -329,8 +342,8 @@ def _dtw_objective(X, X_hat, loss_params=dict()):
     n_trials = X.shape[0]
     cost = 0
     for idx in range(n_trials):
-        D_X = SquaredEuclidean(X_hat[idx].T, X[idx].T)
-        sdtw = SoftDTW(D_X, gamma=gamma, sakoe_chiba_band=sakoe_chiba_band)
+        D_X = _sdtw.SquaredEuclidean(X_hat[idx].T, X[idx].T)
+        sdtw = _sdtw.SoftDTW(D_X, gamma=gamma, sakoe_chiba_band=sakoe_chiba_band)
         cost += sdtw.compute()
 
     return cost
@@ -345,8 +358,9 @@ def _dtw_gradient(X, z, D=None, loss_params=dict()):
     grad = np.zeros(X_hat.shape)
     cost = 0
     for idx in range(n_trials):
-        D_X = SquaredEuclidean(X_hat[idx].T, X[idx].T)
-        sdtw = SoftDTW(D_X, gamma=gamma, sakoe_chiba_band=sakoe_chiba_band)
+        D_X = _sdtw.SquaredEuclidean(X_hat[idx].T, X[idx].T)
+        sdtw = sdtw.SoftDTW(D_X, gamma=gamma,
+                            sakoe_chiba_band=sakoe_chiba_band)
 
         cost += sdtw.compute()
         grad[idx] = D_X.jacobian_product(sdtw.grad()).T
