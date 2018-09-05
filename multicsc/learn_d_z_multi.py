@@ -342,12 +342,16 @@ def _online_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
 
     # Initialize constants dictionary
     constants = {}
-    n_trials = X.shape[0]
-    n_atoms, n_channels, n_times_atom = D_hat.shape
+    n_trials, n_channels = X.shape[:2]
+    if D_hat.ndim == 2:
+        n_atoms, n_times_atom = D_hat.shape
+        n_times_atom -= n_channels
+    else:
+        n_atoms, _, n_times_atom = D_hat.shape
     constants['n_channels'] = n_channels
     constants['XtX'] = np.dot(X.ravel(), X.ravel())
     constants['ztz'] = np.zeros((n_atoms, n_atoms, 2 * n_times_atom - 1))
-    constants['ztX'] = np.zeros(D_hat.shape)
+    constants['ztX'] = np.zeros((n_atoms, n_channels, n_times_atom))
 
     # monitor cost function
     times = [0]

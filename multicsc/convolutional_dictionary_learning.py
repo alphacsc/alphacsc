@@ -8,7 +8,10 @@
 
 
 from sklearn.base import TransformerMixin
+from sklearn.exceptions import NotFittedError
+
 from .update_z_multi import update_z_multi
+from .utils.dictionary import get_D, get_uv
 from .learn_d_z_multi import learn_d_z_multi
 
 
@@ -98,16 +101,26 @@ DOC_FMT = """{desc}
         Raise an error if the objective function increase
 
 
-    Returns
-    -------
-    pobj : list
+    Attributes
+    ----------
+    D_hat_ : array, shape (n_atoms, n_channels, n_times_atom)
+        The dictionary in full rank mode.
+    uv_hat_ : array, shape (n_atoms, n_channels + n_times_atom)
+        The dictionary in rank 1 mode. If `rank1 = False`, this is an
+        approximation of the dictionary obtained through svd.
+    u_hat_ : array, shape (n_atoms, n_channels)
+        The spatial map of the dictionary in rank 1 mode. If `rank1 = False`,
+        this is an approximation of the dictionary obtained through svd.
+    v_hat_ : array, shape (n_atoms, n_times_atom)
+        The temporal patterns of the dictionary in rank 1 mode. If
+        `rank1 = False`, this is an approximation of the dictionary obtained
+        through svd.
+    z_hat_ : array, shape (n_trials, n_atoms, n_times_valid)
+        The sparse code associated to the signals used to fit the model.
+    pobj_ : list
         The objective function value at each step of the coordinate descent.
-    times : list
+    times_ : list
         The cumulative time for each iteration of the coordinate descent.
-    uv_hat : array, shape (n_atoms, n_channels + n_times_atom)
-        The atoms to learn from the data.
-    z_hat : array, shape (n_trials, n_atoms, n_times_valid)
-        The sparse activation matrix.
     """
 
 DEFAULT = dict(
@@ -172,29 +185,60 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
         self.name = name
 
         # Init property
-        self.D_hat = None
+        self._D_hat = None
 
     def fit(self, X, y=None):
-        self.pobj_, self.times_, self.D_hat, self.z_hat = learn_d_z_multi(
+        self.pobj_, self.times_, self._D_hat, self.z_hat_ = learn_d_z_multi(
             X, self.n_atoms, self.n_times_atom, reg=self.reg,
             loss=self.loss, loss_params=self.loss_params,
             rank1=self.rank1, uv_constraint=self.uv_constraint,
             algorithm=self.algorithm, algorithm_params=self.algorithm_params,
-            n_iter=self.n_iter, eps=self.eps, stopping_pobj=self.stopping_pobj,
+            n_iter=self.n_iter, eps=self.eps,
             solver_z=self.solver_z, solver_z_kwargs=self.solver_z_kwargs,
             solver_d=self.solver_d, solver_d_kwargs=self.solver_d_kwargs,
             D_init=self.D_init, D_init_params=self.D_init_params,
             use_sparse_z=self.use_sparse_z, lmbd_max=self.lmbd_max,
             verbose=self.verbose, callback=self.callback,
             random_state=self.random_state, n_jobs=self.n_jobs,
-            name=self.name, raise_on_increase=True)
+            name=self.name, raise_on_increase=self.raise_on_increase)
+        self.n_channels_ = X.shape[1]
+        return self
 
     def transform(self, X):
-        assert self.D_hat is not None
+        assert self._D_hat is not None
         z_hat, _, _ = update_z_multi(
-            X, self.D_hat, reg=self.reg, z0=self.z0, parallel=self.parallel,
+            X, self._D_hat, reg=self.reg, z0=self.z0, parallel=self.parallel,
             solver=self.solver, solver_kwargs=self.solver_z_kwargs,
             loss=self.loss, loss_params=self.loss_params)
+
+    def _check_fitted(self):
+        if self._D_hat is None:
+            raise NotFittedError("Fit must be called before accessing the "
+                                 "dictionary")
+
+    @property
+    def D_hat_(self):
+        self._check_fitted()
+        if self._D_hat.ndim == 3:
+            return self._D_hat
+
+        return get_D(self._D_hat, self.n_channels_)
+
+    @property
+    def uv_hat_(self):
+        self._check_fitted()
+        if self._D_hat.ndim == 3:
+            return get_uv(self._D_hat)
+
+        return self._D_hat
+
+    @property
+    def u_hat_(self):
+        return self.uv_hat_[:, :self.n_channels_]
+
+    @property
+    def v_hat_(self):
+        return self.uv_hat_[:, self.n_channels_:]
 
 
 class BatchCDL(ConvolutionalDictionaryLearning):
@@ -209,16 +253,16 @@ class BatchCDL(ConvolutionalDictionaryLearning):
                  solver_d='alternate_adaptive', solver_d_kwargs={},
                  rank1=True, uv_constraint='separate',
                  eps=1e-10, D_init=None, D_init_params={},
-                 stopping_pobj=None, verbose=10, random_state=None):
+                 verbose=10, random_state=None):
         super().__init__(
             n_atoms, n_times_atom, reg=reg, n_iter=n_iter,
             solver_z=solver_z, solver_z_kwargs=solver_z_kwargs,
             solver_d=solver_d, solver_d_kwargs=solver_d_kwargs,
             rank1=rank1, uv_constraint=uv_constraint,
-            eps=1e-10, D_init=None, D_init_params={},
+            eps=eps, D_init=D_init, D_init_params=D_init_params,
             algorithm='batch', lmbd_max='fixed', raise_on_increase=True,
-            loss='l2', stopping_pobj=None, use_sparse_z=False, n_jobs=n_jobs,
-            verbose=10, callback=None, random_state=None, name="BatchCDL")
+            loss='l2', use_sparse_z=False, n_jobs=n_jobs, verbose=verbose,
+            callback=None, random_state=random_state, name="BatchCDL")
 
 
 class OnlineCDL(ConvolutionalDictionaryLearning):
@@ -260,6 +304,6 @@ class OnlineCDL(ConvolutionalDictionaryLearning):
             algorithm_params=dict(alpha=alpha, batch_size=batch_size,
                                   batch_selection=batch_selection),
             n_jobs=n_jobs, random_state=random_state, algorithm='online',
-            lmbd_max='fixed', raise_on_increase=True, loss='l2', verbose=10,
-            callback=None, stopping_pobj=None, use_sparse_z=False,
+            lmbd_max='fixed', raise_on_increase=False, loss='l2',
+            callback=None, use_sparse_z=False, verbose=verbose,
             name="OnlineCDL")

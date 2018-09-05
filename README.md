@@ -6,23 +6,49 @@
 
 [Convolutional dictionary learning for noisy signals using αCSC](https://papers.nips.cc/paper/6710-learning-the-morphology-of-brain-signals-using-alpha-stable-convolutional-sparse-coding)
 
-Dependencies
-------------
-
-These are the dependencies
-
-* numpy
-* matplotlib
-* scipy
-* joblib
-* mne
-* cython
 
 Installation
 ------------
 
-To install this package, the easiest way is using `pip`. As this package contains
-multiple cython file, please run `bash install_multicsc.sh`.
+To install this package, the easiest way is using `pip`. It will install this package and its dependencies. This package depends on the following python libraries:
+
+```
+numpy, matplotlib, scipy, joblib, mne, cython
+```
+
+This package contains multiple cython file that can be build by running `bash install_multicsc.sh`.
+
+
+Usage
+-----
+
+```python
+import numpy as np
+import matplotlib.pyplot as plt
+from multicsc import BatchCDL, OnlineCDL
+
+n_atoms = 10
+n_times_atom = 50
+n_channels = 5
+n_trials = 10
+n_times = 1000
+X = np.random.randn(n_trials, n_channels, n_times)
+
+cdl = OnlineCDL(n_atoms, n_times_atom)
+cdl.fit(X)
+
+fig, axes = plt.subplots(n_atoms, 2, num="Dictionary")
+for k in range(n_atoms):
+    axes[k, 0].plot(cdl.u_hat_[k])
+    axes[k, 1].plot(cdl.v_hat_[k])
+
+axes[0, 0].set_title("Spatial map")
+axes[0, 1].set_title("Temporal map")
+
+plt.show()
+
+```
+
 
 Cite
 ----
