@@ -1,6 +1,7 @@
 #! /usr/bin/env python
-import setuptools  # noqa; we are using a setuptools namespace
-from numpy.distutils.core import setup
+import numpy as np
+from setuptools import setup, Extension
+
 
 descr = """Convolutional dictionary learning for noisy signals"""
 
@@ -18,6 +19,22 @@ def get_requirements():
     with open('requirements.txt') as f:
         requirements = [r.strip() for r in f.readlines()]
     return [r for r in requirements if r != '']
+
+
+try:
+    from Cython.Build import cythonize
+    kmc2 = Extension('multicsc.other.kmc2.kmc2',
+                     sources=['multicsc/other/kmc2/kmc2.pyx'],
+                     extra_compile_args=['-O3'])
+    sdtw = Extension('multicsc.other.sdtw.soft_dtw_fast',
+                     sources=['multicsc/other/sdtw/soft_dtw_fast.pyx'])
+    ext_modules = cythonize([kmc2, sdtw])
+except ImportError:
+    import warnings
+    warnings.warn("the optional dependency `cython` is unavailable on this "
+                  "system so some functionality (D_init='kmeans') might not "
+                  "work properly.")
+    ext_modules = None
 
 
 if __name__ == "__main__":
@@ -42,8 +59,10 @@ if __name__ == "__main__":
               'Operating System :: MacOS',
           ],
           platforms='any',
+          ext_modules=ext_modules,
           packages=[
               'multicsc'
           ],
-          install_requires=get_requirements()
+          install_requires=get_requirements(),
+          include_dirs=[np.get_include()]
           )

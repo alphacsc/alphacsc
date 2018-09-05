@@ -3,15 +3,13 @@ import itertools
 import numpy as np
 import matplotlib.pyplot as plt
 
-import kmc2
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 
-from .utils import check_random_state
-from .utils.lil import get_z_shape
 from .utils.viz import COLORS
-from .other.k_medoids import KMedoids
+from .utils.lil import get_z_shape
+from .utils import check_random_state
 from .other.kmc2 import custom_distances
 from .update_d_multi import prox_uv, prox_d
 from .utils.dictionary import get_uv, get_D, _patch_reconstruction_error
@@ -160,8 +158,20 @@ def kmeans_init(X, n_atoms, n_times_atom, max_iter=0, random_state=None,
         weights = None
 
     # init the kmeans centers with KMC2
-    seeding, indices = kmc2.kmc2(X_embed, k=n_atoms, weights=weights,
-                                 random_state=rng, distances=distances)
+    try:
+        from multicsc.other.kmc2 import kmc2
+        seeding, indices = kmc2.kmc2(X_embed, k=n_atoms, weights=weights,
+                                     random_state=rng, distances=distances)
+    except ImportError:
+        if max_iter == 0:
+            raise ImportError("Could not import multicsc.other.kmc2. This "
+                              "breaks the logic for the D_init='kmeans'. It "
+                              "should not be used with max_iter=0 in "
+                              "D_init_params.")
+        # Default to random init for non-euclidean distances and to "kmeans++"
+        # in the case of K-means.
+        indices = rng.choice(len(X_embed), size=n_atoms, replace=False)
+        seeding = "kmeans++"
 
     # perform the kmeans, or use the seeding if max_iter == 0
     if max_iter == 0:
@@ -177,6 +187,13 @@ def kmeans_init(X, n_atoms, n_times_atom, max_iter=0, random_state=None,
         else:
             raise ValueError('Unknown distance "%s".' % (distances, ))
 
+        try:
+            from .other.k_medoids import KMedoids
+        except ImportError:
+            raise ImportError("Could not import multics.other.k_medoid, make "
+                              "sure to compile it to be able to initialize "
+                              "the dictionary with k-means and a non-euclidean"
+                              " distance.")
         model = KMedoids(n_clusters=n_atoms, init=np.int_(indices),
                          max_iter=max_iter, distance_metric=distance_metric,
                          random_state=rng).fit(X_embed)

@@ -2,7 +2,7 @@ import numpy as np
 from scipy.signal import correlate
 from scipy.linalg import eigh, blas
 
-from .utils import check_random_state
+from multicsc.utils import check_random_state
 
 
 def learn_atoms(X, n_atoms, n_times_atom, n_iter=10, max_shift=11,

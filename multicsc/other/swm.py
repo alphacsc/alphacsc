@@ -12,7 +12,7 @@ neural oscillations using correlations.
 import numpy as np
 from scipy.spatial.distance import pdist
 
-from .utils import check_random_state
+from multicsc.utils import check_random_state
 
 
 def sliding_window_matching(x, L, G, max_iterations=500, T=1,
