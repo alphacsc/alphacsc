@@ -29,7 +29,7 @@ def _general_cd(X, D, reg, n_iter, strategy, n_seg):
 
     z, pobj, times = _update_z_multi_idx(
         X, D, reg=reg, z0=None, idxs=np.arange(n_trials), debug=False,
-        solver='gcd', timing=True, solver_kwargs=solver_kwargs)
+        solver="lgcd", timing=True, solver_kwargs=solver_kwargs)
     return z, pobj, times
 
 

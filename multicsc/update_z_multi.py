@@ -42,7 +42,7 @@ def update_z_multi(X, D, reg, z0=None, debug=False, parallel=None,
         If True, check the grad.
     parallel : instance of Parallel
         Context manager for running joblibs in a loop.
-    solver : 'l-bfgs' | 'gcd'
+    solver : 'l-bfgs' | "lgcd"
         The solver to use.
     solver_kwargs : dict
         Parameters for the solver
@@ -132,11 +132,11 @@ def _update_z_multi_idx(X_i, D, reg, z0_i, debug, solver='l-bfgs',
 
     assert not (freeze_support and z0_i is None), 'Impossible !'
 
-    if is_lil(z0_i) and solver != "gcd":
+    if is_lil(z0_i) and solver != "lgcd":
         raise NotImplementedError()
 
     constants = {}
-    if solver == "gcd":
+    if solver == "lgcd":
         constants['DtD'] = compute_DtD(D=D, n_channels=n_channels)
     init_timing = time.time() - t_start
 
@@ -204,7 +204,7 @@ def _update_z_multi_idx(X_i, D, reg, z0_i, debug, solver='l-bfgs',
         else:
             z_hat, pobj = output
 
-    elif solver == "gcd":
+    elif solver == "lgcd":
         if not sparse.isspmatrix_lil(f0):
             f0 = f0.reshape(n_atoms, n_times_valid)
 

@@ -61,7 +61,7 @@ DOC_FMT = """{desc}
     ~~~~~~~~~~~~~~~~~
     solver_z : str
         The solver to use for the z update. Options are
-        'l_bfgs' (default) | 'gcd'
+        'l_bfgs' (default) | "lgcd"
     solver_z_kwargs : dict
         Additional keyword arguments to pass to update_z_multi
 
@@ -130,7 +130,6 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
                  solver_z='l_bfgs', solver_z_kwargs={},
                  solver_d='alternate_adaptive', solver_d_kwargs={},
                  eps=1e-10, D_init=None, D_init_params={},
-                 stopping_pobj=None,
                  algorithm='batch', algorithm_params={},
                  use_sparse_z=False, lmbd_max='fixed', verbose=10,
                  callback=None, random_state=None, name="_CDL",

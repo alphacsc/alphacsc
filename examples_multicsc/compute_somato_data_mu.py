@@ -53,7 +53,7 @@ def _run(random_state, reg, **kwargs):
         n_times_atom=n_times_atom,
         reg=reg,
         eps=1e-5,
-        solver_z="gcd",
+        solver_z="lgcd",
         uv_constraint='separate',
         solver_d='alternate_adaptive',
         solver_z_kwargs={'factr': 1e12, 'max_iter': 1000},

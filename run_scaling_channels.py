@@ -49,7 +49,7 @@ def run_multichannel(X, D_init, reg, n_iter, random_state,
         X, n_atoms, n_times_atom, reg=reg, n_iter=n_iter,
         uv_constraint='separate', rank1=True, D_init=D_init,
         solver_d='alternate_adaptive', solver_d_kwargs=dict(max_iter=50),
-        solver_z='gcd', solver_z_kwargs=solver_z_kwargs, use_sparse_z=False,
+        solver_z="lgcd", solver_z_kwargs=solver_z_kwargs, use_sparse_z=False,
         name="rank1-{}-{}".format(n_channels, random_state),
         random_state=random_state, n_jobs=1, verbose=verbose)
 
@@ -66,7 +66,7 @@ def run_multivariate(X, D_init, reg, n_iter, random_state,
         X, n_atoms, n_times_atom, reg=reg, n_iter=n_iter,
         uv_constraint='separate', rank1=False, D_init=D_init,
         solver_d='l-bfgs', solver_d_kwargs=dict(max_iter=50),
-        solver_z='gcd', solver_z_kwargs=solver_z_kwargs, use_sparse_z=False,
+        solver_z="lgcd", solver_z_kwargs=solver_z_kwargs, use_sparse_z=False,
         name="dense-{}-{}".format(n_channels, random_state),
         random_state=random_state, n_jobs=1, verbose=verbose,
         raise_on_increase=False)

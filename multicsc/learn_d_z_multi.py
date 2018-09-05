@@ -91,7 +91,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
             iteration.
     solver_z : str
         The solver to use for the z update. Options are
-        'l-bfgs' (default) | 'gcd'
+        'l-bfgs' (default) | "lgcd"
     solver_z_kwargs : dict
         Additional keyword arguments to pass to update_z_multi
     solver_d : str
@@ -202,7 +202,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
             pobj, times, D_hat, z_hat = _batch_learn(
                 X, D_hat, z_hat, compute_z_func, compute_d_func,
                 obj_func, end_iter_func, n_iter=n_iter,
-                n_jobs=n_jobs, verbose=verbose, random_state=random_state,
+                verbose=verbose, random_state=random_state,
                 parallel=parallel, reg=reg, lmbd_max=lmbd_max, name=name,
                 **algorithm_params
             )
@@ -212,7 +212,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
         elif algorithm == "online":
             pobj, times, D_hat, z_hat = _online_learn(
                 X, D_hat, z_hat, compute_z_func, compute_d_func, obj_func,
-                end_iter_func, n_iter=n_iter, n_jobs=n_jobs, verbose=verbose,
+                end_iter_func, n_iter=n_iter, verbose=verbose,
                 random_state=random_state, parallel=parallel, reg=reg,
                 lmbd_max=lmbd_max, name=name, **algorithm_params
             )
@@ -222,7 +222,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
             # steps and set D-update max_iter to a low value (typically 1).
             pobj, times, D_hat, z_hat = _online_learn(
                 X, D_hat, z_hat, compute_z_func, compute_d_func, obj_func,
-                end_iter_func, n_iter=n_iter, n_jobs=n_jobs, verbose=verbose,
+                end_iter_func, n_iter=n_iter, verbose=verbose,
                 random_state=random_state, parallel=parallel, reg=reg,
                 lmbd_max=lmbd_max, name=name, **algorithm_params
             )
@@ -248,7 +248,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
 
 def _batch_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
                  obj_func, end_iter_func, n_iter=100,
-                 lmbd_max='fixed', reg=None, _jobs=1, verbose=0,
+                 lmbd_max='fixed', reg=None, verbose=0,
                  random_state=None, parallel=None, name="batch"):
 
     reg_ = reg
@@ -333,7 +333,7 @@ def _batch_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
 
 
 def _online_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
-                  obj_func, end_iter_func, n_iter=100, n_jobs=1, verbose=0,
+                  obj_func, end_iter_func, n_iter=100, verbose=0,
                   random_state=None, parallel=None, lmbd_max='fixed', reg=None,
                   alpha=.8, batch_selection='random', batch_size=1,
                   name="online"):

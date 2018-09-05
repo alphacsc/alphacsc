@@ -118,7 +118,7 @@ def test_cd(use_sparse_lil):
     # Ensure that the initialization is good, by using a nearly optimal point
     # and verifying that the cost does not goes up.
     z_hat, ztz, ztX = update_z_multi(X, D=uv, reg=reg, z0=z_gen,
-                                     solver='gcd',
+                                     solver="lgcd",
                                      solver_kwargs={
                                         'max_iter': 5, 'tol': 1e-5
                                      })

@@ -43,7 +43,7 @@ if __name__ == "__main__":
     default_kwargs = dict(
         n_atoms=25, n_times_atom=int(sfreq * .2),
         random_state=42, n_iter=50, reg=.5, eps=1e-3,
-        solver_z="gcd", solver_z_kwargs={'max_iter': 1000},
+        solver_z="lgcd", solver_z_kwargs={'max_iter': 1000},
         solver_d='alternate_adaptive', solver_d_kwargs={'max_iter': 100},
         D_init='chunk', uv_constraint='separate', loss='l2',
         loss_params=dict(gamma=0.005, sakoe_chiba_band=10),

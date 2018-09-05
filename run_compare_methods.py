@@ -172,7 +172,7 @@ def run_multichannel_gcd(X, ds_init, reg, n_iter, random_state, label):
     solver_z_kwargs = dict(max_iter=2, tol=1e-3)
     pobj, times, d_hat, z_hat = learn_d_z_multi(
         X, n_atoms, n_times_atom, solver_d='alternate_adaptive',
-        solver_z='gcd', uv_constraint='separate', eps=-np.inf,
+        solver_z="lgcd", uv_constraint='separate', eps=-np.inf,
         solver_z_kwargs=solver_z_kwargs, reg=reg, solver_d_kwargs=dict(
             max_iter=100), n_iter=n_iter, random_state=random_state,
         raise_on_increase=False, D_init=ds_init, n_jobs=1, verbose=verbose)
@@ -190,7 +190,7 @@ def run_multichannel_gcd_fullrank(X, ds_init, reg, n_iter, random_state,
 
     solver_z_kwargs = dict(max_iter=2, tol=1e-3)
     pobj, times, d_hat, z_hat = learn_d_z_multi(
-        X, n_atoms, n_times_atom, solver_d='fista', solver_z='gcd',
+        X, n_atoms, n_times_atom, solver_d='fista', solver_z="lgcd",
         uv_constraint='separate', eps=-np.inf, solver_z_kwargs=solver_z_kwargs,
         reg=reg, solver_d_kwargs=dict(max_iter=100), n_iter=n_iter,
         random_state=random_state, raise_on_increase=False, D_init=ds_init,
@@ -236,7 +236,7 @@ def run_multichannel_gcd_sparse(X, ds_init, reg, n_iter, random_state, label):
     solver_z_kwargs = dict(max_iter=2, tol=1e-3)
     pobj, times, d_hat, z_hat = learn_d_z_multi(
         X, n_atoms, n_times_atom, solver_d='alternate_adaptive',
-        uv_constraint='separate', solver_z='gcd', eps=-np.inf,
+        uv_constraint='separate', solver_z="lgcd", eps=-np.inf,
         solver_z_kwargs=solver_z_kwargs, reg=reg, solver_d_kwargs=dict(
             max_iter=100), use_sparse_z=True, n_iter=n_iter,
         raise_on_increase=False, random_state=random_state, D_init=ds_init,
