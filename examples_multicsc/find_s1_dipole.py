@@ -19,7 +19,7 @@ separate_figures = True
 
 atoms_idx = 1
 evoked = mne.read_evokeds(
-    'examples_alphacsc/atom_multi_somato-ave.fif')[atoms_idx]
+    'examples_multicsc/atom_multi_somato-ave.fif')[atoms_idx]
 
 data_path = mne.datasets.somato.data_path()
 subjects_dir = op.join(data_path, 'subjects')
@@ -28,7 +28,7 @@ subjects_dir = op.join(data_path, 'subjects')
 @mem.cache()
 def compute_dipole(atoms_idx):
 
-    fname_ave = 'examples_alphacsc/atom_multi_somato-ave.fif'
+    fname_ave = 'examples_multicsc/atom_multi_somato-ave.fif'
 
     fname_bem = op.join(subjects_dir, 'somato', 'bem',
                         'somato-5120-bem-sol.fif')

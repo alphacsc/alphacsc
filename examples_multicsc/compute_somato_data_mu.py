@@ -146,6 +146,6 @@ plt.show()
 
 pobj, times, uv_hat, z_hat, uv_init = res
 
-np.savez('examples_alphacsc/multi_somato-ave.npz', z_hat=z_hat,
+np.savez('examples_multicsc/multi_somato-ave.npz', z_hat=z_hat,
          uv_hat=uv_hat, sfreq=info['sfreq'], n_channels=n_channels)
-write_info('examples_alphacsc/info_somato.fif', info)
+write_info('examples_multicsc/info_somato.fif', info)

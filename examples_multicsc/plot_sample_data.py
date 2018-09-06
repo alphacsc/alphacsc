@@ -4,8 +4,8 @@ import numpy as np
 
 from alphacsc.utils.viz import COLORS
 
-data = np.load('examples_alphacsc/multi_sample-ave.npz')
-info = mne.io.read_info('examples_alphacsc/info_sample.fif')
+data = np.load('examples_multicsc/multi_sample-ave.npz')
+info = mne.io.read_info('examples_multicsc/info_sample.fif')
 n_channels = data['n_channels']
 uv_hat = data['uv_hat']
 sfreq = data['sfreq']

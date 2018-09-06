@@ -119,9 +119,9 @@ if debug:
     plt.plot(freqs, psd.T)
     plt.gca().set(xscale='log')
 
-np.savez('examples_alphacsc/multi_sample-ave.npz', z_hat=z_hat,
+np.savez('examples_multicsc/multi_sample-ave.npz', z_hat=z_hat,
          uv_hat=uv_hat, sfreq=raw.info['sfreq'], n_channels=n_channels)
-write_info('examples_alphacsc/info_sample.fif', raw.info)
+write_info('examples_multicsc/info_sample.fif', raw.info)
 
 if debug:
     ica.plot_properties(raw, picks=eog_inds, psd_args={'fmax': 35.},
