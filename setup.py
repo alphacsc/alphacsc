@@ -28,7 +28,16 @@ try:
                      extra_compile_args=['-O3'])
     sdtw = Extension('alphacsc.other.sdtw.soft_dtw_fast',
                      sources=['alphacsc/other/sdtw/soft_dtw_fast.pyx'])
-    ext_modules = cythonize([kmc2, sdtw])
+    modules = [kmc2, sdtw]
+
+    # Create the alphacsc.cython module
+    for m in ["compute_ztX", "compute_ztz", "coordinate_descent",
+              "sparse_conv"]:
+        modules.append(Extension(
+            "alphacsc.cython_code.{}".format(m),
+            sources=["alphacsc/cython_code/{}.pyx".format(m)]))
+        
+    ext_modules = cythonize(modules)
 except ImportError:
     import warnings
     warnings.warn("the optional dependency `cython` is unavailable on this "

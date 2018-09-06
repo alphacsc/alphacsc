@@ -1,20 +1,17 @@
 language: python
-before_install:
-  - wget -q http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
-  - chmod +x miniconda.sh
-  - ./miniconda.sh -b -p /home/travis/miniconda
-  - export PATH=/home/travis/miniconda/bin:$PATH
-  - conda update --yes --quiet conda
+python: "3.6"
+
 install:
-    - conda create -n testenv --yes pip python=2.7
-    - source activate testenv
-    - conda install --yes --quiet numpy=1.11 scipy=0.17 matplotlib=1.5 joblib
-    - conda install --yes --quiet nose coverage
-    - pip install -q flake8
-    - pip install coverage coveralls
-    - python setup.py install
+      # Install deps
+    - pip install numpy cython
+      # Install alphacsc
+    - python install .
+
+      # Install test deps
+    - pip install pytest coverage flake8 coveralls
+
 script:
-    - nosetests . --with-coverage
+    - pytest -vl --with-coverage
     - flake8 --count alphacsc
 after_success:
-- bash <(curl -s https://codecov.io/bash)
+    - bash <(curl -s https://codecov.io/bash)

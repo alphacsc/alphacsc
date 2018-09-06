@@ -4,7 +4,6 @@ from functools import partial
 import numpy as np
 from scipy import linalg
 from numpy.testing import assert_allclose
-from nose.tools import assert_equal, assert_true
 
 from alphacsc.learn_d_z import learn_d_z
 from alphacsc.utils.optim import power_iteration
@@ -48,8 +47,8 @@ def test_learn_codes():
                          solver_kwargs=dict(factr=1e11, max_iter=50))
 
         X_hat = construct_X(z_hat, ds)
-        assert_true(np.corrcoef(X.ravel(), X_hat.ravel())[1, 1] > 0.99)
-        assert_true(np.max(X - X_hat) < 0.1)
+        assert np.corrcoef(X.ravel(), X_hat.ravel())[1, 1] > 0.99
+        assert np.max(X - X_hat) < 0.1
 
         # Find position of non-zero entries
         idx = np.ravel_multi_index(z[0].nonzero(), z[0].shape)
@@ -59,7 +58,7 @@ def test_learn_codes():
         # make sure that the positions are a subset of the positions
         # in the original z
         mask = np.in1d(idx_hat, idx)
-        assert_equal(np.sum(mask), len(mask))
+        assert np.sum(mask) == len(mask)
 
 
 def test_learn_codes_atoms():
@@ -75,7 +74,7 @@ def test_learn_codes_atoms():
                 X, n_atoms, n_times_atom, func_d=func_d, solver_z=solver_z,
                 reg=reg, n_iter=n_iter, verbose=0, random_state=random_state,
                 solver_z_kwargs=dict(factr=1e7, max_iter=200))
-            assert_true(np.all(np.diff(pobj) < 0))
+            assert np.all(np.diff(pobj) < 0)
 
 
 def test_solve_unit_norm():
@@ -95,16 +94,16 @@ def test_solve_unit_norm():
     # warm start
     x_hat2, _ = solve_unit_norm_dual(lhs, rhs, lambd0=lambd_hat)
 
-    assert_true(linalg.norm(x_hat) - 1. < 1e-3)
-    assert_true(linalg.norm(x_hat2) - 1. < 1e-3)
+    assert linalg.norm(x_hat) - 1. < 1e-3
+    assert linalg.norm(x_hat2) - 1. < 1e-3
 
     x_hat = solve_unit_norm_primal(lhs, rhs, d_hat0=rng.randn(p))
-    assert_true(linalg.norm(x_hat) - 1. < 1e-3)
+    assert linalg.norm(x_hat) - 1. < 1e-3
 
     # back to dual, for more than one atom
     x[7] = 5
     x_hat, lambd_hat = solve_unit_norm_dual(lhs, rhs, np.array([5., 10.]))
-    assert_true(linalg.norm(x_hat[:5]) - 1. < 1e-3)
+    assert linalg.norm(x_hat[:5]) - 1. < 1e-3
 
 
 def test_linear_operator():
@@ -284,4 +283,6 @@ def test_learn_codes_atoms_sample_weights():
                 verbose=0, sample_weights=None, ds_init=ds_init,
                 solver_z_kwargs=dict(factr=1e9))
 
+            pobj_1 /= pobj_0[0]
+            pobj_0 /= pobj_0[0]
             assert_allclose(pobj_0, pobj_1, rtol=0, atol=1e-3)

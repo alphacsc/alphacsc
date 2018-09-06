@@ -8,13 +8,9 @@
 
 import numpy as np
 
+from .. import cython_code
 from .compat import numba, jit
 from .lil import get_z_shape, is_lil
-
-try:
-    from .. import cython
-except ImportError:
-    cython = None
 
 
 def construct_X(z, ds):
@@ -179,11 +175,12 @@ def _choose_convolve_multi(z_i, D=None, n_channels=None):
     assert z_i.shape[0] == D.shape[0]
 
     if is_lil(z_i):
+        cython_code._assert_cython()
         if D.ndim == 2:
-            return cython._fast_sparse_convolve_multi_uv(z_i, D, n_channels,
-                                                         compute_D=True)
+            return cython_code._fast_sparse_convolve_multi_uv(
+                z_i, D, n_channels, compute_D=True)
         else:
-            return cython._fast_sparse_convolve_multi(z_i, D)
+            return cython_code._fast_sparse_convolve_multi(z_i, D)
 
     elif np.sum(z_i != 0) < 0.01 * z_i.size:
         if D.ndim == 2:

@@ -3,9 +3,9 @@ import numpy as np
 from scipy import sparse
 
 from .lil import is_lil
+from .. import cython_code
 from ..loss_and_gradient import gradient_zi
 from .convolution import _choose_convolve_multi
-from ..cython.coordinate_descent import update_dz_opt, subtract_zhat_to_beta
 
 
 def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
@@ -167,7 +167,8 @@ def _init_beta(Xi, z_hat, D, constants, reg, norm_Dk, tol,
     beta = gradient_zi(Xi, z_hat, D=D, reg=None, loss='l2',
                        return_func=False, constants=constants)
     if is_lil(z_hat):
-        beta = subtract_zhat_to_beta(beta, z_hat, norm_Dk[:, 0])
+        cython_code._assert_cython()
+        beta = cython_code.subtract_zhat_to_beta(beta, z_hat, norm_Dk[:, 0])
     else:
         for k, t in zip(*z_hat.nonzero()):
             beta[k, t] -= z_hat[k, t] * norm_Dk[k]  # np.sum(DtD[k, k, t0])
@@ -175,8 +176,9 @@ def _init_beta(Xi, z_hat, D, constants, reg, norm_Dk, tol,
     if is_lil(z_hat):
         n_times_valid = beta.shape[1]
         dz_opt = np.zeros(beta.shape)
-        update_dz_opt(z_hat, beta, dz_opt, norm_Dk[:, 0], reg, t_start=0,
-                      t_end=n_times_valid)
+        cython_code._assert_cython()
+        cython_code.update_dz_opt(z_hat, beta, dz_opt, norm_Dk[:, 0], reg,
+                                  t_start=0, t_end=n_times_valid)
     else:
         dz_opt = np.maximum(-beta - reg, 0) / norm_Dk - z_hat
 
@@ -205,8 +207,9 @@ def _update_beta(beta, dz_opt, accumulator, active_segs, z_hat, DtD, norm_Dk,
 
     # update dz_opt
     if is_lil(z_hat):
-        update_dz_opt(z_hat, beta, dz_opt, norm_Dk[:, 0], reg, t_start_up,
-                      t_end_up)
+        cython_code._assert_cython()
+        cython_code.update_dz_opt(
+            z_hat, beta, dz_opt, norm_Dk[:, 0], reg, t_start_up, t_end_up)
     else:
         tmp = np.maximum(-beta[:, t_start_up:t_end_up] - reg, 0) / norm_Dk
         dz_opt[:, t_start_up:t_end_up] = tmp - z_hat[:, t_start_up:t_end_up]

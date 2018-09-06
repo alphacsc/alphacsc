@@ -342,8 +342,9 @@ def _dtw_objective(X, X_hat, loss_params=dict()):
     n_trials = X.shape[0]
     cost = 0
     for idx in range(n_trials):
-        D_X = _sdtw.SquaredEuclidean(X_hat[idx].T, X[idx].T)
-        sdtw = _sdtw.SoftDTW(D_X, gamma=gamma, sakoe_chiba_band=sakoe_chiba_band)
+        D_X = _sdtw.distance.SquaredEuclidean(X_hat[idx].T, X[idx].T)
+        sdtw = _sdtw.SoftDTW(D_X, gamma=gamma,
+                             sakoe_chiba_band=sakoe_chiba_band)
         cost += sdtw.compute()
 
     return cost
@@ -358,9 +359,9 @@ def _dtw_gradient(X, z, D=None, loss_params=dict()):
     grad = np.zeros(X_hat.shape)
     cost = 0
     for idx in range(n_trials):
-        D_X = _sdtw.SquaredEuclidean(X_hat[idx].T, X[idx].T)
-        sdtw = sdtw.SoftDTW(D_X, gamma=gamma,
-                            sakoe_chiba_band=sakoe_chiba_band)
+        D_X = _sdtw.distance.SquaredEuclidean(X_hat[idx].T, X[idx].T)
+        sdtw = _sdtw.SoftDTW(D_X, gamma=gamma,
+                             sakoe_chiba_band=sakoe_chiba_band)
 
         cost += sdtw.compute()
         grad[idx] = D_X.jacobian_product(sdtw.grad()).T
@@ -532,10 +533,10 @@ def _dense_transpose_convolve_z(residual, z):
         raise NotImplementedError()
 
     return np.sum([[[np.convolve(res_ip, z_ik[::-1],
-                                 mode='valid')  # n_times_atom
-                     for res_ip in res_i]                       # n_channnels
-                    for z_ik in z_i]        # n_atoms
-                   for z_i, res_i in zip(z, residual)], axis=0)                        # n_atoms
+                                 mode='valid')                   # n_times_atom
+                     for res_ip in res_i]                        # n_channnels
+                    for z_ik in z_i]                             # n_atoms
+                   for z_i, res_i in zip(z, residual)], axis=0)  # n_atoms
 
 
 def _dense_transpose_convolve_d(residual_i, D=None, n_channels=None):

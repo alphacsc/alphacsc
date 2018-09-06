@@ -14,10 +14,10 @@ import numpy as np
 from scipy import sparse
 from joblib import Parallel
 
-from .utils import _assert_cython
 from .utils import check_random_state
 from .utils.lil import is_list_of_lil
 from .utils.whitening import whitening
+from .cython_code import _assert_cython
 from .update_z_multi import update_z_multi
 from .utils.profile_this import profile_this  # noqa
 from .utils.dictionary import get_lambda_max
@@ -25,18 +25,12 @@ from .update_d_multi import update_uv, update_d
 from .init_dict import init_dictionary, get_max_error_dict
 from .loss_and_gradient import compute_X_and_objective_multi
 
-try:
-    from . import cython
-except ImportError:
-    cython = None
-
 
 def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
                     loss='l2', loss_params=dict(gamma=.1, sakoe_chiba_band=10,
                                                 ordar=10),
                     rank1=True, uv_constraint='separate', eps=1e-10,
-                    algorithm='batch', algorithm_params=dict(
-                        alpha=.8, batch_size=1, batch_selection='random',),
+                    algorithm='batch', algorithm_params=dict(),
                     detrending=None, detrending_params=dict(),
                     solver_z='l-bfgs', solver_z_kwargs=dict(),
                     solver_d='alternate_adaptive', solver_d_kwargs=dict(),
@@ -155,9 +149,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
     init_duration = time.time() - start
 
     if use_sparse_z:
-        if cython is None:
-            raise NotImplementedError("Need cython to be able to use sparse "
-                                      "matrices.")
+        _assert_cython()
         z_hat = [sparse.lil_matrix((n_atoms, n_times_valid))
                  for _ in range(n_trials)]
     else:

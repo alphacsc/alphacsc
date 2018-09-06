@@ -12,16 +12,12 @@ from scipy import optimize, sparse
 from joblib import Parallel, delayed
 
 
+from . import cython_code
 from .utils.optim import fista
 from .loss_and_gradient import gradient_zi
 from .utils.lil import is_list_of_lil, is_lil
 from .utils.coordinate_descent import _coordinate_descent_idx
 from .utils.compute_constants import compute_DtD, compute_ztz, compute_ztX
-
-try:
-    from . import cython
-except ImportError:
-    cython = None
 
 
 def update_z_multi(X, D, reg, z0=None, debug=False, parallel=None,
@@ -238,8 +234,9 @@ def _update_z_multi_idx(X_i, D, reg, z0_i, debug, solver='l-bfgs',
             ztz = compute_ztz(z_hat[None], n_times_atom)
             ztX = compute_ztX(z_hat[None], X_i[None])
         else:
-            ztz = cython._fast_compute_ztz([z_hat], n_times_atom)
-            ztX = cython._fast_compute_ztX([z_hat], X_i[None])
+            cython_code._assert_cython()
+            ztz = cython_code._fast_compute_ztz([z_hat], n_times_atom)
+            ztX = cython_code._fast_compute_ztX([z_hat], X_i[None])
     else:
         ztz, ztX = None, None
 

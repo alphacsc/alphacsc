@@ -2,13 +2,13 @@ import pytest
 import numpy as np
 from scipy import sparse
 
+from alphacsc import cython_code
 from alphacsc.update_z_multi import update_z_multi
 from alphacsc.update_z_multi import compute_DtD, _coordinate_descent_idx
 from alphacsc.loss_and_gradient import compute_X_and_objective_multi
 from alphacsc.utils.whitening import whitening
 from alphacsc.utils import construct_X_multi
 
-from alphacsc.cython import _fast_compute_ztz, _fast_compute_ztX
 from alphacsc.utils.compute_constants import compute_ztz, compute_ztX
 
 
@@ -122,7 +122,8 @@ def test_cd(use_sparse_lil):
                                      solver_kwargs={
                                         'max_iter': 5, 'tol': 1e-5
                                      })
-    if use_sparse_lil:
+    if use_sparse_lil and cython_code._CYTHON_AVAILABLE:
+        from alphacsc.cython_code import _fast_compute_ztz, _fast_compute_ztX
         assert np.allclose(ztz, _fast_compute_ztz(z_hat, n_times_atom))
         assert np.allclose(ztX, _fast_compute_ztX(z_hat, X))
 

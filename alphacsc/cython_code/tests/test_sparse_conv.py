@@ -1,3 +1,4 @@
+import pytest
 import numpy as np
 from scipy import sparse
 from numpy.testing import assert_allclose
@@ -5,8 +6,10 @@ from numpy.testing import assert_allclose
 from alphacsc.utils.convolution import _dense_convolve_multi
 from alphacsc.utils.convolution import _dense_convolve_multi_uv
 from alphacsc.utils import check_random_state
-from alphacsc.cython import _fast_sparse_convolve_multi
-from alphacsc.cython import _fast_sparse_convolve_multi_uv
+
+from alphacsc import cython_code
+if not cython_code._CYTHON_AVAILABLE:
+    pytest.skip("cython is not installed.", allow_module_level=True)
 
 
 def test_sparse_convolve():
@@ -24,7 +27,7 @@ def test_sparse_convolve():
 
     zd_0 = _dense_convolve_multi(zi, ds)
     zd_1 = np.zeros_like(zd_0)
-    zd_1 = _fast_sparse_convolve_multi(zi_lil, ds)
+    zd_1 = cython_code._fast_sparse_convolve_multi(zi_lil, ds)
     assert_allclose(zd_0, zd_1, atol=1e-16)
 
 
@@ -43,5 +46,5 @@ def test_sparse_convolve_uv():
 
     zd_0 = _dense_convolve_multi_uv(zi, ds, n_channels)
     zd_1 = np.zeros_like(zd_0)
-    zd_1 = _fast_sparse_convolve_multi_uv(zi_lil, ds, n_channels)
+    zd_1 = cython_code._fast_sparse_convolve_multi_uv(zi_lil, ds, n_channels)
     assert_allclose(zd_0, zd_1, atol=1e-16)
