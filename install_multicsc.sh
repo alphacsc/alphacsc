@@ -1,6 +1,6 @@
 
 pip install -e .
-cd multicsc/other/kmc2
+cd alphacsc/other/kmc2
 pip install -e .
 cd ../sporco
 pip install -e .

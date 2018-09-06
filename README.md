@@ -1,6 +1,6 @@
 # αcsc
-[![TravisCI](https://api.travis-ci.org/multicsc/multicsc.svg?branch=master)](https://travis-ci.org/multicsc/multicsc)
-[![Codecov](https://codecov.io/github/multicsc/multicsc/coverage.svg?precision=0)](https://codecov.io/gh/multicsc/multicsc)
+[![TravisCI](https://api.travis-ci.org/alphacsc/alphacsc.svg?branch=master)](https://travis-ci.org/alphacsc/alphacsc)
+[![Codecov](https://codecov.io/github/alphacsc/alphacsc/coverage.svg?precision=0)](https://codecov.io/gh/alphacsc/alphacsc)
 
 [Multivariate Convolutional Sparse Coding for Electromagnetic Brain Signals](https://arxiv.org/pdf/1805.09654.pdf)
 
@@ -16,7 +16,7 @@ To install this package, the easiest way is using `pip`. It will install this pa
 numpy, matplotlib, scipy, joblib, mne, cython
 ```
 
-This package contains multiple cython file that can be build by running `bash install_multicsc.sh`.
+This package contains multiple cython file that can be build by running `bash install_alphacsc.sh`.
 
 
 Usage
@@ -25,7 +25,7 @@ Usage
 ```python
 import numpy as np
 import matplotlib.pyplot as plt
-from multicsc import BatchCDL, OnlineCDL
+from alphacsc import BatchCDL, OnlineCDL
 
 # Define the different dimensions of the problem
 n_atoms = 10

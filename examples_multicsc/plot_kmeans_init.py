@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from sklearn.externals.joblib import Memory, Parallel, delayed
 from scipy.signal import tukey
 
-from multicsc.init_dictionaryict import init_dictionary
+from alphacsc.init_dictionaryict import init_dictionary
 
 figure_path = 'figures'
 mem = Memory(cachedir='.', verbose=0)

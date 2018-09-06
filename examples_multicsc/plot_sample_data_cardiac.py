@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 from scipy.signal import tukey
 
 import mne
-from multicsc.learn_d_z_multi import learn_d_z_multi
-from multicsc.utils import construct_X_multi, plot_callback
+from alphacsc.learn_d_z_multi import learn_d_z_multi
+from alphacsc.utils import construct_X_multi, plot_callback
 
 
 parser = argparse.ArgumentParser('Programme to launch experiment on multi csc')

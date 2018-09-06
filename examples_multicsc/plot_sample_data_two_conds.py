@@ -6,8 +6,8 @@ from scipy.signal import tukey
 import mne
 from mne.preprocessing import compute_proj_ecg, compute_proj_eog
 
-from multicsc.learn_d_z_multi import learn_d_z_multi
-from multicsc.utils import (construct_X_multi, _choose_convolve,
+from alphacsc.learn_d_z_multi import learn_d_z_multi
+from alphacsc.utils import (construct_X_multi, _choose_convolve,
                             plot_callback)
 
 # Trying to do something like:
@@ -54,7 +54,7 @@ raw_data = raw[:][0]
 picks_meg = mne.pick_types(raw.info, meg=True, eeg=False, eog=False,
                            stim=False, exclude='bads')
 
-# Now multicsc
+# Now alphacsc
 raw.pick_types(meg='grad')
 X = raw[:][0]
 # X, _ = _reject_data_segments(X, reject, flat=None, decim=None,

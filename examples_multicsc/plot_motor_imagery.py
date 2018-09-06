@@ -8,8 +8,8 @@ from mne.channels import read_layout
 from mne.io import concatenate_raws, read_raw_edf
 from mne.datasets import eegbci
 
-from multicsc.learn_d_z_multi import learn_d_z_multi
-from multicsc.utils import plot_callback
+from alphacsc.learn_d_z_multi import learn_d_z_multi
+from alphacsc.utils import plot_callback
 
 n_atoms = 5
 

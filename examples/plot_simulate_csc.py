@@ -30,7 +30,7 @@ reg = 0.1
 ###############################################################################
 # Here, we simulate the data
 
-from multicsc.simulate import simulate_data # noqa
+from alphacsc.simulate import simulate_data # noqa
 
 random_state_simulate = 1
 X, ds_true, z_true = simulate_data(n_trials, n_times, n_times_atom,
@@ -40,7 +40,7 @@ X, ds_true, z_true = simulate_data(n_trials, n_times, n_times_atom,
 # Add some noise and corrupt some trials
 
 from scipy.stats import levy_stable # noqa
-from multicsc import check_random_state # noqa
+from alphacsc import check_random_state # noqa
 
 # Add stationary noise:
 fraction_corrupted = 0.02
@@ -55,7 +55,7 @@ idx_corrupted = rng.randint(0, n_trials,
 ###############################################################################
 # Let us look at the first 10 trials to see how they look.
 
-from multicsc.utils import plot_data # noqa
+from alphacsc.utils import plot_data # noqa
 plot_data([X[:10]])
 
 ###############################################################################
@@ -64,7 +64,7 @@ plot_data([X[:10]])
 #
 # Now, we run vanilla CSC on the data.
 
-from multicsc import learn_d_z # noqa
+from alphacsc import learn_d_z # noqa
 
 random_state = 60
 
@@ -90,7 +90,7 @@ plot_data([z[:10] for z in z_hat], ['stem'] * n_atoms)
 ###############################################################################
 # Note if the data is corrupted with impulsive noise, this method may not
 # be the best.  Check out our
-# :ref:`example using multicsc <sphx_glr_auto_examples_plot_simulate_multicsc.py>`
+# :ref:`example using alphacsc <sphx_glr_auto_examples_plot_simulate_alphacsc.py>`
 # to learn how to deal with such data.
 
 alpha = 1.2

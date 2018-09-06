@@ -7,8 +7,8 @@ import matplotlib.pyplot as plt
 from sklearn.externals.joblib import Memory
 from scipy.stats.mstats import gmean
 
-from multicsc.cython import _fast_sparse_convolve_multi
-from multicsc.cython import _fast_sparse_convolve_multi_uv
+from alphacsc.cython import _fast_sparse_convolve_multi
+from alphacsc.cython import _fast_sparse_convolve_multi_uv
 
 memory = Memory(cachedir='', verbose=0)
 

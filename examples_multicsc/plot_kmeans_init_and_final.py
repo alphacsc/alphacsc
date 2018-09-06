@@ -12,8 +12,8 @@ import matplotlib.pyplot as plt
 from sklearn.externals.joblib import Memory, Parallel, delayed
 from scipy.signal import tukey
 
-from multicsc.learn_d_z_multi import learn_d_z_multi
-from multicsc.utils.viz import plot_activations_density, COLORS
+from alphacsc.learn_d_z_multi import learn_d_z_multi
+from alphacsc.utils.viz import plot_activations_density, COLORS
 
 figure_path = 'figures'
 mem = Memory(cachedir='.', verbose=0)

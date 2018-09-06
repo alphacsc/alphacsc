@@ -30,9 +30,9 @@ reg = 0.1
 ###############################################################################
 # Here, we simulate the data
 
-from multicsc.simulate import simulate_data # noqa
+from alphacsc.simulate import simulate_data # noqa
 from scipy.stats import levy_stable # noqa
-from multicsc import check_random_state # noqa
+from alphacsc import check_random_state # noqa
 
 random_state_simulate = 1
 X, ds_true, z_true = simulate_data(n_trials, n_times, n_times_atom,
@@ -51,7 +51,7 @@ idx_corrupted = rng.randint(0, n_trials,
 ###############################################################################
 # Now, we run vanilla CSC on the data but with different initializations.
 
-from multicsc import learn_d_z # noqa
+from alphacsc import learn_d_z # noqa
 
 pobjs, d_hats = list(), list()
 for random_state in range(5):

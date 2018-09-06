@@ -8,16 +8,16 @@ import pandas as pd
 import scipy.sparse as sp
 from sklearn.externals.joblib import Parallel, delayed, Memory
 
-import multicsc.other.heide_csc as CSC
+import alphacsc.other.heide_csc as CSC
 from sporco.admm.cbpdndl import ConvBPDNDictLearn
 
-from multicsc.utils.profile_this import profile_this  # noqa
-from multicsc.update_d import update_d_block
-from multicsc.learn_d_z import learn_d_z
-from multicsc.learn_d_z_multi import learn_d_z_multi
-from multicsc.datasets.somato import load_data
-from multicsc.init_dict import init_dictionary
-from multicsc.utils.dictionary import get_uv
+from alphacsc.utils.profile_this import profile_this  # noqa
+from alphacsc.update_d import update_d_block
+from alphacsc.learn_d_z import learn_d_z
+from alphacsc.learn_d_z_multi import learn_d_z_multi
+from alphacsc.datasets.somato import load_data
+from alphacsc.init_dict import init_dictionary
+from alphacsc.utils.dictionary import get_uv
 
 mem = Memory(cachedir='.', verbose=0)
 

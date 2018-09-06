@@ -7,14 +7,14 @@ import matplotlib.pyplot as plt
 
 import mne
 
-from multicsc.datasets.somato import load_data
-from multicsc.utils import get_uv
-from multicsc.utils.viz import COLORS
+from alphacsc.datasets.somato import load_data
+from alphacsc.utils import get_uv
+from alphacsc.utils.viz import COLORS
 
 data_path = mne.datasets.somato.data_path()
 subjects_dir = op.join(data_path, 'subjects')
 
-fname_ave = 'examples_multicsc/atom_multi_somato-ave.fif'
+fname_ave = 'examples_alphacsc/atom_multi_somato-ave.fif'
 
 fname_raw = os.path.join(data_path, 'sef_raw_sss.fif')
 fname_bem = op.join(subjects_dir, 'somato', 'bem', 'somato-5120-bem-sol.fif')

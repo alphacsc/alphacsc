@@ -1,13 +1,13 @@
 import matplotlib.pyplot as plt
 
-from multicsc.learn_d_z_multi import learn_d_z_multi
-from multicsc.utils.whitening import whitening, unwhitening
-from multicsc.utils.viz import get_callback_csc, plot_or_replot
+from alphacsc.learn_d_z_multi import learn_d_z_multi
+from alphacsc.utils.whitening import whitening, unwhitening
+from alphacsc.utils.viz import get_callback_csc, plot_or_replot
 
 ###############################################################################
 if True:
     # somato dataset
-    from multicsc.datasets.somato import load_data
+    from alphacsc.datasets.somato import load_data
     print('loading the data...')
     sfreq = 150.
     X, info = load_data(sfreq=sfreq, filt=[None, None])
@@ -17,7 +17,7 @@ if True:
 
 else:
     # simulation
-    from multicsc.datasets.simulate import load_data
+    from alphacsc.datasets.simulate import load_data
     print('creating the data...')
     sfreq = 300.
     n_times = 1024

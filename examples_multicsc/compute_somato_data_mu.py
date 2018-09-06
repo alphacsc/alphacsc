@@ -12,9 +12,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.externals.joblib import Memory
 
-from multicsc.utils.viz import COLORS
-from multicsc.datasets.somato import load_data
-from multicsc.learn_d_z_multi import learn_d_z_multi
+from alphacsc.utils.viz import COLORS
+from alphacsc.datasets.somato import load_data
+from alphacsc.learn_d_z_multi import learn_d_z_multi
 
 figure_path = 'figures'
 mem = Memory(cachedir='.', verbose=0)
@@ -146,6 +146,6 @@ plt.show()
 
 pobj, times, uv_hat, z_hat, uv_init = res
 
-np.savez('examples_multicsc/multi_somato-ave.npz', z_hat=z_hat,
+np.savez('examples_alphacsc/multi_somato-ave.npz', z_hat=z_hat,
          uv_hat=uv_hat, sfreq=info['sfreq'], n_channels=n_channels)
-write_info('examples_multicsc/info_somato.fif', info)
+write_info('examples_alphacsc/info_somato.fif', info)

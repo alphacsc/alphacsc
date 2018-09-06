@@ -4,7 +4,7 @@
 API Documentation
 =================
 
-.. currentmodule:: multicsc
+.. currentmodule:: alphacsc
 
 Learn atoms
 ===========
@@ -17,14 +17,14 @@ Functions
    learn_d_z
    learn_d_z_weighted
 
-.. currentmodule:: multicsc.other.swm
+.. currentmodule:: alphacsc.other.swm
 
 .. autosummary::
    :toctree: generated/
 
    sliding_window_matching
 
-.. currentmodule:: multicsc.other.motif
+.. currentmodule:: alphacsc.other.motif
 
 .. autosummary::
    :toctree: generated/

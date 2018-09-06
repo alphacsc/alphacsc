@@ -8,13 +8,13 @@ import matplotlib.pyplot as plt
 
 import mne
 
-from multicsc.utils.viz import COLORS
+from alphacsc.utils.viz import COLORS
 
 matplotlib.rc('font', size=14)
 
 data_path = mne.datasets.sample.data_path()
 subjects_dir = op.join(data_path, 'subjects')
-fname_info = 'examples_multicsc/info_sample.fif'
+fname_info = 'examples_alphacsc/info_sample.fif'
 fname_cov = op.join(data_path, 'MEG', 'sample', 'sample_audvis-cov.fif')
 fname_bem = op.join(subjects_dir, 'sample', 'bem', 'sample-5120-bem-sol.fif')
 fname_trans = op.join(data_path, 'MEG', 'sample',
@@ -24,7 +24,7 @@ fname_surf_lh = op.join(subjects_dir, 'sample', 'surf', 'lh.white')
 atom_idx = 7
 
 info = mne.io.read_info(fname_info)
-data = np.load('examples_multicsc/multi_sample-ave.npz')
+data = np.load('examples_alphacsc/multi_sample-ave.npz')
 n_channels, uv_hat = data['n_channels'], data['uv_hat']
 
 evoked = mne.EvokedArray(uv_hat[atom_idx, :n_channels][:, None], info)

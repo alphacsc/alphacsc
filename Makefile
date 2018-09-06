@@ -7,4 +7,4 @@ ascii:
 	done;
 
 test:
-	pytest -v --duration=10 multicsc
+	pytest -v --duration=10 alphacsc

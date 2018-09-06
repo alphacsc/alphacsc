@@ -5,12 +5,12 @@ from setuptools import setup, Extension
 
 descr = """Convolutional dictionary learning for noisy signals"""
 
-DISTNAME = 'multicsc'
+DISTNAME = 'alphacsc'
 DESCRIPTION = descr
 MAINTAINER = 'Mainak Jas'
 MAINTAINER_EMAIL = 'mainakjas@gmail.com'
 LICENSE = 'BSD (3-clause)'
-DOWNLOAD_URL = 'https://github.com/multicsc/multicsc.git'
+DOWNLOAD_URL = 'https://github.com/alphacsc/alphacsc.git'
 VERSION = '0.1.dev0'
 
 
@@ -23,11 +23,11 @@ def get_requirements():
 
 try:
     from Cython.Build import cythonize
-    kmc2 = Extension('multicsc.other.kmc2.kmc2',
-                     sources=['multicsc/other/kmc2/kmc2.pyx'],
+    kmc2 = Extension('alphacsc.other.kmc2.kmc2',
+                     sources=['alphacsc/other/kmc2/kmc2.pyx'],
                      extra_compile_args=['-O3'])
-    sdtw = Extension('multicsc.other.sdtw.soft_dtw_fast',
-                     sources=['multicsc/other/sdtw/soft_dtw_fast.pyx'])
+    sdtw = Extension('alphacsc.other.sdtw.soft_dtw_fast',
+                     sources=['alphacsc/other/sdtw/soft_dtw_fast.pyx'])
     ext_modules = cythonize([kmc2, sdtw])
 except ImportError:
     import warnings
@@ -61,7 +61,7 @@ if __name__ == "__main__":
           platforms='any',
           ext_modules=ext_modules,
           packages=[
-              'multicsc'
+              'alphacsc'
           ],
           install_requires=get_requirements(),
           include_dirs=[np.get_include()]

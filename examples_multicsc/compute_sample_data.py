@@ -9,9 +9,9 @@ from mne.io import write_info
 from mne.utils import _reject_data_segments
 from mne.preprocessing import ICA, create_eog_epochs
 
-from multicsc.learn_d_z_multi import learn_d_z_multi
-from multicsc.utils import construct_X_multi, _choose_convolve
-from multicsc.utils import plot_callback
+from alphacsc.learn_d_z_multi import learn_d_z_multi
+from alphacsc.utils import construct_X_multi, _choose_convolve
+from alphacsc.utils import plot_callback
 
 parser = argparse.ArgumentParser('Programme to launch experiment on multi csc')
 parser.add_argument('--profile', action='store_true',
@@ -52,7 +52,7 @@ eog_average = create_eog_epochs(raw, reject=reject, picks=picks_meg).average()
 # eog_epochs = create_eog_epochs(raw, reject=reject)  # get single EOG trials
 # eog_inds, scores = ica.find_bads_eog(eog_epochs)  # find via correlation
 
-# Now multicsc
+# Now alphacsc
 raw.pick_types(meg='mag')
 X = raw[:][0]
 X, _ = _reject_data_segments(X, reject, flat=None, decim=None,
@@ -119,9 +119,9 @@ if debug:
     plt.plot(freqs, psd.T)
     plt.gca().set(xscale='log')
 
-np.savez('examples_multicsc/multi_sample-ave.npz', z_hat=z_hat,
+np.savez('examples_alphacsc/multi_sample-ave.npz', z_hat=z_hat,
          uv_hat=uv_hat, sfreq=raw.info['sfreq'], n_channels=n_channels)
-write_info('examples_multicsc/info_sample.fif', raw.info)
+write_info('examples_alphacsc/info_sample.fif', raw.info)
 
 if debug:
     ica.plot_properties(raw, picks=eog_inds, psd_args={'fmax': 35.},
