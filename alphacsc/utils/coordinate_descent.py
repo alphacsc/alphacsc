@@ -11,7 +11,7 @@ from .convolution import _choose_convolve_multi
 def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
                             tol=1e-1, strategy='greedy', n_seg='auto',
                             freeze_support=False, debug=False, timing=False,
-                            verbose=0):
+                            name="CD", verbose=0):
     """Compute the coding signal associated to Xi with coordinate descent.
 
     Parameters
@@ -134,10 +134,14 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
         # check stopping criterion
         if strategy == 'greedy':
             if accumulator == 0:
+                if verbose > 5:
+                    print('[{}] {} iterations'.format(name, ii + 1))
                 break
         else:
             # only check at the last coordinate
             if (ii + 1) % n_coordinates == 0 and accumulator <= tol:
+                if verbose > 5:
+                    print('[{}] {} iterations'.format(name, ii + 1))
                 break
 
         # increment to next segment
@@ -152,9 +156,7 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
 
     else:
         if verbose > 10:
-            print('[CD] update z did not converge')
-    if verbose > 10:
-        print('[CD] update z computed %d iterations' % (ii + 1))
+            print('[{}] did not converge'.format(name))
 
     if timing:
         return z_hat, pobj, times

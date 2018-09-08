@@ -107,7 +107,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
         Dictionnary of parameters for the kmeans init method.
     use_sparse_z : boolean
         Use sparse lil_matrices to store the activations.
-    lmbd_max : 'fixed' | 'per_atom' | 'shared'
+    lmbd_max : 'fixed' | 'scaled' | 'per_atom' | 'shared'
         If not fixed, adapt the regularization rate as a ratio of lambda_max.
     verbose : int
         The verbosity level.
@@ -131,8 +131,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
         The sparse activation matrix.
     """
 
-    assert lmbd_max in ['fixed', 'per_atom', 'shared'], (
-        "lmbd_max should be in {'fixed', 'per_atom', 'shared'}"
+    assert lmbd_max in ['fixed', 'scaled', 'per_atom', 'shared'], (
+        "lmbd_max should be in {'fixed', 'scaled', 'per_atom', 'shared'}"
     )
 
     n_trials, n_channels, n_times = X.shape
@@ -275,7 +275,7 @@ def _batch_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
         if verbose > 1:
             print('[{}] CD iterations {} / {}'.format(name, ii, n_iter))
 
-        if lmbd_max != 'fixed':
+        if lmbd_max not in ['fixed', 'scaled']:
             reg_ = reg * get_lambda_max(X, D_hat)
             if lmbd_max == 'shared':
                 reg_ = reg_.max()

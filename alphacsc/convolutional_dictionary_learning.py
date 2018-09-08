@@ -56,7 +56,7 @@ DOC_FMT = """{desc}
     eps : float
         Stopping criterion. If the cost descent after a uv and a z update is
         smaller than eps, return.
-    lmbd_max : {{'fixed' | 'per_atom' | 'shared'}}
+    lmbd_max : {{'fixed' | 'scaled' | 'per_atom' | 'shared'}}
         If not fixed, adapt the regularization rate as a ratio of lambda_max.
 
 
@@ -251,7 +251,7 @@ class BatchCDL(ConvolutionalDictionaryLearning):
     def __init__(self, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
                  solver_z='lgcd', solver_z_kwargs={},
                  solver_d='alternate_adaptive', solver_d_kwargs={},
-                 rank1=True, uv_constraint='separate',
+                 rank1=True, uv_constraint='separate', lmbd_max='scaled',
                  eps=1e-10, D_init=None, D_init_params={},
                  verbose=10, random_state=None):
         super().__init__(
@@ -260,7 +260,7 @@ class BatchCDL(ConvolutionalDictionaryLearning):
             solver_d=solver_d, solver_d_kwargs=solver_d_kwargs,
             rank1=rank1, uv_constraint=uv_constraint,
             eps=eps, D_init=D_init, D_init_params=D_init_params,
-            algorithm='batch', lmbd_max='fixed', raise_on_increase=True,
+            algorithm='batch', lmbd_max=lmbd_max, raise_on_increase=True,
             loss='l2', use_sparse_z=False, n_jobs=n_jobs, verbose=verbose,
             callback=None, random_state=random_state, name="BatchCDL")
 
@@ -291,7 +291,7 @@ class OnlineCDL(ConvolutionalDictionaryLearning):
     def __init__(self, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
                  solver_z='lgcd', solver_z_kwargs={},
                  solver_d='alternate_adaptive', solver_d_kwargs={},
-                 rank1=True, uv_constraint='separate',
+                 rank1=True, uv_constraint='separate', lmbd_max='scaled',
                  eps=1e-10, D_init=None, D_init_params={},
                  alpha=.8, batch_size=1, batch_selection='random',
                  verbose=10, random_state=None):
@@ -304,6 +304,6 @@ class OnlineCDL(ConvolutionalDictionaryLearning):
             algorithm_params=dict(alpha=alpha, batch_size=batch_size,
                                   batch_selection=batch_selection),
             n_jobs=n_jobs, random_state=random_state, algorithm='online',
-            lmbd_max='fixed', raise_on_increase=False, loss='l2',
+            lmbd_max=lmbd_max, raise_on_increase=False, loss='l2',
             callback=None, use_sparse_z=False, verbose=verbose,
             name="OnlineCDL")

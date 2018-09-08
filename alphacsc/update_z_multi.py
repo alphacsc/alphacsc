@@ -214,7 +214,7 @@ def _update_z_multi_idx(X_i, D, reg, z0_i, debug, solver='l-bfgs',
         output = _coordinate_descent_idx(
             X_i, D, constants, reg=reg, z0=f0,
             freeze_support=freeze_support, tol=tol, max_iter=max_iter,
-            n_seg=n_seg, strategy=strategy, timing=timing)
+            n_seg=n_seg, strategy=strategy, timing=timing, name="Update z")
         if timing:
             z_hat, pobj, times = output
             times[0] += init_timing

@@ -59,7 +59,7 @@ times = np.arange(n_times_atom) / evoked.info['sfreq']
 
 plt.figure(figsize=(4, 3))
 plt.plot(times, v_hat.T, color=COLORS[0], linewidth=1.5)
-plt.grid('on', linestyle='-', alpha=0.3)
+plt.grid(True, linestyle='-', alpha=0.3)
 plt.xlabel('Time (s)')
 plt.gcf().savefig('figures/atoms_somato_a.pdf')
 
@@ -73,7 +73,7 @@ psd = np.abs(np.fft.rfft(v_hat, n=2 * n_times_atom)) ** 2
 plt.xlabel('Frequencies (Hz)')
 frequencies = np.linspace(0, evoked.info['sfreq'] / 2.0, len(psd))
 plt.plot(frequencies, 10 * np.log10(psd), color=COLORS[0], linewidth=1.5)
-plt.grid('on', linestyle='-', alpha=0.3)
+plt.grid(True, linestyle='-', alpha=0.3)
 plt.xlim(0, 25)
 plt.ylim(-30, 20)
 fmax = frequencies[np.argmax(psd)]
