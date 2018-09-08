@@ -207,7 +207,7 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
     def transform(self, X):
         assert self._D_hat is not None
         z_hat, _, _ = update_z_multi(
-            X, self._D_hat, reg=self.reg, z0=self.z0, parallel=self.parallel,
+            X, self._D_hat, reg=self.reg, z0=self.z0, n_jobs=self.n_jobs,
             solver=self.solver, solver_kwargs=self.solver_z_kwargs,
             loss=self.loss, loss_params=self.loss_params)
 

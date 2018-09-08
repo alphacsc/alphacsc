@@ -20,9 +20,9 @@ from .utils.coordinate_descent import _coordinate_descent_idx
 from .utils.compute_constants import compute_DtD, compute_ztz, compute_ztX
 
 
-def update_z_multi(X, D, reg, z0=None, debug=False, parallel=None,
-                   solver='l-bfgs', solver_kwargs=dict(), loss='l2',
-                   loss_params=dict(), freeze_support=False, timing=False):
+def update_z_multi(X, D, reg, z0=None, solver='l-bfgs', solver_kwargs=dict(),
+                   loss='l2', loss_params=dict(), freeze_support=False,
+                   timing=False, n_jobs=1, debug=False):
     """Update z using L-BFGS with positivity constraints
 
     Parameters
@@ -38,10 +38,6 @@ def update_z_multi(X, D, reg, z0=None, debug=False, parallel=None,
     z0 : None | array, shape (n_trials, n_atoms, n_times_valid) |
          list of sparse lil_matrices, shape (n_atoms, n_times_valid)
         Init for z (can be used for warm restart).
-    debug : bool
-        If True, check the grad.
-    parallel : instance of Parallel
-        Context manager for running joblibs in a loop.
     solver : 'l-bfgs' | "lgcd"
         The solver to use.
     solver_kwargs : dict
@@ -55,6 +51,10 @@ def update_z_multi(X, D, reg, z0=None, debug=False, parallel=None,
     timing : boolean
         If True, returns the cost function value at each iteration and the
         time taken by each iteration for each signal.
+    n_jobs : int
+        The number of parallel jobs.
+    debug : bool
+        If True, check the grad.
 
     Returns
     -------
@@ -71,10 +71,8 @@ def update_z_multi(X, D, reg, z0=None, debug=False, parallel=None,
 
     # now estimate the codes
     delayed_update_z = delayed(_update_z_multi_idx)
-    if parallel is None:
-        parallel = Parallel(n_jobs=1)
 
-    results = parallel(
+    results = Parallel(n_jobs=n_jobs)(
         delayed_update_z(X[i], D, reg, z0[i], debug, solver, solver_kwargs,
                          freeze_support, loss, loss_params=loss_params,
                          timing=timing)
@@ -197,7 +195,7 @@ def _update_z_multi_idx(X_i, D, reg, z0_i, debug, solver='l-bfgs',
 
         output = fista(objective, grad, prox, None, f0,
                        adaptive_step_size=True, timing=timing,
-                       name="Update Z", **fista_kwargs)
+                       name="Update z", **fista_kwargs)
         if timing:
             z_hat, pobj, times = output
             times[0] += init_timing

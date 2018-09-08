@@ -162,10 +162,16 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
     if loss == 'whitening':
         loss_params['ar_model'], X = whitening(X, ordar=loss_params['ordar'])
 
-    def compute_z_func(X, z_hat, D_hat, reg=None, parallel=None):
-        return update_z_multi(X, D_hat, reg=reg, z0=z_hat, parallel=parallel,
+    _lmbd_max = get_lambda_max(X, D_hat).max()
+    print("[CDL] Max value for lambda: {}".format(_lmbd_max))
+    if lmbd_max == "scaled":
+        reg = reg * _lmbd_max
+
+    def compute_z_func(X, z_hat, D_hat, reg=None):
+        return update_z_multi(X, D_hat, reg=reg, z0=z_hat,
                               solver=solver_z, solver_kwargs=z_kwargs,
-                              loss=loss, loss_params=loss_params)
+                              loss=loss, loss_params=loss_params,
+                              n_jobs=n_jobs)
 
     def obj_func(X, z_hat, D_hat, reg=None, return_X_hat=False):
         return compute_X_and_objective_multi(X, z_hat, D_hat,
@@ -198,49 +204,47 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
     end_iter_func = get_iteration_func(eps, stopping_pobj, callback, lmbd_max,
                                        name, verbose, raise_on_increase)
 
-    with Parallel(n_jobs=n_jobs) as parallel:
-        if algorithm == 'batch':
-            pobj, times, D_hat, z_hat = _batch_learn(
-                X, D_hat, z_hat, compute_z_func, compute_d_func,
-                obj_func, end_iter_func, n_iter=n_iter,
-                verbose=verbose, random_state=random_state,
-                parallel=parallel, reg=reg, lmbd_max=lmbd_max, name=name,
-                **algorithm_params
-            )
-        elif algorithm == "greedy":
-            raise NotImplementedError(
-                "Algorithm greedy is not implemented yet.")
-        elif algorithm == "online":
-            pobj, times, D_hat, z_hat = _online_learn(
-                X, D_hat, z_hat, compute_z_func, compute_d_func, obj_func,
-                end_iter_func, n_iter=n_iter, verbose=verbose,
-                random_state=random_state, parallel=parallel, reg=reg,
-                lmbd_max=lmbd_max, name=name, **algorithm_params
-            )
-        elif algorithm == "stochastic":
-            # For stochastic learning, set forgetting factor alpha of the
-            # online algorithm to 0, making each step independent of previous
-            # steps and set D-update max_iter to a low value (typically 1).
-            pobj, times, D_hat, z_hat = _online_learn(
-                X, D_hat, z_hat, compute_z_func, compute_d_func, obj_func,
-                end_iter_func, n_iter=n_iter, verbose=verbose,
-                random_state=random_state, parallel=parallel, reg=reg,
-                lmbd_max=lmbd_max, name=name, **algorithm_params
-            )
-        else:
-            raise NotImplementedError(
-                "Algorithm '{}' is not implemented to learn dictionary atoms."
-                .format(algorithm))
+    if algorithm == 'batch':
+        pobj, times, D_hat, z_hat = _batch_learn(
+            X, D_hat, z_hat, compute_z_func, compute_d_func,
+            obj_func, end_iter_func, n_iter=n_iter,
+            verbose=verbose, random_state=random_state,
+            reg=reg, lmbd_max=lmbd_max, name=name, **algorithm_params
+        )
+    elif algorithm == "greedy":
+        raise NotImplementedError(
+            "Algorithm greedy is not implemented yet.")
+    elif algorithm == "online":
+        pobj, times, D_hat, z_hat = _online_learn(
+            X, D_hat, z_hat, compute_z_func, compute_d_func, obj_func,
+            end_iter_func, n_iter=n_iter, verbose=verbose,
+            random_state=random_state, reg=reg,
+            lmbd_max=lmbd_max, name=name, **algorithm_params
+        )
+    elif algorithm == "stochastic":
+        # For stochastic learning, set forgetting factor alpha of the
+        # online algorithm to 0, making each step independent of previous
+        # steps and set D-update max_iter to a low value (typically 1).
+        pobj, times, D_hat, z_hat = _online_learn(
+            X, D_hat, z_hat, compute_z_func, compute_d_func, obj_func,
+            end_iter_func, n_iter=n_iter, verbose=verbose,
+            random_state=random_state, reg=reg,
+            lmbd_max=lmbd_max, name=name, **algorithm_params
+        )
+    else:
+        raise NotImplementedError(
+            "Algorithm '{}' is not implemented to learn dictionary atoms."
+            .format(algorithm))
 
-        # recompute z_hat with no regularization and keeping the support fixed
-        t_start = time.time()
-        z_hat = update_z_multi(
-            X, D_hat, reg=0, z0=z_hat, parallel=parallel, solver=solver_z,
-            solver_kwargs=solver_z_kwargs, freeze_support=True, loss=loss,
-            loss_params=loss_params)
-        if verbose > 1:
-            print("[{}] Compute the final z_hat with support freeze in {:.2f}s"
-                  .format(name, time.time() - t_start))
+    # recompute z_hat with no regularization and keeping the support fixed
+    t_start = time.time()
+    z_hat = update_z_multi(
+        X, D_hat, reg=0, z0=z_hat, n_jobs=n_jobs, solver=solver_z,
+        solver_kwargs=solver_z_kwargs, freeze_support=True, loss=loss,
+        loss_params=loss_params)
+    if verbose > 1:
+        print("[{}] Compute the final z_hat with support freeze in {:.2f}s"
+              .format(name, time.time() - t_start))
 
     times[0] += init_duration
 
@@ -250,7 +254,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
 def _batch_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
                  obj_func, end_iter_func, n_iter=100,
                  lmbd_max='fixed', reg=None, verbose=0,
-                 random_state=None, parallel=None, name="batch"):
+                 random_state=None, name="batch"):
 
     reg_ = reg
 
@@ -282,7 +286,7 @@ def _batch_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
         # Compute z update
         start = time.time()
         z_hat, constants['ztz'], constants['ztX'] = compute_z_func(
-            X, z_hat, D_hat, reg=reg_, parallel=parallel)
+            X, z_hat, D_hat, reg=reg_)
 
         # monitor cost function
         times.append(time.time() - start)
@@ -335,7 +339,7 @@ def _batch_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
 
 def _online_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
                   obj_func, end_iter_func, n_iter=100, verbose=0,
-                  random_state=None, parallel=None, lmbd_max='fixed', reg=None,
+                  random_state=None, lmbd_max='fixed', reg=None,
                   alpha=.8, batch_selection='random', batch_size=1,
                   name="online"):
 
@@ -385,8 +389,7 @@ def _online_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
             raise NotImplementedError(
                 "the '{}' batch_selection strategy for the online learning is "
                 "not implemented.".format(batch_selection))
-        z_hat[i0], ztz, ztX = compute_z_func(
-            X[i0], z_hat[i0], D_hat, reg=reg_, parallel=parallel)
+        z_hat[i0], ztz, ztX = compute_z_func(X[i0], z_hat[i0], D_hat, reg=reg_)
 
         constants['ztz'] = alpha * constants['ztz'] + ztz
         constants['ztX'] = alpha * constants['ztX'] + ztX
