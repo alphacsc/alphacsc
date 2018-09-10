@@ -1,5 +1,3 @@
-import os
-
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
@@ -89,7 +87,7 @@ def plot_scaling_channels(all_results_df, aggregate_method, save_name,
             wohlberg_timing = [], [], []
             for times in this_res['times'].values:
                 wohlberg_timing.extend(times[1::2] + times[2::2])
-                
+
             wohlberg_curve.append(aggregate_timing(wohlberg_timing,
                                                    aggregate_method))
         plt.plot(wohlberg_curve, "k--", label="Wohlberg (2017)")
@@ -142,7 +140,8 @@ if __name__ == '__main__':
     all_results_df = pd.read_pickle(load_name)
 
     normalize_method = None
-    save_name = load_name.replace("methods_scaling", "scaling_channels").replace(".pkl", '')
+    save_name = load_name.replace("methods_scaling",
+                                  "scaling_channels").replace(".pkl", '')
     save_name = save_name.replace(".", "_")
 
     wohlberg_df = None

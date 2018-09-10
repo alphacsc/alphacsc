@@ -45,7 +45,8 @@ def score_D(uv, D_hat, n_channels):
 
     distances = np.array([[
         1 - abs(np.sum([np.correlate(Dkp_hat, Dkp, mode='valid').max()
-                        for Dkp, Dkp_hat in zip(Dk, Dk_hat)])) / np.sum(Dk * Dk)
+                        for Dkp, Dkp_hat in zip(Dk, Dk_hat)])
+                ) / np.sum(Dk * Dk)
         for Dk_hat in D_hat] for Dk in D
     ])
     return find_best_allocation(distances, order='min')[0]
@@ -207,8 +208,8 @@ if __name__ == "__main__":
 
     # save even intermediate results
     all_results_df = pd.DataFrame(
-        results,
-        columns='random_state sigma run_n_channels score uv uv_hat reg'.split(' '))
+        results, columns='random_state sigma run_n_channels '
+                         'score uv uv_hat reg'.split(' '))
     all_results_df.to_pickle(save_name)
 
     # plt.plot(uv_hat[:, n_channels:].T, 'g', label='Multivariate')
