@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 import numpy as np
-from setuptools import setup, Extension
+from setuptools import setup, Extension, find_packages
 
 
 descr = """Convolutional dictionary learning for noisy signals"""
@@ -36,7 +36,7 @@ try:
         modules.append(Extension(
             "alphacsc.cython_code.{}".format(m),
             sources=["alphacsc/cython_code/{}.pyx".format(m)]))
-        
+
     ext_modules = cythonize(modules)
 except ImportError:
     import warnings
@@ -69,9 +69,7 @@ if __name__ == "__main__":
           ],
           platforms='any',
           ext_modules=ext_modules,
-          packages=[
-              'alphacsc'
-          ],
+          packages=find_packages(exclude=["tests"]),
           install_requires=get_requirements(),
           include_dirs=[np.get_include()]
           )
