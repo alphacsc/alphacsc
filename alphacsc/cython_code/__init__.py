@@ -13,11 +13,11 @@ try:
                "_fast_compute_ztz_csr", "_fast_compute_ztX",
                "subtract_zhat_to_beta", "update_dz_opt"]
 
-except ImportError:
+except ImportError:  # pragma: no cover
     _CYTHON_AVAILABLE = False
 
 
 def _assert_cython():
-    if not _CYTHON_AVAILABLE:
+    if not _CYTHON_AVAILABLE:  # pragma: no cover
         raise NotImplementedError("cython is a required dependency for this "
                                   "part of the code.")

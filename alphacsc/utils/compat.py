@@ -4,7 +4,7 @@ import warnings
 try:
     import numba
     from numba import jit
-except ImportError:
+except ImportError:  # pragma: no cover
     def jit(*args, **kwargs):
         def pass_through(f):
             return f

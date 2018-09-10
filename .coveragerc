@@ -1,0 +1,13 @@
+[run]
+parallel = True
+omit = 
+    # Omit test files
+    */tests/*
+    # Omit dataset files
+    *alphacsc/datasets/*
+    # Omit other files
+    *alphacsc/other/*
+    # Omit plotting libraries
+    alphacsc/utils/plot_output.py
+    alphacsc/utils/signal.py
+    alphacsc/utils/viz.py

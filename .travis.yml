@@ -14,4 +14,5 @@ script:
     - pytest -vl --cov=alphacsc
     - flake8 --exclude=alphacsc/other/ --count alphacsc
 after_success:
+    - coverage combine --append
     - bash <(curl -s https://codecov.io/bash)

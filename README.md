@@ -10,13 +10,12 @@
 Installation
 ------------
 
-To install this package, the easiest way is using `pip`. It will install this package and its dependencies. This package depends on the following python libraries:
+To install this package, the easiest way is using `pip`. It will install this package and its dependencies. The `setup.py` depends on `numpy` and `cython` for the installation so it is advised to install them beforehand. To install this package, please run
 
+```bash
+pip install numpy cython
+pip install .
 ```
-numpy, matplotlib, scipy, joblib, mne, cython
-```
-
-This package contains multiple cython file that can be build by running `bash install_alphacsc.sh`.
 
 
 Usage
