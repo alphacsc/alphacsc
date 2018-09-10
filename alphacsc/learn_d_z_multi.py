@@ -370,7 +370,7 @@ def _online_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
         if verbose > 1:
             print('[{}] CD iterations {} / {}'.format(name, ii, n_iter))
 
-        if lmbd_max != 'fixed':
+        if lmbd_max not in ['fixed', 'scaled']:
             reg_ = reg * get_lambda_max(X, D_hat)
             if lmbd_max == 'shared':
                 reg_ = reg_.max()
@@ -425,13 +425,6 @@ def _online_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
         # monitor cost function
         times.append(time.time() - start)
         pobj.append(obj_func(X, z_hat, D_hat, reg=reg_))
-
-        null_atom_indices = np.where(z_nnz == 0)[0]
-        if len(null_atom_indices) > 0:
-            k0 = null_atom_indices[0]
-            D_hat[k0] = get_max_error_dict(X, z_hat, D_hat)[0]
-            if verbose > 1:
-                print('[{}] Resampled atom {}'.format(name, k0))
 
         if verbose > 5:
             print('[{}] Objective (d) : {:.3e}'.format(name, pobj[-1]))
