@@ -5,7 +5,7 @@
 *.pyc
 *.profile
 *.egg-info
-.coverage
+.coverage*
 
 
 # Exps directories

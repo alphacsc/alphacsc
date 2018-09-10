@@ -1,7 +1,6 @@
 [run]
 parallel = True
 source = alphacsc
-include = */alphacsc/*
 omit = 
     # Omit test files
     */tests/*
