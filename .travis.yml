@@ -5,7 +5,7 @@ install:
       # Install deps
     - pip install numpy cython
       # Install alphacsc
-    - python install .
+    - pip install .
 
       # Install test deps
     - pip install pytest coverage flake8 coveralls
