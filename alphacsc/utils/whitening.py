@@ -12,7 +12,7 @@ def whitening(X, ordar=10, block_length=256, sfreq=1., zero_phase=True,
     ar_model = Arma(ordar=ordar, ordma=0, fs=sfreq, block_length=block_length)
     ar_model.periodogram(X.reshape(-1, n_times), hold=False, mean_psd=True)
 
-    if use_fooof:
+    if use_fooof:  # pragma: no cover
         # Fit the psd with a 1/f^a background model plus a gaussian mixture.
         # We keep only the background model
         # (pip install fooof)
@@ -39,7 +39,7 @@ def whitening(X, ordar=10, block_length=256, sfreq=1., zero_phase=True,
     X_white *= signal.tukey(n_times_white,
                             alpha=3 / float(n_times_white))[None, None, :]
 
-    if plot:
+    if plot:  # pragma: no cover
         # plot the Power Spectral Density (PSD) before/after
         ar_model.arma2psd(hold=True)
         if zero_phase:

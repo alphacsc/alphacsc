@@ -8,7 +8,9 @@ omit =
     *alphacsc/datasets/*
     # Omit other files
     *alphacsc/other/*
-    # Omit plotting libraries
+    # Omit some utils libraries
+    alphacsc/utils/profile_this.py
     alphacsc/utils/plot_output.py
     alphacsc/utils/signal.py
+    alphacsc/utils/tools.py
     alphacsc/utils/viz.py
