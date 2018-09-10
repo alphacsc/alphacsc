@@ -134,13 +134,13 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
         # check stopping criterion
         if strategy == 'greedy':
             if accumulator == 0:
-                if verbose > 5:
+                if verbose > 10:
                     print('[{}] {} iterations'.format(name, ii + 1))
                 break
         else:
             # only check at the last coordinate
             if (ii + 1) % n_coordinates == 0 and accumulator <= tol:
-                if verbose > 5:
+                if verbose > 10:
                     print('[{}] {} iterations'.format(name, ii + 1))
                 break
 
