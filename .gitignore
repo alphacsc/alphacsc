@@ -6,7 +6,7 @@
 *.profile
 *.egg-info
 .coverage*
-
+alphacsc/cython_code/*.c
 
 # Exps directories
 build
@@ -19,4 +19,3 @@ joblib
 .vscode
 __pycache__
 .pytest_cache
-

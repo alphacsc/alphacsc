@@ -27,7 +27,7 @@ def normalize_pobj(pobj, best_pobj=None, normalize_method='best'):
         pobj = (pobj - best_pobj) / best_pobj
     elif normalize_method == 'last':
         pobj = [(p - p.min()) / p.min() for p in pobj]
-        # pobj = [p / p[0] if p[0] != 0 else p for p in pobj]
+        pobj = [p / p[0] if p[0] != 0 else p for p in pobj]
     elif normalize_method == 'diff':
         pobj = [-np.diff(p) for p in pobj]
     elif normalize_method in [None, 'short']:
@@ -70,67 +70,33 @@ def plot_convergence(data_frame, threshold, normalize_method, save_name):
 
                 pobj = normalize_pobj(pobj, best_pobj, normalize_method)
 
-                if True:
-                    # geometric mean on the n_iter_min first iterations
-                    n_iter_min = min([t.shape[0] for t in pobj])
-                    pobj_stack = np.vstack([p[:n_iter_min] for p in pobj])
-                    pobj_stack = np.log10(pobj_stack + 1e-15)
-                    pobj_mean = 10 ** (np.mean(pobj_stack, axis=0))
-                    times_mean = np.vstack([t[:n_iter_min] for t in times])
-                    times_mean = times_mean.mean(axis=0)
-                    if times_mean.size == 0:
+                # geometric mean on the n_iter_min first iterations
+                n_iter_min = min([t.shape[0] for t in pobj])
+                pobj_stack = np.vstack([p[:n_iter_min] for p in pobj])
+                pobj_stack = np.log10(pobj_stack + 1e-15)
+                pobj_mean = 10 ** (np.mean(pobj_stack, axis=0))
+                times_mean = np.vstack([t[:n_iter_min] for t in times])
+                times_mean = times_mean.mean(axis=0)
+                if times_mean.size == 0:
+                    continue
+                tmax.append(times_mean[-1])
+
+                times_mean = times_mean[1:]
+                pobj_mean = pobj_mean[1:]
+
+                if normalize_method == 'last':
+                    last = np.where(pobj_mean <= threshold)[0]
+                    if last.size == 0:
                         continue
-                    tmax.append(times_mean[-1])
+                    last = last[0]
+                    times_mean = times_mean[:last]
+                    pobj_mean = pobj_mean[:last]
 
-                    times_mean = times_mean[1:]
-                    pobj_mean = pobj_mean[1:]
+                style = '--' if 'Proposed' in label else '-'
 
-                    if normalize_method == 'last' and True:
-                        last = np.where(pobj_mean <= threshold)[0]
-                        if last.size == 0:
-                            continue
-                        last = last[0]
-                        times_mean = times_mean[:last]
-                        pobj_mean = pobj_mean[:last]
-
-                    style = '--' if 'Proposed' in label else '-'
-
-                    # plot the mean
-                    plt.plot(times_mean, pobj_mean, style, label=label,
-                             alpha=1., markevery=0.1, lw=2., color=color)
-                    # color = ax.lines[-1].get_color()
-                    # for times_, pobj_ in zip(times, pobj):
-                    #     plt.semilogy(times_, pobj_, alpha=0.2, color=color)
-
-                    # ymin = min(ymin, pobj_mean[pobj_mean > 0].min())
-
-                else:
-                    # color = None  # new color for new label
-                    for times_, pobj_ in zip(times, pobj):
-                        if pobj_[-1] <= threshold:
-                            if normalize_method == 'last' and True:
-                                last = np.where(pobj_ <= threshold)[0][0]
-                                times_ = times_[:last]
-                                pobj_ = pobj_[:last]
-                            marker, alpha = None, 1.0
-
-                            plt.plot(times_, pobj_, marker=marker, label=label,
-                                     alpha=alpha, color=color)
-                            # reuse color for next lines
-                            # color = ax.lines[-1].get_color()
-                            # don't duplicate label for next lines
-                            label = None
-
-                    for times_, pobj_ in zip(times, pobj):
-                        if pobj_[-1] > threshold:
-                            marker, alpha = None, 0.3
-
-                            plt.plot(times_, pobj_, marker=marker, label=label,
-                                     alpha=alpha, color=color)
-                            # reuse color for next lines
-                            # color = ax.lines[-1].get_color()
-                            # don't duplicate label for next lines
-                            label = None
+                # plot the mean
+                plt.plot(times_mean, pobj_mean, style, label=label,
+                         alpha=1., markevery=0.1, lw=2., color=color)
 
                 if normalize_method not in [None, 'short']:
                     ax.set_xscale('log')
@@ -168,9 +134,6 @@ def plot_convergence(data_frame, threshold, normalize_method, save_name):
                 reg = None
             this_save_name = (save_name + '_bench_K%d_L%d_r%s' %
                               (n_atoms, n_times_atom, reg))
-            this_save_name = this_save_name.replace(' ', '_').replace('.', '')
-            this_save_name = this_save_name.replace(',', '').replace('=', '')
-            this_save_name = this_save_name.replace('(', '').replace(')', '')
             fig.savefig(this_save_name + '.png', dpi=150)
 
 
@@ -230,12 +193,6 @@ def plot_barplot(all_results_df, threshold, normalize_method, save_name):
     for setting in settings:
         this_to_plot_df = to_plot_df[to_plot_df['setting'] == setting]
 
-        # # remove last point which have failed
-        # if 'P=5' in setting:
-        #     this_to_plot_df = this_to_plot_df[this_to_plot_df['reg'] < 50.]
-        # if 'P=25' in setting:
-        #     this_to_plot_df = this_to_plot_df[this_to_plot_df['reg'] < 75.]
-
         labels = this_to_plot_df['label'].unique()
         width = 1. / (labels.size + 2)  # the width of the bars
         colors = color_palette(len(labels))
@@ -271,7 +228,7 @@ def plot_barplot(all_results_df, threshold, normalize_method, save_name):
 
         plt.ylabel('Time (s)')
         plt.grid(True)
-        # plt.title('Time to reach a relative precision of %s' % threshold)
+        plt.title('Time to reach a relative precision of %s' % threshold)
         plt.tight_layout()
 
         # legend to the top
@@ -293,33 +250,12 @@ def plot_barplot(all_results_df, threshold, normalize_method, save_name):
         this_save_name = this_save_name.replace(',', '').replace('=', '')
         this_save_name = this_save_name.replace('(', '').replace(')', '')
         fig.savefig(this_save_name + '.png')
-        fig.savefig(this_save_name + '.pdf')
 
 
 def change_label(data_frame, old, new):
     """Change a method label"""
     mask = data_frame['label'] == old
     data_frame.loc[mask, 'label'] = new
-    return data_frame
-
-
-def clean_data_frame(data_frame):
-    """Various cleaning"""
-    data_frame = change_label(data_frame, old='Wohlberg (2017)',
-                              new='Garcia-Cardona et al (2017)')
-    data_frame = change_label(data_frame, old='LGCD (1 channel)',
-                              new='Proposed (univariate)')
-    data_frame = change_label(data_frame, old='LGCD (full rank)',
-                              new='Proposed (multivariate)')
-    data_frame = change_label(data_frame, old='LGCD (rank 1)',
-                              new='Proposed (multichannel)')
-    data_frame = change_label(data_frame, old='Jas & al (2017) LBFGS',
-                              new='Jas et al (2017) LBFGS')
-    data_frame = change_label(data_frame, old='Jas & al (2017) FISTA',
-                              new='Jas et al (2017) FISTA')
-
-    data_frame = change_label(data_frame, old='Proposed (multichannel)',
-                              new='Proposed (rank-1)')
     return data_frame
 
 
@@ -335,29 +271,17 @@ for load_name in os.listdir('figures'):
     else:
         continue
 
-    data_frame = clean_data_frame(data_frame)
-
     if all_results_df is not None:
         all_results_df = pd.concat([all_results_df, data_frame],
                                    ignore_index=True)
     else:
         all_results_df = data_frame
 
-    threshold = 1e-3
-    normalize_method = None
-    save_name = load_name[:-4]
-
-    # plot each convergence plot
-    for normalize_method in [None, 'short', 'best', 'last']:
-        # plot_convergence(data_frame, threshold, normalize_method, save_name)
-        plt.close('all')
-
-threshold = 1e-3
-normalize_method = 'last'
-save_name = os.path.join('figures', 'all')
+    plot_convergence(data_frame, threshold=1e-2, normalize_method='last',
+                     save_name=load_name[:-4])
+    plt.close('all')
 
 # plot the aggregation of all results
-plot_barplot(all_results_df, threshold, normalize_method, save_name)
-
-# plt.show()
+plot_barplot(all_results_df, threshold=1e-2, normalize_method='last',
+             save_name=os.path.join('figures', 'all'))
 plt.close('all')
