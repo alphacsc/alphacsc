@@ -1,8 +1,15 @@
 """
-This scripts need the following packages:
+Benchmark different solver of the same CSC univariate or multivariate problem.
+
+This script needs the following packages:
     conda install pandas
     conda install -c conda-forge pyfftw
     pip install alphacsc/other/sporco
+
+- Use bench_methods_run.py to run the benchmark.
+  The results are saved in alphacsc/figures.
+- Use bench_methods_plot.py to plot the results.
+  The figures are saved in alphacsc/figures.
 """
 
 from __future__ import print_function
@@ -26,12 +33,15 @@ from alphacsc.init_dict import init_dictionary
 from alphacsc.utils.dictionary import get_uv
 
 START = time.time()
+BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE = range(30, 38)
 
 ##############################
 # Parameters of the simulation
+##############################
 
 verbose = 1
 
+# base string for the save names.
 base_name = 'run_0'
 # n_jobs for the parallel running of single core methods
 n_jobs = 1
@@ -43,8 +53,9 @@ n_atoms_list = [2]
 n_channel_list = [1]
 reg_list = [10.]
 
-##############################
-# methods
+####################################
+# Function compared in the benchmark
+####################################
 
 
 def run_admm(X, ds_init, reg, n_iter, random_state, label, max_it_d=10,
@@ -183,6 +194,15 @@ def run_multichannel_gcd_fullrank(X, ds_init, reg, n_iter, random_state,
     return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
 
 
+def colorify(message, color=BLUE):
+    """Change color of the standard output"""
+    return ("\033[1;%dm" % color) + message + "\033[0m"
+
+
+#########################################
+# List of functions used in the benchmark
+#########################################
+
 n_iter = 100
 methods_univariate = [
     [run_cbpdn, 'Garcia-Cardona et al (2017)', n_iter * 2],
@@ -198,11 +218,10 @@ methods_multivariate = [
     [run_multichannel_gcd, 'Proposed (multichannel)', n_iter_multi],
 ]
 
-BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE = range(30, 38)
 
-
-def colorify(message, color=BLUE):
-    return ("\033[1;%dm" % color) + message + "\033[0m"
+###################################
+# Calling function of the benchmark
+###################################
 
 
 def one_run(X, X_shape, random_state, method, n_atoms, n_times_atom, reg):
@@ -248,6 +267,11 @@ def one_run(X, X_shape, random_state, method, n_atoms, n_times_atom, reg):
     return (random_state, label, np.asarray(pobj), np.asarray(times),
             np.asarray(d_hat), np.asarray(z_hat), n_atoms, n_times_atom,
             n_trials, n_times, n_channels, reg)
+
+
+#################################################
+# Iteration over parameter settings and functions
+#################################################
 
 
 if __name__ == '__main__':

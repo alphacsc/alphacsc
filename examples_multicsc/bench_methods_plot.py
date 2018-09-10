@@ -11,6 +11,7 @@ matplotlib.rc('mathtext', fontset='cm')
 
 
 def color_palette(n_colors=4, cmap='viridis', extrema=False):
+    """Create a color palette from a matplotlib color map"""
     if extrema:
         bins = np.linspace(0, 1, n_colors)
     else:
@@ -22,6 +23,7 @@ def color_palette(n_colors=4, cmap='viridis', extrema=False):
 
 
 def normalize_pobj(pobj, best_pobj=None, normalize_method='best'):
+    """Normalize the objective function"""
     if normalize_method == 'best':
         assert best_pobj is not None
         pobj = (pobj - best_pobj) / best_pobj
@@ -252,36 +254,34 @@ def plot_barplot(all_results_df, threshold, normalize_method, save_name):
         fig.savefig(this_save_name + '.png')
 
 
-def change_label(data_frame, old, new):
-    """Change a method label"""
-    mask = data_frame['label'] == old
-    data_frame.loc[mask, 'label'] = new
-    return data_frame
+if __name__ == '__main__':
 
+    ############################
+    # Load the results from file
+    ############################
 
-##############################################################################
-# load the results from file
-all_results_df = None
-for load_name in os.listdir('figures'):
-    load_name = os.path.join('figures', load_name)
-    if (load_name[-4:] == '.pkl' and
-            ('run' in load_name or 'debug' in load_name)):
-        print("load %s" % load_name)
-        data_frame = pd.read_pickle(load_name)
-    else:
-        continue
+    all_results_df = None
+    for load_name in os.listdir('figures'):
+        load_name = os.path.join('figures', load_name)
+        if (load_name[-4:] == '.pkl' and
+                ('run' in load_name or 'debug' in load_name)):
+            print("load %s" % load_name)
+            data_frame = pd.read_pickle(load_name)
+        else:
+            continue
 
-    if all_results_df is not None:
-        all_results_df = pd.concat([all_results_df, data_frame],
-                                   ignore_index=True)
-    else:
-        all_results_df = data_frame
+        if all_results_df is not None:
+            all_results_df = pd.concat([all_results_df, data_frame],
+                                       ignore_index=True)
+        else:
+            all_results_df = data_frame
 
-    plot_convergence(data_frame, threshold=1e-2, normalize_method='last',
-                     save_name=load_name[:-4])
+        # plot the results of each setting
+        plot_convergence(data_frame, threshold=1e-2, normalize_method='last',
+                         save_name=load_name[:-4])
+        plt.close('all')
+
+    # plot the aggregation of all results
+    plot_barplot(all_results_df, threshold=1e-2, normalize_method='last',
+                 save_name=os.path.join('figures', 'all'))
     plt.close('all')
-
-# plot the aggregation of all results
-plot_barplot(all_results_df, threshold=1e-2, normalize_method='last',
-             save_name=os.path.join('figures', 'all'))
-plt.close('all')
