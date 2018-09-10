@@ -215,28 +215,13 @@ def update_uv(X, z, uv_hat0, constants=None, b_hat_0=None, debug=False,
         def grad(uv):
             return gradient_uv(uv, constants=constants, flatten=True)
 
-        def callback(uv):
-            import matplotlib.pyplot as plt
-            uv = np.reshape(uv, uv_hat0.shape)
-            plt.figure('l-bfgs')
-            ax = plt.gca()
-            if ax.lines == []:
-                plt.plot(uv[:, n_channels:].T)
-            else:
-                for line, this in zip(ax.lines, uv[:, n_channels:]):
-                    line.set_ydata(this)
-            ax.relim()  # make sure all the data fits
-            ax.autoscale_view(True, True, True)
-            plt.draw()
-            plt.pause(0.001)
-
         bounds = [(-1, 1) for idx in range(0, uv_hat0.size)]
         if debug:
             assert optimize.check_grad(func, grad, uv_hat0.ravel()) < 1e-5
             pobj = [objective(uv_hat0)]
         uv_hat, _, _ = optimize.fmin_l_bfgs_b(func, x0=uv_hat0.ravel(),
                                               fprime=grad, bounds=bounds,
-                                              factr=1e7, callback=callback)
+                                              factr=1e7)
         uv_hat = np.reshape(uv_hat, uv_hat0.shape)
         if debug:
             pobj.append(objective(uv_hat))
