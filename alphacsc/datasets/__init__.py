@@ -1,0 +1,2 @@
+
+DATASETS = ['simu', 'somato']

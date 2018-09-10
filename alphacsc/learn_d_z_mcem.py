@@ -17,7 +17,7 @@ def learn_d_z_weighted(X, n_atoms, n_times_atom, func_d=update_d_block,
                        reg=0.1, alpha=1.9,
                        n_iter_global=10, init_tau=False, n_iter_optim=10,
                        n_iter_mcmc=10, n_burnin_mcmc=0, random_state=None,
-                       n_jobs=1, solver_z='l_bfgs', solver_d_kwargs=dict(),
+                       n_jobs=1, solver_z='l-bfgs', solver_d_kwargs=dict(),
                        solver_z_kwargs=dict(), verbose=10, callback=None):
     """Learn atoms using alphaCSC."""
 

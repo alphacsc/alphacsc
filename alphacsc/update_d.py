@@ -93,7 +93,7 @@ def update_d_block(X, Z, n_times_atom, lambd0=None, ds_init=None,
     lambd0 : array, shape (n_atoms,) | None
         The init for dual variables
     ds_init : array, shape (n_atoms, n_times_atom)
-        Warm start d_hats for the lbfgs / projected gradient solver.
+        Warm start d_hats for the l-bfgs / projected gradient solver.
     projection : str, ('primal', 'dual')
         Whether to project to unit ball in the primal or the dual.
     n_iter : int

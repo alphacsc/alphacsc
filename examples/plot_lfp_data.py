@@ -97,7 +97,7 @@ X_new *= hamming(n_times)[None, :]
 #
 # Now, we run regular CSC since the trials are not too noisy
 from alphacsc import learn_d_z # noqa
-pobj, times, d_hat, Z_hat = learn_d_z(X_new, n_atoms, n_times_atom, reg=reg,
+pobj, times, d_hat, z_hat = learn_d_z(X_new, n_atoms, n_times_atom, reg=reg,
                                       n_iter=n_iter, random_state=random_state,
                                       n_jobs=1)
 

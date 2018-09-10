@@ -1,0 +1,63 @@
+language: python
+
+python:
+  - "2.7"
+  - "3.5"
+  - "3.6"
+
+notifications:
+  email: false
+
+addons:
+  apt:
+    packages:
+    - libfftw3-dev
+    - libatlas-dev
+    - libatlas-base-dev
+    - liblapack-dev
+    - libblas-dev
+    - gfortran
+
+before_install:
+    - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
+        wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O miniconda.sh;
+      else
+        wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
+      fi
+    - bash miniconda.sh -b -p $HOME/miniconda
+    - export PATH="$HOME/miniconda/bin:$PATH"
+    - hash -r
+    - conda config --set always_yes yes --set changeps1 no
+    - conda update -q conda
+    - conda info -a
+
+install:
+    - conda create --yes -q -n test-env python=$TRAVIS_PYTHON_VERSION nomkl future numpy scipy matplotlib pytest
+    - source activate test-env
+    - pip install pillow pyfftw codecov
+    - python setup.py build
+    - python setup.py install
+
+script:
+    - 'echo "backend: Agg" > matplotlibrc'
+    - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
+        coverage run --source sporco -m py.test;
+      else
+        python setup.py test;
+      fi
+    - rm -f matplotlibrc
+
+after_success:
+    - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
+        codecov;
+      fi
+
+deploy:
+  provider: pypi
+  distributions: "sdist bdist_wheel"
+  user: brendt
+  password:
+    secure: O5sLpleEtN2bWsJIASUggQSy9QcLVEbe00Sp/rpxXep0NhoXjVSz0keDjk0XJxlbnb1/l1UXPg+vqSnfUNse8w0guAw+8gvGhhZAymgLqHv940dhuNt7rqlyOExbd2zb7Fu2PAt9dYtLOWEILTeqG2rLRj2TcHhL4m4e8OSN8I5NQ8taE7q11k+LwZj+REhAEE4WtHYXpfyc8BeFPqFXHorE5XoUvCQCIMH9BoGWF8CmAtQ6PeBi5e4IMSer3YEzrWg4IwyjuzwdlRiW/ZHCXCKqlMmlSY3/0bxMIiocBUff5PuDLsIWtn/8eR/CwLBoi1VWzLLq/RsHXp8BGOGvSRNAbCDYmgt7a1+ShmEqpojpLkgLhojl5jJfW9YXykKE+3LsnwlUqTpwrEkaFE/vHlh7EDcssYA7BKKJEeSCWKb46rKNfC2jIUdWEYbY5OMArnciNwhsLM6I1T1C86sAb9ppgzlITJDacLku8HIitMvRu29HBTNe8y9Is6/+T2MAGwUbxqxHKeOKm2/3GZGeojn0K8ZkQgCxbDGvLCVTL4k29tgii3sviM/2BgR58ixf4uLecR8PlPXFiCSCI7IYKQqEvMgO5LmmwgS1um85D9rCvqaF+zOyZLCmWIVA4DoHwsfGjfxe45v0pmt59iPDEcK7nQrou0ndeaMMAV2ksPo=
+  on:
+    tags: true
+    branch: master

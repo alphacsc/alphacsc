@@ -1,6 +1,7 @@
 #! /usr/bin/env python
-import setuptools  # noqa; we are using a setuptools namespace
-from numpy.distutils.core import setup
+import numpy as np
+from setuptools import setup, Extension, find_packages
+
 
 descr = """Convolutional dictionary learning for noisy signals"""
 
@@ -11,6 +12,39 @@ MAINTAINER_EMAIL = 'mainakjas@gmail.com'
 LICENSE = 'BSD (3-clause)'
 DOWNLOAD_URL = 'https://github.com/alphacsc/alphacsc.git'
 VERSION = '0.1.dev0'
+
+
+def get_requirements():
+    """Return the requirements of the projects in requirements.txt"""
+    with open('requirements.txt') as f:
+        requirements = [r.strip() for r in f.readlines()]
+    return [r for r in requirements if r != '']
+
+
+try:
+    from Cython.Build import cythonize
+    kmc2 = Extension('alphacsc.other.kmc2.kmc2',
+                     sources=['alphacsc/other/kmc2/kmc2.pyx'],
+                     extra_compile_args=['-O3'])
+    sdtw = Extension('alphacsc.other.sdtw.soft_dtw_fast',
+                     sources=['alphacsc/other/sdtw/soft_dtw_fast.pyx'])
+    modules = [kmc2, sdtw]
+
+    # Create the alphacsc.cython module
+    for m in ["compute_ztX", "compute_ztz", "coordinate_descent",
+              "sparse_conv"]:
+        modules.append(Extension(
+            "alphacsc.cython_code.{}".format(m),
+            sources=["alphacsc/cython_code/{}.pyx".format(m)]))
+
+    ext_modules = cythonize(modules)
+except ImportError:
+    import warnings
+    warnings.warn("the optional dependency `cython` is unavailable on this "
+                  "system so some functionality (D_init='kmeans') might not "
+                  "work properly.")
+    ext_modules = None
+
 
 if __name__ == "__main__":
     setup(name=DISTNAME,
@@ -34,7 +68,8 @@ if __name__ == "__main__":
               'Operating System :: MacOS',
           ],
           platforms='any',
-          packages=[
-              'alphacsc'
-          ],
+          ext_modules=ext_modules,
+          packages=find_packages(exclude=["tests"]),
+          install_requires=get_requirements(),
+          include_dirs=[np.get_include()]
           )

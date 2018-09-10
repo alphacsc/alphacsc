@@ -1,0 +1,90 @@
+# Editor
+.*~
+
+# Misc
+nodist
+venv
+.hg
+.hgignore
+*.bak
+sporco/data/*/*.png
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyInstaller
+#  Usually these files are written by a python script from a template
+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*,cover
+.hypothesis/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+
+# Sphinx documentation
+docs/_build/
+docs/source/sporco.rst
+docs/source/sporco.admm.rst
+docs/source/sporco.fista.rst
+docs/source/sporco.cdict.rst
+docs/source/sporco.linalg.rst
+docs/source/sporco.cnvrep.rst
+docs/source/sporco.metric.rst
+docs/source/sporco.prox.rst
+docs/source/sporco.util.rst
+docs/source/sporco.plot.rst
+docs/source/sporco.*.*.rst
+docs/source/_static/jonga
+docs/Makefile
+
+# Example notebooks and derived docs
+examples/notebooks
+docs/source/examples
+
+# PyBuilder
+target/
+
+#Ipython Notebook
+.ipynb_checkpoints

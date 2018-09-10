@@ -1,4 +1,21 @@
-*.pyc
+# Files
+*.o
 *.so
+*.mat
+*.pyc
+*.profile
 *.egg-info
+.coverage*
+alphacsc/cython_code/*.c
+
+# Exps directories
+build
+figures
+save_exp
+
+# tools directories
+joblib
+.cache
+.vscode
 __pycache__
+.pytest_cache

@@ -1,0 +1,19 @@
+include MANIFEST.in
+include setup.py
+include setup.cfg
+include pytest.ini
+include README.rst
+include LICENSE
+include CHANGES.rst
+include requirements.txt
+
+recursive-include examples *.rst *.py
+recursive-include docs Makefile *.py *.rst *.bib *.css
+
+include sporco/data/*.npz
+include sporco/data/*.png
+include sporco/data/README.rst
+include sporco/tests/*.py
+include sporco/admm/tests/*.py
+
+prune docs/build

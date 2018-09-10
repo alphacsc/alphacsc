@@ -12,7 +12,7 @@ to try. Please cite our paper [2] if you use this implementation.
     translation invariant dictionaries." Acoustics, Speech and Signal
     Processing, 2006. ICASSP 2006 Proceedings. 2006 IEEE International
     Conference on. Vol. 5. IEEE, 2006.
-[2] Jas, M., Dupré La Tour, T., Şimşekli, U., & Gramfort, A. (2017).
+[2] Jas, M., Dupr'e La Tour, T., Simsekli, U., & Gramfort, A. (2017).
     Learning the Morphology of Brain Signals Using Alpha-Stable Convolutional
     Sparse Coding. arXiv preprint arXiv:1705.08006.
 """
@@ -29,7 +29,7 @@ to try. Please cite our paper [2] if you use this implementation.
 
 import matplotlib.pyplot as plt
 from alphacsc.simulate import simulate_data
-from alphacsc.motif import learn_atoms
+from alphacsc.other.motif import learn_atoms
 
 ###############################################################################
 # and define the relevant parameters. Note we choose a large n_times
@@ -44,7 +44,7 @@ n_trials = 10  # N
 # simulate the data.
 
 random_state_simulate = 1
-X, ds_true, Z_true = simulate_data(n_trials, n_times, n_times_atom,
+X, ds_true, z_true = simulate_data(n_trials, n_times, n_times_atom,
                                    n_atoms, random_state_simulate,
                                    constant_amplitude=True)
 

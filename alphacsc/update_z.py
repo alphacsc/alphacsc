@@ -4,18 +4,20 @@
 #          Tom Dupre La Tour <tom.duprelatour@telecom-paristech.fr>
 #          Umut Simsekli <umut.simsekli@telecom-paristech.fr>
 #          Alexandre Gramfort <alexandre.gramfort@telecom-paristech.fr>
+import time
 
 import numpy as np
 from scipy import linalg
 from scipy import optimize, signal
 from joblib import Parallel, delayed
 
-from .utils import check_random_state, check_consistent_shape
-from .utils import _choose_convolve
+from .utils.convolution import _choose_convolve
+from .utils.optim import power_iteration
+from .utils import check_consistent_shape
 
 
-def update_z(X, ds, reg, n_times_atom, z0=None, debug=False, parallel=None,
-             solver='l_bfgs', b_hat_0=None, solver_kwargs=dict(),
+def update_z(X, ds, reg, z0=None, debug=False, parallel=None,
+             solver='l-bfgs', b_hat_0=None, solver_kwargs=dict(),
              sample_weights=None):
     """Update Z using L-BFGS with positivity constraints
 
@@ -27,15 +29,13 @@ def update_z(X, ds, reg, n_times_atom, z0=None, debug=False, parallel=None,
         The atoms.
     reg : float
         The regularization constant
-    n_times_atom : int
-        Number of time points.
     z0 : None | array, shape (n_atoms, n_trials, n_times_valid)
         Init for z (can be used for warm restart).
     debug : bool
         If True, check the grad.
     parallel : instance of Parallel
         Context manager for running joblibs in a loop.
-    solver : 'l_bfgs' | 'ista' | 'fista'
+    solver : 'l-bfgs' | 'ista' | 'fista'
         The solver to use.
     b_hat_0 : array, shape ((n_times - n_times_atom + 1) * n_atoms)
         init vector for power_iteration with 'ista' solver
@@ -48,22 +48,20 @@ def update_z(X, ds, reg, n_times_atom, z0=None, debug=False, parallel=None,
 
     Returns
     -------
-    X : array, shape (n_trials, n_times)
-        The data
-    ds : array, shape (k, n_times_atom)
-        The true atoms.
     z : array, shape (n_trials, n_times - n_times_atom + 1)
         The true codes.
     """
     n_trials, n_times = X.shape
     check_consistent_shape(X, sample_weights)
-    n_atoms = ds.shape[0]
+    n_atoms, n_times_atom = ds.shape
     n_times_valid = n_times - n_times_atom + 1
 
     # now estimate the codes
     my_update_z = delayed(_update_z_idx)
     if parallel is None:
         parallel = Parallel(n_jobs=1)
+    else:
+        assert parallel.n_jobs >= 1
 
     zhats = parallel(
         my_update_z(X, ds, reg, z0, i, debug, solver, b_hat_0, solver_kwargs,
@@ -137,8 +135,8 @@ def _fprime(ds, zi, Xi=None, sample_weights=None, reg=None, return_func=False):
         return grad
 
 
-def _update_z_idx(X, ds, reg, z0, idxs, debug, solver="l_bfgs", b_hat_0=None,
-                  solver_kwargs=dict(), sample_weights=None):
+def _update_z_idx(X, ds, reg, z0, idxs, debug, solver='l-bfgs', b_hat_0=None,
+                  solver_kwargs=dict(), sample_weights=None, timing=False):
 
     n_trials, n_times = X.shape
     n_atoms, n_times_atom = ds.shape
@@ -166,6 +164,11 @@ def _update_z_idx(X, ds, reg, z0, idxs, debug, solver="l_bfgs", b_hat_0=None,
         else:
             f0 = z0[:, i, :].reshape((n_atoms * n_times_valid))
 
+        if timing:
+            times = [0]
+            pobj = [func_and_grad(f0)[0]]
+            start = [time.time()]
+
         if debug:
 
             def pobj(zi):
@@ -176,11 +179,23 @@ def _update_z_idx(X, ds, reg, z0, idxs, debug, solver="l_bfgs", b_hat_0=None,
 
             assert optimize.check_grad(pobj, fprime, f0) < 1e-5
 
-        if solver == "l_bfgs":
+        if solver == 'l-bfgs':
+            if timing:
+                def callback(xk):
+                    times.append(time.time() - start[0])
+                    pobj.append(func_and_grad(xk)[0])
+                    # use a reference to have access inside this function
+                    start[0] = time.time()
+
+            else:
+                callback = None
             factr = solver_kwargs.get('factr', 1e15)  # default value
+            maxiter = solver_kwargs.get('maxiter', 15000)  # default value
             zhat, f, d = optimize.fmin_l_bfgs_b(func_and_grad, f0, fprime=None,
                                                 args=(), approx_grad=False,
-                                                bounds=bounds, factr=factr)
+                                                bounds=bounds, factr=factr,
+                                                maxiter=maxiter,
+                                                callback=callback)
         elif solver == "ista":
             zhat = f0.copy()
             DTD = gram_block_circulant(ds, n_times_valid, 'custom',
@@ -193,6 +208,11 @@ def _update_z_idx(X, ds, reg, z0, idxs, debug, solver="l_bfgs", b_hat_0=None,
             for k in range(max_iter):  # run ISTA iterations
                 zhat -= step_size * grad_noreg(zhat)
                 zhat = np.maximum(zhat - reg * step_size, 0.)
+
+                if timing:
+                    times.append(time.time() - start[0])
+                    pobj.append(func_and_grad(zhat)[0])
+                    start[0] = time.time()
 
         elif solver == "fista":
             # init
@@ -227,55 +247,20 @@ def _update_z_idx(X, ds, reg, z0, idxs, debug, solver="l_bfgs", b_hat_0=None,
                 t_new = 0.5 * (1. + np.sqrt(1. + 4. * (t_old ** 2)))
                 y = x_new + ((t_old - 1.) / t_new) * (x_new - x_old)
 
+                if timing:
+                    times.append(time.time() - start[0])
+                    pobj.append(func_and_grad(x_new)[0])
+                    start[0] = time.time()
+
             zhat = x_new
         else:
             raise ValueError("Unrecognized solver %s. Must be 'ista', 'fista',"
-                             " or 'l_bfgs'." % solver)
+                             " or 'l-bfgs'." % solver)
 
         zhats.append(zhat)
+    if timing:
+        return np.vstack(zhats), pobj, times
     return np.vstack(zhats)
-
-
-def power_iteration(A, max_iter=1000, tol=1e-7, b_hat_0=None,
-                    random_state=None):
-    """Estimate dominant eigenvalue of matrix A.
-
-    Parameters
-    ----------
-    A : array, shape (n_points, n_points)
-        The matrix whose largest eigenvalue is to be found.
-    b_hat_0 : array, shape (n_points, )
-        init vector
-
-    Returns
-    -------
-    mu_hat : float
-        The largest eigenvalue
-    """
-    if b_hat_0 is None:
-        rng = check_random_state(random_state)
-        b_hat = rng.rand((A.shape[1]))
-    else:
-        b_hat = b_hat_0
-
-    Ab_hat = A.dot(b_hat)
-    mu_hat = np.nan
-    for ii in range(max_iter):
-        b_hat = A.dot(b_hat)
-        b_hat /= linalg.norm(b_hat)
-        Ab_hat = A.dot(b_hat)
-        mu_old = mu_hat
-        mu_hat = np.dot(b_hat, Ab_hat)
-        # note, we might exit the loop before b_hat converges
-        # since we care only about mu_hat converging
-        if (mu_hat - mu_old) / mu_old < tol:
-            break
-
-    if b_hat_0 is not None:
-        # copy inplace into b_hat_0 for next call to power_iteration
-        np.copyto(b_hat_0, b_hat)
-
-    return mu_hat
 
 
 def gram_block_circulant(ds, n_times_valid, method='full',
