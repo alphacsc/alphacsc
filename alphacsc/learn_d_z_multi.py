@@ -12,7 +12,6 @@ import sys
 
 import numpy as np
 from scipy import sparse
-from joblib import Parallel
 
 from .utils import check_random_state
 from .utils.lil import is_list_of_lil

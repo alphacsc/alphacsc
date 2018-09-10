@@ -1,7 +1,6 @@
 import numpy as np
 
 from alphacsc.utils.optim import fista, power_iteration
-from alphacsc.utils import check_random_state
 
 
 def test_ista():

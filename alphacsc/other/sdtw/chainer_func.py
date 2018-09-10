@@ -1,7 +1,5 @@
 import numpy as np
 
-import chainer
-
 from chainer import Function
 
 from .soft_dtw import SoftDTW

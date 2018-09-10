@@ -27,17 +27,17 @@ def delannoy_num(m, n):
     https://en.wikipedia.org/wiki/Delannoy_number
     """
     a = np.zeros([m+1, n+1])
-    a[0,0] = 1
+    a[0, 0] = 1
 
     for i in range(1, m+1):
-        a[i,0] = 1
+        a[i, 0] = 1
 
     for j in range(1, n+1):
-        a[0,j] = 1
+        a[0, j] = 1
 
     for i in range(1, m+1):
         for j in range(1, n+1):
-            a[i,j] = a[i-1, j] + a[i, j-1] + a[i-1, j-1]
+            a[i, j] = a[i-1, j] + a[i, j-1] + a[i-1, j-1]
 
     return a[m, n]
 
@@ -59,7 +59,6 @@ def gen_all_paths(m, n, start=None, M=None):
 
     i, j = start
     M[i, j] = 1
-    ret = []
 
     if i == m-1 and j == n-1:
         yield M

@@ -6,5 +6,5 @@ from .utils import construct_X, check_random_state
 from .convolutional_dictionary_learning import BatchCDL, OnlineCDL
 
 
-__all__ = ["BatchCDL", "update_d_block", "learn_d_z", "objective",
+__all__ = ["BatchCDL", "OnlineCDL", "update_d_block", "learn_d_z", "objective",
            "learn_d_z_weighted", "construct_X", "check_random_state"]

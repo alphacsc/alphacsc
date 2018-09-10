@@ -117,7 +117,6 @@ def compute_X_and_objective_multi(X, z_hat, D_hat=None, reg=None, loss='l2',
 
     X_hat = construct_X_multi(z_hat, D=D_hat, n_channels=n_channels)
 
-
     cost = compute_objective(X=X, X_hat=X_hat, z_hat=z_hat, reg=reg, loss=loss,
                              loss_params=loss_params)
     if return_X_hat:

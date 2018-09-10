@@ -49,7 +49,6 @@ def sdtw_barycenter(X, barycenter_init, gamma=1.0, weights=None,
 
         Z = Z.reshape(*barycenter_init.shape)
 
-        m = Z.shape[0]
         G = np.zeros_like(Z)
 
         obj = 0

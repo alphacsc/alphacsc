@@ -179,7 +179,6 @@ def learn_conv_sparse_coder(b, size_kernel, max_it, tol,
     d_norm = np.linalg.norm(d, axis=1)
     d /= d_norm[:, None]
 
-
     # Initial the filters and its fft after being rolled to fit the frequency
     d = np.pad(d, ((0, 0),
                    (0, size_x[1] - size_kernel[1])),
@@ -187,7 +186,7 @@ def learn_conv_sparse_coder(b, size_kernel, max_it, tol,
     d = np.roll(d, -int(psf_radius), axis=1)
     d_hat = fft(d)
 
-    """Initialize variables for the z-step"""
+    # Initialize variables for the z-step
     varsize_Z = [size_x, size_z]
     xi_Z = [np.zeros(varsize_Z[0], dtype=real_type),
             np.zeros(varsize_Z[1], dtype=real_type)]
