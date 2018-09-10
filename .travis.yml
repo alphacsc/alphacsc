@@ -11,8 +11,8 @@ install:
     - pip install pytest coverage flake8 pytest-cov coveralls
 
 script:
-    - pytest -vl --cov=alphacsc
+    - set -e
     - flake8 --exclude=alphacsc/other/ --count alphacsc
+    - pytest -vl --cov=alphacsc --cov-append
 after_success:
-    - coverage combine --append
     - bash <(curl -s https://codecov.io/bash)

@@ -1,5 +1,6 @@
 [run]
 parallel = True
+source = alphacsc
 omit = 
     # Omit test files
     */tests/*
