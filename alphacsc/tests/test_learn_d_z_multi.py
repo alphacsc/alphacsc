@@ -1,8 +1,8 @@
 import pytest
 import numpy as np
 
-from alphacsc.learn_d_z_multi import learn_d_z_multi
 from alphacsc.utils import check_random_state
+from alphacsc.learn_d_z_multi import learn_d_z_multi
 
 
 @pytest.mark.parametrize('loss', ['l2', 'dtw', 'whitening'])
@@ -37,3 +37,26 @@ def test_learn_d_z_multi(loss, solver_d, uv_constraint):
         plt.title(msg)
         plt.show()
         raise
+
+
+def test_online_learning():
+    # smoke test for learn_d_z_multi
+    n_trials, n_channels, n_times = 2, 3, 100
+    n_times_atom, n_atoms = 10, 4
+
+    rng = check_random_state(42)
+    X = rng.randn(n_trials, n_channels, n_times)
+    pobj_0, _, _, _ = learn_d_z_multi(
+        X, n_atoms, n_times_atom, uv_constraint="separate",
+        solver_d="joint", random_state=0, n_iter=30,
+        solver_z='l-bfgs', algorithm="batch",
+        loss='l2')
+
+    pobj_1, _, _, _ = learn_d_z_multi(
+        X, n_atoms, n_times_atom, uv_constraint="separate",
+        solver_d="joint", random_state=0, n_iter=30,
+        solver_z='l-bfgs', algorithm="online",
+        algorithm_params=dict(batch_size=n_trials, alpha=0),
+        loss='l2')
+
+    assert np.allclose(pobj_0, pobj_1)
