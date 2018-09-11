@@ -3,7 +3,7 @@
 This script requires `pandas` which can be installed with `pip install pandas`.
 
 This script performs the computations and save the results in a pickled file
-`figures/rank1_snr.pkl` which can be plotted using 1D_vs_multi_plot.py.
+`figures/rank1_snr.pkl` which can be plotted using `1D_vs_multi_plot.py`.
 """
 import os
 import itertools
@@ -18,9 +18,8 @@ from alphacsc.utils import construct_X_multi
 from alphacsc.learn_d_z_multi import learn_d_z_multi
 from alphacsc.utils.dictionary import get_lambda_max
 
-verbose = 1
-random_state = 27
-rng = np.random.RandomState(random_state)
+
+VERBOSE = 0
 
 
 ############################################
@@ -127,7 +126,7 @@ def run_one(reg, sigma, n_atoms, n_times_atom, max_n_channels, n_times_valid,
         n_iter=n_iter, n_jobs=1, reg=reg_, uv_constraint='separate',
         solver_d='alternate_adaptive', solver_d_kwargs={'max_iter': 50},
         solver_z="lgcd", solver_z_kwargs=dict(tol=1e-3, maxiter=500),
-        use_sparse_z=True, D_init=uv_init_, verbose=0,
+        use_sparse_z=True, D_init=uv_init_, verbose=VERBOSE,
     )
 
     score = score_uv(uv_, uv_hat, run_n_channels)
@@ -155,7 +154,7 @@ if __name__ == "__main__":
 
     # Use the caching utilities from joblib to same intermediate results and
     # avoid loosing computations when the interpreter crashes.
-    mem = Memory(cachedir='.', verbose=0)
+    mem = Memory(cachedir='.', verbose=VERBOSE)
     cached_run_one = mem.cache(func=run_one)
     delayed_run_one = delayed(cached_run_one)
 

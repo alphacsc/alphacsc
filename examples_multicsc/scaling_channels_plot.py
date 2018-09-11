@@ -1,3 +1,10 @@
+"""Benchmark the scaling of alphacsc algorithm with multiple channels.
+
+This script requires `pandas` which can be installed with `pip install pandas`.
+
+This script plots the results saved by the script scaling_channels_run.py,
+which should be run beforehand.
+"""
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np

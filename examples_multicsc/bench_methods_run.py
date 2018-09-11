@@ -53,9 +53,9 @@ n_channel_list = [1]
 reg_list = [10.]
 
 
-####################################
-# Function compared in the benchmark
-####################################
+######################################
+# Functions compared in the benchmark
+######################################
 
 
 def run_admm(X, ds_init, reg, n_iter, random_state, label, max_it_d=10,

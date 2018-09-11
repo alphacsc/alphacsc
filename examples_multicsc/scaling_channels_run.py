@@ -1,12 +1,22 @@
-from __future__ import print_function
+"""Benchmark the scaling of alphacsc algorithm with multiple channels.
+
+This script needs the following packages:
+    conda install pandas
+    conda install -c conda-forge pyfftw
+    pip install alphacsc/other/sporco
+
+This script performs the computations and save the results in a pickled file
+`figures/methods_scaling_reg*.pkl` which can be plotted using
+`scaling_channels_plot.py`.
+"""
 import os
-import itertools
 import time
+import itertools
 
 import numpy as np
 import pandas as pd
 import scipy.sparse as sp
-from sklearn.externals.joblib import Parallel, delayed, Memory
+from joblib import Parallel, delayed, Memory
 from sporco.admm.cbpdndl import ConvBPDNDictLearn
 
 from alphacsc.utils.profile_this import profile_this  # noqa
@@ -14,31 +24,24 @@ from alphacsc.utils import check_random_state, get_D
 from alphacsc.learn_d_z_multi import learn_d_z_multi
 from alphacsc.utils.dictionary import get_lambda_max
 
-mem = Memory(cachedir='.', verbose=0)
 
 START = time.time()
-
-##############################
-# Parameters of the simulation
-verbose = 1
-
-n_trials = 10  # N
-n_times_atom = 128  # L
-n_times = 20000  # T
-n_atoms = 2  # K
-
-save_name = 'methods_scaling_reg{}{}.pkl'
-if not os.path.exists("figures"):
-    os.mkdir("figures")
-save_name = os.path.join('figures', save_name)
+VERBOSE = 1
 
 
-def generate_D_init(n_channels, n_times_atom, random_state):
+#####################################
+# Dictionary initialization function
+#####################################
+
+def generate_D_init(n_atoms, n_channels, n_times_atom, random_state):
     rng = check_random_state(random_state)
     return rng.randn(n_atoms, n_channels + n_times_atom)
 
 
-# @profile_this
+######################################
+# Functions compared in the benchmark
+######################################
+
 def run_multichannel(X, D_init, reg, n_iter, random_state,
                      label, n_channels):
     n_atoms, n_channels_n_times_atom = D_init.shape
@@ -51,10 +54,9 @@ def run_multichannel(X, D_init, reg, n_iter, random_state,
         solver_d='alternate_adaptive', solver_d_kwargs=dict(max_iter=50),
         solver_z="lgcd", solver_z_kwargs=solver_z_kwargs, use_sparse_z=False,
         name="rank1-{}-{}".format(n_channels, random_state),
-        random_state=random_state, n_jobs=1, verbose=verbose)
+        random_state=random_state, n_jobs=1, verbose=VERBOSE)
 
 
-# @profile_this
 def run_multivariate(X, D_init, reg, n_iter, random_state,
                      label, n_channels):
     n_atoms, n_channels_n_times_atom = D_init.shape
@@ -68,11 +70,10 @@ def run_multivariate(X, D_init, reg, n_iter, random_state,
         solver_d='l-bfgs', solver_d_kwargs=dict(max_iter=50),
         solver_z="lgcd", solver_z_kwargs=solver_z_kwargs, use_sparse_z=False,
         name="dense-{}-{}".format(n_channels, random_state),
-        random_state=random_state, n_jobs=1, verbose=verbose,
+        random_state=random_state, n_jobs=1, verbose=VERBOSE,
         raise_on_increase=False)
 
 
-# @profile_this
 def run_cbpdn(X, ds_init, reg, n_iter, random_state, label, n_channels):
     # use only one thread in fft
     import sporco.linalg
@@ -92,7 +93,7 @@ def run_cbpdn(X, ds_init, reg, n_iter, random_state, label, n_channels):
         single_channel = False
 
     options = {
-        'Verbose': verbose > 0,
+        'Verbose': VERBOSE > 0,
         'MaxMainIter': n_iter,
         'CBPDN': dict(NonNegCoef=True),
         'CCMOD': dict(ZeroMean=False),
@@ -121,10 +122,13 @@ def run_cbpdn(X, ds_init, reg, n_iter, random_state, label, n_channels):
 
     # z_hat.shape = (n_atoms, n_trials, n_times)
     z_hat = z_hat[:, :, :-n_times_atom + 1]
-    # z_hat.shape = (n_atoms, n_trials, n_times_valid)
 
     return pobj, times, d_hat, z_hat
 
+
+####################################
+# Calling function of the benchmark
+####################################
 
 def one_run(X, n_channels, method, n_atoms, n_times_atom, random_state, reg):
     func, label, n_iter = method
@@ -133,7 +137,7 @@ def one_run(X, n_channels, method, n_atoms, n_times_atom, random_state, reg):
           label, n_channels, random_state, current_time))
 
     # use the same init for all methods
-    D_init = generate_D_init(n_channels, n_times_atom, random_state)
+    D_init = generate_D_init(n_atoms, n_channels, n_times_atom, random_state)
     X = X[:, :n_channels]
 
     lmbd_max = get_lambda_max(X, D_init).mean()
@@ -157,8 +161,12 @@ def one_run(X, n_channels, method, n_atoms, n_times_atom, random_state, reg):
     assert len(times) > 5
     return (n_channels, random_state, label, np.asarray(pobj),
             np.asarray(times), np.asarray(d_hat), np.asarray(z_hat), n_atoms,
-            n_times_atom, n_trials, n_times, reg)
+            n_times_atom, reg)
 
+
+###############################
+# Main script of the benchmark
+###############################
 
 if __name__ == '__main__':
     import argparse
@@ -172,25 +180,30 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    # Use the caching utilities from joblib to same intermediate results and
+    # avoid loosing computations when the interpreter crashes.
+    mem = Memory(cachedir='.', verbose=0)
     cached_one_run = mem.cache(func=one_run)
+    delayed_one_run = delayed(cached_one_run)
 
-    all_results = []
     # load somato data
     from alphacsc.datasets.somato import load_data
     X, info = load_data(epoch=False, n_jobs=args.njobs)
 
+    # Set dictionary learning parameters
+    n_atoms = 2  # K
+    n_times_atom = 128  # L
+
+    # Set the benchmarking parameters.
     reg = .005
     n_iter = 50
-    # number of random states
     n_states = 5
+
+    # Select the method to run and the range of n_channels
     n_channels = X.shape[1]
+    methods = [(run_multichannel, 'rank1', n_iter)]
     span_channels = np.unique(np.floor(
         np.logspace(0, np.log10(n_channels), 10)).astype(int))
-    methods = [
-        [run_multichannel, 'rank1', n_iter],
-        # [run_multivariate, 'dense', n_iter],
-        # [run_multivariate, 'wohlberg', n_iter],
-    ]
 
     if args.dense:
         methods = [[run_multivariate, 'dense', n_iter]]
@@ -202,30 +215,28 @@ if __name__ == '__main__':
         span_channels = np.unique(np.floor(
             np.logspace(0, np.log10(n_channels), 10)).astype(int))[:-3]
 
-    with Parallel(n_jobs=args.njobs) as parallel:
+    # Create a grid a parameter for which we which to run the benchmark.
+    iterator = itertools.product(range(n_states), methods, span_channels)
 
-        iterator = itertools.product(range(n_states), methods, span_channels)
-        # run the methods for different random_state
-        delayed_one_run = delayed(cached_one_run)
-        results = parallel(
-            delayed_one_run(X, n_channels, method, n_atoms,
-                            n_times_atom, rst, reg)
-            for rst, method, n_channels in iterator)
+    # Run the experiment in parallel with joblib
+    all_results = Parallel(n_jobs=args.njobs)(
+        delayed_one_run(X, n_channels, method, n_atoms,
+                        n_times_atom, rst, reg)
+        for rst, method, n_channels in iterator)
 
-        all_results.extend(results)
-
-    # save even intermediate results
+    # save all results for plotting with scaling_channels_plot.py script.
     suffix = ""
     if args.dense:
         suffix = "_dense"
     if args.wohlberg:
         suffix = "_wohlberg"
 
+    save_name = 'methods_scaling_reg{}{}.pkl'.format(reg, suffix)
+    if not os.path.exists("figures"):
+        os.mkdir("figures")
+    save_name = os.path.join('figures', save_name)
     all_results_df = pd.DataFrame(
         all_results, columns='n_channels random_state label pobj times '
-        'd_hat z_hat n_atoms n_times_atom n_trials n_times reg'.split(' '))
-    all_results_df.to_pickle(save_name.format(reg, suffix))
-    import IPython
-    IPython.embed()
-
+        'd_hat z_hat n_atoms n_times_atom reg'.split(' '))
+    all_results_df.to_pickle(save_name)
     print('-- End of the script --')
