@@ -10,7 +10,7 @@ import itertools
 import numpy as np
 import pandas as pd
 from scipy import sparse
-from sklearn.externals.joblib import Parallel, delayed, Memory
+from joblib import Parallel, delayed, Memory
 
 from alphacsc.simulate import get_atoms
 from alphacsc.update_d_multi import prox_uv

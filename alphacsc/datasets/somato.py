@@ -1,10 +1,9 @@
 
 import os
-import numpy as np
-from scipy.signal import tukey
-
 import mne
-from sklearn.externals.joblib import Memory
+import numpy as np
+from joblib import Memory
+from scipy.signal import tukey
 
 
 mem = Memory(cachedir='.', verbose=0)

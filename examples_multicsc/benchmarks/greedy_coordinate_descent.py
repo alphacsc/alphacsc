@@ -4,10 +4,10 @@
 """
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.externals.joblib import delayed, Parallel
+from joblib import delayed, Parallel
 
-from alphacsc.update_z_multi import _update_z_multi_idx
 from alphacsc.utils.dictionary import get_lambda_max
+from alphacsc.update_z_multi import _update_z_multi_idx
 
 
 def _general_cd(X, D, reg, n_iter, strategy, n_seg):

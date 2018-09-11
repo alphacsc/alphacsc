@@ -1,8 +1,8 @@
 import os
 import mne
 import numpy as np
+from joblib import Memory
 from scipy.signal import tukey
-from sklearn.externals.joblib import Memory
 
 try:
     from ..utils import check_random_state

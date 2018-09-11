@@ -1,11 +1,11 @@
 import time
 
-import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
+import pandas as pd
+from joblib import Memory
 from numpy import convolve
+import matplotlib.pyplot as plt
 from scipy.signal import fftconvolve
-from sklearn.externals.joblib import Memory
 from scipy.stats.mstats import gmean
 
 from numba import jit

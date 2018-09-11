@@ -13,13 +13,13 @@ This script needs the following packages:
 
 from __future__ import print_function
 import os
-import itertools
 import time
+import itertools
 
 import numpy as np
 import pandas as pd
 import scipy.sparse as sp
-from sklearn.externals.joblib import Parallel, delayed
+from joblib import Parallel, delayed
 
 import alphacsc.other.heide_csc as CSC
 from sporco.admm.cbpdndl import ConvBPDNDictLearn
@@ -52,8 +52,9 @@ n_atoms_list = [2]
 n_channel_list = [1]
 reg_list = [10.]
 
+
 ####################################
-# Function compared in the benchmark
+# Function compared in the benchmark
 ####################################
 
 
@@ -80,7 +81,7 @@ def run_admm(X, ds_init, reg, n_iter, random_state, label, max_it_d=10,
 
 
 def run_cbpdn(X, ds_init, reg, n_iter, random_state, label):
-    # use only one thread in fft for fair comparison
+    # Use only one thread in fft for fair comparison
     import sporco.linalg
     sporco.linalg.pyfftw_threads = 1
 
@@ -158,7 +159,7 @@ def run_multichannel_gcd(X, ds_init, reg, n_iter, random_state, label):
         X = X[:, None, :]
     else:
         n_atoms, n_channels, n_times_atom = ds_init.shape
-        ds_init = get_uv(ds_init)  # project init to rank 1
+        ds_init = get_uv(ds_init)  # project init to rank 1
 
     solver_z_kwargs = dict(max_iter=2, tol=1e-3)
     pobj, times, d_hat, z_hat = learn_d_z_multi(

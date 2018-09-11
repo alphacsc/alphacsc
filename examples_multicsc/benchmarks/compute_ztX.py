@@ -1,10 +1,10 @@
 import time
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 from scipy import sparse
+from joblib import Memory
 import matplotlib.pyplot as plt
-from sklearn.externals.joblib import Memory
 from scipy.stats.mstats import gmean
 
 from alphacsc.cython import _fast_compute_ztX

@@ -1,15 +1,12 @@
 import time
 
-import pandas as pd
 import numpy as np
-from scipy import sparse
+import pandas as pd
+from joblib import Memory
 import matplotlib.pyplot as plt
-from sklearn.externals.joblib import Memory
 from scipy.stats.mstats import gmean
 
 from alphacsc.utils.compat import numba, jit
-from alphacsc.cython import _fast_compute_ztz_lil
-from alphacsc.cython import _fast_compute_ztz_csr
 
 memory = Memory(cachedir='', verbose=0)
 
@@ -121,7 +118,7 @@ def benchmark():
     n_times_atom_range = [8, 32, 128]
 
     n_runs = (len(n_atoms_range) * len(n_channels_range) * len(
-        n_times_atom_range)* len(all_func))
+        n_times_atom_range) * len(all_func))
 
     k = 0
     results = []
