@@ -1,13 +1,14 @@
+"""Benchmark multiple channels vs a single channel for dictionary recovery.
+
+This script plots the results saved by the script 1D_vs_multi_run.py, which
+should be run beforehand.
+"""
+import os
 import numpy as np
 import pandas as pd
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
-
-
-fontsize = 14
-figsize = (6, 3.4)
-mpl.rc('mathtext', fontset='cm')
 
 
 if __name__ == "__main__":
@@ -16,70 +17,63 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         'Compare dictionary retrieval capabilities with univariate and '
         'multichannel CSC for different SNR.')
-    parser.add_argument('--fname', type=str, default='figures/rank1_snr.pkl',
-                        help='Name of the file to plot from.')
-    parser.add_argument('--bck', action='store_true',
-                        help='Generate back-up figure.')
+    parser.add_argument('--file-name', type=str,
+                        default='figures/rank1_snr.pkl',
+                        help='Name of the result file to plot from.')
     parser.add_argument('--pdf', action='store_true',
-                        help='Output pdf figures for final form.')
+                        help='Output pdf figures for final version.')
 
     args = parser.parse_args()
-    fname = args.fname
-    if args.bck:
-        fname = "figures/1D_vs_multi.pkl"
+    file_name = args.file_name
+    if not os.path.exists(file_name):
+        raise FileNotFoundError("Could not find result file '{}'. Make sure "
+                                "to run 1D_vs_multi_run.py before using this "
+                                "script.")
 
-    extension = "png"
-    if args.pdf:
-        extension = "pdf"
+    extension ="pdf" if args.pdf else "png"
 
-    all_results_df = pd.read_pickle(fname)
+    # Load the results
+    all_results_df = pd.read_pickle(file_name)
 
+    # Setup the figure
+    fontsize = 14
+    figsize = (6, 3.4)
+    mpl.rc('mathtext', fontset='cm')
+    fig = plt.figure(figsize=figsize)
     normalize = mcolors.LogNorm(vmin=1, vmax=50)
     colormap = plt.cm.get_cmap('viridis')
 
-    fig = plt.figure(figsize=figsize)
+    ############################################################
+    # Plot recovery score against the noise level for different
+    # channel numbers
+    ############################################################
+
     span_n_channels = all_results_df.run_n_channels.unique()
     span_sigma = all_results_df.sigma.unique()
     for n_channels in span_n_channels:
-        if args.bck and n_channels not in [1, 5, 25, 50]:
-            continue
         curve = []
         results_n_channel = all_results_df[
             all_results_df['run_n_channels'] == n_channels]
         for sigma in span_sigma:
             results = results_n_channel[results_n_channel['sigma'] == sigma]
-            if args.bck:
-                curve += [results.score.min()]
-            else:
-                results = results.groupby(['random_state']).min()
-                curve += [results.score.mean()]
+            results = results.groupby(['random_state']).min()
+            curve += [results.score.mean()]
         color = colormap(normalize(n_channels))
         plt.loglog(span_sigma, curve, color=color,
                    label="$P={}$".format(n_channels))
-
-    # # Colorbar setup
-    # s_map = plt.cm.ScalarMappable(norm=normalize, cmap=colormap)
-    # s_map.set_array(span_n_channels)
-
-    # # If color parameters is a linspace, we can set boundaries in this way
-    # boundaries = np.linspace(.5, 50.5, 51)
-
-    # # Use this to show a continuous colorbar
-    # cbar = fig.colorbar(s_map, spacing='proportional', ticks=span_n_channels,
-    #                     format='%2i')
-
-    # cbarlabel = r'# of channels $P$'
-    # cbar.set_label(cbarlabel, fontsize=20)
 
     plt.legend(loc=2, fontsize=fontsize)
     plt.ylabel("score($\widehat v$)", fontsize=fontsize)
     plt.xlabel("Noise level $\eta$", fontsize=fontsize)
     plt.tight_layout()
-    plt.savefig(fname.replace("pkl", extension), dpi=150)
+    plt.savefig(file_name.replace("pkl", extension), dpi=150)
+
+    ##############################################################
+    # For each channel number, plot the recovered atoms compared
+    # to the initial ones.
+    ##############################################################
 
     sig = all_results_df.sigma.unique()[5]
-    if args.bck:
-        sig = all_results_df.sigma.unique()[12]
     print("eta = {:.2e}".format(sig))
     for P in span_n_channels:
         if P == 1:
@@ -108,5 +102,5 @@ if __name__ == "__main__":
         plt.xlabel("Times", fontsize=fontsize)
         plt.ylabel("Atoms", fontsize=fontsize)
         plt.tight_layout()
-        plt.savefig(fname.replace(".pkl", "_uv_hat_P{}.{}").format(
+        plt.savefig(file_name.replace(".pkl", "_uv_hat_P{}.{}").format(
             P, extension), dpi=150)

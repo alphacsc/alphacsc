@@ -1,3 +1,10 @@
+"""Benchmark multiple channels vs a single channel for dictionary recovery.
+
+This script requires `pandas` which can be installed with `pip install pandas`.
+
+This script performs the computations and save the results in a pickled file
+`figures/rank1_snr.pkl` which can be plotted using 1D_vs_multi_plot.py.
+"""
 import os
 import itertools
 import numpy as np
@@ -9,90 +16,54 @@ from alphacsc.simulate import get_atoms
 from alphacsc.update_d_multi import prox_uv
 from alphacsc.utils import construct_X_multi
 from alphacsc.learn_d_z_multi import learn_d_z_multi
-from alphacsc.utils.dictionary import get_D, get_lambda_max
+from alphacsc.utils.dictionary import get_lambda_max
 
 verbose = 1
 random_state = 27
 rng = np.random.RandomState(random_state)
 
 
-def find_best_allocation(value, order="max"):
-    n_atoms = value.shape[0]
-    matching = range(n_atoms)
+############################################
+# Scoring functions for dictionary recovery
+############################################
+
+def find_best_allocation(cost, order="min"):
+    """Computes best matching between entries given a cost matrix and return
+    cost."""
+    n_atoms = cost.shape[0]
     if order == 'max':
         best_ = 0
     else:
         best_ = 1e10
     for permutation in itertools.permutations(range(n_atoms)):
-        current_ = abs(value[range(n_atoms), permutation]).sum()
+        current_ = abs(cost[range(n_atoms), permutation]).sum()
         if order == 'max':
             if current_ > best_:
-                matching = permutation
                 best_ = current_
         else:
             if current_ < best_:
-                matching = permutation
                 best_ = current_
-    return best_, matching
-
-
-def compute_score(v, v_hat):
-    return np.sum((v - v_hat)**2) / np.sum(v**2)
-
-
-def score_D(uv, D_hat, n_channels):
-    D = get_D(uv, n_channels)
-
-    distances = np.array([[
-        1 - abs(np.sum([np.correlate(Dkp_hat, Dkp, mode='valid').max()
-                        for Dkp, Dkp_hat in zip(Dk, Dk_hat)])
-                ) / np.sum(Dk * Dk)
-        for Dk_hat in D_hat] for Dk in D
-    ])
-    return find_best_allocation(distances, order='min')[0]
+    return best_
 
 
 def score_uv(uv, uv_hat, n_channels):
+    """Compute the recovery score for uv_hat compared to uv."""
 
     distances = np.array([[
         1 - abs(np.correlate(vk_hat, vk, mode='valid')).max() / np.sum(vk * vk)
         for vk_hat in uv_hat[:, n_channels:]] for vk in uv[:, n_channels:]
     ])
-    return find_best_allocation(distances, order='min')[0]
-
-    n_atoms = uv.shape[0]
-
-    correlation = np.dot(uv_hat[:, :n_channels], uv[:, :n_channels].T)
-    max_corr, matching = find_best_allocation(correlation)
-    uv_hat = uv_hat[list(matching)]
-
-    # Find the right orientation:
-    for k in range(n_atoms):
-        if np.dot(uv[k, :n_channels], uv_hat[k, :n_channels]) < 0:
-            uv_hat[k] *= -1
-
-    v = uv[:, n_channels:]
-    v_hat = uv_hat[:, n_channels:]
-    return compute_score(v, v_hat)
+    return find_best_allocation(distances, order='min')
 
 
-def score_d(uv, d_hat, n_channels):
-
-    distances = np.array([[
-        1 - abs(np.correlate(vk_hat, vk, mode='valid')).max() / np.sum(vk * vk)
-        for vk_hat in d_hat] for vk in uv[:, n_channels:]
-    ])
-    return find_best_allocation(distances, order='min')[0]
-    correlation = np.dot(d_hat, uv[:, n_channels:].T)
-    max_corr, matching = find_best_allocation(correlation)
-
-    v = uv[:, n_channels:]
-    v_hat = d_hat[list(matching)]
-    return compute_score(v, v_hat)
-
+#############################
+# Signal generation function
+#############################
 
 def get_signals(n_channels=50, n_times_atom=64, n_times_valid=640,
                 sigma=.01, random_state=None):
+    """Generate a signal following the sparse linear model with a rank1
+    triangle and square atoms and a Bernoulli-uniform distribution."""
 
     n_atoms = 2
     rng = np.random.RandomState(random_state)
@@ -123,8 +94,13 @@ def get_signals(n_channels=50, n_times_atom=64, n_times_valid=640,
     return X, uv, uv_init
 
 
+####################################
+# Calling function of the benchmark
+####################################
+
 def run_one(reg, sigma, n_atoms, n_times_atom, max_n_channels, n_times_valid,
             n_iter, run_n_channels, random_state):
+    """Run the benchmark for a given set of parameter."""
 
     X, uv, uv_init = get_signals(max_n_channels, n_times_atom, n_times_valid,
                                  sigma, random_state)
@@ -163,19 +139,22 @@ def run_one(reg, sigma, n_atoms, n_times_atom, max_n_channels, n_times_valid,
     return random_state, sigma, run_n_channels, score, uv, uv_hat, reg
 
 
+###############################
+# Main script of the benchmark
+###############################
+
 if __name__ == "__main__":
 
     import argparse
-    parser = argparse.ArgumentParser('Programme to launch experiemnt')
+    parser = argparse.ArgumentParser('Benchmark to highlight the advantages '
+                                     'of using multiple channels versus a one '
+                                     'channel.')
     parser.add_argument('--njobs', type=int, default=6,
-                        help='Number of processes used to run the experiement')
+                        help='Number of processes used to run the benchmark.')
     args = parser.parse_args()
 
-    save_name = 'rank1_snr.pkl'
-    if not os.path.exists("figures"):
-        os.mkdir("figures")
-    save_name = os.path.join('figures', save_name)
-
+    # Use the caching utilities from joblib to same intermediate results and
+    # avoid loosing computations when the interpreter crashes.
     mem = Memory(cachedir='.', verbose=0)
     cached_run_one = mem.cache(func=run_one)
     delayed_run_one = delayed(cached_run_one)
@@ -191,32 +170,28 @@ if __name__ == "__main__":
 
     n_iter = 500
 
+    # Create a grid a parameter for which we which to run the benchmark.
     span_reg = np.logspace(-4, -0.5, 10)
     span_random_state = np.arange(n_run)
     span_noise = np.logspace(-4, -1, 10)
     span_channels = np.unique(
         np.round(np.logspace(0, np.log10(max_n_channels), 10)).astype(int))
-
     grid_args = itertools.product(span_random_state, span_noise, span_channels,
                                   span_reg)
 
+    # Run the experiment in parallel with joblib
     results = Parallel(n_jobs=args.njobs)(
         delayed_run_one(reg_, sigma, n_atoms, n_times_atom, max_n_channels,
                         n_times_valid, n_iter, run_n_channels, random_state)
         for random_state, sigma, run_n_channels, reg_ in grid_args
     )
 
-    # save even intermediate results
+    # save all results for plotting with 1D_vs_multi_plot.py script.
+    save_name = 'rank1_snr.pkl'
+    if not os.path.exists("figures"):
+        os.mkdir("figures")
+    save_name = os.path.join('figures', save_name)
     all_results_df = pd.DataFrame(
         results, columns='random_state sigma run_n_channels '
                          'score uv uv_hat reg'.split(' '))
     all_results_df.to_pickle(save_name)
-
-    # plt.plot(uv_hat[:, n_channels:].T, 'g', label='Multivariate')
-    # plt.plot(d_hat.T, 'r', label='1D')
-    # plt.plot(uv[:, n_channels:].T, 'k--', label='ground truth')
-    # plt.legend()
-    # plt.savefig("figures/univariate_vs_multi.png", dpi=150)
-    # plt.show()
-
-    # score_uv(uv, uv_hat)
