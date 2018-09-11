@@ -2,8 +2,7 @@
 Benchmark different solver of the same CSC univariate or multivariate problem.
 
 This script needs the following packages:
-    conda install pandas
-    conda install -c conda-forge pyfftw
+    pip install pandas pyfftw
     pip install alphacsc/other/sporco
 
 - Use bench_methods_run.py to run the benchmark.
