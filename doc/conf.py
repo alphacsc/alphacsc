@@ -38,6 +38,7 @@ extensions = [
     'sphinx.ext.intersphinx',
     'sphinx.ext.mathjax',
     'sphinx_gallery.gen_gallery',
+    'numpydoc',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -83,6 +84,9 @@ pygments_style = 'sphinx'
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = False
+
+# generate autosummary even if no references
+autosummary_generate = True
 
 # -- Options for HTML output ----------------------------------------------
 

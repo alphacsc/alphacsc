@@ -1,5 +1,5 @@
 .. _multicsc_examples:
 
-Multivariate CSC with rank1 constraints
----------------------------------------
+Multivariate CSC with rank 1 constraints
+----------------------------------------
 

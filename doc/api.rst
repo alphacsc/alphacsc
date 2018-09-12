@@ -9,6 +9,14 @@ API Documentation
 Learn atoms
 ===========
 
+Transformers
+
+.. autosummary::
+   :toctree: generated/
+
+   BatchCDL
+   OnlineCDL
+
 Functions
 
 .. autosummary::
@@ -16,6 +24,9 @@ Functions
 
    learn_d_z
    learn_d_z_weighted
+
+.. currentmodule:: alphacsc.other.swm
+
 
 .. currentmodule:: alphacsc.other.swm
 

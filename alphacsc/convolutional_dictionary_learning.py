@@ -17,18 +17,11 @@ from .learn_d_z_multi import learn_d_z_multi
 
 DOC_FMT = """{desc}
 
-    Methods
-    -------
-
-    __init__: instantiate a class to perform CDL.
-    fit : learn a convolutional dictionary from a given set of signal X
-    transform : return the sparse codes associated to the learned dictionary
-
     Parameters
     ----------
 
     Problem Specs
-    ~~~~~~~~~~~~~
+
     n_atoms : int
         The number of atoms to learn.
     n_times_atom : int
@@ -41,13 +34,13 @@ DOC_FMT = """{desc}
         If set to True, learn rank 1 dictionary atoms.
     uv_constraint : {{'joint', 'separate', 'box'}}
         The kind of norm constraint on the atoms:
-        If 'joint', the constraint is norm_2([u, v]) <= 1
-        If 'separate', the constraint is norm_2(u) <= 1 and norm_2(v) <= 1
-        If 'box', the constraint is norm_inf([u, v]) <= 1
+
+        - :code:`'joint'`: the constraint is ||[u, v]||_2 <= 1
+        - :code:`'separate'`: the constraint is ||u||_2 <= 1 and ||v||_2 <= 1
+        - :code:`'box'`: the constraint is ||[u, v]||_inf <= 1
 
 
     Global algorithm
-    ~~~~~~~~~~~~~~~~
     {algorithm}
     n_iter : int
         The number of alternate steps to perform.
@@ -58,19 +51,20 @@ DOC_FMT = """{desc}
         The regularization parameter
     lmbd_max : 'fixed' | 'scaled' | 'per_atom' | 'shared'
         If not fixed, adapt the regularization rate as a ratio of lambda_max:
-          - 'scaled': the regularization parameter is fixed as a ratio of its
-            maximal value at init __ie__
-                    reg_ = reg * lmbd_\max(uv_init)
-          - 'shared': the regularization parameter is set at each iteration as
-            a ratio of its maximal value for the current dictionary estimate
-            __ie__ reg_ = reg * lmbd_\max(uv_hat)
-          - 'per_atom': the regularization parameter is set per atom and at
-            each iteration as a ratio of its maximal value for this atom __ie__
-                    reg_[k] = reg * lmbd_\max(uv_hat[k])
+
+        - :code:`'scaled'`: the regularization parameter is fixed as a ratio of
+          its maximal value at init *i.e.*
+          :math:`\lambda` = reg * lmbd_max(uv_init)
+        - :code:`'shared'`: the regularization parameter is set at each
+          iteration as a ratio of its maximal value for the current dictionary
+          estimate *i.e.* :math:`\lambda` = reg * lmbd_max(uv_hat)
+        - :code:`'per_atom'`: the regularization parameter is set per atom and
+          at each iteration as a ratio of its maximal value for this atom
+          *i.e.* :math:`\lambda[k]` = reg * lmbd_max(uv_hat[k])
 
 
     Z-step parameters
-    ~~~~~~~~~~~~~~~~~
+
     solver_z : str
         The solver to use for the z update. Options are
         'l_bfgs' (default) | "lgcd"
@@ -84,22 +78,22 @@ DOC_FMT = """{desc}
 
 
     D-step parameters
-    ~~~~~~~~~~~~~~~~~
+
     solver_d : str
         The solver to use for the d update. Options are
         'alternate' | 'alternate_adaptive' (default) | 'joint' | 'l-bfgs'
     solver_d_kwargs : dict
         Additional keyword arguments to provide to update_d
-    D_init : str or array, shape (n_atoms, n_channels + n_times_atoms) or
-                            shape (n_atoms, n_channels, n_times_atom)
-        The initial atoms or an initialization scheme in
+    D_init : str or array
+        The initial atoms with shape (n_atoms, n_channels + n_times_atoms) or
+        (n_atoms, n_channels, n_times_atom) or an initialization scheme str in
         {{'kmeans' | 'ssa' | 'chunks' | 'random'}}.
     D_init_params : dict
         Dictionnary of parameters for the kmeans init method.
 
 
     Technical parameters
-    ~~~~~~~~~~~~~~~~~~~~
+
     n_jobs : int
         The number of parallel jobs.
     verbose : int
@@ -133,11 +127,13 @@ DOC_FMT = """{desc}
         The objective function value at each step of the coordinate descent.
     times_ : list
         The cumulative time for each iteration of the coordinate descent.
+
     """
 
 DEFAULT = dict(
     desc="Base class for convolutional dictionary learning algorithms",
     algorithm="""
+
     algorithm : {'batch' | 'greedy' | 'online'}
         Dictionary learning algorithm.
     algorithm_params : dict
@@ -202,7 +198,7 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
         self._D_hat = None
 
     def fit(self, X, y=None):
-        self.pobj_, self.times_, self._D_hat, self.z_hat_ = learn_d_z_multi(
+        self._pobj, self._times, self._D_hat, self._z_hat = learn_d_z_multi(
             X, self.n_atoms, self.n_times_atom,
             reg=self.reg, lmbd_max=self.lmbd_max,
             loss=self.loss, loss_params=self.loss_params,
@@ -233,6 +229,10 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
 
     @property
     def D_hat_(self):
+        """array: dictionary in full rank mode.
+
+        shape (n_atoms, n_channels, n_times_atom)
+        """
         self._check_fitted()
         if self._D_hat.ndim == 3:
             return self._D_hat
@@ -241,6 +241,11 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
 
     @property
     def uv_hat_(self):
+        """array: dictionary in rank 1 mode. If `rank1 = False`, this is an
+        approximation of the dictionary obtained through svd.
+
+        shape (n_atoms, n_channels + n_times_atom)
+        """
         self._check_fitted()
         if self._D_hat.ndim == 3:
             return get_uv(self._D_hat)
@@ -249,18 +254,51 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
 
     @property
     def u_hat_(self):
+        """array: spatial map of the dictionary. If `rank1 = False`, this is an
+        approximation of the dictionary obtained through svd.
+
+        , shape (n_atoms, n_channels)
+        """
         return self.uv_hat_[:, :self.n_channels_]
 
     @property
     def v_hat_(self):
+        """array: temporal patterns of the dictionary. If `rank1 = False`, this
+        is an approximation of the dictionary obtained through svd.
+
+        shape (n_atoms, n_times_atom)
+        """
         return self.uv_hat_[:, self.n_channels_:]
+
+    @property
+    def z_hat_(self):
+        """array: Sparse code associated to the signals used to fit the model.
+
+        shape (n_trials, n_atoms, n_times_valid)
+        """
+        self._check_fitted()
+        return self._z_hat
+
+    @property
+    def pobj_(self):
+        """list: Objective function value at each step of the alternate minimization.
+        """
+        self._check_fitted()
+        return self._pobj
+
+    @property
+    def times_(self):
+        """list: Cumulative time for each iteration of the coordinate descent.
+        """
+        self._check_fitted()
+        return self._times
 
 
 class BatchCDL(ConvolutionalDictionaryLearning):
     _default = {}
     _default.update(DEFAULT)
     _default['desc'] = "Batch algorithm for convolutional dictionary learning"
-    _default['algorithm'] = "Batch algorithm"
+    _default['algorithm'] = "    Batch algorithm\n"
     __doc__ = DOC_FMT.format(**_default)
 
     def __init__(self, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
@@ -285,7 +323,8 @@ class OnlineCDL(ConvolutionalDictionaryLearning):
     _default = {}
     _default.update(DEFAULT)
     _default['desc'] = "Online algorithm for convolutional dictionary learning"
-    _default['algorithm'] = """Online algorithm
+    _default['algorithm'] = """    Online algorithm
+
     alpha : float
         Forgetting factor for online learning. If set to 0, the learning is
         stochastic and each D-step is independent from the previous steps.
@@ -301,7 +340,8 @@ class OnlineCDL(ConvolutionalDictionaryLearning):
         Size of the batch used in online learning. Increasing it regularizes
         the dictionary learning as there is less variance for the successive
         estimates. But it also increases the computational cost as more coding
-        signals z_hat must be estimate at each iteration."""
+        signals z_hat must be estimate at each iteration.
+    """
     __doc__ = DOC_FMT.format(**_default)
 
     def __init__(self, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
