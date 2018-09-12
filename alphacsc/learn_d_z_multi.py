@@ -214,6 +214,9 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
                             uv_constraint=uv_constraint, loss=loss,
                             loss_params=loss_params, **d_kwargs)
 
+    if callable(callback):
+        callback(X, D_hat, z_hat, [])
+
     end_iter_func = get_iteration_func(eps, stopping_pobj, callback, lmbd_max,
                                        name, verbose, raise_on_increase)
 
