@@ -25,7 +25,8 @@ from .init_dict import init_dictionary, get_max_error_dict
 from .loss_and_gradient import compute_X_and_objective_multi
 
 
-def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
+def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
+                    lmbd_max='fixed', reg=0.1,
                     loss='l2', loss_params=dict(gamma=.1, sakoe_chiba_band=10,
                                                 ordar=10),
                     rank1=True, uv_constraint='separate', eps=1e-10,
@@ -34,9 +35,9 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
                     solver_z='l-bfgs', solver_z_kwargs=dict(),
                     solver_d='alternate_adaptive', solver_d_kwargs=dict(),
                     D_init=None, D_init_params=dict(),
-                    stopping_pobj=None, use_sparse_z=False, lmbd_max='fixed',
-                    verbose=10, callback=None, random_state=None, name="DL",
-                    raise_on_increase=True):
+                    unbiased_z_hat=False, use_sparse_z=False,
+                    stopping_pobj=None, raise_on_increase=True,
+                    verbose=10, callback=None, random_state=None, name="DL"):
     """Learn atoms and activations using Convolutional Sparse Coding.
 
     Parameters
@@ -49,6 +50,17 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
         The support of the atom.
     reg : float
         The regularization parameter
+    lmbd_max : 'fixed' | 'scaled' | 'per_atom' | 'shared'
+        If not fixed, adapt the regularization rate as a ratio of lambda_max:
+          - 'scaled': the regularization parameter is fixed as a ratio of its
+            maximal value at init __ie__
+                    reg_ = reg * lmbd_\max(uv_init)
+          - 'shared': the regularization parameter is set at each iteration as
+            a ratio of its maximal value for the current dictionary estimate
+            __ie__ reg_ = reg * lmbd_\max(uv_hat)
+          - 'per_atom': the regularization parameter is set per atom and at
+            each iteration as a ratio of its maximal value for this atom __ie__
+                    reg_[k] = reg * lmbd_\max(uv_hat[k])
     n_iter : int
         The number of coordinate-descent iterations.
     n_jobs : int
@@ -104,10 +116,11 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
         'chunks' | 'random'}.
     D_init_params : dict
         Dictionnary of parameters for the kmeans init method.
+    unbiased_z_hat : boolean
+        If set to True, the value of the non-zero coefficients in the returned
+        z_hat are recomputed with reg=0 on the frozen support.
     use_sparse_z : boolean
         Use sparse lil_matrices to store the activations.
-    lmbd_max : 'fixed' | 'scaled' | 'per_atom' | 'shared'
-        If not fixed, adapt the regularization rate as a ratio of lambda_max.
     verbose : int
         The verbosity level.
     callback : func
@@ -237,14 +250,15 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
             .format(algorithm))
 
     # recompute z_hat with no regularization and keeping the support fixed
-    t_start = time.time()
-    z_hat, _, _ = update_z_multi(
-        X, D_hat, reg=0, z0=z_hat, n_jobs=n_jobs, solver=solver_z,
-        solver_kwargs=solver_z_kwargs, freeze_support=True, loss=loss,
-        loss_params=loss_params)
-    if verbose > 1:
-        print("[{}] Compute the final z_hat with support freeze in {:.2f}s"
-              .format(name, time.time() - t_start))
+    if unbiased_z_hat:
+        t_start = time.time()
+        z_hat, _, _ = update_z_multi(
+            X, D_hat, reg=0, z0=z_hat, n_jobs=n_jobs, solver=solver_z,
+            solver_kwargs=solver_z_kwargs, freeze_support=True, loss=loss,
+            loss_params=loss_params)
+        if verbose > 1:
+            print("[{}] Compute the final z_hat with support freeze in "
+                  "{:.2f}s".format(name, time.time() - t_start))
 
     times[0] += init_duration
 
@@ -269,7 +283,7 @@ def _batch_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
 
     for ii in range(n_iter):  # outer loop of coordinate descent
         if verbose == 1:
-            msg = '.' if (ii % 50 != 0) else 'M_%d/%d ' % (ii, n_iter)
+            msg = '.' if ((ii + 1) % 50 != 0) else '+\n'
             print(msg, end='')
             sys.stdout.flush()
         if verbose > 1:
@@ -364,7 +378,7 @@ def _online_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
 
     for ii in range(n_iter):  # outer loop of coordinate descent
         if verbose == 1:
-            msg = '.' if (ii % 50 != 0) else 'M_%d/%d ' % (ii, n_iter)
+            msg = '.' if (ii % 50 != 0) else '+\n'
             print(msg, end='')
             sys.stdout.flush()
         if verbose > 1:
@@ -445,15 +459,15 @@ def get_iteration_func(eps, stopping_pobj, callback, lmbd_max, name, verbose,
         # parameter is fixed.
         dz = pobj[-3] - pobj[-2]
         du = pobj[-2] - pobj[-1]
-        if ((dz < eps or du < eps) and lmbd_max == 'fixed'):
+        if ((dz < eps or du < eps) and lmbd_max in ['fixed', 'scaled']):
             if dz < 0 and raise_on_increase:
                 raise RuntimeError(
-                    "The z update have increased the objective value by %s."
-                    % dz)
+                    "The z update have increased the objective value by {}."
+                    .format(dz))
             if du < -1e-10 and dz > 1e-12 and raise_on_increase:
                 raise RuntimeError(
-                    "The d update have increased the objective value by %s."
-                    "(dz=%s)" % (du, dz))
+                    "The d update have increased the objective value by {}."
+                    "(dz={})".format(du, dz))
             if dz < eps and du < eps:
                 print("[{}] Converged after {} iteration, dz, du "
                       "={:.3e}, {:.3e}".format(name, iteration, dz, du))

@@ -33,8 +33,6 @@ DOC_FMT = """{desc}
         The number of atoms to learn.
     n_times_atom : int
         The support of the atom.
-    reg : float
-        The regularization parameter
     loss : {{ 'l2' | 'dtw' | 'whitening' }}
         Loss for the data-fit term. Either the norm l2 or the soft-DTW.
     loss_params : dict
@@ -56,8 +54,19 @@ DOC_FMT = """{desc}
     eps : float
         Stopping criterion. If the cost descent after a uv and a z update is
         smaller than eps, return.
-    lmbd_max : {{'fixed' | 'scaled' | 'per_atom' | 'shared'}}
-        If not fixed, adapt the regularization rate as a ratio of lambda_max.
+    reg : float
+        The regularization parameter
+    lmbd_max : 'fixed' | 'scaled' | 'per_atom' | 'shared'
+        If not fixed, adapt the regularization rate as a ratio of lambda_max:
+          - 'scaled': the regularization parameter is fixed as a ratio of its
+            maximal value at init __ie__
+                    reg_ = reg * lmbd_\max(uv_init)
+          - 'shared': the regularization parameter is set at each iteration as
+            a ratio of its maximal value for the current dictionary estimate
+            __ie__ reg_ = reg * lmbd_\max(uv_hat)
+          - 'per_atom': the regularization parameter is set per atom and at
+            each iteration as a ratio of its maximal value for this atom __ie__
+                    reg_[k] = reg * lmbd_\max(uv_hat[k])
 
 
     Z-step parameters
@@ -67,6 +76,11 @@ DOC_FMT = """{desc}
         'l_bfgs' (default) | "lgcd"
     solver_z_kwargs : dict
         Additional keyword arguments to pass to update_z_multi
+    use_sparse_z : boolean
+        Use sparse lil_matrices to store the activations.
+    unbiased_z_hat : boolean
+        If set to True, the value of the non-zero coefficients in the returned
+        z_hat are recomputed with reg=0 on the frozen support.
 
 
     D-step parameters
@@ -82,8 +96,6 @@ DOC_FMT = """{desc}
         {{'kmeans' | 'ssa' | 'chunks' | 'random'}}.
     D_init_params : dict
         Dictionnary of parameters for the kmeans init method.
-    use_sparse_z : boolean
-        Use sparse lil_matrices to store the activations.
 
 
     Technical parameters
@@ -136,17 +148,18 @@ DEFAULT = dict(
 class ConvolutionalDictionaryLearning(TransformerMixin):
     __doc__ = DOC_FMT.format(**DEFAULT)
 
-    def __init__(self, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
+    def __init__(self, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
                  loss='l2', loss_params=dict(gamma=.1, sakoe_chiba_band=10,
                                              ordar=10),
                  rank1=True, uv_constraint='separate',
                  solver_z='l_bfgs', solver_z_kwargs={},
                  solver_d='alternate_adaptive', solver_d_kwargs={},
-                 eps=1e-10, D_init=None, D_init_params={},
+                 reg=0.1, lmbd_max='fixed', eps=1e-10,
+                 D_init=None, D_init_params={},
                  algorithm='batch', algorithm_params={},
-                 use_sparse_z=False, lmbd_max='fixed', verbose=10,
-                 callback=None, random_state=None, name="_CDL",
                  alpha=.8, batch_size=1, batch_selection='random',
+                 use_sparse_z=False, unbiased_z_hat=False,
+                 verbose=10, callback=None, random_state=None, name="_CDL",
                  raise_on_increase=True):
 
         # Problem Specs
@@ -168,13 +181,14 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
         # Z-step parameters
         self.solver_z = solver_z
         self.solver_z_kwargs = solver_z_kwargs
+        self.use_sparse_z = use_sparse_z
+        self.unbiased_z_hat = unbiased_z_hat
 
         # D-step parameters
         self.solver_d = solver_d
         self.solver_d_kwargs = solver_d_kwargs
         self.D_init = D_init
         self.D_init_params = D_init_params
-        self.use_sparse_z = use_sparse_z
 
         # Technical parameters
         self.n_jobs = n_jobs
@@ -189,7 +203,8 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
 
     def fit(self, X, y=None):
         self.pobj_, self.times_, self._D_hat, self.z_hat_ = learn_d_z_multi(
-            X, self.n_atoms, self.n_times_atom, reg=self.reg,
+            X, self.n_atoms, self.n_times_atom,
+            reg=self.reg, lmbd_max=self.lmbd_max,
             loss=self.loss, loss_params=self.loss_params,
             rank1=self.rank1, uv_constraint=self.uv_constraint,
             algorithm=self.algorithm, algorithm_params=self.algorithm_params,
@@ -197,7 +212,7 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
             solver_z=self.solver_z, solver_z_kwargs=self.solver_z_kwargs,
             solver_d=self.solver_d, solver_d_kwargs=self.solver_d_kwargs,
             D_init=self.D_init, D_init_params=self.D_init_params,
-            use_sparse_z=self.use_sparse_z, lmbd_max=self.lmbd_max,
+            use_sparse_z=self.use_sparse_z, unbiased_z_hat=self.unbiased_z_hat,
             verbose=self.verbose, callback=self.callback,
             random_state=self.random_state, n_jobs=self.n_jobs,
             name=self.name, raise_on_increase=self.raise_on_increase)
@@ -249,7 +264,7 @@ class BatchCDL(ConvolutionalDictionaryLearning):
     __doc__ = DOC_FMT.format(**_default)
 
     def __init__(self, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
-                 solver_z='lgcd', solver_z_kwargs={},
+                 solver_z='lgcd', solver_z_kwargs={}, unbiased_z_hat=False,
                  solver_d='alternate_adaptive', solver_d_kwargs={},
                  rank1=True, uv_constraint='separate', lmbd_max='scaled',
                  eps=1e-10, D_init=None, D_init_params={},
@@ -257,6 +272,7 @@ class BatchCDL(ConvolutionalDictionaryLearning):
         super().__init__(
             n_atoms, n_times_atom, reg=reg, n_iter=n_iter,
             solver_z=solver_z, solver_z_kwargs=solver_z_kwargs,
+            unbiased_z_hat=unbiased_z_hat,
             solver_d=solver_d, solver_d_kwargs=solver_d_kwargs,
             rank1=rank1, uv_constraint=uv_constraint,
             eps=eps, D_init=D_init, D_init_params=D_init_params,
@@ -289,7 +305,7 @@ class OnlineCDL(ConvolutionalDictionaryLearning):
     __doc__ = DOC_FMT.format(**_default)
 
     def __init__(self, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
-                 solver_z='lgcd', solver_z_kwargs={},
+                 solver_z='lgcd', solver_z_kwargs={}, unbiased_z_hat=False,
                  solver_d='alternate_adaptive', solver_d_kwargs={},
                  rank1=True, uv_constraint='separate', lmbd_max='scaled',
                  eps=1e-10, D_init=None, D_init_params={},
@@ -298,6 +314,7 @@ class OnlineCDL(ConvolutionalDictionaryLearning):
         super().__init__(
             n_atoms, n_times_atom, reg=reg, n_iter=n_iter,
             solver_z=solver_z, solver_z_kwargs=solver_z_kwargs,
+            unbiased_z_hat=unbiased_z_hat,
             solver_d=solver_d, solver_d_kwargs=solver_d_kwargs,
             rank1=rank1, uv_constraint=uv_constraint,
             eps=eps, D_init=D_init, D_init_params=D_init_params,
