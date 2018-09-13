@@ -13,6 +13,7 @@ from sklearn.exceptions import NotFittedError
 from .update_z_multi import update_z_multi
 from .utils.dictionary import get_D, get_uv
 from .learn_d_z_multi import learn_d_z_multi
+from .loss_and_gradient import construct_X_multi
 
 
 DOC_FMT = """{desc}
@@ -221,6 +222,9 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
             X, self._D_hat, reg=self.reg, z0=self.z0, n_jobs=self.n_jobs,
             solver=self.solver, solver_kwargs=self.solver_z_kwargs,
             loss=self.loss, loss_params=self.loss_params)
+
+    def transform_inverse(self, z_hat):
+        return construct_X_multi(z_hat, self._D_hat, self.n_channels_)
 
     def _check_fitted(self):
         if self._D_hat is None:
