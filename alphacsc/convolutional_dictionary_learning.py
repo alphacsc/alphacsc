@@ -33,12 +33,11 @@ DOC_FMT = """{desc}
         Parameters of the loss
     rank1 : boolean
         If set to True, learn rank 1 dictionary atoms.
-    uv_constraint : {{'joint', 'separate', 'box'}}
+    uv_constraint : {{'joint' | 'separate'}}
         The kind of norm constraint on the atoms:
 
         - :code:`'joint'`: the constraint is ||[u, v]||_2 <= 1
         - :code:`'separate'`: the constraint is ||u||_2 <= 1 and ||v||_2 <= 1
-        - :code:`'box'`: the constraint is ||[u, v]||_inf <= 1
 
 
     Global algorithm

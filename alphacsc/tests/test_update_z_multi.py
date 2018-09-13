@@ -44,6 +44,7 @@ def test_update_z_multi_decrease_cost_function(loss, solver):
         assert np.allclose(ztz, compute_ztz(z_hat, n_times_atom))
         assert np.allclose(ztX, compute_ztX(z_hat, X))
 
+
 @pytest.mark.parametrize('solver_z', ['l-bfgs', 'lgcd'])
 def test_support_least_square(solver_z):
     n_trials, n_channels, n_times = 2, 3, 100

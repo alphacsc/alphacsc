@@ -11,9 +11,7 @@ from alphacsc.utils import check_random_state
 
 
 @pytest.mark.parametrize("rank1", [True, False])
-@pytest.mark.parametrize("uv_constraint", [
-    'separate', 'joint', 'box'
-])
+@pytest.mark.parametrize("uv_constraint", ['separate', 'joint'])
 def test_init_array(rank1, uv_constraint):
     n_trials, n_channels, n_times = 5, 3, 100
     n_times_atom, n_atoms = 10, 4
@@ -48,9 +46,7 @@ def test_init_array(rank1, uv_constraint):
 
 
 @pytest.mark.parametrize("rank1", [True, False])
-@pytest.mark.parametrize("uv_constraint", [
-    'separate', 'joint', 'box'
-])
+@pytest.mark.parametrize("uv_constraint", ['separate', 'joint'])
 def test_init_random(rank1, uv_constraint):
     """"""
     n_trials, n_channels, n_times = 5, 3, 100

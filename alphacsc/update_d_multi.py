@@ -7,7 +7,6 @@
 #          Thomas Moreau <thomas.moreau@inria.fr>
 
 import numpy as np
-from scipy import optimize
 
 from . import cython_code
 from .utils.lil import get_z_shape, is_list_of_lil
@@ -28,15 +27,6 @@ def prox_uv(uv, uv_constraint='joint', n_channels=None, return_norm=False):
         assert n_channels is not None
         norm_u = np.maximum(1, np.linalg.norm(uv[:, :n_channels], axis=1))
         norm_v = np.maximum(1, np.linalg.norm(uv[:, n_channels:], axis=1))
-
-        uv[:, :n_channels] /= norm_u[:, None]
-        uv[:, n_channels:] /= norm_v[:, None]
-        norm_uv = norm_u * norm_v
-
-    elif uv_constraint == 'box':
-        assert n_channels is not None
-        norm_u = np.maximum(1, np.max(uv[:, :n_channels], axis=1))
-        norm_v = np.maximum(1, np.max(uv[:, n_channels:], axis=1))
 
         uv[:, :n_channels] /= norm_u[:, None]
         uv[:, n_channels:] /= norm_v[:, None]
@@ -85,16 +75,14 @@ def update_uv(X, z, uv_hat0, constants=None, b_hat_0=None, debug=False,
         If True, return the cost at each iteration.
     momentum : bool
         If True, use an accelerated version of the proximal gradient descent.
-    uv_constraint : str in {'joint', 'separate', 'box'}
+    uv_constraint : str in {'joint', 'separate'}
         The kind of norm constraint on the atoms:
         If 'joint', the constraint is norm_2([u, v]) <= 1
         If 'separate', the constraint is norm_2(u) <= 1 and norm_2(v) <= 1
-        If 'box', the constraint is norm_inf([u, v]) <= 1
     solver_d : str in {'alternate', 'joint', 'l-bfgs'}
         The type of solver to update d:
         If 'alternate', the solver alternates between u then v
         If 'joint', the solver jointly optimize uv with a line search
-        If 'l-bfgs', the solver uses l-bfgs with box constraints
     loss : str in {'l2' | 'dtw' | 'whitening'}
         The data-fit
     loss_params : dict
@@ -110,10 +98,7 @@ def update_uv(X, z, uv_hat0, constants=None, b_hat_0=None, debug=False,
     n_trials, n_atoms, n_times_valid = get_z_shape(z)
     _, n_channels, n_times = X.shape
 
-    if solver_d == 'l-bfgs':
-        msg = "L-BFGS sovler only works with box constraints"
-        assert uv_constraint == 'box', msg
-    elif solver_d == 'alternate':
+    if solver_d == 'alternate':
         msg = "alternate solver should be used with separate constraints"
         assert uv_constraint == 'separate', msg
 
@@ -205,27 +190,6 @@ def update_uv(X, z, uv_hat0, constants=None, b_hat_0=None, debug=False,
             if debug:
                 pobj.extend(pobj_v)
 
-    elif solver_d == 'l-bfgs':
-        # use L-BFGS on joint [u, v] with a box constraint (L_inf norm <= 1)
-
-        def func(uv):
-            uv = np.reshape(uv, uv_hat0.shape)
-            return objective(uv)
-
-        def grad(uv):
-            return gradient_uv(uv, constants=constants, flatten=True)
-
-        bounds = [(-1, 1) for idx in range(0, uv_hat0.size)]
-        if debug:
-            assert optimize.check_grad(func, grad, uv_hat0.ravel()) < 1e-5
-            pobj = [objective(uv_hat0)]
-        uv_hat, _, _ = optimize.fmin_l_bfgs_b(func, x0=uv_hat0.ravel(),
-                                              fprime=grad, bounds=bounds,
-                                              factr=1e7)
-        uv_hat = np.reshape(uv_hat, uv_hat0.shape)
-        if debug:
-            pobj.append(objective(uv_hat))
-
     else:
         raise ValueError('Unknown solver_d: %s' % (solver_d, ))
 
@@ -299,27 +263,6 @@ def update_d(X, z, D_hat0, constants=None, b_hat_0=None, debug=False,
         D_hat, _ = fista(objective, grad, prox, None, D_hat0, max_iter,
                          verbose=verbose, momentum=momentum, eps=eps,
                          adaptive_step_size=True, debug=debug, name="Update D")
-
-    elif solver_d == 'l-bfgs':
-        # use L-BFGS on joint [u, v] with a box constraint (L_inf norm <= 1)
-
-        def func(D):
-            D = np.reshape(D, D_hat0.shape)
-            return objective(D)
-
-        def grad(D):
-            return gradient_d(D, constants=constants, flatten=True)
-
-        bounds = [(-1, 1) for idx in range(0, D_hat0.size)]
-        if debug:
-            assert optimize.check_grad(func, grad, D_hat0.ravel()) < 1e-5
-            pobj = [objective(D_hat0)]
-        D_hat, _, _ = optimize.fmin_l_bfgs_b(func, x0=D_hat0.ravel(),
-                                             fprime=grad, bounds=bounds,
-                                             factr=1e7)
-        D_hat = np.reshape(D_hat, D_hat0.shape)
-        if debug:
-            pobj.append(objective(D_hat))
 
     else:
         raise ValueError('Unknown solver_d: %s' % (solver_d, ))

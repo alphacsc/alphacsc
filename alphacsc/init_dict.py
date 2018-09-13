@@ -38,11 +38,10 @@ def init_dictionary(X, n_atoms, n_times_atom, D_init=None, rank1=True,
         (n_atoms, n_channels, n_times_atom)
     rank1 : boolean
         If set to True, use a rank 1 dictionary.
-    uv_constraint : str in {'joint', 'separate', 'box'}
+    uv_constraint : str in {'joint' | 'separate'}
         The kind of norm constraint on the atoms:
         If 'joint', the constraint is norm_2([u, v]) <= 1
         If 'separate', the constraint is norm_2(u) <= 1 and norm_2(v) <= 1
-        If 'box', the constraint is norm_inf([u, v]) <= 1
     D_init_params : dict
         Dictionnary of parameters for the kmeans init method.
     random_state : int | None
@@ -317,11 +316,10 @@ def get_max_error_dict(X, z, D, uv_constraint='separate'):
         Current estimate of the coding signals.
     D: array, shape (n_atoms, n_channels + n_times_atom)
         Current estimate of the rank1 multivariate dictionary.
-    uv_constraint : str in {'joint', 'separate', 'box'}
+    uv_constraint : str in {'joint' | 'separate'}
         The kind of norm constraint on the atoms:
         If 'joint', the constraint is norm_2([u, v]) <= 1
         If 'separate', the constraint is norm_2(u) <= 1 and norm_2(v) <= 1
-        If 'box', the constraint is norm_inf([u, v]) <= 1
 
     Return
     ------

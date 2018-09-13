@@ -71,11 +71,10 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         Parameters of the loss
     rank1 : boolean
         If set to True, learn rank 1 dictionary atoms.
-    uv_constraint : str in {'joint', 'separate', 'box'}
+    uv_constraint : str in {'joint' | 'separate'}
         The kind of norm constraint on the atoms:
         If 'joint', the constraint is norm_2([u, v]) <= 1
         If 'separate', the constraint is norm_2(u) <= 1 and norm_2(v) <= 1
-        If 'box', the constraint is norm_inf([u, v]) <= 1
     eps : float
         Stopping criterion. If the cost descent after a uv and a z update is
         smaller than eps, return.

@@ -8,7 +8,7 @@ from alphacsc.learn_d_z_multi import learn_d_z_multi
 @pytest.mark.parametrize('loss', ['l2', 'dtw', 'whitening'])
 @pytest.mark.parametrize('solver_d, uv_constraint', [
     ('joint', 'joint'), ('joint', 'separate'),
-    # ('alternate', 'separate'), ('l-bfgs', 'box'),
+    # ('alternate', 'separate'),
     ('alternate_adaptive', 'separate')
 ])
 def test_learn_d_z_multi(loss, solver_d, uv_constraint):
