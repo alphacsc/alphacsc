@@ -107,28 +107,6 @@ DOC_FMT = """{desc}
     raise_on_increase : boolean
         Raise an error if the objective function increase
 
-
-    Attributes
-    ----------
-    D_hat_ : array, shape (n_atoms, n_channels, n_times_atom)
-        The dictionary in full rank mode.
-    uv_hat_ : array, shape (n_atoms, n_channels + n_times_atom)
-        The dictionary in rank 1 mode. If `rank1 = False`, this is an
-        approximation of the dictionary obtained through svd.
-    u_hat_ : array, shape (n_atoms, n_channels)
-        The spatial map of the dictionary in rank 1 mode. If `rank1 = False`,
-        this is an approximation of the dictionary obtained through svd.
-    v_hat_ : array, shape (n_atoms, n_times_atom)
-        The temporal patterns of the dictionary in rank 1 mode. If
-        `rank1 = False`, this is an approximation of the dictionary obtained
-        through svd.
-    z_hat_ : array, shape (n_trials, n_atoms, n_times_valid)
-        The sparse code associated to the signals used to fit the model.
-    pobj_ : list
-        The objective function value at each step of the coordinate descent.
-    times_ : list
-        The cumulative time for each iteration of the coordinate descent.
-
     """
 
 DEFAULT = dict(
@@ -199,6 +177,8 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
         self._D_hat = None
 
     def fit(self, X, y=None):
+        """Learn a convolutional dictionary from the set of signals X.
+        """
         self._pobj, self._times, self._D_hat, self._z_hat = learn_d_z_multi(
             X, self.n_atoms, self.n_times_atom,
             reg=self.reg, lmbd_max=self.lmbd_max,
@@ -217,13 +197,17 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
         return self
 
     def transform(self, X):
-        assert self._D_hat is not None
+        """Returns sparse codes associated to the signals X for the dictionary.
+        """
+        self._check_fitted()
         z_hat, _, _ = update_z_multi(
             X, self._D_hat, reg=self.reg, z0=self.z0, n_jobs=self.n_jobs,
             solver=self.solver, solver_kwargs=self.solver_z_kwargs,
             loss=self.loss, loss_params=self.loss_params)
 
     def transform_inverse(self, z_hat):
+        """Reconstruct the signals from the given sparse codes.
+        """
         return construct_X_multi(z_hat, self._D_hat, self.n_channels_)
 
     def _check_fitted(self):
