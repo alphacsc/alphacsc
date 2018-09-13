@@ -225,7 +225,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
             X, D_hat, z_hat, compute_z_func, compute_d_func,
             obj_func, end_iter_func, n_iter=n_iter,
             verbose=verbose, random_state=random_state,
-            reg=reg, lmbd_max=lmbd_max, name=name, **algorithm_params
+            reg=reg, lmbd_max=lmbd_max, name=name, uv_constraint=uv_constraint,
+            **algorithm_params
         )
     elif algorithm == "greedy":
         raise NotImplementedError(
@@ -234,7 +235,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         pobj, times, D_hat, z_hat = _online_learn(
             X, D_hat, z_hat, compute_z_func, compute_d_func, obj_func,
             end_iter_func, n_iter=n_iter, verbose=verbose,
-            random_state=random_state, reg=reg,
+            random_state=random_state, reg=reg, uv_constraint=uv_constraint,
             lmbd_max=lmbd_max, name=name, **algorithm_params
         )
     elif algorithm == "stochastic":
@@ -244,7 +245,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         pobj, times, D_hat, z_hat = _online_learn(
             X, D_hat, z_hat, compute_z_func, compute_d_func, obj_func,
             end_iter_func, n_iter=n_iter, verbose=verbose,
-            random_state=random_state, reg=reg,
+            random_state=random_state, reg=reg, uv_constraint=uv_constraint,
             lmbd_max=lmbd_max, name=name, **algorithm_params
         )
     else:
@@ -271,7 +272,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
 def _batch_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
                  obj_func, end_iter_func, n_iter=100,
                  lmbd_max='fixed', reg=None, verbose=0,
-                 random_state=None, name="batch"):
+                 random_state=None, name="batch", uv_constraint='separate'):
 
     reg_ = reg
 
@@ -341,8 +342,8 @@ def _batch_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
         null_atom_indices = np.where(z_nnz == 0)[0]
         if len(null_atom_indices) > 0:
             k0 = null_atom_indices[0]
-            D_hat[k0] = get_max_error_dict(X, z_hat, D_hat)[0]
-            if verbose > 1:
+            D_hat[k0] = get_max_error_dict(X, z_hat, D_hat, uv_constraint)[0]
+            if verbose > 5:
                 print('[{}] Resampled atom {}'.format(name, k0))
 
         if verbose > 5:
@@ -358,7 +359,7 @@ def _online_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
                   obj_func, end_iter_func, n_iter=100, verbose=0,
                   random_state=None, lmbd_max='fixed', reg=None,
                   alpha=.8, batch_selection='random', batch_size=1,
-                  name="online"):
+                  name="online", uv_constraint='separate'):
 
     reg_ = reg
 
@@ -442,6 +443,13 @@ def _online_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
         # monitor cost function
         times.append(time.time() - start)
         pobj.append(obj_func(X, z_hat, D_hat, reg=reg_))
+
+        null_atom_indices = np.where(z_nnz == 0)[0]
+        if len(null_atom_indices) > 0:
+            k0 = null_atom_indices[0]
+            D_hat[k0] = get_max_error_dict(X, z_hat, D_hat, uv_constraint)[0]
+            if verbose > 5:
+                print('[{}] Resampled atom {}'.format(name, k0))
 
         if verbose > 5:
             print('[{}] Objective (d) : {:.3e}'.format(name, pobj[-1]))

@@ -304,7 +304,7 @@ def _embed(x, dim, lag=1):
     return X.T
 
 
-def get_max_error_dict(X, z, D):
+def get_max_error_dict(X, z, D, uv_constraint='separate'):
     """Get the maximal reconstruction error patch from the data as a new atom
 
     This idea is used for instance in [Yellin2017]
@@ -315,8 +315,13 @@ def get_max_error_dict(X, z, D):
         Signals encoded in the CSC.
     z: array, shape (n_atoms, n_trials, n_times_valid)
         Current estimate of the coding signals.
-    uv: array, shape (n_atoms, n_channels + n_times_atom)
+    D: array, shape (n_atoms, n_channels + n_times_atom)
         Current estimate of the rank1 multivariate dictionary.
+    uv_constraint : str in {'joint', 'separate', 'box'}
+        The kind of norm constraint on the atoms:
+        If 'joint', the constraint is norm_2([u, v]) <= 1
+        If 'separate', the constraint is norm_2(u) <= 1 and norm_2(v) <= 1
+        If 'box', the constraint is norm_inf([u, v]) <= 1
 
     Return
     ------
@@ -341,4 +346,11 @@ def get_max_error_dict(X, z, D):
 
     if D.ndim == 2:
         return get_uv(d0)
+
+    if D.ndim == 2:
+        d0 = prox_uv(d0, uv_constraint=uv_constraint,
+                     n_channels=n_channels)
+    else:
+        d0 = prox_d(d0)
+
     return d0
