@@ -260,9 +260,10 @@ def update_d(X, z, D_hat0, constants=None, b_hat_0=None, debug=False,
         def prox(D):
             return prox_d(D)
 
-        D_hat, _ = fista(objective, grad, prox, None, D_hat0, max_iter,
-                         verbose=verbose, momentum=momentum, eps=eps,
-                         adaptive_step_size=True, debug=debug, name="Update D")
+        D_hat, pobj = fista(objective, grad, prox, None, D_hat0, max_iter,
+                            verbose=verbose, momentum=momentum, eps=eps,
+                            adaptive_step_size=True, debug=debug,
+                            name="Update D")
 
     else:
         raise ValueError('Unknown solver_d: %s' % (solver_d, ))
