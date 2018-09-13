@@ -68,7 +68,7 @@ def plot_activations_density(z_hat, n_times_atom, sfreq=1., threshold=0.01,
     n_atoms, n_trials, n_times_valid = z_hat.shape
 
     # sum activations over all trials
-    z_hat_sum = z_hat.sum(axis=1)
+    z_hat_sum = z_hat.sum(axis=0)
 
     if bandwidth == 'auto':
         bandwidth = n_times_atom
@@ -352,7 +352,7 @@ def get_callback_csc(csc_kwargs, config=DEFAULT_CB, info={}):
         f.tight_layout()
         f.subplots_adjust(top=.9)
         f.canvas.draw()
-    plt.pause(.001)
+    plt.pause(.1)
 
     def callback(X, uv_hat, z_hat, pobj):
 
@@ -382,7 +382,7 @@ def get_callback_csc(csc_kwargs, config=DEFAULT_CB, info={}):
             plot_or_replot(X_hat, axes)
 
         if 'z_hat' in figs:
-            axes = figs['z_hat'][1]
+            axes = figs['z_hat'][1].ravel()
             plot_activations_density(z_hat, n_times_atom, sfreq=sfreq,
                                      plot_activations=False, axes=axes,
                                      bandwidth='auto', t_min=t_min)
