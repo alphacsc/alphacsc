@@ -44,42 +44,43 @@ def test_update_z_multi_decrease_cost_function(loss, solver):
         assert np.allclose(ztz, compute_ztz(z_hat, n_times_atom))
         assert np.allclose(ztX, compute_ztX(z_hat, X))
 
-
-def test_support_least_square():
+@pytest.mark.parametrize('solver_z', ['l-bfgs', 'lgcd'])
+def test_support_least_square(solver_z):
     n_trials, n_channels, n_times = 2, 3, 100
     n_times_atom, n_atoms = 10, 4
     n_times_valid = n_times - n_times_atom + 1
-    reg = 0
+    reg = 0.1
+    solver_kwargs = {'factr': 1e7}
 
     X = np.random.randn(n_trials, n_channels, n_times)
     uv = np.random.randn(n_atoms, n_channels + n_times_atom)
     z = np.random.randn(n_trials, n_atoms, n_times_valid)
 
     # The initial loss should be high
-    loss_0 = compute_X_and_objective_multi(X, z_hat=z, D_hat=uv, reg=reg,
+    loss_0 = compute_X_and_objective_multi(X, z_hat=z, D_hat=uv, reg=0,
                                            feasible_evaluation=False)
 
     # The loss after updating z should be lower
-    z_hat, ztz, ztX = update_z_multi(X, uv, reg, z0=z, solver='l-bfgs',
-                                     solver_kwargs={'factr': 1e7})
-    loss_1 = compute_X_and_objective_multi(X, z_hat=z_hat, D_hat=uv, reg=reg,
+    z_hat, ztz, ztX = update_z_multi(X, uv, reg, z0=z, solver=solver_z,
+                                     solver_kwargs=solver_kwargs)
+    loss_1 = compute_X_and_objective_multi(X, z_hat=z_hat, D_hat=uv, reg=0,
                                            feasible_evaluation=False)
     assert loss_1 < loss_0
 
     # Here we recompute z on the support of z_hat, with reg=0
-    z_hat_2, ztz, ztX = update_z_multi(X, uv, reg=0, z0=z_hat, solver='l-bfgs',
-                                       solver_kwargs={'factr': 1e7},
+    z_hat_2, ztz, ztX = update_z_multi(X, uv, reg=0, z0=z_hat, solver=solver_z,
+                                       solver_kwargs=solver_kwargs,
                                        freeze_support=True)
-    loss_2 = compute_X_and_objective_multi(X, z_hat_2, uv, reg,
+    loss_2 = compute_X_and_objective_multi(X, z_hat_2, uv, 0,
                                            feasible_evaluation=False)
     assert loss_2 <= loss_1 or np.isclose(loss_1, loss_2)
 
     # Here we recompute z with reg=0, but with no support restriction
-    z_hat_3, ztz, ztX = update_z_multi(X, uv, reg=0, z0=np.ones(z.shape),
-                                       solver='l-bfgs',
-                                       solver_kwargs={'factr': 1e7},
+    z_hat_3, ztz, ztX = update_z_multi(X, uv, reg=0, z0=z_hat_2,
+                                       solver=solver_z,
+                                       solver_kwargs=solver_kwargs,
                                        freeze_support=True)
-    loss_3 = compute_X_and_objective_multi(X, z_hat_3, uv, reg,
+    loss_3 = compute_X_and_objective_multi(X, z_hat_3, uv, 0,
                                            feasible_evaluation=False)
     assert loss_3 <= loss_2 or np.isclose(loss_3, loss_2)
 
