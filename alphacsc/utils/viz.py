@@ -5,6 +5,7 @@ import copy as cp
 import os
 import mne
 import json
+from scipy import sparse
 import numpy as np
 import matplotlib as mpl
 from datetime import datetime
@@ -65,6 +66,9 @@ def plot_activations_density(z_hat, n_times_atom, sfreq=1., threshold=0.01,
     colors : list of matplotlib compatible colors
         Colors of the plots
     """
+    if sparse.isspmatrix_lil(z_hat[0]):
+        z_hat = np.array([z.toarray() for z in z_hat])
+
     n_atoms, n_trials, n_times_valid = z_hat.shape
 
     # sum activations over all trials
