@@ -123,7 +123,7 @@ def run_cbpdn(X, ds_init, reg, n_iter, random_state, label, n_channels):
     # z_hat.shape = (n_atoms, n_trials, n_times)
     z_hat = z_hat[:, :, :-n_times_atom + 1]
 
-    return pobj, times, d_hat, z_hat
+    return pobj, times, d_hat, z_hat, reg
 
 
 ####################################
@@ -144,11 +144,11 @@ def one_run(X, n_channels, method, n_atoms, n_times_atom, random_state, reg):
     reg_ = reg * lmbd_max
 
     # run the selected algorithm with one iter to remove compilation overhead
-    _, _, _, _ = func(X, D_init, reg_, 1, random_state, label, n_channels)
+    _, _, _, _, _ = func(X, D_init, reg_, 1, random_state, label, n_channels)
 
     # run the selected algorithm
-    pobj, times, d_hat, z_hat = func(X, D_init, reg_, n_iter, random_state,
-                                     label, n_channels)
+    pobj, times, d_hat, z_hat, reg = func(X, D_init, reg_, n_iter, random_state,
+                                          label, n_channels)
 
     # store z_hat in a sparse matrix to reduce size
     for z in z_hat:

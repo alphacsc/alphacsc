@@ -179,7 +179,7 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
     def fit(self, X, y=None):
         """Learn a convolutional dictionary from the set of signals X.
         """
-        self._pobj, self._times, self._D_hat, self._z_hat = learn_d_z_multi(
+        res = learn_d_z_multi(
             X, self.n_atoms, self.n_times_atom,
             reg=self.reg, lmbd_max=self.lmbd_max,
             loss=self.loss, loss_params=self.loss_params,
@@ -193,6 +193,8 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
             verbose=self.verbose, callback=self.callback,
             random_state=self.random_state, n_jobs=self.n_jobs,
             name=self.name, raise_on_increase=self.raise_on_increase)
+
+        self._pobj, self._times, self._D_hat, self._z_hat, self.reg_ = res
         self.n_channels_ = X.shape[1]
         return self
 
@@ -201,7 +203,7 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
         """
         self._check_fitted()
         z_hat, _, _ = update_z_multi(
-            X, self._D_hat, reg=self.reg, z0=self.z0, n_jobs=self.n_jobs,
+            X, self._D_hat, reg=self.reg_, z0=self.z0, n_jobs=self.n_jobs,
             solver=self.solver, solver_kwargs=self.solver_z_kwargs,
             loss=self.loss, loss_params=self.loss_params)
 

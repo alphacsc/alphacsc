@@ -266,7 +266,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
 
     times[0] += init_duration
 
-    return pobj, times, D_hat, z_hat
+    return pobj, times, D_hat, z_hat, reg
 
 
 def _batch_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,

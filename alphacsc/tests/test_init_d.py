@@ -39,7 +39,7 @@ def test_init_array(rank1, uv_constraint):
 
     # Test that learn_d_z_multi is doing what we expect for D_init array
     D_init = np.random.randn(*expected_shape)
-    _, _, D_hat, _ = learn_d_z_multi(
+    _, _, D_hat, _, _ = learn_d_z_multi(
         X, n_atoms, n_times_atom, D_init=D_init, n_iter=0, rank1=rank1,
         uv_constraint=uv_constraint)
 
@@ -80,7 +80,7 @@ def test_init_random(rank1, uv_constraint):
 
     # Test that learn_d_z_multi is doing what we expect for D_init random
     random_state = 27
-    _, _, D_hat, _ = learn_d_z_multi(
+    _, _, D_hat, _, _ = learn_d_z_multi(
         X, n_atoms, n_times_atom, D_init='random', n_iter=0,
         rank1=rank1, uv_constraint=uv_constraint, random_state=random_state)
 

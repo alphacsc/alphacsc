@@ -119,7 +119,7 @@ def run_one(reg, sigma, n_atoms, n_times_atom, max_n_channels, n_times_valid,
                 run_n_channels, it, sigma,
                 score_uv(uv_, uv_hat, run_n_channels)))
 
-    pobj, times, uv_hat, z_hat = learn_d_z_multi(
+    pobj, times, uv_hat, z_hat, reg = learn_d_z_multi(
         X[:, :run_n_channels, :], n_atoms, n_times_atom,
         random_state=random_state,
         # callback=cb,
