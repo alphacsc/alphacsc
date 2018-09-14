@@ -479,7 +479,9 @@ def get_iteration_func(eps, stopping_pobj, callback, lmbd_max, name, verbose,
                     "The d update have increased the objective value by {}."
                     "(dz={})".format(du, dz))
             if dz < eps and du < eps:
-                print("[{}] Converged after {} iteration, dz, du "
+                if verbose == 1:
+                    print("")
+                print("[{}] Converged after {} iteration, (dz, du) "
                       "={:.3e}, {:.3e}".format(name, iteration, dz, du))
                 return True
 
