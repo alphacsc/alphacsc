@@ -107,7 +107,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         Additional keyword arguments to pass to update_z_multi
     solver_d : str
         The solver to use for the d update. Options are
-        'alternate' | 'alternate_adaptive' (default) | 'joint' | 'l-bfgs'
+        'alternate' | 'alternate_adaptive' (default) | 'joint'
     solver_d_kwargs : dict
         Additional keyword arguments to provide to update_d
     D_init : str or array, shape (n_atoms, n_channels + n_times_atoms) or

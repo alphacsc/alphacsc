@@ -80,7 +80,7 @@ def update_uv(X, z, uv_hat0, constants=None, b_hat_0=None, debug=False,
         The kind of norm constraint on the atoms:
         If 'joint', the constraint is norm_2([u, v]) <= 1
         If 'separate', the constraint is norm_2(u) <= 1 and norm_2(v) <= 1
-    solver_d : str in {'alternate', 'joint', 'l-bfgs'}
+    solver_d : str in {'alternate', 'joint'}
         The type of solver to update d:
         If 'alternate', the solver alternates between u then v
         If 'joint', the solver jointly optimize uv with a line search
@@ -240,10 +240,9 @@ def update_d(X, z, D_hat0, constants=None, b_hat_0=None, debug=False,
         If True, return the cost at each iteration.
     momentum : bool
         If True, use an accelerated version of the proximal gradient descent.
-    solver_d : str in {'fista', 'l-bfgs'}
+    solver_d : str in {'fista'}
         The type of solver to update d:
         If 'fista', the solver optimize D with fista and line search
-        If 'l-bfgs', the solver uses l-bfgs with box constraints
     loss : str in {'l2' | 'dtw' | 'whitening'}
         The data-fit
     loss_params : dict
@@ -274,7 +273,7 @@ def update_d(X, z, D_hat0, constants=None, b_hat_0=None, debug=False,
         return compute_X_and_objective_multi(X, z, D_hat=D, loss=loss,
                                              loss_params=loss_params)
 
-    if solver_d == 'fista':
+    if True:  # only solver available here
         # use FISTA on joint [u, v], with an adaptive step size
 
         def grad(D):

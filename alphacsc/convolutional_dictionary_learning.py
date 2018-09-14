@@ -81,7 +81,7 @@ DOC_FMT = """{desc}
 
     solver_d : str
         The solver to use for the d update. Options are
-        'alternate' | 'alternate_adaptive' (default) | 'joint' | 'l-bfgs'
+        'alternate' | 'alternate_adaptive' (default) | 'joint'
     solver_d_kwargs : dict
         Additional keyword arguments to provide to update_d
     D_init : str or array
