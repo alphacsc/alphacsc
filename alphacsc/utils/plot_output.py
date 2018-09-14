@@ -156,7 +156,7 @@ def plot_activation(data, info, dirname, name, plot="density"):
     for row_ax, (arg, res) in zip(axes, data):
         try:
             z = make_epochs(res[name], info, arg['n_times_atom'])
-        except BaseException:
+        except Exception:
             z = res[name]
         color_cycle = itertools.cycle(COLORS)
         # z shape (n_trials, n_atoms, n_times_valid)

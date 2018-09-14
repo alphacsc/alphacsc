@@ -10,7 +10,7 @@ mem = Memory(cachedir='.', verbose=0)
 
 
 @mem.cache(ignore=['n_jobs'])
-def load_data(sfreq=None, epoch=True, n_jobs=1, filt=[2., None], n_trials=10,
+def load_data(sfreq=None, epoch=True, n_jobs=1, filt=[2., None], n_splits=10,
               return_epochs=False):
     """Load and prepare the somato dataset for multiCSC
 
@@ -21,7 +21,7 @@ def load_data(sfreq=None, epoch=True, n_jobs=1, filt=[2., None], n_trials=10,
         Sampling frequency of the signal. The data are resampled to match it.
     epoch : boolean
         If set to True, extract epochs from the raw data. Else, use the raw
-        signal, divided in 10 chunks.
+        signal, divided in n_splits chunks.
     n_jobs : int
         Number of jobs that can be used for preparing (filtering) the data.
     return_epochs : boolean
@@ -62,10 +62,9 @@ def load_data(sfreq=None, epoch=True, n_jobs=1, filt=[2., None], n_trials=10,
         events[:, 0] -= raw.first_samp
 
         X = raw.get_data()
-        T = X.shape[-1]
-        n_times = T // n_trials
-        X = np.array([X[:, i * n_times:(i + 1) * n_times]
-                      for i in range(n_trials)])
+        n_channels, n_times = X.shape
+        n_times = n_times // n_splits
+        X = X.reshape(n_channels, n_splits, n_times).swapaxes(0, 1)
         info = raw.info
         if return_epochs:
             raise ValueError('return_epochs=True is not allowed with '
@@ -77,8 +76,8 @@ def load_data(sfreq=None, epoch=True, n_jobs=1, filt=[2., None], n_trials=10,
     info['event_id'] = event_id
     info['events'] = events
 
-    # define n_channels, n_trials, n_times
-    n_trials, n_channels, n_times = X.shape
+    # define n_channels, n_splits, n_times
+    n_splits, n_channels, n_times = X.shape
     X *= tukey(n_times, alpha=0.1)[None, None, :]
     X /= np.std(X)
     return X, info

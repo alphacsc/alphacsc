@@ -4,8 +4,8 @@ import numpy as np
 
 def make_epochs(z_hat, info, n_times_atom):
     """Make Epochs on the activations of atoms.
-    n_atoms, n_splits, n_times_valid = z_hat.shape
-    n_atoms, n_trials, n_times_epoch = z_hat_epoched.shape
+    n_splits, n_atoms, n_times_valid = z_hat.shape
+    n_trials, n_atoms, n_times_epoch = z_hat_epoch.shape
     """
     n_splits, n_atoms, n_times_valid = z_hat.shape
     n_times = n_times_valid + n_times_atom - 1
