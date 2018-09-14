@@ -40,6 +40,26 @@ def test_learn_d_z_multi(loss, solver_d, uv_constraint, window):
         raise
 
 
+@pytest.mark.parametrize('solver_d, uv_constraint',
+                         [('joint', 'joint'), ('joint', 'separate'),
+                          ('alternate_adaptive', 'separate')])
+def test_window(solver_d, uv_constraint):
+    # Smoke test that the parameter window does something
+    n_trials, n_channels, n_times = 2, 3, 100
+    n_times_atom, n_atoms = 10, 4
+
+    rng = check_random_state(42)
+    X = rng.randn(n_trials, n_channels, n_times)
+
+    kwargs = dict(X=X, n_atoms=n_atoms, n_times_atom=n_times_atom,
+                  uv_constraint=uv_constraint, solver_d=solver_d,
+                  random_state=0, n_iter=1, solver_z='l-bfgs')
+    res_False = learn_d_z_multi(window=False, **kwargs)
+    res_True = learn_d_z_multi(window=True, **kwargs)
+
+    assert not np.allclose(res_False[2], res_True[2])
+
+
 def test_online_learning():
     # smoke test for learn_d_z_multi
     n_trials, n_channels, n_times = 2, 3, 100

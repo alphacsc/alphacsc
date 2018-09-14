@@ -18,7 +18,6 @@ from .utils.lil import is_list_of_lil
 from .utils.whitening import whitening
 from .cython_code import _assert_cython
 from .update_z_multi import update_z_multi
-from .utils.profile_this import profile_this  # noqa
 from .utils.dictionary import get_lambda_max
 from .update_d_multi import update_uv, update_d
 from .init_dict import init_dictionary, get_max_error_dict
@@ -210,12 +209,13 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
             return update_uv(X, z_hat, uv_hat0=D_hat, constants=constants,
                              b_hat_0=b_hat_0, solver_d=solver_d,
                              uv_constraint=uv_constraint, loss=loss,
-                             loss_params=loss_params, **d_kwargs)
+                             loss_params=loss_params, window=window,
+                             **d_kwargs)
         else:
             return update_d(X, z_hat, D_hat0=D_hat, constants=constants,
                             b_hat_0=b_hat_0, solver_d=solver_d,
                             uv_constraint=uv_constraint, loss=loss,
-                            loss_params=loss_params, **d_kwargs)
+                            loss_params=loss_params, window=window, **d_kwargs)
 
     if callable(callback):
         callback(X, D_hat, z_hat, [])
