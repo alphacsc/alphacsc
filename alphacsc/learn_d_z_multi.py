@@ -37,7 +37,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
                     D_init=None, D_init_params=dict(),
                     unbiased_z_hat=False, use_sparse_z=False,
                     stopping_pobj=None, raise_on_increase=True,
-                    verbose=10, callback=None, random_state=None, name="DL"):
+                    verbose=10, callback=None, random_state=None, name="DL",
+                    window=False):
     """Learn atoms and activations using Convolutional Sparse Coding.
 
     Parameters
@@ -129,6 +130,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         The random state.
     raise_on_increase : boolean
         Raise an error if the objective function increase
+    window : boolean
+        If True, reparametrize the atoms with a temporal Tukey window.
 
     Returns
     -------
@@ -156,7 +159,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
 
     D_hat = init_dictionary(X, n_atoms, n_times_atom, D_init=D_init,
                             rank1=rank1, uv_constraint=uv_constraint,
-                            D_init_params=D_init_params, random_state=rng)
+                            D_init_params=D_init_params, random_state=rng,
+                            window=window)
     b_hat_0 = rng.randn(n_atoms * (n_channels + n_times_atom))
     init_duration = time.time() - start
 
@@ -223,7 +227,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         pobj, times, D_hat, z_hat = _batch_learn(
             X, D_hat, z_hat, compute_z_func, compute_d_func,
             obj_func, end_iter_func, n_iter=n_iter,
-            verbose=verbose, random_state=random_state,
+            verbose=verbose, random_state=random_state, window=window,
             reg=reg, lmbd_max=lmbd_max, name=name, uv_constraint=uv_constraint,
             **algorithm_params
         )
@@ -233,7 +237,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
     elif algorithm == "online":
         pobj, times, D_hat, z_hat = _online_learn(
             X, D_hat, z_hat, compute_z_func, compute_d_func, obj_func,
-            end_iter_func, n_iter=n_iter, verbose=verbose,
+            end_iter_func, n_iter=n_iter, verbose=verbose, window=window,
             random_state=random_state, reg=reg, uv_constraint=uv_constraint,
             lmbd_max=lmbd_max, name=name, **algorithm_params
         )
@@ -243,7 +247,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         # steps and set D-update max_iter to a low value (typically 1).
         pobj, times, D_hat, z_hat = _online_learn(
             X, D_hat, z_hat, compute_z_func, compute_d_func, obj_func,
-            end_iter_func, n_iter=n_iter, verbose=verbose,
+            end_iter_func, n_iter=n_iter, verbose=verbose, window=window,
             random_state=random_state, reg=reg, uv_constraint=uv_constraint,
             lmbd_max=lmbd_max, name=name, **algorithm_params
         )
@@ -271,7 +275,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
 def _batch_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
                  obj_func, end_iter_func, n_iter=100,
                  lmbd_max='fixed', reg=None, verbose=0,
-                 random_state=None, name="batch", uv_constraint='separate'):
+                 random_state=None, name="batch", uv_constraint='separate',
+                 window=False):
 
     reg_ = reg
 
@@ -341,7 +346,8 @@ def _batch_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
         null_atom_indices = np.where(z_nnz == 0)[0]
         if len(null_atom_indices) > 0:
             k0 = null_atom_indices[0]
-            D_hat[k0] = get_max_error_dict(X, z_hat, D_hat, uv_constraint)[0]
+            D_hat[k0] = get_max_error_dict(X, z_hat, D_hat, uv_constraint,
+                                           window=window)[0]
             if verbose > 5:
                 print('[{}] Resampled atom {}'.format(name, k0))
 
@@ -358,7 +364,7 @@ def _online_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
                   obj_func, end_iter_func, n_iter=100, verbose=0,
                   random_state=None, lmbd_max='fixed', reg=None,
                   alpha=.8, batch_selection='random', batch_size=1,
-                  name="online", uv_constraint='separate'):
+                  name="online", uv_constraint='separate', window=False):
 
     reg_ = reg
 
@@ -446,7 +452,8 @@ def _online_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
         null_atom_indices = np.where(z_nnz == 0)[0]
         if len(null_atom_indices) > 0:
             k0 = null_atom_indices[0]
-            D_hat[k0] = get_max_error_dict(X, z_hat, D_hat, uv_constraint)[0]
+            D_hat[k0] = get_max_error_dict(X, z_hat, D_hat, uv_constraint,
+                                           window=window)[0]
             if verbose > 5:
                 print('[{}] Resampled atom {}'.format(name, k0))
 

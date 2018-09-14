@@ -5,13 +5,14 @@ from alphacsc.utils import check_random_state
 from alphacsc.learn_d_z_multi import learn_d_z_multi
 
 
+@pytest.mark.parametrize('window', [False, True])
 @pytest.mark.parametrize('loss', ['l2', 'dtw', 'whitening'])
 @pytest.mark.parametrize('solver_d, uv_constraint', [
     ('joint', 'joint'), ('joint', 'separate'),
     # ('alternate', 'separate'),
     ('alternate_adaptive', 'separate')
 ])
-def test_learn_d_z_multi(loss, solver_d, uv_constraint):
+def test_learn_d_z_multi(loss, solver_d, uv_constraint, window):
     # smoke test for learn_d_z_multi
     n_trials, n_channels, n_times = 2, 3, 100
     n_times_atom, n_atoms = 10, 4
@@ -23,7 +24,7 @@ def test_learn_d_z_multi(loss, solver_d, uv_constraint):
     pobj, times, uv_hat, z_hat, reg = learn_d_z_multi(
         X, n_atoms, n_times_atom, uv_constraint=uv_constraint,
         solver_d=solver_d, random_state=0, n_iter=30,
-        solver_z='l-bfgs',
+        solver_z='l-bfgs', window=window,
         loss=loss, loss_params=loss_params)
 
     msg = "Cost function does not go down for uv_constraint {}".format(

@@ -2,13 +2,13 @@ import itertools
 
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy import signal
 
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 
 from .utils.viz import COLORS
-from .utils.lil import get_z_shape
 from .utils import check_random_state
 from .other.kmc2 import custom_distances
 from .update_d_multi import prox_uv, prox_d
@@ -20,7 +20,7 @@ tied = custom_distances.translation_invariant_euclidean_distances
 
 def init_dictionary(X, n_atoms, n_times_atom, D_init=None, rank1=True,
                     uv_constraint='separate', D_init_params=dict(),
-                    random_state=None):
+                    random_state=None, window=False):
     """Return an initial dictionary for the signals X
 
     Parameter
@@ -46,6 +46,8 @@ def init_dictionary(X, n_atoms, n_times_atom, D_init=None, rank1=True,
         Dictionnary of parameters for the kmeans init method.
     random_state : int | None
         The random state.
+    window : boolean
+        If True, multiply the atoms with a temporal Tukey window.
 
     Return
     ------
@@ -95,6 +97,12 @@ def init_dictionary(X, n_atoms, n_times_atom, D_init=None, rank1=True,
     else:
         raise NotImplementedError('It is not possible to initialize uv with'
                                   ' parameter {}.'.format(D_init))
+
+    if window:
+        if rank1:
+            D_hat[:, n_channels:] *= signal.tukey(n_times_atom)[None, :]
+        else:
+            D_hat = D_hat * signal.tukey(n_times_atom)[None, None, :]
 
     if rank1:
         D_hat = prox_uv(D_hat, uv_constraint=uv_constraint,
@@ -303,7 +311,7 @@ def _embed(x, dim, lag=1):
     return X.T
 
 
-def get_max_error_dict(X, z, D, uv_constraint='separate'):
+def get_max_error_dict(X, z, D, uv_constraint='separate', window=False):
     """Get the maximal reconstruction error patch from the data as a new atom
 
     This idea is used for instance in [Yellin2017]
@@ -320,6 +328,8 @@ def get_max_error_dict(X, z, D, uv_constraint='separate'):
         The kind of norm constraint on the atoms:
         If 'joint', the constraint is norm_2([u, v]) <= 1
         If 'separate', the constraint is norm_2(u) <= 1 and norm_2(v) <= 1
+    window : boolean
+        If True, multiply the atoms with a temporal Tukey window.
 
     Return
     ------
@@ -337,17 +347,18 @@ def get_max_error_dict(X, z, D, uv_constraint='separate'):
         n_times_atom = D.shape[2]
     patch_rec_error = _patch_reconstruction_error(X, z, D)
     i0 = patch_rec_error.argmax()
-    n_atoms, n_trials, n_times_valid = get_z_shape(z)
     n0, t0 = np.unravel_index(i0, (n_trials, n_times))
 
     d0 = X[n0, :, t0:t0 + n_times_atom][None]
+
+    if window:
+        d0 = d0 * signal.tukey(n_times_atom)[None, :]
 
     if D.ndim == 2:
         return get_uv(d0)
 
     if D.ndim == 2:
-        d0 = prox_uv(d0, uv_constraint=uv_constraint,
-                     n_channels=n_channels)
+        d0 = prox_uv(d0, uv_constraint=uv_constraint, n_channels=n_channels)
     else:
         d0 = prox_d(d0)
 

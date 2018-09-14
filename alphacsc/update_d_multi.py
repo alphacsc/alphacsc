@@ -7,6 +7,7 @@
 #          Thomas Moreau <thomas.moreau@inria.fr>
 
 import numpy as np
+from scipy import signal
 
 from . import cython_code
 from .utils.lil import get_z_shape, is_list_of_lil
@@ -53,7 +54,7 @@ def prox_d(D, return_norm=False):
 def update_uv(X, z, uv_hat0, constants=None, b_hat_0=None, debug=False,
               max_iter=300, eps=None, solver_d='alternate', momentum=False,
               uv_constraint='separate', loss='l2', loss_params=dict(),
-              verbose=0):
+              verbose=0, window=False):
     """Learn d's in time domain.
 
     Parameters
@@ -89,6 +90,8 @@ def update_uv(X, z, uv_hat0, constants=None, b_hat_0=None, debug=False,
         Parameters of the loss
     verbose : int
         Verbosity level.
+    window : boolean
+        If True, reparametrize the atoms with a temporal Tukey window.
 
     Returns
     -------
@@ -97,6 +100,7 @@ def update_uv(X, z, uv_hat0, constants=None, b_hat_0=None, debug=False,
     """
     n_trials, n_atoms, n_times_valid = get_z_shape(z)
     _, n_channels, n_times = X.shape
+    n_times_atom = uv_hat0.shape[1] - n_channels
 
     if solver_d == 'alternate':
         msg = "alternate solver should be used with separate constraints"
@@ -106,6 +110,11 @@ def update_uv(X, z, uv_hat0, constants=None, b_hat_0=None, debug=False,
         constants = _get_d_update_constants(X, z)
 
     def objective(uv):
+        if window:
+            uv = uv.copy()
+            uv[:, n_channels:] *= signal.tukey(n_times_atom)[None, :]
+            uv = prox_uv(uv, uv_constraint=uv_constraint,
+                         n_channels=n_channels)
         if loss == 'l2':
             return compute_objective(D=uv, constants=constants)
         return compute_X_and_objective_multi(X, z, D_hat=uv, loss=loss,
@@ -116,8 +125,11 @@ def update_uv(X, z, uv_hat0, constants=None, b_hat_0=None, debug=False,
         # use FISTA on joint [u, v], with an adaptive step size
 
         def grad(uv):
-            return gradient_uv(uv=uv, X=X, z=z, constants=constants, loss=loss,
+            grad = gradient_uv(uv=uv, X=X, z=z, constants=constants, loss=loss,
                                loss_params=loss_params)
+            if window:
+                grad[:, n_channels:] *= signal.tukey(n_times_atom)[None, :]
+            return grad
 
         def prox(uv):
             return prox_uv(uv, uv_constraint=uv_constraint,
@@ -193,6 +205,11 @@ def update_uv(X, z, uv_hat0, constants=None, b_hat_0=None, debug=False,
     else:
         raise ValueError('Unknown solver_d: %s' % (solver_d, ))
 
+    if window:
+        uv_hat[:, n_channels:] *= signal.tukey(n_times_atom)[None, :]
+        uv_hat = prox_uv(uv_hat, uv_constraint=uv_constraint,
+                         n_channels=n_channels)
+
     if debug:
         return uv_hat, pobj
     return uv_hat
@@ -200,7 +217,8 @@ def update_uv(X, z, uv_hat0, constants=None, b_hat_0=None, debug=False,
 
 def update_d(X, z, D_hat0, constants=None, b_hat_0=None, debug=False,
              max_iter=300, eps=None, solver_d='fista', momentum=False,
-             uv_constraint='joint', loss='l2', loss_params=dict(), verbose=0):
+             uv_constraint='joint', loss='l2', loss_params=dict(), verbose=0,
+             window=False):
     """Learn d's in time domain.
 
     Parameters
@@ -232,6 +250,8 @@ def update_d(X, z, D_hat0, constants=None, b_hat_0=None, debug=False,
         Parameters of the loss
     verbose : int
         Verbosity level.
+    window : boolean
+        If True, reparametrize the atoms with a temporal Tukey window.
 
     Returns
     -------
@@ -240,11 +260,15 @@ def update_d(X, z, D_hat0, constants=None, b_hat_0=None, debug=False,
     """
     n_trials, n_atoms, n_times_valid = get_z_shape(z)
     _, n_channels, n_times = X.shape
+    n_atoms, n_channels, n_times_atom = D_hat0.shape
 
     if loss == 'l2' and constants is None:
         constants = _get_d_update_constants(X, z)
 
     def objective(D, full=False):
+        if window:
+            D = D * signal.tukey(n_times_atom)[None, None, :]
+            D = prox_d(D)
         if loss == 'l2':
             return compute_objective(D=D, constants=constants)
         return compute_X_and_objective_multi(X, z, D_hat=D, loss=loss,
@@ -254,8 +278,11 @@ def update_d(X, z, D_hat0, constants=None, b_hat_0=None, debug=False,
         # use FISTA on joint [u, v], with an adaptive step size
 
         def grad(D):
-            return gradient_d(D=D, X=X, z=z, constants=constants, loss=loss,
+            grad = gradient_d(D=D, X=X, z=z, constants=constants, loss=loss,
                               loss_params=loss_params)
+            if window:
+                grad = grad * signal.tukey(n_times_atom)[None, None, :]
+            return grad
 
         def prox(D):
             return prox_d(D)
@@ -267,6 +294,10 @@ def update_d(X, z, D_hat0, constants=None, b_hat_0=None, debug=False,
 
     else:
         raise ValueError('Unknown solver_d: %s' % (solver_d, ))
+
+    if window:
+        D_hat = D_hat * signal.tukey(n_times_atom)[None, None, :]
+        D_hat = prox_d(D_hat)
 
     if debug:
         return D_hat, pobj
