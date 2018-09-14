@@ -32,15 +32,15 @@ def load_data(sfreq=None, epoch=True, n_jobs=1, filt=[2., None], n_trials=10,
         os.path.join(data_path, 'sef_raw_sss.fif'), preload=True)
     raw.notch_filter(np.arange(50, 101, 50), n_jobs=n_jobs)
     raw.filter(*filt, n_jobs=n_jobs)
-    events = mne.find_events(raw, stim_channel='STI 014')
     event_id, t_min, t_max = 1, -2., 4.
 
     if epoch:
 
         baseline = (None, 0)
+        events = mne.find_events(raw, stim_channel='STI 014')
+
         picks = mne.pick_types(raw.info, meg='grad', eeg=False, eog=True,
                                stim=False)
-
         epochs = mne.Epochs(raw, events, event_id, t_min, t_max,
                             picks=picks, baseline=baseline, reject=dict(
                                 grad=4000e-13, eog=350e-6), preload=True)
@@ -53,9 +53,14 @@ def load_data(sfreq=None, epoch=True, n_jobs=1, filt=[2., None], n_trials=10,
             return epochs
 
     else:
-        raw.pick_types(meg='grad', eog=False)
+        raw.pick_types(meg='grad', eog=False, stim=True)
         if sfreq is not None:
             raw.resample(sfreq, npad='auto', n_jobs=n_jobs)
+
+        events = mne.find_events(raw, stim_channel='STI 014')
+        raw.pick_types(meg='grad', stim=False)
+        events[:, 0] -= raw.first_samp
+
         X = raw.get_data()
         T = X.shape[-1]
         n_times = T // n_trials
@@ -66,12 +71,11 @@ def load_data(sfreq=None, epoch=True, n_jobs=1, filt=[2., None], n_trials=10,
             raise ValueError('return_epochs=True is not allowed with '
                              'epochs=False')
 
-    events[:, 0] -= raw.first_samp
 
     # XXX: causes problems when saving EvokedArray
-    # info['t_min'] = t_min
-    # info['event_id'] = event_id
-    # info['events'] = events
+    info['t_min'] = t_min
+    info['event_id'] = event_id
+    info['events'] = events
 
     # define n_channels, n_trials, n_times
     n_trials, n_channels, n_times = X.shape
