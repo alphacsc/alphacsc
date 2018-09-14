@@ -69,6 +69,9 @@ def update_z_multi(X, D, reg, z0=None, solver='l-bfgs', solver_kwargs=dict(),
         n_atoms, n_channels, n_times_atom = D.shape
     n_times_valid = n_times - n_times_atom + 1
 
+    if z0 is None:
+        z0 = np.zeros((n_trials, n_atoms, n_times_valid))
+
     # now estimate the codes
     delayed_update_z = delayed(_update_z_multi_idx)
 
