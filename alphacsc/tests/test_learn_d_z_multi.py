@@ -3,16 +3,17 @@ import numpy as np
 
 from alphacsc.utils import check_random_state
 from alphacsc.learn_d_z_multi import learn_d_z_multi
+from alphacsc.init_dict import init_dictionary
 
 
 @pytest.mark.parametrize('window', [False, True])
 @pytest.mark.parametrize('loss', ['l2', 'dtw', 'whitening'])
-@pytest.mark.parametrize('solver_d, uv_constraint', [
-    ('joint', 'joint'), ('joint', 'separate'),
-    # ('alternate', 'separate'),
-    ('alternate_adaptive', 'separate')
+@pytest.mark.parametrize('solver_d, uv_constraint, rank1', [
+    ('joint', 'joint', True), ('joint', 'separate', True),
+    ('joint', 'joint', False),  # ('alternate', 'separate', True),
+    ('alternate_adaptive', 'separate', True)
 ])
-def test_learn_d_z_multi(loss, solver_d, uv_constraint, window):
+def test_learn_d_z_multi(loss, solver_d, uv_constraint, rank1, window):
     # smoke test for learn_d_z_multi
     n_trials, n_channels, n_times = 2, 3, 100
     n_times_atom, n_atoms = 10, 4
@@ -22,16 +23,16 @@ def test_learn_d_z_multi(loss, solver_d, uv_constraint, window):
     rng = check_random_state(42)
     X = rng.randn(n_trials, n_channels, n_times)
     pobj, times, uv_hat, z_hat, reg = learn_d_z_multi(
-        X, n_atoms, n_times_atom, uv_constraint=uv_constraint,
-        solver_d=solver_d, random_state=0, n_iter=30,
-        solver_z='l-bfgs', window=window,
+        X, n_atoms, n_times_atom, uv_constraint=uv_constraint, rank1=rank1,
+        solver_d=solver_d, random_state=0, n_iter=30, eps=-np.inf,
+        solver_z='l-bfgs', window=window, verbose=0,
         loss=loss, loss_params=loss_params)
 
     msg = "Cost function does not go down for uv_constraint {}".format(
         uv_constraint)
 
     try:
-        assert np.sum(np.diff(pobj) > 0) == 0, msg
+        assert np.sum(np.diff(pobj) > 1e-13) == 0, msg
     except AssertionError:
         import matplotlib.pyplot as plt
         plt.semilogy(pobj - np.min(pobj) + 1e-6)
@@ -40,10 +41,10 @@ def test_learn_d_z_multi(loss, solver_d, uv_constraint, window):
         raise
 
 
-@pytest.mark.parametrize('solver_d, uv_constraint',
-                         [('joint', 'joint'), ('joint', 'separate'),
-                          ('alternate_adaptive', 'separate')])
-def test_window(solver_d, uv_constraint):
+@pytest.mark.parametrize('solver_d, uv_constraint, rank1', [
+    ('joint', 'joint', True), ('joint', 'separate', True),
+    ('joint', 'joint', False), ('alternate_adaptive', 'separate', True)])
+def test_window(solver_d, uv_constraint, rank1):
     # Smoke test that the parameter window does something
     n_trials, n_channels, n_times = 2, 3, 100
     n_times_atom, n_atoms = 10, 4
@@ -51,9 +52,12 @@ def test_window(solver_d, uv_constraint):
     rng = check_random_state(42)
     X = rng.randn(n_trials, n_channels, n_times)
 
-    kwargs = dict(X=X, n_atoms=n_atoms, n_times_atom=n_times_atom,
+    D_init = init_dictionary(X, n_atoms, n_times_atom, rank1=True,
+                             uv_constraint=uv_constraint, random_state=0)
+
+    kwargs = dict(X=X, n_atoms=n_atoms, n_times_atom=n_times_atom, verbose=0,
                   uv_constraint=uv_constraint, solver_d=solver_d,
-                  random_state=0, n_iter=1, solver_z='l-bfgs')
+                  random_state=0, n_iter=1, solver_z='l-bfgs', D_init=D_init)
     res_False = learn_d_z_multi(window=False, **kwargs)
     res_True = learn_d_z_multi(window=True, **kwargs)
 

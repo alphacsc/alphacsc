@@ -1,4 +1,5 @@
 import numpy as np
+from scipy import signal
 
 
 def get_D(uv_hat, n_channels):
@@ -69,3 +70,10 @@ def get_lambda_max(X, D_hat):
             np.sum([np.correlate(D_kp, X_ip, mode='valid')
                     for D_kp, X_ip in zip(D_k, X_i)], axis=0)
             for X_i in X] for D_k in D_hat], axis=(1, 2))[:, None]
+
+
+def tukey_window(n_times_atom):
+    window = signal.tukey(n_times_atom)
+    window[0] = 1e-9
+    window[-1] = 1e-9
+    return window

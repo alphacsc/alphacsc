@@ -178,7 +178,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         loss_params['ar_model'], X = whitening(X, ordar=loss_params['ordar'])
 
     _lmbd_max = get_lambda_max(X, D_hat).max()
-    print("[CDL] Max value for lambda: {}".format(_lmbd_max))
+    if verbose > 1:
+        print("[CDL] Max value for lambda: {}".format(_lmbd_max))
     if lmbd_max == "scaled":
         reg = reg * _lmbd_max
 

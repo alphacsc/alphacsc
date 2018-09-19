@@ -2,7 +2,6 @@ import itertools
 
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy import signal
 
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.decomposition import PCA
@@ -13,6 +12,7 @@ from .utils import check_random_state
 from .other.kmc2 import custom_distances
 from .update_d_multi import prox_uv, prox_d
 from .utils.dictionary import get_uv, get_D, _patch_reconstruction_error
+from .utils.dictionary import tukey_window
 
 ried = custom_distances.roll_invariant_euclidean_distances
 tied = custom_distances.translation_invariant_euclidean_distances
@@ -98,11 +98,11 @@ def init_dictionary(X, n_atoms, n_times_atom, D_init=None, rank1=True,
         raise NotImplementedError('It is not possible to initialize uv with'
                                   ' parameter {}.'.format(D_init))
 
-    if window:
+    if window and not isinstance(D_init, np.ndarray):
         if rank1:
-            D_hat[:, n_channels:] *= signal.tukey(n_times_atom)[None, :]
+            D_hat[:, n_channels:] *= tukey_window(n_times_atom)[None, :]
         else:
-            D_hat = D_hat * signal.tukey(n_times_atom)[None, None, :]
+            D_hat = D_hat * tukey_window(n_times_atom)[None, None, :]
 
     if rank1:
         D_hat = prox_uv(D_hat, uv_constraint=uv_constraint,
@@ -352,7 +352,7 @@ def get_max_error_dict(X, z, D, uv_constraint='separate', window=False):
     d0 = X[n0, :, t0:t0 + n_times_atom][None]
 
     if window:
-        d0 = d0 * signal.tukey(n_times_atom)[None, :]
+        d0 = d0 * tukey_window(n_times_atom)[None, :]
 
     if D.ndim == 2:
         return get_uv(d0)

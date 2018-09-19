@@ -7,13 +7,13 @@
 #          Thomas Moreau <thomas.moreau@inria.fr>
 
 import numpy as np
-from scipy import signal
 
 from . import cython_code
 from .utils.lil import get_z_shape, is_list_of_lil
 from .utils.optim import fista, power_iteration
 from .utils.convolution import numpy_convolve_uv
 from .utils.compute_constants import compute_ztz, compute_ztX
+from .utils.dictionary import tukey_window
 
 from .loss_and_gradient import compute_objective, compute_X_and_objective_multi
 from .loss_and_gradient import gradient_uv, gradient_d
@@ -102,6 +102,11 @@ def update_uv(X, z, uv_hat0, constants=None, b_hat_0=None, debug=False,
     _, n_channels, n_times = X.shape
     n_times_atom = uv_hat0.shape[1] - n_channels
 
+    if window:
+        tukey_window_ = tukey_window(n_times_atom)[None, :]
+        uv_hat0 = uv_hat0.copy()
+        uv_hat0[:, n_channels:] /= tukey_window_
+
     if solver_d == 'alternate':
         msg = "alternate solver should be used with separate constraints"
         assert uv_constraint == 'separate', msg
@@ -112,9 +117,7 @@ def update_uv(X, z, uv_hat0, constants=None, b_hat_0=None, debug=False,
     def objective(uv):
         if window:
             uv = uv.copy()
-            uv[:, n_channels:] *= signal.tukey(n_times_atom)[None, :]
-            uv = prox_uv(uv, uv_constraint=uv_constraint,
-                         n_channels=n_channels)
+            uv[:, n_channels:] *= tukey_window_
         if loss == 'l2':
             return compute_objective(D=uv, constants=constants)
         return compute_X_and_objective_multi(X, z, D_hat=uv, loss=loss,
@@ -125,15 +128,23 @@ def update_uv(X, z, uv_hat0, constants=None, b_hat_0=None, debug=False,
         # use FISTA on joint [u, v], with an adaptive step size
 
         def grad(uv):
+            if window:
+                uv = uv.copy()
+                uv[:, n_channels:] *= tukey_window_
             grad = gradient_uv(uv=uv, X=X, z=z, constants=constants, loss=loss,
                                loss_params=loss_params)
             if window:
-                grad[:, n_channels:] *= signal.tukey(n_times_atom)[None, :]
+                grad[:, n_channels:] *= tukey_window_
             return grad
 
         def prox(uv):
-            return prox_uv(uv, uv_constraint=uv_constraint,
-                           n_channels=n_channels)
+            if window:
+                uv[:, n_channels:] *= tukey_window_
+            uv = prox_uv(uv, uv_constraint=uv_constraint,
+                         n_channels=n_channels)
+            if window:
+                uv[:, n_channels:] /= tukey_window_
+            return uv
 
         uv_hat, pobj = fista(objective, grad, prox, None, uv_hat0, max_iter,
                              verbose=verbose, momentum=momentum, eps=eps,
@@ -148,12 +159,24 @@ def update_uv(X, z, uv_hat0, constants=None, b_hat_0=None, debug=False,
         uv_hat = uv_hat0.copy()
         u_hat, v_hat = uv_hat[:, :n_channels], uv_hat[:, n_channels:]
 
-        def prox(u):
+        def prox_u(u):
             u /= np.maximum(1., np.linalg.norm(u, axis=1))[:, None]
             return u
 
+        def prox_v(v):
+            if window:
+                v *= tukey_window_
+            v /= np.maximum(1., np.linalg.norm(v, axis=1))[:, None]
+            if window:
+                v /= tukey_window_
+            return v
+
+        pobj = []
         for jj in range(1):
             # ---------------- update u
+            if window:
+                v_hat *= tukey_window_
+
             def obj(u):
                 uv = np.c_[u, v_hat]
                 return objective(uv)
@@ -170,11 +193,16 @@ def update_uv(X, z, uv_hat0, constants=None, b_hat_0=None, debug=False,
                 Lu = compute_lipschitz(uv_hat, constants, 'u', b_hat_0)
             assert Lu > 0
 
-            u_hat, pobj = fista(obj, grad_u, prox, 0.99 / Lu, u_hat, max_iter,
-                                verbose=verbose, momentum=momentum, eps=eps,
-                                adaptive_step_size=adaptive_step_size,
-                                debug=debug, name="Update u")
+            u_hat, pobj_u = fista(obj, grad_u, prox_u, 0.99 / Lu, u_hat,
+                                  max_iter, momentum=momentum, eps=eps,
+                                  adaptive_step_size=adaptive_step_size,
+                                  verbose=verbose, debug=debug,
+                                  name="Update u")
+            if window:
+                v_hat /= tukey_window_
             uv_hat = np.c_[u_hat, v_hat]
+            if debug:
+                pobj.extend(pobj_u)
 
             # ---------------- update v
             def obj(v):
@@ -182,10 +210,15 @@ def update_uv(X, z, uv_hat0, constants=None, b_hat_0=None, debug=False,
                 return objective(uv)
 
             def grad_v(v):
+                if window:
+                    v = v * tukey_window_
                 uv = np.c_[u_hat, v]
                 grad_d = gradient_d(uv, X=X, z=z, constants=constants,
                                     loss=loss, loss_params=loss_params)
-                return (grad_d * uv[:, :n_channels, None]).sum(axis=1)
+                grad_v = (grad_d * uv[:, :n_channels, None]).sum(axis=1)
+                if window:
+                    grad_v *= tukey_window_
+                return grad_v
 
             if adaptive_step_size:
                 Lv = 1
@@ -193,7 +226,7 @@ def update_uv(X, z, uv_hat0, constants=None, b_hat_0=None, debug=False,
                 Lv = compute_lipschitz(uv_hat, constants, 'v', b_hat_0)
             assert Lv > 0
 
-            v_hat, pobj_v = fista(obj, grad_v, prox, 0.99 / Lv, v_hat,
+            v_hat, pobj_v = fista(obj, grad_v, prox_v, 0.99 / Lv, v_hat,
                                   max_iter, momentum=momentum, eps=eps,
                                   adaptive_step_size=adaptive_step_size,
                                   verbose=verbose, debug=debug,
@@ -206,9 +239,7 @@ def update_uv(X, z, uv_hat0, constants=None, b_hat_0=None, debug=False,
         raise ValueError('Unknown solver_d: %s' % (solver_d, ))
 
     if window:
-        uv_hat[:, n_channels:] *= signal.tukey(n_times_atom)[None, :]
-        uv_hat = prox_uv(uv_hat, uv_constraint=uv_constraint,
-                         n_channels=n_channels)
+        uv_hat[:, n_channels:] *= tukey_window_
 
     if debug:
         return uv_hat, pobj
@@ -261,13 +292,16 @@ def update_d(X, z, D_hat0, constants=None, b_hat_0=None, debug=False,
     _, n_channels, n_times = X.shape
     n_atoms, n_channels, n_times_atom = D_hat0.shape
 
+    if window:
+        tukey_window_ = tukey_window(n_times_atom)[None, None, :]
+        D_hat0 = D_hat0 / tukey_window_
+
     if loss == 'l2' and constants is None:
         constants = _get_d_update_constants(X, z)
 
     def objective(D, full=False):
         if window:
-            D = D * signal.tukey(n_times_atom)[None, None, :]
-            D = prox_d(D)
+            D = D * tukey_window_
         if loss == 'l2':
             return compute_objective(D=D, constants=constants)
         return compute_X_and_objective_multi(X, z, D_hat=D, loss=loss,
@@ -277,14 +311,21 @@ def update_d(X, z, D_hat0, constants=None, b_hat_0=None, debug=False,
         # use FISTA on joint [u, v], with an adaptive step size
 
         def grad(D):
+            if window:
+                D = D * tukey_window_
             grad = gradient_d(D=D, X=X, z=z, constants=constants, loss=loss,
                               loss_params=loss_params)
             if window:
-                grad = grad * signal.tukey(n_times_atom)[None, None, :]
+                grad *= tukey_window_
             return grad
 
         def prox(D):
-            return prox_d(D)
+            if window:
+                D *= tukey_window_
+            D = prox_d(D)
+            if window:
+                D /= tukey_window_
+            return D
 
         D_hat, pobj = fista(objective, grad, prox, None, D_hat0, max_iter,
                             verbose=verbose, momentum=momentum, eps=eps,
@@ -295,8 +336,7 @@ def update_d(X, z, D_hat0, constants=None, b_hat_0=None, debug=False,
         raise ValueError('Unknown solver_d: %s' % (solver_d, ))
 
     if window:
-        D_hat = D_hat * signal.tukey(n_times_atom)[None, None, :]
-        D_hat = prox_d(D_hat)
+        D_hat = D_hat * tukey_window_
 
     if debug:
         return D_hat, pobj
