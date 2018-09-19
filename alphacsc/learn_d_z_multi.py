@@ -179,7 +179,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
 
     _lmbd_max = get_lambda_max(X, D_hat).max()
     if verbose > 1:
-        print("[CDL] Max value for lambda: {}".format(_lmbd_max))
+        print("[{}] Max value for lambda: {}".format(name, _lmbd_max))
     if lmbd_max == "scaled":
         reg = reg * _lmbd_max
 
@@ -259,16 +259,19 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
 
     # recompute z_hat with no regularization and keeping the support fixed
     if unbiased_z_hat:
-        t_start = time.time()
+        start_unbiased_z_hat = time.time()
         z_hat, _, _ = update_z_multi(
             X, D_hat, reg=0, z0=z_hat, n_jobs=n_jobs, solver=solver_z,
             solver_kwargs=solver_z_kwargs, freeze_support=True, loss=loss,
             loss_params=loss_params)
         if verbose > 1:
             print("[{}] Compute the final z_hat with support freeze in "
-                  "{:.2f}s".format(name, time.time() - t_start))
+                  "{:.2f}s".format(name, time.time() - start_unbiased_z_hat))
 
     times[0] += init_duration
+
+    if verbose > 0:
+        print("[{}] Fit in {:.2}s".format(name, time.time() - start))
 
     return pobj, times, D_hat, z_hat, reg
 

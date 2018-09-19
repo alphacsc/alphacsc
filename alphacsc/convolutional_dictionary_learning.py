@@ -5,8 +5,6 @@
 #          Umut Simsekli <umut.simsekli@telecom-paristech.fr>
 #          Alexandre Gramfort <alexandre.gramfort@inria.fr>
 #          Thomas Moreau <thomas.moreau@inria.fr>
-from time import time
-
 from sklearn.base import TransformerMixin
 from sklearn.exceptions import NotFittedError
 
@@ -178,7 +176,6 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
     def fit(self, X, y=None):
         """Learn a convolutional dictionary from the set of signals X.
         """
-        t_start = time()
         res = learn_d_z_multi(
             X, self.n_atoms, self.n_times_atom,
             reg=self.reg, lmbd_max=self.lmbd_max,
@@ -196,8 +193,6 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
 
         self._pobj, self._times, self._D_hat, self._z_hat, self.reg_ = res
         self.n_channels_ = X.shape[1]
-        if self.verbose > 0:
-            print("[{}] Fit in {:.2}s".format(self.name, time() - t_start))
         return self
 
     def transform(self, X):
