@@ -475,8 +475,8 @@ def get_iteration_func(eps, stopping_pobj, callback, lmbd_max, name, verbose,
 
         # Only check that the cost is always going down when the regularization
         # parameter is fixed.
-        dz = pobj[-3] - pobj[-2]
-        du = pobj[-2] - pobj[-1]
+        dz = (pobj[-3] - pobj[-2]) / min(pobj[-3], pobj[-2])
+        du = (pobj[-2] - pobj[-1]) / min(pobj[-2], pobj[-1])
         if ((dz < eps or du < eps) and lmbd_max in ['fixed', 'scaled']):
             if dz < 0 and raise_on_increase:
                 raise RuntimeError(
@@ -490,7 +490,7 @@ def get_iteration_func(eps, stopping_pobj, callback, lmbd_max, name, verbose,
                 if verbose == 1:
                     print("")
                 print("[{}] Converged after {} iteration, (dz, du) "
-                      "={:.3e}, {:.3e}".format(name, iteration, dz, du))
+                      "= {:.3e}, {:.3e}".format(name, iteration + 1, dz, du))
                 return True
 
         if stopping_pobj is not None and pobj[-1] < stopping_pobj:
