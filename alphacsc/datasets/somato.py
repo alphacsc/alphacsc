@@ -70,7 +70,6 @@ def load_data(sfreq=None, epoch=True, n_jobs=1, filt=[2., None], n_splits=10,
             raise ValueError('return_epochs=True is not allowed with '
                              'epochs=False')
 
-
     # XXX: causes problems when saving EvokedArray
     info['t_min'] = t_min
     info['event_id'] = event_id
