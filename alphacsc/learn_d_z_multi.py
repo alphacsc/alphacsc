@@ -130,7 +130,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
     raise_on_increase : boolean
         Raise an error if the objective function increase
     window : boolean
-        If True, reparametrize the atoms with a temporal Tukey window.
+        If True, re-parametrizes the atoms with a temporal Tukey window.
 
     Returns
     -------

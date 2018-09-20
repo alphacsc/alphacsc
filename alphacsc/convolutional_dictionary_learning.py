@@ -31,6 +31,8 @@ DOC_FMT = """{desc}
         Parameters of the loss
     rank1 : boolean
         If set to True, learn rank 1 dictionary atoms.
+    window : boolean
+        If set to True, re-parametrizes the atoms with a temporal Tukey window.
     uv_constraint : {{'joint' | 'separate'}}
         The kind of norm constraint on the atoms:
 
@@ -123,7 +125,7 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
     def __init__(self, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
                  loss='l2', loss_params=dict(gamma=.1, sakoe_chiba_band=10,
                                              ordar=10),
-                 rank1=True, uv_constraint='separate',
+                 rank1=True, window=False, uv_constraint='separate',
                  solver_z='l_bfgs', solver_z_kwargs={},
                  solver_d='alternate_adaptive', solver_d_kwargs={},
                  reg=0.1, lmbd_max='fixed', eps=1e-10,
@@ -141,6 +143,7 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
         self.loss = loss
         self.loss_params = loss_params
         self.rank1 = rank1
+        self.window = window
         self.uv_constraint = uv_constraint
 
         # Global algorithm
@@ -180,7 +183,8 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
             X, self.n_atoms, self.n_times_atom,
             reg=self.reg, lmbd_max=self.lmbd_max,
             loss=self.loss, loss_params=self.loss_params,
-            rank1=self.rank1, uv_constraint=self.uv_constraint,
+            rank1=self.rank1, window=self.window,
+            uv_constraint=self.uv_constraint,
             algorithm=self.algorithm, algorithm_params=self.algorithm_params,
             n_iter=self.n_iter, eps=self.eps,
             solver_z=self.solver_z, solver_z_kwargs=self.solver_z_kwargs,
@@ -299,15 +303,15 @@ class BatchCDL(ConvolutionalDictionaryLearning):
     def __init__(self, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
                  solver_z='lgcd', solver_z_kwargs={}, unbiased_z_hat=False,
                  solver_d='alternate_adaptive', solver_d_kwargs={},
-                 rank1=True, uv_constraint='separate', lmbd_max='scaled',
-                 eps=1e-10, D_init=None, D_init_params={},
+                 rank1=True, window=False, uv_constraint='separate',
+                 lmbd_max='scaled', eps=1e-10, D_init=None, D_init_params={},
                  verbose=10, random_state=None):
         super().__init__(
             n_atoms, n_times_atom, reg=reg, n_iter=n_iter,
             solver_z=solver_z, solver_z_kwargs=solver_z_kwargs,
+            rank1=rank1, window=window, uv_constraint=uv_constraint,
             unbiased_z_hat=unbiased_z_hat,
             solver_d=solver_d, solver_d_kwargs=solver_d_kwargs,
-            rank1=rank1, uv_constraint=uv_constraint,
             eps=eps, D_init=D_init, D_init_params=D_init_params,
             algorithm='batch', lmbd_max=lmbd_max, raise_on_increase=True,
             loss='l2', use_sparse_z=False, n_jobs=n_jobs, verbose=verbose,
@@ -342,16 +346,16 @@ class OnlineCDL(ConvolutionalDictionaryLearning):
     def __init__(self, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
                  solver_z='lgcd', solver_z_kwargs={}, unbiased_z_hat=False,
                  solver_d='alternate_adaptive', solver_d_kwargs={},
-                 rank1=True, uv_constraint='separate', lmbd_max='scaled',
-                 eps=1e-10, D_init=None, D_init_params={},
+                 rank1=True, window=False, uv_constraint='separate',
+                 lmbd_max='scaled', eps=1e-10, D_init=None, D_init_params={},
                  alpha=.8, batch_size=1, batch_selection='random',
                  verbose=10, random_state=None):
         super().__init__(
             n_atoms, n_times_atom, reg=reg, n_iter=n_iter,
             solver_z=solver_z, solver_z_kwargs=solver_z_kwargs,
+            rank1=rank1, window=window, uv_constraint=uv_constraint,
             unbiased_z_hat=unbiased_z_hat,
             solver_d=solver_d, solver_d_kwargs=solver_d_kwargs,
-            rank1=rank1, uv_constraint=uv_constraint,
             eps=eps, D_init=D_init, D_init_params=D_init_params,
             algorithm_params=dict(alpha=alpha, batch_size=batch_size,
                                   batch_selection=batch_selection),
