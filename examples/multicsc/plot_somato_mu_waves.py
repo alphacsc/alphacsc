@@ -51,9 +51,12 @@ cdl = BatchCDL(
 
 ###############################################################################
 # Here, we load the data from the somato-sensory dataset and preprocess them
+# in epochs. The epochs are selected around the stim, starting 2 seconds
+# before and finishing 4 seconds after.
 
 from alphacsc.datasets.somato import load_data  # noqa
-X, info = load_data(epoch=True, sfreq=sfreq)
+t_lim = (-2, 4)
+X, info = load_data(epoch=t_lim, sfreq=sfreq)
 
 
 ###############################################################################
