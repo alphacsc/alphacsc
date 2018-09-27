@@ -64,6 +64,7 @@ def load_data(sfreq=None, epoch=True, n_jobs=1, filt=[2., None], n_splits=10,
         X = raw.get_data()
         n_channels, n_times = X.shape
         n_times = n_times // n_splits
+        X = X[:, :n_times * n_splits]
         X = X.reshape(n_channels, n_splits, n_times).swapaxes(0, 1)
         info = raw.info
         if return_epochs:

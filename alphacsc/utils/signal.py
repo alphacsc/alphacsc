@@ -2,7 +2,7 @@ import mne
 import numpy as np
 
 
-def make_epochs(z_hat, info, n_times_atom):
+def make_epochs(z_hat, info, t_lim, n_times_atom=1):
     """Make Epochs on the activations of atoms.
     n_splits, n_atoms, n_times_valid = z_hat.shape
     n_trials, n_atoms, n_times_epoch = z_hat_epoch.shape
@@ -18,7 +18,7 @@ def make_epochs(z_hat, info, n_times_atom):
     # create trials around the events, using mne
     new_info = mne.create_info(ch_names=n_atoms, sfreq=info['sfreq'])
     rawarray = mne.io.RawArray(data=z_hat, info=new_info, verbose=False)
-    tmin, tmax = -2., 4.
+    tmin, tmax = t_lim
     epochs = mne.Epochs(rawarray, info['events'], info['event_id'],
                         tmin, tmax, verbose=False)
     z_hat_epoched = epochs.get_data()

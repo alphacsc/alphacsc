@@ -204,8 +204,8 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
         """
         self._check_fitted()
         z_hat, _, _ = update_z_multi(
-            X, self._D_hat, reg=self.reg_, z0=self.z0, n_jobs=self.n_jobs,
-            solver=self.solver, solver_kwargs=self.solver_z_kwargs,
+            X, self._D_hat, reg=self.reg_, z0=None, n_jobs=self.n_jobs,
+            solver=self.solver_z, solver_kwargs=self.solver_z_kwargs,
             loss=self.loss, loss_params=self.loss_params)
 
         if self.unbiased_z_hat:
