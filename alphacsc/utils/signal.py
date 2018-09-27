@@ -18,8 +18,8 @@ def make_epochs(z_hat, info, t_lim, n_times_atom=1):
     # create trials around the events, using mne
     new_info = mne.create_info(ch_names=n_atoms, sfreq=info['sfreq'])
     rawarray = mne.io.RawArray(data=z_hat, info=new_info, verbose=False)
-    tmin, tmax = t_lim
+    t_min, t_max = t_lim
     epochs = mne.Epochs(rawarray, info['events'], info['event_id'],
-                        tmin, tmax, verbose=False)
+                        t_min, t_max, verbose=False)
     z_hat_epoched = epochs.get_data()
     return z_hat_epoched

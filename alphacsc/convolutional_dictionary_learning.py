@@ -204,16 +204,18 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
         """
         self._check_fitted()
         z_hat, _, _ = update_z_multi(
-            X, self._D_hat, reg=self.reg_, z0=None, n_jobs=self.n_jobs,
+            X, self._D_hat, reg=self.reg_, n_jobs=self.n_jobs,
             solver=self.solver_z, solver_kwargs=self.solver_z_kwargs,
             loss=self.loss, loss_params=self.loss_params)
 
         if self.unbiased_z_hat:
+            print("Refitting the activation to avoid amplitude bias...")
             z_hat, _, _ = update_z_multi(
                 X, self._D_hat, z0=z_hat, n_jobs=self.n_jobs,
                 reg=0, freeze_support=True,
                 solver=self.solver_z, solver_kwargs=self.solver_z_kwargs,
                 loss=self.loss, loss_params=self.loss_params)
+            print("done")
         return z_hat
 
     def transform_inverse(self, z_hat):

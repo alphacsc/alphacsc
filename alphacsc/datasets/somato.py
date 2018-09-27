@@ -10,7 +10,7 @@ mem = Memory(cachedir='.', verbose=0)
 
 
 @mem.cache(ignore=['n_jobs'])
-def load_data(sfreq=None, epoch=True, n_jobs=1, filt=[2., None], n_splits=10,
+def load_data(sfreq=None, epoch=(-2, 4), n_jobs=1, filt=[2., None], n_splits=10,
               return_epochs=False):
     """Load and prepare the somato dataset for multiCSC
 
@@ -19,9 +19,9 @@ def load_data(sfreq=None, epoch=True, n_jobs=1, filt=[2., None], n_splits=10,
     ----------
     sfreq: float
         Sampling frequency of the signal. The data are resampled to match it.
-    epoch : boolean
-        If set to True, extract epochs from the raw data. Else, use the raw
-        signal, divided in n_splits chunks.
+    epoch : tuple or None
+        If set to a tuple, extract epochs from the raw data, using t_min=epoch[0]
+        and t_max=epoch[1]. Else, use the raw signal, divided in n_splits chunks.
     n_jobs : int
         Number of jobs that can be used for preparing (filtering) the data.
     return_epochs : boolean
@@ -32,10 +32,10 @@ def load_data(sfreq=None, epoch=True, n_jobs=1, filt=[2., None], n_splits=10,
         os.path.join(data_path, 'sef_raw_sss.fif'), preload=True)
     raw.notch_filter(np.arange(50, 101, 50), n_jobs=n_jobs)
     raw.filter(*filt, n_jobs=n_jobs)
-    event_id, t_min, t_max = 1, -2., 4.
+    event_id = 1
 
     if epoch:
-
+        t_min, t_max = epoch
         baseline = (None, 0)
         events = mne.find_events(raw, stim_channel='STI 014')
 
@@ -64,7 +64,7 @@ def load_data(sfreq=None, epoch=True, n_jobs=1, filt=[2., None], n_splits=10,
         X = raw.get_data()
         n_channels, n_times = X.shape
         n_times = n_times // n_splits
-        X = X[:, :n_times * n_splits]
+        X = X[:, :n_splits * n_times]
         X = X.reshape(n_channels, n_splits, n_times).swapaxes(0, 1)
         info = raw.info
         if return_epochs:
