@@ -34,6 +34,7 @@ def load_data(sfreq=None, epoch=(-2, 4), n_jobs=1, filt=[2., None], n_splits=10,
     raw.filter(*filt, n_jobs=n_jobs)
     event_id = 1
 
+    t_min = -2
     if epoch:
         t_min, t_max = epoch
         baseline = (None, 0)
