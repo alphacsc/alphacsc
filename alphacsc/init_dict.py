@@ -18,9 +18,9 @@ ried = custom_distances.roll_invariant_euclidean_distances
 tied = custom_distances.translation_invariant_euclidean_distances
 
 
-def init_dictionary(X, n_atoms, n_times_atom, D_init=None, rank1=True,
-                    uv_constraint='separate', D_init_params=dict(),
-                    random_state=None, window=False):
+def init_dictionary(X, n_atoms, n_times_atom, uv_constraint='separate',
+                    rank1=True, window=False, D_init=None,
+                    D_init_params=dict(), random_state=None):
     """Return an initial dictionary for the signals X
 
     Parameter
@@ -31,23 +31,23 @@ def init_dictionary(X, n_atoms, n_times_atom, D_init=None, rank1=True,
         The number of atoms to learn.
     n_times_atom : int
         The support of the atom.
+    uv_constraint : str in {'joint' | 'separate'}
+        The kind of norm constraint on the atoms:
+        If 'joint', the constraint is norm_2([u, v]) <= 1
+        If 'separate', the constraint is norm_2(u) <= 1 and norm_2(v) <= 1
+    rank1 : boolean
+        If set to True, use a rank 1 dictionary.
+    window : boolean
+        If True, multiply the atoms with a temporal Tukey window.
     D_init : array or {'kmeans' | 'ssa' | 'chunk' | 'random'}
         The initialization scheme for the dictionary or the initial
         atoms. The shape should match the required dictionary shape, ie if
         rank1 is TRue, (n_atoms, n_channels + n_times_atom) and else
         (n_atoms, n_channels, n_times_atom)
-    rank1 : boolean
-        If set to True, use a rank 1 dictionary.
-    uv_constraint : str in {'joint' | 'separate'}
-        The kind of norm constraint on the atoms:
-        If 'joint', the constraint is norm_2([u, v]) <= 1
-        If 'separate', the constraint is norm_2(u) <= 1 and norm_2(v) <= 1
     D_init_params : dict
         Dictionnary of parameters for the kmeans init method.
     random_state : int | None
         The random state.
-    window : boolean
-        If True, multiply the atoms with a temporal Tukey window.
 
     Return
     ------
