@@ -96,11 +96,17 @@ def test_transformers(klass):
     n_trials, n_channels, n_times = 2, 3, 100
     n_times_atom, n_atoms = 10, 4
 
+    if klass == OnlineCDL:
+        kwargs = dict(batch_selection='cyclic')
+    else:
+        kwargs = dict()
+
     rng = check_random_state(42)
     X = rng.randn(n_trials, n_channels, n_times)
     cdl = klass(n_atoms, n_times_atom, uv_constraint='separate', rank1=True,
                 solver_d='alternate_adaptive', random_state=0, n_iter=10,
-                eps=-np.inf, solver_z='l-bfgs', window=True, verbose=0)
+                eps=-np.inf, solver_z='l-bfgs', window=True, verbose=0,
+                **kwargs)
     cdl.fit(X)
     z = cdl.transform(X)
     Xt = cdl.transform_inverse(z)
