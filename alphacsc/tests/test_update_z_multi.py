@@ -122,7 +122,7 @@ def test_cd(use_sparse_lil):
     z_hat, ztz, ztX = update_z_multi(X, D=uv, reg=reg, z0=z_gen,
                                      solver="lgcd",
                                      solver_kwargs={
-                                        'max_iter': 5, 'tol': 1e-5
+                                         'max_iter': 5, 'tol': 1e-5
                                      })
     if use_sparse_lil and cython_code._CYTHON_AVAILABLE:
         from alphacsc.cython_code import _fast_compute_ztz, _fast_compute_ztX

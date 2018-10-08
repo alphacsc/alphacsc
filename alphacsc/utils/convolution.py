@@ -66,8 +66,7 @@ def construct_X_multi(z, D=None, n_channels=None):
 
     X = np.zeros((n_trials, n_channels, n_times))
     for i in range(n_trials):
-        X[i] = _choose_convolve_multi(
-            z[i], D=D, n_channels=n_channels)
+        X[i] = _choose_convolve_multi(z[i], D=D, n_channels=n_channels)
     return X
 
 
@@ -116,8 +115,7 @@ def _sparse_convolve_multi_uv(z_i, uv, n_channels):
 
 def _dense_convolve(z_i, ds):
     """Convolve z_i[k] and ds[k] for each atom k, and return the sum."""
-    return sum([np.convolve(zik, dk)
-               for zik, dk in zip(z_i, ds)], 0)
+    return sum([np.convolve(zik, dk) for zik, dk in zip(z_i, ds)], 0)
 
 
 def _dense_convolve_multi(z_i, ds):
@@ -223,8 +221,8 @@ def numpy_convolve_uv(ztz, uv):
     for k0 in range(n_atoms):
         for k1 in range(n_atoms):
             for t in range(n_times_atom):
-                G[k0, :, t] += (np.sum(ztz[k0, k1, t:t + n_times_atom] * v[k1])
-                                * u[k1, :])
+                G[k0, :, t] += (
+                    np.sum(ztz[k0, k1, t:t + n_times_atom] * v[k1]) * u[k1, :])
 
     return G
 

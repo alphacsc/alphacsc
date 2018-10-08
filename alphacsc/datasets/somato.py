@@ -1,17 +1,15 @@
-
 import os
 import mne
 import numpy as np
 from joblib import Memory
 from scipy.signal import tukey
 
-
 mem = Memory(cachedir='.', verbose=0)
 
 
 @mem.cache(ignore=['n_jobs'])
-def load_data(sfreq=None, epoch=(-2, 4), n_jobs=1, filt=[2., None], n_splits=10,
-              return_epochs=False):
+def load_data(sfreq=None, epoch=(-2, 4), n_jobs=1, filt=[2., None],
+              n_splits=10, return_epochs=False):
     """Load and prepare the somato dataset for multiCSC
 
 
@@ -20,8 +18,9 @@ def load_data(sfreq=None, epoch=(-2, 4), n_jobs=1, filt=[2., None], n_splits=10,
     sfreq: float
         Sampling frequency of the signal. The data are resampled to match it.
     epoch : tuple or None
-        If set to a tuple, extract epochs from the raw data, using t_min=epoch[0]
-        and t_max=epoch[1]. Else, use the raw signal, divided in n_splits chunks.
+        If set to a tuple, extract epochs from the raw data, using
+        t_min=epoch[0] and t_max=epoch[1]. Else, use the raw signal, divided
+        in n_splits chunks.
     n_jobs : int
         Number of jobs that can be used for preparing (filtering) the data.
     return_epochs : boolean
@@ -42,8 +41,8 @@ def load_data(sfreq=None, epoch=(-2, 4), n_jobs=1, filt=[2., None], n_splits=10,
 
         picks = mne.pick_types(raw.info, meg='grad', eeg=False, eog=True,
                                stim=False)
-        epochs = mne.Epochs(raw, events, event_id, t_min, t_max,
-                            picks=picks, baseline=baseline, reject=dict(
+        epochs = mne.Epochs(raw, events, event_id, t_min, t_max, picks=picks,
+                            baseline=baseline, reject=dict(
                                 grad=4000e-13, eog=350e-6), preload=True)
         epochs.pick_types(meg='grad', eog=False)
         if sfreq is not None:
