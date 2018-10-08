@@ -6,10 +6,8 @@ API Documentation
 
 .. currentmodule:: alphacsc
 
-Learn atoms
-===========
-
 Transformers
+============
 
 .. autosummary::
    :toctree: generated/
@@ -18,6 +16,7 @@ Transformers
    OnlineCDL
 
 Functions
+=========
 
 .. autosummary::
    :toctree: generated/

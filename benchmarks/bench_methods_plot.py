@@ -117,7 +117,7 @@ def plot_convergence(data_frame, threshold, normalize_method, save_name):
             else:
                 plt.ylabel('(objective - best) / best')
 
-            # ---- Cleaner fig for the paper
+            # ---- Cleaner fig for the paper
             # plt.legend(loc=0, ncol=1)
             plt.ylabel('')
 
@@ -233,7 +233,7 @@ def plot_barplot(all_results_df, threshold, normalize_method, save_name):
         plt.title('Time to reach a relative precision of %s' % threshold)
         plt.tight_layout()
 
-        # legend to the top
+        # legend to the top
         plt.legend()
         labels = [text.get_text() for text in ax.get_legend().get_texts()]
         if len(labels) > 3:
