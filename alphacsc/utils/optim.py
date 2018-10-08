@@ -123,7 +123,7 @@ def fista(f_obj, f_grad, f_prox, step_size, x0, max_iter, verbose=0,
 
                 step_size, _, obj_uv = optimize.linesearch.line_search_armijo(
                     f_obj_, x_hat.ravel(), -grad.ravel(), grad.ravel(), obj_uv,
-                    c1=1e-4, alpha0=step_size)
+                    c1=1e-5, alpha0=step_size)
                 if step_size is None:
                     step_size = 0
                 x_hat_aux -= step_size * grad
