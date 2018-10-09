@@ -316,8 +316,7 @@ def _batch_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
 
         # monitor cost function
         times.append(time.time() - start)
-        cost, X_hat = obj_func(X, z_hat, D_hat, reg=reg_, return_X_hat=True)
-        pobj.append(cost)
+        pobj.append(obj_func(X, z_hat, D_hat, reg=reg_))
 
         if is_list_of_lil(z_hat):
             z_nnz = np.array([[len(d) for d in z.data] for z in z_hat]
