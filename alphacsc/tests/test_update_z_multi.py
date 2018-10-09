@@ -21,9 +21,10 @@ def test_update_z_multi_decrease_cost_function(loss, solver):
     reg = 0
     loss_params = dict(gamma=1, sakoe_chiba_band=n_times_atom // 2)
 
-    X = np.random.randn(n_trials, n_channels, n_times)
-    uv = np.random.randn(n_atoms, n_channels + n_times_atom)
-    z = np.random.randn(n_trials, n_atoms, n_times_valid)
+    rng = np.random.RandomState(0)
+    X = rng.randn(n_trials, n_channels, n_times)
+    uv = rng.randn(n_atoms, n_channels + n_times_atom)
+    z = rng.randn(n_trials, n_atoms, n_times_valid)
 
     if loss == 'whitening':
         loss_params['ar_model'], X = whitening(X, ordar=10)
@@ -53,9 +54,10 @@ def test_support_least_square(solver_z):
     reg = 0.1
     solver_kwargs = {'factr': 1e7}
 
-    X = np.random.randn(n_trials, n_channels, n_times)
-    uv = np.random.randn(n_atoms, n_channels + n_times_atom)
-    z = np.random.randn(n_trials, n_atoms, n_times_valid)
+    rng = np.random.RandomState(0)
+    X = rng.randn(n_trials, n_channels, n_times)
+    uv = rng.randn(n_atoms, n_channels + n_times_atom)
+    z = rng.randn(n_trials, n_atoms, n_times_valid)
 
     # The initial loss should be high
     loss_0 = compute_X_and_objective_multi(X, z_hat=z, D_hat=uv, reg=0,
@@ -93,17 +95,20 @@ def test_cd(use_sparse_lil):
     n_times_valid = n_times - n_times_atom + 1
     reg = 1
 
-    uv = np.random.randn(n_atoms, n_channels + n_times_atom)
+    rng = np.random.RandomState(0)
+    uv = rng.randn(n_atoms, n_channels + n_times_atom)
     if use_sparse_lil:
         density = .1
         z = [sparse.random(n_atoms, n_times_valid, format='lil',
-                           density=density) for _ in range(n_trials)]
+                           density=density, random_state=0)
+             for _ in range(n_trials)]
         z_gen = [sparse.random(n_atoms, n_times_valid, format='lil',
-                               density=density) for _ in range(n_trials)]
+                               density=density, random_state=0)
+                 for _ in range(n_trials)]
         z0 = z[0]
     else:
-        z = abs(np.random.randn(n_trials, n_atoms, n_times_valid))
-        z_gen = abs(np.random.randn(n_trials, n_atoms, n_times_valid))
+        z = abs(rng.randn(n_trials, n_atoms, n_times_valid))
+        z_gen = abs(rng.randn(n_trials, n_atoms, n_times_valid))
         z[z < 1] = 0
         z_gen[z_gen < 1] = 0
         z0 = z[0]
