@@ -1,5 +1,3 @@
-"""Convolutional dictionary learning"""
-
 # Authors: Mainak Jas <mainak.jas@telecom-paristech.fr>
 #          Tom Dupre La Tour <tom.duprelatour@telecom-paristech.fr>
 #          Umut Simsekli <umut.simsekli@telecom-paristech.fr>
@@ -48,7 +46,7 @@ def learn_d_z(X, n_atoms, n_times_atom, func_d=update_d_block, reg=0.1,
               solver_d_kwargs=dict(), solver_z_kwargs=dict(), ds_init=None,
               sample_weights=None, verbose=10, callback=None,
               stopping_pobj=None):
-    """Learn atoms and activations using Convolutional Sparse Coding.
+    """Univariate Convolutional Sparse Coding.
 
     Parameters
     ----------

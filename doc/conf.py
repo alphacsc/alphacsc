@@ -88,6 +88,9 @@ todo_include_todos = False
 # generate autosummary even if no references
 autosummary_generate = True
 
+# remove warnings: "toctree contains reference to nonexisting document"
+numpydoc_show_class_members = False
+
 # -- Options for HTML output ----------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for

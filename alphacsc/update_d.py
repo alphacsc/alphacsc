@@ -1,5 +1,3 @@
-"""Convolutional dictionary learning"""
-
 # Authors: Mainak Jas <mainak.jas@telecom-paristech.fr>
 #          Tom Dupre La Tour <tom.duprelatour@telecom-paristech.fr>
 #          Umut Simsekli <umut.simsekli@telecom-paristech.fr>

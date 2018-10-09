@@ -1,3 +1,8 @@
+# Authors: Mainak Jas <mainak.jas@telecom-paristech.fr>
+#          Tom Dupre La Tour <tom.duprelatour@telecom-paristech.fr>
+#          Umut Simsekli <umut.simsekli@telecom-paristech.fr>
+#          Alexandre Gramfort <alexandre.gramfort@inria.fr>
+#          Thomas Moreau <thomas.moreau@inria.fr>
 import itertools
 
 import numpy as np

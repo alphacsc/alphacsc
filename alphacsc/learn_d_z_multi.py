@@ -1,5 +1,3 @@
-"""Convolutional dictionary learning"""
-
 # Authors: Mainak Jas <mainak.jas@telecom-paristech.fr>
 #          Tom Dupre La Tour <tom.duprelatour@telecom-paristech.fr>
 #          Umut Simsekli <umut.simsekli@telecom-paristech.fr>
@@ -25,9 +23,8 @@ from .loss_and_gradient import compute_X_and_objective_multi
 
 
 def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
-                    lmbd_max='fixed', reg=0.1,
-                    loss='l2', loss_params=dict(gamma=.1, sakoe_chiba_band=10,
-                                                ordar=10),
+                    lmbd_max='fixed', reg=0.1, loss='l2',
+                    loss_params=dict(gamma=.1, sakoe_chiba_band=10, ordar=10),
                     rank1=True, uv_constraint='separate', eps=1e-10,
                     algorithm='batch', algorithm_params=dict(),
                     detrending=None, detrending_params=dict(),
@@ -38,7 +35,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
                     stopping_pobj=None, raise_on_increase=True,
                     verbose=10, callback=None, random_state=None, name="DL",
                     window=False):
-    """Learn atoms and activations using Convolutional Sparse Coding.
+    """Multivariate Convolutional Sparse Coding with optional rank-1 constraint
 
     Parameters
     ----------
@@ -82,18 +79,18 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         Dictionary learning algorithm.
     algorithm_params : dict
         Parameters for the global algorithm used to learn the dictionary:
-        alpha : float
+          alpha : float
             Forgetting factor for online learning. If set to 0, the learning is
             stochastic and each D-step is independent from the previous steps.
             When set to 1, each the previous values z_hat - computed with
             different dictionary - have the same weight as the current one.
             This factor should be large enough to ensure convergence but to
             large factor can lead to sub-optimal minima.
-        batch_selection : 'random' | 'cyclic'
+          batch_selection : 'random' | 'cyclic'
             The batch selection strategy for online learning. The batch are
             either selected randomly among all samples (without replacement) or
             in a cyclic way.
-        batch_size : int in [1, n_trials]
+          batch_size : int in [1, n_trials]
             Size of the batch used in online learning. Increasing it
             regularizes the dictionary learning as there is less variance for
             the successive estimates. But it also increases the computational
@@ -109,7 +106,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         'alternate' | 'alternate_adaptive' (default) | 'joint'
     solver_d_kwargs : dict
         Additional keyword arguments to provide to update_d
-    D_init : str or array, shape (n_atoms, n_channels + n_times_atoms) or
+    D_init : str or array, shape (n_atoms, n_channels + n_times_atoms) or \
                            shape (n_atoms, n_channels, n_times_atom)
         The initial atoms or an initialization scheme in {'kmeans' | 'ssa' |
         'chunks' | 'random'}.
