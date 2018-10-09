@@ -102,7 +102,7 @@ html_theme_options = {
     'navbar_pagenav': False,
     'source_link_position': "",
     'navbar_links': [
-        ("Quickstart", "index"),
+        ("Models", "models"),
         ("Examples", "auto_examples/index"),
         ("API", "api"),
         ("GitHub", "https://github.com/alphacsc/alphacsc", True)
