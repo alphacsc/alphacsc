@@ -98,7 +98,7 @@ Cite our work
 If you use this code in your project, please consider citing our work:
 
 .. [1] Dupré La Tour, T., Moreau, T., Jas, M., & Gramfort, A. (2018).
-	`Multivariate Convolutional Sparse Coding for Electromagnetic Brain Signals.
+	`Multivariate Convolutional Sparse Coding for Electromagnetic Brain Signals
 	<https://arxiv.org/abs/1805.09654v2>`_. Advances in Neural Information
 	Processing Systems (NIPS).
 

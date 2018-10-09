@@ -8,8 +8,8 @@ It includes a number of different models:
 
 1. univariate CSC
 2. multivariate CSC
-3. multivariate CSC with a rank-1 constraint
-4. univariate CSC with an alpha-stable distribution
+3. multivariate CSC with a rank-1 constraint [1]_
+4. univariate CSC with an alpha-stable distribution [2]_
 
 1. Univariate CSC
 -----------------
@@ -90,7 +90,7 @@ Cite our work
 If you use this code in your project, please consider citing our work:
 
 .. [1] Dupré La Tour, T., Moreau, T., Jas, M., & Gramfort, A. (2018).
-	`Multivariate Convolutional Sparse Coding for Electromagnetic Brain Signals.
+	`Multivariate Convolutional Sparse Coding for Electromagnetic Brain Signals
 	<https://arxiv.org/abs/1805.09654v2>`_. Advances in Neural Information
 	Processing Systems (NIPS).
 

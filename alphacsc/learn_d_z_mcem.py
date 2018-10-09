@@ -16,7 +16,7 @@ def learn_d_z_weighted(X, n_atoms, n_times_atom, func_d=update_d_block,
                        n_iter_optim=10, n_iter_mcmc=10, n_burnin_mcmc=0,
                        random_state=None, n_jobs=1, solver_z='l-bfgs',
                        solver_d_kwargs=dict(), solver_z_kwargs=dict(),
-                       ds_init=None, verbose=10, callback=None):
+                       ds_init=None, verbose=0, callback=None):
     """Univariate Convolutional Sparse Coding with an alpha-stable distribution
 
     Parameters
@@ -64,7 +64,7 @@ def learn_d_z_weighted(X, n_atoms, n_times_atom, func_d=update_d_block,
 
     Returns
     -------
-    d_hat : array, shape (n_atoms, n_times)
+    d_hat : array, shape (n_atoms, n_times_atom)
         The estimated atoms.
     z_hat : array, shape (n_atoms, n_trials, n_times - n_times_atom + 1)
         The sparse activation matrix.
@@ -75,12 +75,12 @@ def learn_d_z_weighted(X, n_atoms, n_times_atom, func_d=update_d_block,
     n_trials, n_times = X.shape
 
     if init_tau:
-        Phi = np.tile(np.std(X, axis=1)[:, None] ** 2, X.shape[1])
-        Tau = 1 / Phi
+        phi = np.tile(np.std(X, axis=1)[:, None] ** 2, X.shape[1])
+        tau = 1 / phi
     else:
         # assume gaussian to start with
-        Phi = np.full(shape=(n_trials, n_times), fill_value=2)
-        Tau = np.full(shape=(n_trials, n_times), fill_value=0.5)
+        phi = np.full(shape=(n_trials, n_times), fill_value=2)
+        tau = np.full(shape=(n_trials, n_times), fill_value=0.5)
 
     rng = check_random_state(random_state)
     d_hat = ds_init
@@ -90,18 +90,18 @@ def learn_d_z_weighted(X, n_atoms, n_times_atom, func_d=update_d_block,
         # Optimize d and z wrt the new weights
         pobj, times, d_hat, z_hat = learn_d_z(
             X, n_atoms, n_times_atom, func_d, reg=reg, n_iter=n_iter_optim,
-            random_state=rng, sample_weights=2 * Tau, ds_init=d_hat,
+            random_state=rng, sample_weights=2 * tau, ds_init=d_hat,
             solver_d_kwargs=solver_d_kwargs, solver_z_kwargs=solver_z_kwargs,
             verbose=verbose, solver_z=solver_z, n_jobs=n_jobs,
             callback=callback)
 
         # Estimate the expectation via MCMC
         X_hat = construct_X(z_hat, d_hat)
-        Phi, Tau, loglk_mcmc = estimate_phi_mh(
-            X, X_hat, alpha, Phi, n_iter_mcmc, n_burnin_mcmc, random_state=rng,
+        phi, tau, loglk_mcmc = estimate_phi_mh(
+            X, X_hat, alpha, phi, n_iter_mcmc, n_burnin_mcmc, random_state=rng,
             return_loglk=True, verbose=verbose)
 
         if verbose > 0:
             print("Global Iter: %d\t" % ii)
 
-    return d_hat, z_hat, Tau
+    return d_hat, z_hat, tau
