@@ -122,7 +122,8 @@ def update_uv(X, z, uv_hat0, constants=None, b_hat_0=None, debug=False,
             return compute_objective(D=uv, constants=constants)
         return compute_X_and_objective_multi(X, z, D_hat=uv, loss=loss,
                                              loss_params=loss_params,
-                                             feasible_evaluation=False)
+                                             feasible_evaluation=True,
+                                             uv_constraint=uv_constraint)
 
     if solver_d in ['joint', 'fista']:
         # use FISTA on joint [u, v], with an adaptive step size
@@ -174,15 +175,16 @@ def update_uv(X, z, uv_hat0, constants=None, b_hat_0=None, debug=False,
         pobj = []
         for jj in range(1):
             # ---------------- update u
-            if window:
-                v_hat *= tukey_window_
 
             def obj(u):
                 uv = np.c_[u, v_hat]
                 return objective(uv)
 
             def grad_u(u):
-                uv = np.c_[u, v_hat]
+                if window:
+                    uv = np.c_[u, v_hat * tukey_window_]
+                else:
+                    uv = np.c_[u, v_hat]
                 grad_d = gradient_d(uv, X=X, z=z, constants=constants,
                                     loss=loss, loss_params=loss_params)
                 return (grad_d * uv[:, None, n_channels:]).sum(axis=2)
@@ -198,8 +200,6 @@ def update_uv(X, z, uv_hat0, constants=None, b_hat_0=None, debug=False,
                                   adaptive_step_size=adaptive_step_size,
                                   verbose=verbose, debug=debug,
                                   name="Update u")
-            if window:
-                v_hat /= tukey_window_
             uv_hat = np.c_[u_hat, v_hat]
             if debug:
                 pobj.extend(pobj_u)
