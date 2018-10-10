@@ -268,7 +268,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
     times[0] += init_duration
 
     if verbose > 0:
-        print("[{}] Fit in {:.2}s".format(name, time.time() - start))
+        print("[%s] Fit in %.1fs" % (name, time.time() - start))
 
     return pobj, times, D_hat, z_hat, reg
 
