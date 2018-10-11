@@ -1,6 +1,7 @@
 import os
 import mne
 import numpy as np
+from copy import deepcopy
 from joblib import Memory
 from scipy.signal import tukey
 
@@ -92,7 +93,8 @@ def load_data(dataset="somato", n_splits=10, sfreq=None, epoch=None,
         X = X.reshape(n_channels, n_splits, n_times).swapaxes(0, 1)
         info = raw.info
 
-    # XXX: causes problems when saving EvokedArray
+    # Deep copy before modifying info to avoid issues when saving EvokedArray
+    info = deepcopy(info)
     info['event_id'] = event_id
     info['events'] = events
 

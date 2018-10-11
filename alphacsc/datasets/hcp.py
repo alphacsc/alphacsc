@@ -4,6 +4,7 @@ import hcp
 import mne
 import numpy as np
 from glob import glob
+from copy import deepcopy
 from joblib import Memory
 from hcp.io.file_mapping.file_mapping import kind_map
 
@@ -17,7 +18,7 @@ CONVERSION_MAP = {v: k for k, v in kind_map.items()}
 mem = Memory(location='.', verbose=0)
 
 
-def get_all_records(hcp_path):
+def get_all_records(hcp_path=HCP_DIR):
     """Make a dictionary with all HCP files in the directory hcp_path
 
     Parameters
@@ -70,13 +71,14 @@ def load_one_record(data_type, subject, run_index, sfreq=300, epoch=None,
     if sfreq is not None:
         raw.resample(sfreq=sfreq, n_pad='auto', n_jobs=n_jobs)
 
-    events = mne.find_events(raw, stim_channel='STI 014')
+    events = mne.find_events(raw)
     raw.pick_types(meg='grad', stim=False)
     events[:, 0] -= raw.first_samp
 
-    # XXX: causes problems when saving EvokedArray
-    info = raw.info
+    # Deep copy before modifying info to avoid issues when saving EvokedArray
+    info = deepcopy(raw.info)
     info['events'] = events
+    info['event_id'] = np.unique(events[:, 2])
 
     # Return the data
     return raw.get_data(), info
