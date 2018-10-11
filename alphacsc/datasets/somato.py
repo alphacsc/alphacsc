@@ -10,9 +10,8 @@ mem = Memory(location='.', verbose=0)
 
 @mem.cache(ignore=['n_jobs'])
 def load_data(dataset="somato", n_splits=10, sfreq=None, epoch=None,
-              filter_params=[2., None], n_jobs=1):
+              filter_params=[2., None], return_array=True, n_jobs=1):
     """Load and prepare the somato dataset for multiCSC
-
 
     Parameters
     ----------
@@ -30,6 +29,8 @@ def load_data(dataset="somato", n_splits=10, sfreq=None, epoch=None,
         in n_splits chunks.
     filter_params : tuple of length 2
         Boundaries of filtering, e.g. (2, None), (30, 40), (None, 40).
+    return_array : boolean
+        If True, return an NumPy array, instead of mne objects.
     n_jobs : int
         Number of jobs that can be used for preparing (filtering) the data.
 
@@ -70,10 +71,12 @@ def load_data(dataset="somato", n_splits=10, sfreq=None, epoch=None,
                             baseline=baseline, reject=dict(
                                 grad=4000e-13, eog=350e-6), preload=True)
         epochs.pick_types(meg='grad', eog=False)
+        info = epochs.info
         if sfreq is not None:
             epochs = epochs.resample(sfreq, npad='auto', n_jobs=n_jobs)
-        X = epochs.get_data()
-        info = epochs.info
+
+        if return_array:
+            X = epochs.get_data()
 
     else:
         raw.pick_types(meg='grad', eog=False, stim=True)
@@ -81,24 +84,30 @@ def load_data(dataset="somato", n_splits=10, sfreq=None, epoch=None,
         events = mne.pick_events(events, include=event_id)
         raw.pick_types(meg='grad', stim=False)
         events[:, 0] -= raw.first_samp
+        info = raw.info
 
         if sfreq is not None:
             raw, events = raw.resample(sfreq, events=events, npad='auto',
                                        n_jobs=n_jobs)
 
-        X = raw.get_data()
-        n_channels, n_times = X.shape
-        n_times = n_times // n_splits
-        X = X[:, :n_splits * n_times]
-        X = X.reshape(n_channels, n_splits, n_times).swapaxes(0, 1)
-        info = raw.info
+        if return_array:
+            X = raw.get_data()
+            n_channels, n_times = X.shape
+            n_times = n_times // n_splits
+            X = X[:, :n_splits * n_times]
+            X = X.reshape(n_channels, n_splits, n_times).swapaxes(0, 1)
 
     # Deep copy before modifying info to avoid issues when saving EvokedArray
     info = deepcopy(info)
     info['event_id'] = event_id
     info['events'] = events
 
-    n_splits, n_channels, n_times = X.shape
-    X *= tukey(n_times, alpha=0.1)[None, None, :]
-    X /= np.std(X)
-    return X, info
+    if return_array:
+        n_splits, n_channels, n_times = X.shape
+        X *= tukey(n_times, alpha=0.1)[None, None, :]
+        X /= np.std(X)
+        return X, info
+    elif epoch:
+        return epoch, info
+    else:
+        return raw, info
