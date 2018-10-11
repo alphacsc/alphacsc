@@ -69,10 +69,10 @@ def load_one_record(data_type, subject, run_index, sfreq=300, epoch=None,
 
     # Resample to the requested sfreq
     if sfreq is not None:
-        raw.resample(sfreq=sfreq, n_pad='auto', n_jobs=n_jobs)
+        raw.resample(sfreq=sfreq, n_jobs=n_jobs)
 
     events = mne.find_events(raw)
-    raw.pick_types(meg='grad', stim=False)
+    raw.pick_types(meg='mag', stim=False)
     events[:, 0] -= raw.first_samp
 
     # Deep copy before modifying info to avoid issues when saving EvokedArray
@@ -85,7 +85,8 @@ def load_one_record(data_type, subject, run_index, sfreq=300, epoch=None,
 
 
 def load_data(n_trials=10, data_type='rest', sfreq=150, epoch=None,
-              filter_params=[5., None], n_jobs=1, random_state=None):
+              filter_params=[5., None], equalize="zeropad", n_jobs=1,
+              random_state=None):
     """Load and prepare the HCP dataset for multiCSC
 
 
@@ -125,13 +126,34 @@ def load_data(n_trials=10, data_type='rest', sfreq=150, epoch=None,
     db = get_all_records()
     db = db[data_type]
 
-    X, info = [], []
+    X, info, n_times = [], [], []
     subjects = rng.choice(list(db.keys()), size=n_trials)
     for subject in subjects:
-        run_index = rng.choice(db[subject], size=1)
+        run_index = rng.choice(db[subject], size=1)[0]
         X_k, info_k = load_one_record(
             data_type, subject, run_index, sfreq=sfreq, epoch=epoch,
             filter_params=filter_params, n_jobs=n_jobs)
         X += [X_k]
         info += [info_k]
-    return np.array(X), info
+    X = make_array(X, equalize=equalize)
+    X /= np.std(X)
+    return X, info
+
+
+def make_array(X, equalize='zeropad'):
+    """"""
+    x_shape = np.array([x.shape for x in X])
+    assert np.all(x_shape[..., :-1] == x_shape[0, ..., :-1])
+    if equalize == "crop":
+        L = x_shape.min(axis=0)[-1]
+        X = np.array([x[..., :L] for x in X])
+    elif equalize == "zeropad":
+        X_shape = x_shape.max(axis=0)
+        X_shape, L = X_shape[:-1], X_shape[-1]
+        X = np.array([np.concatenate(x, np.zeros(X_shape + (L - x.shape[-1])),
+                                     axis=-1) for x in X])
+    else:
+        raise ValueError("The equalize '{}' is not valid. It should be in "
+                         "{'crop', 'zeropad'}".format(strat))
+
+    return X
