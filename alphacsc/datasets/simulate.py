@@ -14,9 +14,9 @@ mem = Memory(location='.', verbose=0)
 
 
 @mem.cache()
-def load_data(n_trials=40, n_channels=1, T=4, sigma=.05, sfreq=300,
+def load_data(n_trials=40, n_channels=1, n_times=6, sigma=.05, sfreq=300,
               f_noise=True, random_state=None, n_jobs=4):
-    """Simulate data following the convolutional model
+    """Simulate data with 10Hz mu-wave and 10Hz oscillations.
 
     Parameters
     ----------
@@ -24,7 +24,7 @@ def load_data(n_trials=40, n_channels=1, T=4, sigma=.05, sfreq=300,
         Number of simulated signals
     n_channels : int
         Number of channels in the signals
-    T : float
+    n_times : float
         Length of the generated signals, in seconds. The generated signal
         will have length n_times * sfreq
     sigma : float
@@ -33,26 +33,30 @@ def load_data(n_trials=40, n_channels=1, T=4, sigma=.05, sfreq=300,
         Sampling rate for the signal
     f_noise : boolean
         If set to True, use MNE empty room data as a noise in the signal
-    random_state : int or None
-        State to seed the random number generator
     n_jobs : int
         Number of processes used to filter the f_noise
+    random_state : int | None
+        State to seed the random number generator
 
     Return
     ------
-    signal : (n_trials, n_channels, n_times)
+    X : ndarray, shape (n_trials, n_channels, n_times)
+        Simulated 10Hz sinusoidal signals with 10Hz mu-wave between 2sec and
+        [3, 3.5]sec. some random phases are applied to the different part of
+        the signal.
+    info : dict
+        Contains the topomap 'u' associated to each component of the signal.
     """
     rng = check_random_state(random_state)
 
     freq = 10  # Generate 10Hz mu-wave
     phase_shift = rng.rand(n_trials, 1) * sfreq * np.pi
-    t0 = 1.8 + .4 * rng.rand(n_trials, 1)
+    t0 = 2
     L = 1. + .5 * rng.rand(n_trials, 1)
-    t = (np.linspace(0., T, int(T * sfreq)))
+    t = (np.linspace(0., n_times, int(n_times * sfreq)))
     mask = (t[None] > t0) * (t[None] < t0 + L)
     t *= 2 * np.pi * freq
     t = t[None] + phase_shift
-    # plt.plot(t.T)
     noisy_phase = .5 * np.sin(t / (3 * np.sqrt(2)))
     phi_t = t + noisy_phase
     signal = np.sin(phi_t + np.cos(phi_t) * mask)
@@ -65,7 +69,7 @@ def load_data(n_trials=40, n_channels=1, T=4, sigma=.05, sfreq=300,
 
     # signal += sigma * rng.randn(*signal.shape)
 
-    # generate noise
+    # generate noise from empty room noise inthe mne.sample dataset
     if f_noise:
         data_path = os.path.join(mne.datasets.sample.data_path(), 'MEG',
                                  'sample')
@@ -81,7 +85,7 @@ def load_data(n_trials=40, n_channels=1, T=4, sigma=.05, sfreq=300,
         max_channels, T_max = X.shape
 
         channels = rng.choice(max_channels, n_channels)
-        L_sig = int(T * sfreq)
+        L_sig = int(n_times * sfreq)
         for i in range(n_trials):
             t = rng.choice(T_max - L_sig)
             signal[i] += sigma * X[channels, t:t + L_sig]

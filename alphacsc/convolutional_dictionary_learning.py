@@ -26,7 +26,7 @@ DOC_FMT = """{desc}
     loss : {{ 'l2' | 'dtw' | 'whitening' }}
         Loss for the data-fit term. Either the norm l2 or the soft-DTW.
     loss_params : dict
-        Parameters of the loss
+        Parameters of the loss.
     rank1 : boolean
         If set to True, learn rank 1 dictionary atoms.
     window : boolean
@@ -46,28 +46,28 @@ DOC_FMT = """{desc}
         Stopping criterion. If the cost descent after a uv and a z update is
         smaller than eps, return.
     reg : float
-        The regularization parameter
+        The regularization parameter.
     lmbd_max : 'fixed' | 'scaled' | 'per_atom' | 'shared'
         If not fixed, adapt the regularization rate as a ratio of lambda_max:
 
         - :code:`'scaled'`: the regularization parameter is fixed as a ratio of
           its maximal value at init *i.e.*
-          :math:`\lambda` = reg * lmbd_max(uv_init)
+          :math:`\lambda` = reg * lmbd_max(uv_init).
         - :code:`'shared'`: the regularization parameter is set at each
           iteration as a ratio of its maximal value for the current dictionary
-          estimate *i.e.* :math:`\lambda` = reg * lmbd_max(uv_hat)
+          estimate *i.e.* :math:`\lambda` = reg * lmbd_max(uv_hat).
         - :code:`'per_atom'`: the regularization parameter is set per atom and
           at each iteration as a ratio of its maximal value for this atom
-          *i.e.* :math:`\lambda[k]` = reg * lmbd_max(uv_hat[k])
+          *i.e.* :math:`\lambda[k]` = reg * lmbd_max(uv_hat[k]).
 
 
     Z-step parameters
 
     solver_z : str
         The solver to use for the z update. Options are
-        'l_bfgs' (default) | "lgcd"
+        {{'l_bfgs' (default) | 'lgcd'}}.
     solver_z_kwargs : dict
-        Additional keyword arguments to pass to update_z_multi
+        Additional keyword arguments to pass to update_z_multi.
     use_sparse_z : boolean
         Use sparse lil_matrices to store the activations.
     unbiased_z_hat : boolean
@@ -100,9 +100,9 @@ DOC_FMT = """{desc}
         A callback function called at the end of each loop of the
         coordinate descent.
     random_state : int | None
-        The random state.
+        State to seed the random number generator.
     raise_on_increase : boolean
-        Raise an error if the objective function increase
+        Raise an error if the objective function increase.
 
     """
 
@@ -113,7 +113,7 @@ DEFAULT = dict(
     algorithm : {'batch' | 'greedy' | 'online'}
         Dictionary learning algorithm.
     algorithm_params : dict
-        parameter of the global algorithm"""
+        parameter of the global algorithm."""
 )
 
 

@@ -8,29 +8,29 @@ mem = Memory(location='.', verbose=0)
 
 
 @mem.cache(ignore=['n_jobs'])
-def load_data(sfreq=None, epoch=(-2, 4), n_jobs=1, filt=[2., None],
-              n_splits=10, return_epochs=False, dataset='somato'):
+def load_data(dataset="somato", n_splits=10, sfreq=None, epoch=None,
+              filter_params=[2., None], n_jobs=1):
     """Load and prepare the somato dataset for multiCSC
 
 
     Parameters
     ----------
-    sfreq: float
+    dataset : str in {'somato', 'sample'}
+        Dataset to load.
+    n_splits : int
+        Split the signal in n_split signals of same length before returning it.
+        If epoch is provided, the signal is instead splitted according to the
+        epochs and this option is not followed.
+    sfreq : float
         Sampling frequency of the signal. The data are resampled to match it.
     epoch : tuple or None
         If set to a tuple, extract epochs from the raw data, using
         t_min=epoch[0] and t_max=epoch[1]. Else, use the raw signal, divided
         in n_splits chunks.
+    filter_params : tuple of length 2
+        Boundaries of filtering, e.g. (2, None), (30, 40), (None, 40).
     n_jobs : int
         Number of jobs that can be used for preparing (filtering) the data.
-    filt : tuple of length 2
-        Boundaries of filtering, e.g. (2, None), (30, 40), (None, 40).
-    n_splits : int
-        Number of splits to split the signal into.
-    return_epochs : boolean
-        If True, return epochs instead of X and info
-    dataset : str in {'somato', 'sample'}
-        Dataset to load.
 
     Returns
     -------
@@ -55,7 +55,7 @@ def load_data(sfreq=None, epoch=(-2, 4), n_jobs=1, filt=[2., None],
         event_id = [1, 2, 3, 4]
     else:
         raise ValueError('Unknown parameter dataset=%s.' % (dataset, ))
-    raw.filter(*filt, n_jobs=n_jobs)
+    raw.filter(*filter_params, n_jobs=n_jobs)
 
     if epoch:
         t_min, t_max = epoch
@@ -73,8 +73,6 @@ def load_data(sfreq=None, epoch=(-2, 4), n_jobs=1, filt=[2., None],
             epochs = epochs.resample(sfreq, npad='auto', n_jobs=n_jobs)
         X = epochs.get_data()
         info = epochs.info
-        if return_epochs:
-            return epochs
 
     else:
         raw.pick_types(meg='grad', eog=False, stim=True)
@@ -93,9 +91,6 @@ def load_data(sfreq=None, epoch=(-2, 4), n_jobs=1, filt=[2., None],
         X = X[:, :n_splits * n_times]
         X = X.reshape(n_channels, n_splits, n_times).swapaxes(0, 1)
         info = raw.info
-        if return_epochs:
-            raise ValueError('return_epochs=True is not allowed with '
-                             'epochs=False')
 
     # XXX: causes problems when saving EvokedArray
     info['event_id'] = event_id
