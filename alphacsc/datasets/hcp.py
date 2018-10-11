@@ -122,19 +122,24 @@ def load_data(n_trials=10, data_type='rest', sfreq=150, epoch=None,
         raise ValueError("epoch != None is not valid with resting-state data.")
 
     rng = check_random_state(random_state)
+    mne.set_log_level(30)
 
     db = get_all_records()
     db = db[data_type]
 
     X, info = [], []
     subjects = rng.choice(list(db.keys()), size=n_trials)
-    for subject in subjects:
+    for i, subject in enumerate(subjects):
+        print("\rLoading HCP subjects: {:7.2%}".format(i / n_trials),
+              end='', flush=True)
         run_index = rng.choice(db[subject], size=1)[0]
         X_k, info_k = load_one_record(
             data_type, subject, run_index, sfreq=sfreq, epoch=epoch,
             filter_params=filter_params, n_jobs=n_jobs)
         X += [X_k]
         info += [info_k]
+
+    print("\rLoading HCP subjects: done   ")
     X = make_array(X, equalize=equalize)
     X /= np.std(X)
     return X, info
@@ -148,9 +153,9 @@ def make_array(X, equalize='zeropad'):
         L = x_shape.min(axis=0)[-1]
         X = np.array([x[..., :L] for x in X])
     elif equalize == "zeropad":
-        X_shape = x_shape.max(axis=0)
+        X_shape = tuple(x_shape.max(axis=0))
         X_shape, L = X_shape[:-1], X_shape[-1]
-        X = np.array([np.concatenate(x, np.zeros(X_shape + (L - x.shape[-1])),
+        X = np.array([np.concatenate([x, np.zeros(X_shape + (L - x.shape[-1],))],
                                      axis=-1) for x in X])
     else:
         raise ValueError("The equalize '{}' is not valid. It should be in "
