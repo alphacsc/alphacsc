@@ -126,7 +126,7 @@ def load_data(n_trials=10, data_type='rest', sfreq=150, epoch=None,
     db = get_all_records()
     db = db[data_type]
 
-    X, info, n_times = [], [], []
+    X, info = [], []
     subjects = rng.choice(list(db.keys()), size=n_trials)
     for subject in subjects:
         run_index = rng.choice(db[subject], size=1)[0]
@@ -154,6 +154,6 @@ def make_array(X, equalize='zeropad'):
                                      axis=-1) for x in X])
     else:
         raise ValueError("The equalize '{}' is not valid. It should be in "
-                         "{'crop', 'zeropad'}".format(strat))
+                         "{'crop', 'zeropad'}".format(equalize))
 
     return X
