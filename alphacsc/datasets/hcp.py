@@ -34,7 +34,7 @@ def get_all_records(hcp_path):
 
     """
     # List all files with unprocesses
-    pattern = os.path.join(hcp_path, "*/unprocessed/MEG/*")
+    pattern = os.path.join(hcp_path, "*/unprocessed/MEG/*/4D/config")
     list_files = glob(pattern)
     db = {}
     pattern = pattern.replace("*", "(.*)")
