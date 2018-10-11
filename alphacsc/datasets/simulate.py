@@ -10,7 +10,7 @@ except ValueError:
     from alphacsc.utils import check_random_state
 
 
-mem = Memory(cachedir='.', verbose=0)
+mem = Memory(location='.', verbose=0)
 
 
 @mem.cache()

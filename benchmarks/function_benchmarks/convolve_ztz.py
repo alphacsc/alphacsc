@@ -8,7 +8,7 @@ from scipy.stats.mstats import gmean
 
 from alphacsc.utils.compat import numba, jit
 
-memory = Memory(cachedir='', verbose=0)
+memory = Memory(location='', verbose=0)
 
 
 @jit((numba.float64[:, :, :], numba.float64[:, :]), cache=True)

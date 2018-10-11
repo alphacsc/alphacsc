@@ -4,7 +4,7 @@ import numpy as np
 from joblib import Memory
 from scipy.signal import tukey
 
-mem = Memory(cachedir='.', verbose=0)
+mem = Memory(location='.', verbose=0)
 
 
 @mem.cache(ignore=['n_jobs'])

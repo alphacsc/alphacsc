@@ -154,7 +154,7 @@ if __name__ == "__main__":
 
     # Use the caching utilities from joblib to same intermediate results and
     # avoid loosing computations when the interpreter crashes.
-    mem = Memory(cachedir='.', verbose=VERBOSE)
+    mem = Memory(location='.', verbose=VERBOSE)
     cached_run_one = mem.cache(func=run_one)
     delayed_run_one = delayed(cached_run_one)
 

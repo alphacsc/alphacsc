@@ -10,7 +10,7 @@ from scipy.stats.mstats import gmean
 
 from numba import jit
 
-memory = Memory(cachedir='', verbose=0)
+memory = Memory(location='', verbose=0)
 
 
 def scipy_fftconvolve(ztz, D):

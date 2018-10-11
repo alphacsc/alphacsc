@@ -11,7 +11,7 @@ from alphacsc.utils.compat import numba, jit
 from alphacsc.cython import _fast_compute_ztz_lil
 from alphacsc.cython import _fast_compute_ztz_csr
 
-memory = Memory(cachedir='', verbose=0)
+memory = Memory(location='', verbose=0)
 
 
 def naive_sum(z, n_times_atom):

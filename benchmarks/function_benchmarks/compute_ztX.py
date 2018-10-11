@@ -9,7 +9,7 @@ from scipy.stats.mstats import gmean
 
 from alphacsc.cython import _fast_compute_ztX
 
-memory = Memory(cachedir='', verbose=0)
+memory = Memory(location='', verbose=0)
 
 
 def compute_ztX(z, X):
