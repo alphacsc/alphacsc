@@ -34,7 +34,8 @@ def test_update_z_multi_decrease_cost_function(loss, solver):
                                            loss=loss, loss_params=loss_params)
 
     z_hat, ztz, ztX = update_z_multi(X, uv, reg, z0=z, solver=solver,
-                                     loss=loss, loss_params=loss_params)
+                                     loss=loss, loss_params=loss_params,
+                                     return_ztz=True)
 
     loss_1 = compute_X_and_objective_multi(X=X, z_hat=z_hat, D_hat=uv,
                                            reg=reg, feasible_evaluation=False,
@@ -64,25 +65,25 @@ def test_support_least_square(solver_z):
                                            feasible_evaluation=False)
 
     # The loss after updating z should be lower
-    z_hat, ztz, ztX = update_z_multi(X, uv, reg, z0=z, solver=solver_z,
-                                     solver_kwargs=solver_kwargs)
+    z_hat, _, _ = update_z_multi(X, uv, reg, z0=z, solver=solver_z,
+                                 solver_kwargs=solver_kwargs)
     loss_1 = compute_X_and_objective_multi(X, z_hat=z_hat, D_hat=uv, reg=0,
                                            feasible_evaluation=False)
     assert loss_1 < loss_0
 
     # Here we recompute z on the support of z_hat, with reg=0
-    z_hat_2, ztz, ztX = update_z_multi(X, uv, reg=0, z0=z_hat, solver=solver_z,
-                                       solver_kwargs=solver_kwargs,
-                                       freeze_support=True)
+    z_hat_2, _, _ = update_z_multi(X, uv, reg=0, z0=z_hat, solver=solver_z,
+                                   solver_kwargs=solver_kwargs,
+                                   freeze_support=True)
     loss_2 = compute_X_and_objective_multi(X, z_hat_2, uv, 0,
                                            feasible_evaluation=False)
     assert loss_2 <= loss_1 or np.isclose(loss_1, loss_2)
 
     # Here we recompute z with reg=0, but with no support restriction
-    z_hat_3, ztz, ztX = update_z_multi(X, uv, reg=0, z0=z_hat_2,
-                                       solver=solver_z,
-                                       solver_kwargs=solver_kwargs,
-                                       freeze_support=True)
+    z_hat_3, _, _ = update_z_multi(X, uv, reg=0, z0=z_hat_2,
+                                   solver=solver_z,
+                                   solver_kwargs=solver_kwargs,
+                                   freeze_support=True)
     loss_3 = compute_X_and_objective_multi(X, z_hat_3, uv, 0,
                                            feasible_evaluation=False)
     assert loss_3 <= loss_2 or np.isclose(loss_3, loss_2)
@@ -128,7 +129,8 @@ def test_cd(use_sparse_lil):
                                      solver="lgcd",
                                      solver_kwargs={
                                          'max_iter': 5, 'tol': 1e-5
-                                     })
+                                     },
+                                     return_ztz=True)
     if use_sparse_lil and cython_code._CYTHON_AVAILABLE:
         from alphacsc.cython_code import _fast_compute_ztz, _fast_compute_ztX
         assert np.allclose(ztz, _fast_compute_ztz(z_hat, n_times_atom))

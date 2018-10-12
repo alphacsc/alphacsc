@@ -20,7 +20,7 @@ from .utils.compute_constants import compute_DtD, compute_ztz, compute_ztX
 
 def update_z_multi(X, D, reg, z0=None, solver='l-bfgs', solver_kwargs=dict(),
                    loss='l2', loss_params=dict(), freeze_support=False,
-                   timing=False, n_jobs=1, debug=False):
+                   return_ztz=False, timing=False, n_jobs=1, debug=False):
     """Update z using L-BFGS with positivity constraints
 
     Parameters
@@ -46,6 +46,8 @@ def update_z_multi(X, D, reg, z0=None, solver='l-bfgs', solver_kwargs=dict(),
         Parameters of the loss
     freeze_support : boolean
         If True, the support of z0 is frozen.
+    return_ztz : boolean
+        If True, returns the constants ztz and ztX, used to compute D-updates.
     timing : boolean
         If True, returns the cost function value at each iteration and the
         time taken by each iteration for each signal.
@@ -76,19 +78,19 @@ def update_z_multi(X, D, reg, z0=None, solver='l-bfgs', solver_kwargs=dict(),
     results = Parallel(n_jobs=n_jobs)(
         delayed_update_z(X[i], D, reg, z0[i], debug, solver, solver_kwargs,
                          freeze_support, loss, loss_params=loss_params,
-                         timing=timing)
+                         return_ztz=return_ztz, timing=timing)
         for i in np.arange(n_trials))
 
     # Post process the results to get separate objects
     z_hats, pobj, times = [], [], []
-    if loss == 'l2':
+    if loss == 'l2' and return_ztz:
         ztz = np.zeros((n_atoms, n_atoms, 2 * n_times_atom - 1))
         ztX = np.zeros((n_atoms, n_channels, n_times_atom))
     else:
         ztz, ztX = None, None
     for z_hat, ztz_i, ztX_i, pobj_i, times_i in results:
         z_hats.append(z_hat), pobj.append(pobj_i), times.append(times_i)
-        if loss == 'l2':
+        if loss == 'l2' and return_ztz:
             ztz += ztz_i
             ztX += ztX_i
 
@@ -119,7 +121,7 @@ class BoundGenerator(object):
 
 def _update_z_multi_idx(X_i, D, reg, z0_i, debug, solver='l-bfgs',
                         solver_kwargs=dict(), freeze_support=False, loss='l2',
-                        loss_params=dict(), timing=False):
+                        loss_params=dict(), return_ztz=False, timing=False):
     t_start = time.time()
     n_channels, n_times = X_i.shape
     if D.ndim == 2:
@@ -228,7 +230,7 @@ def _update_z_multi_idx(X_i, D, reg, z0_i, debug, solver='l-bfgs',
     if not is_lil(z_hat):
         z_hat = z_hat.reshape(n_atoms, n_times_valid)
 
-    if loss == 'l2':
+    if loss == 'l2' and return_ztz:
         if not is_lil(z_hat):
             ztz = compute_ztz(z_hat[None], n_times_atom)
             ztX = compute_ztX(z_hat[None], X_i[None])

@@ -184,7 +184,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         return update_z_multi(X, D_hat, reg=reg, z0=z_hat,
                               solver=solver_z, solver_kwargs=z_kwargs,
                               loss=loss, loss_params=loss_params,
-                              n_jobs=n_jobs)
+                              n_jobs=n_jobs, return_ztz=True)
 
     def obj_func(X, z_hat, D_hat, reg=None, return_X_hat=False):
         return compute_X_and_objective_multi(X, z_hat, D_hat,
