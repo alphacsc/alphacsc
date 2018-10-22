@@ -155,8 +155,10 @@ def make_array(X, equalize='zeropad'):
     elif equalize == "zeropad":
         X_shape = tuple(x_shape.max(axis=0))
         X_shape, L = X_shape[:-1], X_shape[-1]
-        X = np.array([np.concatenate([x, np.zeros(X_shape + (L - x.shape[-1],))],
-                                     axis=-1) for x in X])
+        X = np.array([
+            np.concatenate([x, np.zeros(X_shape + (L - x.shape[-1], ))],
+                           axis=-1) for x in X
+        ])
     else:
         raise ValueError("The equalize '{}' is not valid. It should be in "
                          "{'crop', 'zeropad'}".format(equalize))
