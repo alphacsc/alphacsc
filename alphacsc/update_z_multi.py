@@ -225,7 +225,7 @@ def _update_z_multi_idx(X_i, D, reg, z0_i, debug, solver='l-bfgs',
             z_hat = output
     else:
         raise ValueError("Unrecognized solver %s. Must be 'ista', 'fista',"
-                         " or 'l-bfgs'." % solver)
+                         " 'l-bfgs', or 'lgcd'." % solver)
 
     if not is_lil(z_hat):
         z_hat = z_hat.reshape(n_atoms, n_times_valid)
