@@ -5,6 +5,10 @@ from copy import deepcopy
 from joblib import Memory
 from scipy.signal import tukey
 
+
+MNE_DATA = mne.datasets.somato.data_path()
+
+
 mem = Memory(location='.', verbose=0)
 
 
@@ -41,13 +45,22 @@ def load_data(dataset="somato", n_splits=10, sfreq=None, epoch=None,
     info : dict
         MNE dictionary of information about recording settings.
     """
+
+    pick_types_epoch = dict(meg='grad', eeg=False, eog=True, stim=False)
+    pick_types_final = dict(meg='grad', eeg=False, eog=False, stim=False)
+
+    subjects_dir = os.path.join(MNE_DATA, "subjects")
     if dataset == 'somato':
-        data_path = mne.datasets.somato.data_path()
-        data_path = os.path.join(data_path, 'MEG', 'somato')
+        data_path = os.path.join(MNE_DATA, 'MEG', 'somato')
         file_name = os.path.join(data_path, 'sef_raw_sss.fif')
         raw = mne.io.read_raw_fif(file_name, preload=True)
         raw.notch_filter(np.arange(50, 101, 50), n_jobs=n_jobs)
         event_id = 1
+
+        # Dipole fit information
+        file_trans = os.path.join(data_path, "sef_raw_sss-trans.fif")
+        file_bem = os.path.join(subjects_dir, 'somato', 'bem', 'somato-5120-bem-sol.fif')
+
     elif dataset == 'sample':
         data_path = mne.datasets.sample.data_path()
         data_path = os.path.join(data_path, 'MEG', 'sample')
@@ -55,22 +68,38 @@ def load_data(dataset="somato", n_splits=10, sfreq=None, epoch=None,
         raw = mne.io.read_raw_fif(file_name, preload=True)
         raw.notch_filter(np.arange(60, 181, 60), n_jobs=n_jobs)
         event_id = [1, 2, 3, 4]
+
+        # Dipole fit information
+        cov = op.join(data_path, 'sample_audvis-cov.fif')
+        fname_trans = op.join(data_path, 'sample_audvis_raw-trans.fif')
+        fname_bem = op.join(subjects_dir, 'sample', 'bem', 'sample-5120-bem-sol.fif')
+
     else:
         raise ValueError('Unknown parameter dataset=%s.' % (dataset, ))
     raw.filter(*filter_params, n_jobs=n_jobs)
 
+    baseline = (None, 0)
+    events = mne.find_events(raw, stim_channel='STI 014')
+    events = mne.pick_events(events, include=event_id)
+
+    # compute the covariance matrix for somato
+    if dataset == "somato":
+        picks_cov = mne.pick_types(raw.info, **pick_types_epoch)
+        epochs_cov = mne.Epochs(raw, events, event_id, tmin=-4, tmax=0, picks=picks_cov,
+                                baseline=baseline, reject=dict(
+                                    grad=4000e-13, eog=350e-6), preload=True)
+        epochs_cov.pick_types(**pick_types_final)
+        cov = mne.compute_covariance(epochs_cov)
+
+
     if epoch:
         t_min, t_max = epoch
-        baseline = (None, 0)
-        events = mne.find_events(raw, stim_channel='STI 014')
-        events = mne.pick_events(events, include=event_id)
 
-        picks = mne.pick_types(raw.info, meg='grad', eeg=False, eog=True,
-                               stim=False)
+        picks = mne.pick_types(raw.info, **pick_types_epoch)
         epochs = mne.Epochs(raw, events, event_id, t_min, t_max, picks=picks,
                             baseline=baseline, reject=dict(
                                 grad=4000e-13, eog=350e-6), preload=True)
-        epochs.pick_types(meg='grad', eog=False)
+        epochs.pick_types(**pick_types_final)
         info = epochs.info
         if sfreq is not None:
             epochs = epochs.resample(sfreq, npad='auto', n_jobs=n_jobs)
@@ -79,11 +108,8 @@ def load_data(dataset="somato", n_splits=10, sfreq=None, epoch=None,
             X = epochs.get_data()
 
     else:
-        raw.pick_types(meg='grad', eog=False, stim=True)
-        events = mne.find_events(raw, stim_channel='STI 014')
-        events = mne.pick_events(events, include=event_id)
-        raw.pick_types(meg='grad', stim=False)
         events[:, 0] -= raw.first_samp
+        raw.pick_types(**pick_types_final)
         info = raw.info
 
         if sfreq is not None:
@@ -99,8 +125,14 @@ def load_data(dataset="somato", n_splits=10, sfreq=None, epoch=None,
 
     # Deep copy before modifying info to avoid issues when saving EvokedArray
     info = deepcopy(info)
-    info['event_id'] = event_id
     info['events'] = events
+    info['event_id'] = event_id
+    info['subject'] = dataset
+    info['subjects_dir'] = subjects_dir
+
+    info['cov'] = cov
+    info['file_bem'] = file_bem
+    info['file_trans'] = file_trans
 
     if return_array:
         n_splits, n_channels, n_times = X.shape

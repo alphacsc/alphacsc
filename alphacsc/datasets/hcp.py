@@ -57,6 +57,8 @@ def get_all_records(hcp_path=HCP_DIR):
 def load_one_record(data_type, subject, run_index, sfreq=300, epoch=None,
                     filter_params=[5., None], n_jobs=1):
     # Load the record and correct the sensor space to get proper visualization
+    print(f"subject={subject}, data_type={data_type}, run_index={run_index}, "
+          f"hcp_path={HCP_DIR}")
     raw = hcp.read_raw(subject, data_type=data_type, run_index=run_index,
                        hcp_path=HCP_DIR, verbose=0)
     raw.load_data()
