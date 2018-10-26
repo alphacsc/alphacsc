@@ -127,14 +127,15 @@ def load_data(n_trials=10, data_type='rest', sfreq=150, epoch=None,
     mne.set_log_level(30)
 
     db = get_all_records()
-    db = db[data_type]
+    records = [(subject, run_index)
+               for subject, runs in db[data_type].items
+               for run_index in runs]
 
     X, info = [], []
-    subjects = rng.choice(list(db.keys()), size=n_trials)
-    for i, subject in enumerate(subjects):
+    records = rng.permutation(records)[:n_trials]
+    for i, (subject, run_index) in enumerate(records):
         print("\rLoading HCP subjects: {:7.2%}".format(i / n_trials),
               end='', flush=True)
-        run_index = rng.choice(db[subject], size=1)[0]
         X_k, info_k = load_one_record(
             data_type, subject, run_index, sfreq=sfreq, epoch=epoch,
             filter_params=filter_params, n_jobs=n_jobs)
@@ -145,6 +146,59 @@ def load_data(n_trials=10, data_type='rest', sfreq=150, epoch=None,
     X = make_array(X, equalize=equalize)
     X /= np.std(X)
     return X, info
+
+
+def data_generator(n_trials=10, data_type='rest', sfreq=150, epoch=None,
+                   filter_params=[5., None], equalize="zeropad", n_jobs=1,
+                   random_state=None):
+    """Generator loading subjects from the HCP dataset for multiCSC
+
+
+    Parameters
+    ----------
+    n_trials : int
+        Number of recordings that are loaded.
+    data_type : str
+        Type of recordings loaded. Should be in {'rest', 'task_working_memory',
+        'task_motor', 'task_story_math', 'noise_empty_room', 'noise_subject'}.
+    sfreq : float
+        Sampling frequency of the signal. The data are resampled to match it.
+    epoch : tuple or None
+        If set to a tuple, extract epochs from the raw data, using
+        t_min=epoch[0] and t_max=epoch[1]. Else, use the raw signal, divided
+        in n_splits chunks.
+    filter_params : tuple
+        Frequency cut for a band pass filter applied to the signals. The
+        default is a high-pass filter with frequency cut at 2Hz.
+    n_jobs : int
+        Number of jobs that can be used for preparing (filtering) the data.
+    random_state : int | None
+        State to seed the random number generator.
+
+    Yields
+    ------
+    X : ndarray, shape (1, n_channels, n_times)
+        Signals loaded from HCP.
+    info : list of mne.Info
+        info related to this signal.
+    """
+    if data_type == "rest" and epoch is not None:
+        raise ValueError("epoch != None is not valid with resting-state data.")
+
+    rng = check_random_state(random_state)
+    mne.set_log_level(30)
+
+    db = get_all_records()
+    records = [(subject, run_index)
+               for subject, runs in db[data_type].items
+               for run_index in runs]
+
+    records = rng.permutation(records)[:n_trials]
+    for i, (subject, run_index) in enumerate(records):
+        X_k, info_k = load_one_record(
+            data_type, subject, run_index, sfreq=sfreq, epoch=epoch,
+            filter_params=filter_params, n_jobs=n_jobs)
+        yield X_k, info_k
 
 
 def make_array(X, equalize='zeropad'):
