@@ -136,11 +136,11 @@ def load_data(n_trials=10, data_type='rest', sfreq=150, epoch=None,
     for i, (subject, run_index) in enumerate(records):
         print("\rLoading HCP subjects: {:7.2%}".format(i / n_trials),
               end='', flush=True)
-        X_k, info_k = load_one_record(
+        X_n, info_n = load_one_record(
             data_type, subject, run_index, sfreq=sfreq, epoch=epoch,
             filter_params=filter_params, n_jobs=n_jobs)
-        X += [X_k]
-        info += [info_k]
+        X += [X_n]
+        info += [info_n]
 
     print("\rLoading HCP subjects: done   ")
     X = make_array(X, equalize=equalize)
@@ -195,10 +195,10 @@ def data_generator(n_trials=10, data_type='rest', sfreq=150, epoch=None,
 
     records = rng.permutation(records)[:n_trials]
     for i, (subject, run_index) in enumerate(records):
-        X_k, info_k = load_one_record(
+        X_n, info_n = load_one_record(
             data_type, subject, run_index, sfreq=sfreq, epoch=epoch,
             filter_params=filter_params, n_jobs=n_jobs)
-        yield X_k, info_k
+        yield X_n, info_n
 
 
 def make_array(X, equalize='zeropad'):

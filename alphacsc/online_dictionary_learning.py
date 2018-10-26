@@ -87,7 +87,7 @@ class OnlineCDL(ConvolutionalDictionaryLearning):
             warnings.warn("Regularization parameter `reg` is too large and all"
                           " the activations are zero. The atoms has not been "
                           "updated.", UserWarning)
-            return
+            return z_hat
 
         d_kwargs = dict(verbose=self.verbose, eps=1e-8)
         d_kwargs.update(self.solver_d_kwargs)
@@ -103,6 +103,8 @@ class OnlineCDL(ConvolutionalDictionaryLearning):
                 solver_d=self.solver_d, uv_constraint=self.uv_constraint,
                 loss=self.loss, loss_params=self.loss_params,
                 window=self.window, **d_kwargs)
+
+        return z_hat
 
     def _ensure_fit_init(self, X):
         """Initialization for p partial_fit."""
