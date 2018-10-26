@@ -3,6 +3,7 @@
 #          Umut Simsekli <umut.simsekli@telecom-paristech.fr>
 #          Alexandre Gramfort <alexandre.gramfort@inria.fr>
 #          Thomas Moreau <thomas.moreau@inria.fr>
+
 from sklearn.base import TransformerMixin
 from sklearn.exceptions import NotFittedError
 
@@ -316,50 +317,3 @@ class BatchCDL(ConvolutionalDictionaryLearning):
             algorithm='batch', lmbd_max=lmbd_max, raise_on_increase=True,
             loss='l2', use_sparse_z=False, n_jobs=n_jobs, verbose=verbose,
             callback=None, random_state=random_state, name="BatchCDL")
-
-
-class OnlineCDL(ConvolutionalDictionaryLearning):
-    _default = {}
-    _default.update(DEFAULT)
-    _default['desc'] = "Online algorithm for convolutional dictionary learning"
-    _default['algorithm'] = """    Online algorithm
-
-    alpha : float
-        Forgetting factor for online learning. If set to 0, the learning is
-        stochastic and each D-step is independent from the previous steps.
-        When set to 1, each the previous values z_hat - computed with different
-        dictionary - have the same weight as the current one. This factor
-        should be large enough to ensure convergence but to large factor can
-        lead to sub-optimal minima.
-    batch_selection : 'random' | 'cyclic'
-        The batch selection strategy for online learning. The batch are either
-        selected randomly among all samples (without replacement) or in a
-        cyclic way.
-    batch_size : int in [1, n_trials]
-        Size of the batch used in online learning. Increasing it regularizes
-        the dictionary learning as there is less variance for the successive
-        estimates. But it also increases the computational cost as more coding
-        signals z_hat must be estimate at each iteration.
-    """
-    __doc__ = DOC_FMT.format(**_default)
-
-    def __init__(self, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
-                 solver_z='lgcd', solver_z_kwargs={}, unbiased_z_hat=False,
-                 solver_d='alternate_adaptive', solver_d_kwargs={},
-                 rank1=True, window=False, uv_constraint='separate',
-                 lmbd_max='scaled', eps=1e-10, D_init=None, D_init_params={},
-                 alpha=.8, batch_size=1, batch_selection='random',
-                 verbose=10, random_state=None):
-        super().__init__(
-            n_atoms, n_times_atom, reg=reg, n_iter=n_iter,
-            solver_z=solver_z, solver_z_kwargs=solver_z_kwargs,
-            rank1=rank1, window=window, uv_constraint=uv_constraint,
-            unbiased_z_hat=unbiased_z_hat,
-            solver_d=solver_d, solver_d_kwargs=solver_d_kwargs,
-            eps=eps, D_init=D_init, D_init_params=D_init_params,
-            algorithm_params=dict(alpha=alpha, batch_size=batch_size,
-                                  batch_selection=batch_selection),
-            n_jobs=n_jobs, random_state=random_state, algorithm='online',
-            lmbd_max=lmbd_max, raise_on_increase=False, loss='l2',
-            callback=None, use_sparse_z=False, verbose=verbose,
-            name="OnlineCDL")

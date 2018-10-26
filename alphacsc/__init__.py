@@ -4,7 +4,8 @@ from .learn_d_z_mcem import learn_d_z_weighted
 from .learn_d_z_multi import learn_d_z_multi
 from .utils import construct_X, check_random_state
 
-from .convolutional_dictionary_learning import BatchCDL, OnlineCDL
+from .online_dictionary_learning import OnlineCDL
+from .convolutional_dictionary_learning import BatchCDL
 
 __all__ = [
     "BatchCDL",
