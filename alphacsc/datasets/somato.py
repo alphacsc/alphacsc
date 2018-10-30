@@ -1,7 +1,8 @@
-import os
+from os.path import join
+from copy import deepcopy
+
 import mne
 import numpy as np
-from copy import deepcopy
 from joblib import Memory
 from scipy.signal import tukey
 
@@ -49,30 +50,32 @@ def load_data(dataset="somato", n_splits=10, sfreq=None, epoch=None,
     pick_types_epoch = dict(meg='grad', eeg=False, eog=True, stim=False)
     pick_types_final = dict(meg='grad', eeg=False, eog=False, stim=False)
 
-    subjects_dir = os.path.join(MNE_DATA, "subjects")
+    subjects_dir = join(MNE_DATA, "subjects")
     if dataset == 'somato':
-        data_path = os.path.join(MNE_DATA, 'MEG', 'somato')
-        file_name = os.path.join(data_path, 'sef_raw_sss.fif')
+        data_path = join(MNE_DATA, 'MEG', 'somato')
+        file_name = join(data_path, 'sef_raw_sss.fif')
         raw = mne.io.read_raw_fif(file_name, preload=True)
         raw.notch_filter(np.arange(50, 101, 50), n_jobs=n_jobs)
         event_id = 1
 
         # Dipole fit information
-        file_trans = os.path.join(data_path, "sef_raw_sss-trans.fif")
-        file_bem = os.path.join(subjects_dir, 'somato', 'bem', 'somato-5120-bem-sol.fif')
+        file_trans = join(data_path, "sef_raw_sss-trans.fif")
+        file_bem = join(subjects_dir, 'somato', 'bem',
+                        'somato-5120-bem-sol.fif')
 
     elif dataset == 'sample':
         data_path = mne.datasets.sample.data_path()
-        data_path = os.path.join(data_path, 'MEG', 'sample')
-        file_name = os.path.join(data_path, 'sample_audvis_raw.fif')
+        data_path = join(data_path, 'MEG', 'sample')
+        file_name = join(data_path, 'sample_audvis_raw.fif')
         raw = mne.io.read_raw_fif(file_name, preload=True)
         raw.notch_filter(np.arange(60, 181, 60), n_jobs=n_jobs)
         event_id = [1, 2, 3, 4]
 
         # Dipole fit information
-        cov = op.join(data_path, 'sample_audvis-cov.fif')
-        fname_trans = op.join(data_path, 'sample_audvis_raw-trans.fif')
-        fname_bem = op.join(subjects_dir, 'sample', 'bem', 'sample-5120-bem-sol.fif')
+        cov = join(data_path, 'sample_audvis-cov.fif')
+        file_trans = join(data_path, 'sample_audvis_raw-trans.fif')
+        file_bem = join(subjects_dir, 'sample', 'bem',
+                        'sample-5120-bem-sol.fif')
 
     else:
         raise ValueError('Unknown parameter dataset=%s.' % (dataset, ))
@@ -85,12 +88,12 @@ def load_data(dataset="somato", n_splits=10, sfreq=None, epoch=None,
     # compute the covariance matrix for somato
     if dataset == "somato":
         picks_cov = mne.pick_types(raw.info, **pick_types_epoch)
-        epochs_cov = mne.Epochs(raw, events, event_id, tmin=-4, tmax=0, picks=picks_cov,
-                                baseline=baseline, reject=dict(
-                                    grad=4000e-13, eog=350e-6), preload=True)
+        epochs_cov = mne.Epochs(raw, events, event_id, tmin=-4, tmax=0,
+                                picks=picks_cov, baseline=baseline,
+                                reject=dict(grad=4000e-13, eog=350e-6),
+                                preload=True)
         epochs_cov.pick_types(**pick_types_final)
         cov = mne.compute_covariance(epochs_cov)
-
 
     if epoch:
         t_min, t_max = epoch

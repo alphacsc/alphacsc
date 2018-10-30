@@ -39,7 +39,7 @@ def get_all_records(hcp_path=HCP_DIR):
     list_files = glob(pattern)
     db = {}
     pattern = pattern.replace("*", "(.*)")
-    pattern = pattern.replace("MEG/", "MEG/\d+-")
+    pattern = pattern.replace("MEG/", "MEG/\d+-")  # noqa
     for f_name in list_files:
         subject, data_type = re.match(pattern, f_name).groups()
         data_type = CONVERSION_MAP[data_type]

@@ -51,13 +51,13 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         If not fixed, adapt the regularization rate as a ratio of lambda_max:
           - 'scaled': the regularization parameter is fixed as a ratio of its
             maximal value at init __ie__
-                    reg_ = reg * lmbd_\max(uv_init)
+                    reg_ = reg * lmbd_max(uv_init)
           - 'shared': the regularization parameter is set at each iteration as
             a ratio of its maximal value for the current dictionary estimate
-            __ie__ reg_ = reg * lmbd_\max(uv_hat)
+            __ie__ reg_ = reg * lmbd_max(uv_hat)
           - 'per_atom': the regularization parameter is set per atom and at
             each iteration as a ratio of its maximal value for this atom __ie__
-                    reg_[k] = reg * lmbd_\max(uv_hat[k])
+                    reg_[k] = reg * lmbd_max(uv_hat[k])
     n_iter : int
         The number of coordinate-descent iterations.
     n_jobs : int

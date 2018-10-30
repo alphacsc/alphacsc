@@ -23,7 +23,7 @@ DEFAULT_CB = {
 PRINT_KWARGS = {
     'n_atoms': 'K = {}',
     'n_times_atom': 'L={}',
-    'reg': '$\lambda$={}',
+    'reg': r'$\lambda$={}',
     'solver_z': '{}'
 }
 

@@ -53,13 +53,13 @@ DOC_FMT = """{desc}
 
         - :code:`'scaled'`: the regularization parameter is fixed as a ratio of
           its maximal value at init *i.e.*
-          :math:`\lambda` = reg * lmbd_max(uv_init).
+          :math:`lambda` = reg * lmbd_max(uv_init).
         - :code:`'shared'`: the regularization parameter is set at each
           iteration as a ratio of its maximal value for the current dictionary
-          estimate *i.e.* :math:`\lambda` = reg * lmbd_max(uv_hat).
+          estimate *i.e.* :math:`lambda` = reg * lmbd_max(uv_hat).
         - :code:`'per_atom'`: the regularization parameter is set per atom and
           at each iteration as a ratio of its maximal value for this atom
-          *i.e.* :math:`\lambda[k]` = reg * lmbd_max(uv_hat[k]).
+          *i.e.* :math:`lambda[k]` = reg * lmbd_max(uv_hat[k]).
 
 
     Z-step parameters
