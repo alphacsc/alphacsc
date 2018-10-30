@@ -3,7 +3,8 @@ import numpy as np
 
 from alphacsc.utils import check_random_state
 from alphacsc.learn_d_z_multi import learn_d_z_multi
-from alphacsc.convolutional_dictionary_learning import BatchCDL, OnlineCDL
+from alphacsc.convolutional_dictionary_learning import BatchCDL
+from alphacsc.online_dictionary_learning import OnlineCDL
 from alphacsc.init_dict import init_dictionary
 
 
