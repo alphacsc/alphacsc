@@ -6,10 +6,6 @@ import numpy as np
 from joblib import Memory
 from scipy.signal import tukey
 
-
-MNE_DATA = mne.datasets.somato.data_path()
-
-
 mem = Memory(location='.', verbose=0)
 
 
@@ -50,30 +46,33 @@ def load_data(dataset="somato", n_splits=10, sfreq=None, epoch=None,
     pick_types_epoch = dict(meg='grad', eeg=False, eog=True, stim=False)
     pick_types_final = dict(meg='grad', eeg=False, eog=False, stim=False)
 
-    subjects_dir = join(MNE_DATA, "subjects")
     if dataset == 'somato':
-        data_path = join(MNE_DATA, 'MEG', 'somato')
-        file_name = join(data_path, 'sef_raw_sss.fif')
+        data_path = mne.datasets.somato.data_path()
+        subjects_dir = join(data_path, "subjects")
+        data_dir = join(data_path, 'MEG', 'somato')
+        file_name = join(data_dir, 'sef_raw_sss.fif')
         raw = mne.io.read_raw_fif(file_name, preload=True)
         raw.notch_filter(np.arange(50, 101, 50), n_jobs=n_jobs)
         event_id = 1
 
         # Dipole fit information
-        file_trans = join(data_path, "sef_raw_sss-trans.fif")
+        cov = None  # see below
+        file_trans = join(data_dir, "sef_raw_sss-trans.fif")
         file_bem = join(subjects_dir, 'somato', 'bem',
                         'somato-5120-bem-sol.fif')
 
     elif dataset == 'sample':
         data_path = mne.datasets.sample.data_path()
-        data_path = join(data_path, 'MEG', 'sample')
-        file_name = join(data_path, 'sample_audvis_raw.fif')
+        subjects_dir = join(data_path, "subjects")
+        data_dir = join(data_path, 'MEG', 'sample')
+        file_name = join(data_dir, 'sample_audvis_raw.fif')
         raw = mne.io.read_raw_fif(file_name, preload=True)
         raw.notch_filter(np.arange(60, 181, 60), n_jobs=n_jobs)
         event_id = [1, 2, 3, 4]
 
         # Dipole fit information
-        cov = join(data_path, 'sample_audvis-cov.fif')
-        file_trans = join(data_path, 'sample_audvis_raw-trans.fif')
+        cov = join(data_dir, 'sample_audvis-cov.fif')
+        file_trans = join(data_dir, 'sample_audvis_raw-trans.fif')
         file_bem = join(subjects_dir, 'sample', 'bem',
                         'sample-5120-bem-sol.fif')
 
