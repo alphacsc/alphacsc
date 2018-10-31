@@ -250,3 +250,17 @@ def tensordot_convolve(ztz, D):
         G[:, :, t] = np.tensordot(ztz[:, :, t:t + n_times_atom], D_revert,
                                   axes=([1, 2], [0, 2]))
     return G
+
+
+def sort_atoms_by_explained_variances(D_hat, z_hat, n_channels):
+    n_atoms = D_hat.shape[0]
+    assert z_hat.shape[1] == n_atoms
+    variances = np.zeros(n_atoms)
+    for kk in range(n_atoms):
+        variances[kk] = construct_X_multi(z_hat[:, kk:kk + 1],
+                                          D_hat[kk:kk + 1],
+                                          n_channels=n_channels).var()
+    order = np.argsort(variances)[::-1]
+    z_hat = z_hat[:, order, :]
+    D_hat = D_hat[order, ...]
+    return D_hat, z_hat

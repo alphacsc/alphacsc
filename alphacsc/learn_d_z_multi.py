@@ -12,14 +12,15 @@ import numpy as np
 from scipy import sparse
 
 from .utils import check_random_state
+from .utils.convolution import sort_atoms_by_explained_variances
+from .utils.dictionary import get_lambda_max
 from .utils.lil import is_list_of_lil
 from .utils.whitening import whitening
 from .cython_code import _assert_cython
-from .update_z_multi import update_z_multi
-from .utils.dictionary import get_lambda_max
-from .update_d_multi import update_uv, update_d
 from .init_dict import init_dictionary, get_max_error_dict
 from .loss_and_gradient import compute_X_and_objective_multi
+from .update_z_multi import update_z_multi
+from .update_d_multi import update_uv, update_d
 
 
 def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
@@ -34,7 +35,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
                     unbiased_z_hat=False, use_sparse_z=False,
                     stopping_pobj=None, raise_on_increase=True,
                     verbose=10, callback=None, random_state=None, name="DL",
-                    window=False):
+                    window=False, sort_atoms=False):
     """Multivariate Convolutional Sparse Coding with optional rank-1 constraint
 
     Parameters
@@ -127,7 +128,9 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
     raise_on_increase : boolean
         Raise an error if the objective function increase
     window : boolean
-        If True, re-parametrizes the atoms with a temporal Tukey window.
+        If True, re-parametrizes the atoms with a temporal Tukey window
+    sort_atoms : boolean
+        If True, the atoms are sorted by explained variances.
 
     Returns
     -------
@@ -253,6 +256,10 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         raise NotImplementedError(
             "Algorithm '{}' is not implemented to learn dictionary atoms."
             .format(algorithm))
+
+    if sort_atoms:
+        D_hat, z_hat = sort_atoms_by_explained_variances(
+            D_hat, z_hat, n_channels=n_channels)
 
     # recompute z_hat with no regularization and keeping the support fixed
     if unbiased_z_hat:

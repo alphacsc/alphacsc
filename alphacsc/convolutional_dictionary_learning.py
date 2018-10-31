@@ -37,6 +37,8 @@ DOC_FMT = """{desc}
 
         - :code:`'joint'`: the constraint is ||[u, v]||_2 <= 1
         - :code:`'separate'`: the constraint is ||u||_2 <= 1 and ||v||_2 <= 1
+    sort_atoms : boolean
+        If True, the atoms are sorted by explained variances.
 
 
     Global algorithm
@@ -133,7 +135,7 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
                  alpha=.8, batch_size=1, batch_selection='random',
                  use_sparse_z=False, unbiased_z_hat=False,
                  verbose=10, callback=None, random_state=None, name="_CDL",
-                 raise_on_increase=True):
+                 raise_on_increase=True, sort_atoms=False):
 
         # Problem Specs
         self.n_atoms = n_atoms
@@ -144,6 +146,7 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
         self.rank1 = rank1
         self.window = window
         self.uv_constraint = uv_constraint
+        self.sort_atoms = sort_atoms
 
         # Global algorithm
         self.n_iter = n_iter
@@ -192,7 +195,8 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
             use_sparse_z=self.use_sparse_z, unbiased_z_hat=self.unbiased_z_hat,
             verbose=self.verbose, callback=self.callback,
             random_state=self.random_state, n_jobs=self.n_jobs,
-            name=self.name, raise_on_increase=self.raise_on_increase)
+            name=self.name, raise_on_increase=self.raise_on_increase,
+            sort_atoms=self.sort_atoms)
 
         self._pobj, self._times, self._D_hat, self._z_hat, self.reg_ = res
         self.n_channels_ = X.shape[1]
@@ -328,12 +332,12 @@ class BatchCDL(ConvolutionalDictionaryLearning):
                  solver_d='alternate_adaptive', solver_d_kwargs={},
                  rank1=True, window=False, uv_constraint='separate',
                  lmbd_max='scaled', eps=1e-10, D_init=None, D_init_params={},
-                 verbose=10, random_state=None):
+                 verbose=10, random_state=None, sort_atoms=False):
         super().__init__(
             n_atoms, n_times_atom, reg=reg, n_iter=n_iter,
             solver_z=solver_z, solver_z_kwargs=solver_z_kwargs,
             rank1=rank1, window=window, uv_constraint=uv_constraint,
-            unbiased_z_hat=unbiased_z_hat,
+            unbiased_z_hat=unbiased_z_hat, sort_atoms=sort_atoms,
             solver_d=solver_d, solver_d_kwargs=solver_d_kwargs,
             eps=eps, D_init=D_init, D_init_params=D_init_params,
             algorithm='batch', lmbd_max=lmbd_max, raise_on_increase=True,
