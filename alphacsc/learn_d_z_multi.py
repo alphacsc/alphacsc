@@ -9,14 +9,12 @@ import time
 import sys
 
 import numpy as np
-from scipy import sparse
 
+from .utils import lil
 from .utils import check_random_state
 from .utils.convolution import sort_atoms_by_explained_variances
 from .utils.dictionary import get_lambda_max
-from .utils.lil import is_list_of_lil
 from .utils.whitening import whitening
-from .cython_code import _assert_cython
 from .init_dict import init_dictionary, get_max_error_dict
 from .loss_and_gradient import compute_X_and_objective_multi
 from .update_z_multi import update_z_multi
@@ -163,12 +161,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
     b_hat_0 = rng.randn(n_atoms * (n_channels + n_times_atom))
     init_duration = time.time() - start
 
-    if use_sparse_z:
-        _assert_cython()
-        z_hat = [sparse.lil_matrix((n_atoms, n_times_valid))
-                 for _ in range(n_trials)]
-    else:
-        z_hat = np.zeros((n_trials, n_atoms, n_times_valid))
+    z_hat = lil.init_zeros(use_sparse_z, n_trials, n_atoms, n_times_valid)
 
     z_kwargs = dict(verbose=verbose)
     z_kwargs.update(solver_z_kwargs)
@@ -224,34 +217,26 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
     end_iter_func = get_iteration_func(eps, stopping_pobj, callback, lmbd_max,
                                        name, verbose, raise_on_increase)
 
+    # common parameters
+    kwargs = dict(X=X, D_hat=D_hat, z_hat=z_hat, compute_z_func=compute_z_func,
+                  compute_d_func=compute_d_func, obj_func=obj_func,
+                  end_iter_func=end_iter_func, n_iter=n_iter, verbose=verbose,
+                  random_state=random_state, window=window, reg=reg,
+                  lmbd_max=lmbd_max, name=name, uv_constraint=uv_constraint)
+    kwargs.update(algorithm_params)
+
     if algorithm == 'batch':
-        pobj, times, D_hat, z_hat = _batch_learn(
-            X, D_hat, z_hat, compute_z_func, compute_d_func,
-            obj_func, end_iter_func, n_iter=n_iter,
-            verbose=verbose, random_state=random_state, window=window,
-            reg=reg, lmbd_max=lmbd_max, name=name, uv_constraint=uv_constraint,
-            **algorithm_params
-        )
+        pobj, times, D_hat, z_hat = _batch_learn(greedy=False, **kwargs)
     elif algorithm == "greedy":
-        raise NotImplementedError(
-            "Algorithm greedy is not implemented yet.")
+        pobj, times, D_hat, z_hat = _batch_learn(greedy=True, **kwargs)
     elif algorithm == "online":
-        pobj, times, D_hat, z_hat = _online_learn(
-            X, D_hat, z_hat, compute_z_func, compute_d_func, obj_func,
-            end_iter_func, n_iter=n_iter, verbose=verbose, window=window,
-            random_state=random_state, reg=reg, uv_constraint=uv_constraint,
-            lmbd_max=lmbd_max, name=name, **algorithm_params
-        )
+        pobj, times, D_hat, z_hat = _online_learn(**kwargs)
     elif algorithm == "stochastic":
         # For stochastic learning, set forgetting factor alpha of the
         # online algorithm to 0, making each step independent of previous
         # steps and set D-update max_iter to a low value (typically 1).
-        pobj, times, D_hat, z_hat = _online_learn(
-            X, D_hat, z_hat, compute_z_func, compute_d_func, obj_func,
-            end_iter_func, n_iter=n_iter, verbose=verbose, window=window,
-            random_state=random_state, reg=reg, uv_constraint=uv_constraint,
-            lmbd_max=lmbd_max, name=name, **algorithm_params
-        )
+        kwargs['alpha'] = 0
+        pobj, times, D_hat, z_hat = _online_learn(**kwargs)
     else:
         raise NotImplementedError(
             "Algorithm '{}' is not implemented to learn dictionary atoms."
@@ -282,7 +267,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
 
 def _batch_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
                  obj_func, end_iter_func, n_iter=100,
-                 lmbd_max='fixed', reg=None, verbose=0,
+                 lmbd_max='fixed', reg=None, verbose=0, greedy=False,
                  random_state=None, name="batch", uv_constraint='separate',
                  window=False):
 
@@ -292,6 +277,20 @@ def _batch_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
     constants = {}
     constants['n_channels'] = X.shape[1]
     constants['XtX'] = np.dot(X.ravel(), X.ravel())
+
+    if greedy:
+        n_iter_by_atom = 1
+        # remove all atoms
+        D_hat = D_hat[0:0]
+        # remove all activations
+        use_sparse_z = lil.is_list_of_lil(z_hat)
+        n_trials, n_atoms, n_times_valid = lil.get_z_shape(z_hat)
+        z_hat = lil.init_zeros(use_sparse_z, n_trials, 0, n_times_valid)
+
+        if n_iter < n_atoms:
+            raise ValueError('The greedy method needs at least %d to learn %d '
+                             'atoms. Got only %d. Please increase n_iter.'
+                             % (n_iter_by_atom * n_iter, n_atoms, n_iter))
 
     # monitor cost function
     times = [0]
@@ -304,6 +303,14 @@ def _batch_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
             sys.stdout.flush()
         if verbose > 1:
             print('[{}] CD iterations {} / {}'.format(name, ii, n_iter))
+
+        if greedy and ii % n_iter_by_atom == 0 and D_hat.shape[0] < n_atoms:
+            # add a new atom every n_iter_by_atom iterations
+            new_atom = get_max_error_dict(X, z_hat, D_hat,
+                                          uv_constraint=uv_constraint,
+                                          window=window)[0]
+            D_hat = np.concatenate([D_hat, new_atom[None]])
+            z_hat = lil.add_one_atom_in_z(z_hat)
 
         if lmbd_max not in ['fixed', 'scaled']:
             reg_ = reg * get_lambda_max(X, D_hat)
@@ -322,14 +329,7 @@ def _batch_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
         times.append(time.time() - start)
         pobj.append(obj_func(X, z_hat, D_hat, reg=reg_))
 
-        if is_list_of_lil(z_hat):
-            z_nnz = np.array([[len(d) for d in z.data] for z in z_hat]
-                             ).sum(axis=0)
-            z_size = len(z_hat) * np.prod(z_hat[0].shape)
-        else:
-            z_nnz = np.sum(z_hat != 0, axis=(0, 2))
-            z_size = z_hat.size
-
+        z_nnz, z_size = lil.get_nnz_and_size(z_hat)
         if verbose > 5:
             print("[{}] sparsity: {:.3e}".format(
                 name, z_nnz.sum() / z_size))
@@ -428,14 +428,7 @@ def _online_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
         times.append(time.time() - start)
         pobj.append(obj_func(X, z_hat, D_hat, reg=reg_))
 
-        if is_list_of_lil(z_hat):
-            z_nnz = np.array([[len(d) for d in z.data] for z in z_hat]
-                             ).sum(axis=0)
-            z_size = len(z_hat) * np.prod(z_hat[0].shape)
-        else:
-            z_nnz = np.sum(z_hat != 0, axis=(0, 2))
-            z_size = z_hat.size
-
+        z_nnz, z_size = lil.get_nnz_and_size(z_hat)
         if verbose > 5:
             print("[{}] sparsity: {:.3e}".format(
                 name, z_nnz.sum() / z_size))

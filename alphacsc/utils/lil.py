@@ -29,6 +29,44 @@ def is_lil(z):
     return sparse.isspmatrix_lil(z)
 
 
+def add_one_atom_in_z(z):
+    n_trials, n_atoms, n_times_valid = get_z_shape(z)
+
+    if is_list_of_lil(z):
+        def add_a_zero_line(zi_lil):
+            n_atoms, n_times_valid = zi_lil.shape
+            new_z = sparse.lil_matrix(np.zeros((1, n_times_valid)))
+            return sparse.vstack([zi_lil, new_z])
+
+        return [add_a_zero_line(zi_lil) for zi_lil in z]
+    else:
+        new_z = np.zeros((n_trials, 1, n_times_valid))
+        return np.concatenate([z, new_z], axis=1)
+
+
+def get_nnz_and_size(z_hat):
+    if is_list_of_lil(z_hat):
+        z_nnz = np.array([[len(d) for d in z.data] for z in z_hat]
+                         ).sum(axis=0)
+        z_size = len(z_hat) * np.prod(z_hat[0].shape)
+    else:
+        z_nnz = np.sum(z_hat != 0, axis=(0, 2))
+        z_size = z_hat.size
+    return z_nnz, z_size
+
+
+def init_zeros(use_sparse_z, n_trials, n_atoms, n_times_valid):
+    if use_sparse_z:
+        from ..cython_code import _assert_cython
+        _assert_cython()
+        z_hat = [sparse.lil_matrix((n_atoms, n_times_valid))
+                 for _ in range(n_trials)]
+    else:
+        z_hat = np.zeros((n_trials, n_atoms, n_times_valid))
+
+    return z_hat
+
+
 def scale_z_by_atom(z, scale, copy=True):
     """
     Parameters

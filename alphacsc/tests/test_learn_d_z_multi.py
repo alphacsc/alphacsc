@@ -3,7 +3,7 @@ import numpy as np
 
 from alphacsc.utils import check_random_state
 from alphacsc.learn_d_z_multi import learn_d_z_multi
-from alphacsc.convolutional_dictionary_learning import BatchCDL
+from alphacsc.convolutional_dictionary_learning import BatchCDL, GreedyCDL
 from alphacsc.online_dictionary_learning import OnlineCDL
 from alphacsc.init_dict import init_dictionary
 
@@ -91,7 +91,7 @@ def test_online_learning():
     assert np.allclose(pobj_0, pobj_1)
 
 
-@pytest.mark.parametrize('klass', [BatchCDL, OnlineCDL])
+@pytest.mark.parametrize('klass', [BatchCDL, OnlineCDL, GreedyCDL])
 def test_transformers(klass):
     # smoke test for transformer classes
     n_trials, n_channels, n_times = 2, 3, 100
