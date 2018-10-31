@@ -128,7 +128,7 @@ def load_data(n_trials=10, data_type='rest', sfreq=150, epoch=None,
 
     db = get_all_records()
     records = [(subject, run_index)
-               for subject, runs in db[data_type].items
+               for subject, runs in db[data_type].items()
                for run_index in runs]
 
     X, info = [], []
@@ -137,7 +137,7 @@ def load_data(n_trials=10, data_type='rest', sfreq=150, epoch=None,
         print("\rLoading HCP subjects: {:7.2%}".format(i / n_trials),
               end='', flush=True)
         X_n, info_n = load_one_record(
-            data_type, subject, run_index, sfreq=sfreq, epoch=epoch,
+            data_type, subject, int(run_index), sfreq=sfreq, epoch=epoch,
             filter_params=filter_params, n_jobs=n_jobs)
         X += [X_n]
         info += [info_n]
@@ -190,13 +190,13 @@ def data_generator(n_trials=10, data_type='rest', sfreq=150, epoch=None,
 
     db = get_all_records()
     records = [(subject, run_index)
-               for subject, runs in db[data_type].items
+               for subject, runs in db[data_type].items()
                for run_index in runs]
 
     records = rng.permutation(records)[:n_trials]
     for i, (subject, run_index) in enumerate(records):
         X_n, info_n = load_one_record(
-            data_type, subject, run_index, sfreq=sfreq, epoch=epoch,
+            data_type, subject, int(run_index), sfreq=sfreq, epoch=epoch,
             filter_params=filter_params, n_jobs=n_jobs)
         yield X_n, info_n
 

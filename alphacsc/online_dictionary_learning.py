@@ -109,6 +109,8 @@ class OnlineCDL(ConvolutionalDictionaryLearning):
     def _ensure_fit_init(self, X):
         """Initialization for p partial_fit."""
 
+        assert X.ndim == 3
+
         if hasattr(self, 'constants'):
             return
 
