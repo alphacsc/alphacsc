@@ -12,7 +12,7 @@ from sklearn.cluster import MiniBatchKMeans
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 
-from .utils.viz import COLORS
+from .viz.callback import COLORS
 from .utils import check_random_state
 from .other.kmc2 import custom_distances
 from .update_d_multi import prox_uv, prox_d
