@@ -6,6 +6,7 @@
 *.profile
 *.egg-info
 .coverage*
+!.coveragerc
 alphacsc/cython_code/*.c
 
 # Exps directories

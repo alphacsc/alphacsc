@@ -1,27 +1,13 @@
 import warnings
 import itertools
-import numpy as np
 from functools import partial
+
+import mne
+import numpy as np
 import matplotlib.pyplot as plt
 
-from .signal import make_epochs
-from .viz import COLORS, PRINT_KWARGS
-
-
-def _check_mne_and_info(info):
-    """Check that mne is installed and the the info parameter is a `mne.Info`
-    """
-    try:
-        import mne
-    except ImportError:
-        warnings.warn("mne is required to visualize the topomap of the "
-                      "atoms", UserWarning)
-        return False
-    if not isinstance(info, mne.Info):
-        warnings.warn("topomaps should only be used when `info` parameter "
-                      "is a subclass of `mne.Info`.", UserWarning)
-        return False
-    return True
+from .epoch import make_epochs
+from .callback import COLORS, PRINT_KWARGS
 
 
 def format_arg(arg):
@@ -45,9 +31,8 @@ def _plot_atom(Dk, info, ax, color, plot="atom"):
         t = np.arange(len(Dk) - n_channels) / sfreq
         ax.plot(t, Dk[n_channels:], c=color)
     elif plot == "topo":
-        # We can import mne here as we already checked that mne was installed
-        from mne.viz import plot_topomap
-        plot_topomap(Dk[:info['n_channels']], info, axes=ax, show=False)
+        mne.viz.plot_topomap(Dk[:info['n_channels']], info, axes=ax,
+                             show=False)
     elif plot == "psd":
         psd = np.abs(np.fft.rfft(Dk[info['n_channels']:])) ** 2
         frequencies = np.linspace(0, sfreq / 2.0, len(psd))
@@ -120,8 +105,11 @@ def _create_fig(n_cols, n_rows, figname, wrap_col=5, w_plot=5, h_plot=3):
 
 
 def plot_dictionary(data, info, dirname, name='D_hat', plot="atom"):
-    if plot == "topo" and not _check_mne_and_info(info):
-        return
+    if plot == "topo":
+        if not isinstance(info, mne.Info):
+            warnings.warn("topomaps should only be used when `info` parameter "
+                          "is a subclass of `mne.Info`.", UserWarning)
+            return
     n_cols = len(data[0][1][name])
     n_rows = len(data)
     figname = "{}_{}".format(name, plot)

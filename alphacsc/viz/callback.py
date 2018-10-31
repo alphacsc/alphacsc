@@ -1,15 +1,14 @@
 import itertools
-
 import copy as cp
-
 import os
-import mne
 import json
-from scipy import sparse
+import datetime
+
+import mne
 import numpy as np
 import matplotlib as mpl
-from datetime import datetime
 import matplotlib.pyplot as plt
+from scipy import sparse
 
 from .tools import get_calling_script, positive_hash
 
@@ -296,7 +295,7 @@ def get_callback_csc(csc_kwargs, config=DEFAULT_CB, info={}):
         the csc results.
     """
     csc_hash = positive_hash(json.dumps(csc_kwargs, sort_keys=True))
-    csc_time = datetime.now().strftime('%d_%m_%y_%Hh%M')
+    csc_time = datetime.datetime.now().strftime('%d_%m_%y_%Hh%M')
     csc_script = get_calling_script()
 
     csc_name = "{}_csc_{}".format(csc_time, csc_hash)
