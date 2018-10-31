@@ -198,6 +198,26 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
         self.n_channels_ = X.shape[1]
         return self
 
+    def fit_transform(self, X, y=None):
+        """Learn a convolutional dictionary and returns sparse codes.
+        """
+        self.fit(X)
+
+        z_hat = self._z_hat
+
+        if self.unbiased_z_hat:
+            if self.verbose > 0:
+                print("Refitting the activation to avoid amplitude bias...")
+            z_hat, _, _ = update_z_multi(
+                X, self._D_hat, z0=z_hat, n_jobs=self.n_jobs,
+                reg=0, freeze_support=True,
+                solver=self.solver_z, solver_kwargs=self.solver_z_kwargs,
+                loss=self.loss, loss_params=self.loss_params)
+            if self.verbose > 0:
+                print("done")
+
+        return z_hat
+
     def transform(self, X):
         """Returns sparse codes associated to the signals X for the dictionary.
         """
@@ -208,13 +228,15 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
             loss=self.loss, loss_params=self.loss_params)
 
         if self.unbiased_z_hat:
-            print("Refitting the activation to avoid amplitude bias...")
+            if self.verbose > 0:
+                print("Refitting the activation to avoid amplitude bias...")
             z_hat, _, _ = update_z_multi(
                 X, self._D_hat, z0=z_hat, n_jobs=self.n_jobs,
                 reg=0, freeze_support=True,
                 solver=self.solver_z, solver_kwargs=self.solver_z_kwargs,
                 loss=self.loss, loss_params=self.loss_params)
-            print("done")
+            if self.verbose > 0:
+                print("done")
         return z_hat
 
     def transform_inverse(self, z_hat):
