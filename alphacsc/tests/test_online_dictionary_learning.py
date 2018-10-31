@@ -7,7 +7,7 @@ from alphacsc.online_dictionary_learning import OnlineCDL
 
 @pytest.mark.parametrize('rank1', [True, False])
 @pytest.mark.parametrize('alpha', [.2, .8])
-def test_learn_d_z_multi(rank1, alpha):
+def test_online_partial_fit(rank1, alpha):
     # Ensure that partial fit reproduce the behavior of the online algorithm if
     # feed with the same batch size and order.
     n_trials, n_channels, n_times = 10, 3, 100
