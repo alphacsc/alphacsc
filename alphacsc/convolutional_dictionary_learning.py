@@ -192,7 +192,7 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
             solver_z=self.solver_z, solver_z_kwargs=self.solver_z_kwargs,
             solver_d=self.solver_d, solver_d_kwargs=self.solver_d_kwargs,
             D_init=self.D_init, D_init_params=self.D_init_params,
-            use_sparse_z=self.use_sparse_z, unbiased_z_hat=self.unbiased_z_hat,
+            use_sparse_z=self.use_sparse_z, unbiased_z_hat=False,
             verbose=self.verbose, callback=self.callback,
             random_state=self.random_state, n_jobs=self.n_jobs,
             name=self.name, raise_on_increase=self.raise_on_increase,
