@@ -11,12 +11,12 @@ from .update_d import update_d_block
 from .update_w import estimate_phi_mh
 
 
-def learn_d_z_weighted(X, n_atoms, n_times_atom, func_d=update_d_block,
-                       reg=0.1, alpha=1.9, n_iter_global=10, init_tau=False,
-                       n_iter_optim=10, n_iter_mcmc=10, n_burnin_mcmc=0,
-                       random_state=None, n_jobs=1, solver_z='l-bfgs',
-                       solver_d_kwargs=dict(), solver_z_kwargs=dict(),
-                       ds_init=None, verbose=0, callback=None):
+def learn_d_z_weighted(
+        X, n_atoms, n_times_atom, func_d=update_d_block, reg=0.1, alpha=1.9,
+        lmbd_max='fixed', n_iter_global=10, init_tau=False, n_iter_optim=10,
+        n_iter_mcmc=10, n_burnin_mcmc=0, random_state=None, n_jobs=1,
+        solver_z='l-bfgs', solver_d_kwargs=dict(), solver_z_kwargs=dict(),
+        ds_init=None, verbose=0, callback=None):
     """Univariate Convolutional Sparse Coding with an alpha-stable distribution
 
     Parameters
@@ -33,6 +33,17 @@ def learn_d_z_weighted(X, n_atoms, n_times_atom, func_d=update_d_block,
         The regularization parameter
     alpha : float in [0, 2[:
         Parameter of the alpha-stable noise distribution.
+    lmbd_max : 'fixed' | 'scaled' | 'per_atom' | 'shared'
+        If not fixed, adapt the regularization rate as a ratio of lambda_max:
+          - 'scaled': the regularization parameter is fixed as a ratio of its
+            maximal value at init __ie__
+                    reg_ = reg * lmbd_max(uv_init)
+          - 'shared': the regularization parameter is set at each iteration as
+            a ratio of its maximal value for the current dictionary estimate
+            __ie__ reg_ = reg * lmbd_max(uv_hat)
+          - 'per_atom': the regularization parameter is set per atom and at
+            each iteration as a ratio of its maximal value for this atom __ie__
+                    reg_[k] = reg * lmbd_max(uv_hat[k])
     n_iter_global : int
         The number of iteration of the Expectation-Maximisation outer loop.
     init_tau : boolean
@@ -89,11 +100,11 @@ def learn_d_z_weighted(X, n_atoms, n_times_atom, func_d=update_d_block,
 
         # Optimize d and z wrt the new weights
         pobj, times, d_hat, z_hat = learn_d_z(
-            X, n_atoms, n_times_atom, func_d, reg=reg, n_iter=n_iter_optim,
-            random_state=rng, sample_weights=2 * tau, ds_init=d_hat,
-            solver_d_kwargs=solver_d_kwargs, solver_z_kwargs=solver_z_kwargs,
-            verbose=verbose, solver_z=solver_z, n_jobs=n_jobs,
-            callback=callback)
+            X, n_atoms, n_times_atom, func_d, reg=reg, lmbd_max=lmbd_max,
+            n_iter=n_iter_optim, random_state=rng, sample_weights=2 * tau,
+            ds_init=d_hat, solver_d_kwargs=solver_d_kwargs,
+            solver_z_kwargs=solver_z_kwargs, verbose=verbose,
+            solver_z=solver_z, n_jobs=n_jobs, callback=callback)
 
         # Estimate the expectation via MCMC
         X_hat = construct_X(z_hat, d_hat)

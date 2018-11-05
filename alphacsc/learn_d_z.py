@@ -12,6 +12,7 @@ from scipy import linalg
 from joblib import Parallel
 
 from .utils import construct_X, check_random_state
+from .utils.dictionary import get_lambda_max
 from .update_z import update_z
 from .update_d import update_d_block
 
@@ -42,10 +43,10 @@ def compute_X_and_objective(X, z_hat, d_hat, reg, sample_weights=None,
 
 
 def learn_d_z(X, n_atoms, n_times_atom, func_d=update_d_block, reg=0.1,
-              n_iter=60, random_state=None, n_jobs=1, solver_z='l-bfgs',
-              solver_d_kwargs=dict(), solver_z_kwargs=dict(), ds_init=None,
-              sample_weights=None, verbose=10, callback=None,
-              stopping_pobj=None):
+              lmbd_max='fixed', n_iter=60, random_state=None, n_jobs=1,
+              solver_z='l-bfgs', solver_d_kwargs=dict(),
+              solver_z_kwargs=dict(), ds_init=None, sample_weights=None,
+              verbose=10, callback=None, stopping_pobj=None):
     """Univariate Convolutional Sparse Coding.
 
     Parameters
@@ -60,6 +61,17 @@ def learn_d_z(X, n_atoms, n_times_atom, func_d=update_d_block, reg=0.1,
         The function to update the atoms.
     reg : float
         The regularization parameter
+    lmbd_max : 'fixed' | 'scaled' | 'per_atom' | 'shared'
+        If not fixed, adapt the regularization rate as a ratio of lambda_max:
+          - 'scaled': the regularization parameter is fixed as a ratio of its
+            maximal value at init __ie__
+                    reg_ = reg * lmbd_max(uv_init)
+          - 'shared': the regularization parameter is set at each iteration as
+            a ratio of its maximal value for the current dictionary estimate
+            __ie__ reg_ = reg * lmbd_max(uv_hat)
+          - 'per_atom': the regularization parameter is set per atom and at
+            each iteration as a ratio of its maximal value for this atom __ie__
+                    reg_[k] = reg * lmbd_max(uv_hat[k])
     n_iter : int
         The number of coordinate-descent iterations.
     random_state : int | None
@@ -106,6 +118,11 @@ def learn_d_z(X, n_atoms, n_times_atom, func_d=update_d_block, reg=0.1,
     d_norm = np.linalg.norm(d_hat, axis=1)
     d_hat /= d_norm[:, None]
 
+    reg0 = reg
+    lambda_max = get_lambda_max(X[:, None, :], d_hat[:, None, :]).max()
+    if lmbd_max == "scaled":
+        reg = reg0 * lambda_max
+
     pobj = list()
     times = list()
 
@@ -129,10 +146,16 @@ def learn_d_z(X, n_atoms, n_times_atom, func_d=update_d_block, reg=0.1,
                 print('Coordinate descent loop %d / %d [n_jobs=%d]' %
                       (ii, n_iter, n_jobs))
 
+            if lmbd_max not in ['fixed', 'scaled']:
+                lambda_max = get_lambda_max(X[:, None, :], d_hat[:, None, :])
+                reg = reg0 * lambda_max
+                if lmbd_max == 'shared':
+                    reg = reg.max()
+
             start = time.time()
-            z_hat = update_z(X, d_hat, reg, z0=z_hat,
-                             parallel=parallel, solver=solver_z,
-                             b_hat_0=b_hat_0, solver_kwargs=solver_z_kwargs,
+            z_hat = update_z(X, d_hat, reg, z0=z_hat, parallel=parallel,
+                             solver=solver_z, b_hat_0=b_hat_0,
+                             solver_kwargs=solver_z_kwargs,
                              sample_weights=sample_weights)
             times.append(time.time() - start)
 
@@ -140,8 +163,8 @@ def learn_d_z(X, n_atoms, n_times_atom, func_d=update_d_block, reg=0.1,
             pobj.append(
                 compute_X_and_objective(X, z_hat, d_hat, reg, sample_weights))
             if verbose > 1:
-                print('[seed %s] Objective (z_hat) : %0.8f' %
-                      (random_state, pobj[-1]))
+                print('[seed %s] Objective (z_hat) : %0.8f' % (random_state,
+                                                               pobj[-1]))
 
             if len(z_hat.nonzero()[0]) == 0:
                 import warnings

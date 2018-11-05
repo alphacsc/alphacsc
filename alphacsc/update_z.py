@@ -41,8 +41,6 @@ def update_z(X, ds, reg, z0=None, debug=False, parallel=None,
         Parameters for the solver
     sample_weights: array, shape (n_trials, n_times)
         Weights applied on the cost function.
-    verbose : int
-        Verbosity level.
 
     Returns
     -------
