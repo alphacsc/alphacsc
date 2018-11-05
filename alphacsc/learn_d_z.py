@@ -11,6 +11,7 @@ import numpy as np
 from scipy import linalg
 from joblib import Parallel
 
+from .init_dict import init_dictionary
 from .utils import construct_X, check_random_state
 from .utils.dictionary import get_lambda_max
 from .update_z import update_z
@@ -45,8 +46,9 @@ def compute_X_and_objective(X, z_hat, d_hat, reg, sample_weights=None,
 def learn_d_z(X, n_atoms, n_times_atom, func_d=update_d_block, reg=0.1,
               lmbd_max='fixed', n_iter=60, random_state=None, n_jobs=1,
               solver_z='l-bfgs', solver_d_kwargs=dict(),
-              solver_z_kwargs=dict(), ds_init=None, sample_weights=None,
-              verbose=10, callback=None, stopping_pobj=None):
+              solver_z_kwargs=dict(), ds_init=None, ds_init_params=dict(),
+              sample_weights=None, verbose=10, callback=None,
+              stopping_pobj=None):
     """Univariate Convolutional Sparse Coding.
 
     Parameters
@@ -85,8 +87,11 @@ def learn_d_z(X, n_atoms, n_times_atom, func_d=update_d_block, reg=0.1,
         Additional keyword arguments to provide to update_d
     solver_z_kwargs : dict
         Additional keyword arguments to pass to update_z
-    ds_init : array, shape (n_atoms, n_times_atom)
-        The initialization for the atoms.
+    ds_init : str or array, shape (n_atoms, n_times_atom)
+        The initial atoms or an initialization scheme in {'kmeans' | 'ssa' |
+        'chunks' | 'random'}.
+    ds_init_params : dict
+        Dictionnary of parameters for the kmeans init method.
     sample_weights : array, shape (n_trials, n_times)
         The weights in the alphaCSC problem. Should be None
         when using vanilla CSC.
@@ -111,13 +116,15 @@ def learn_d_z(X, n_atoms, n_times_atom, func_d=update_d_block, reg=0.1,
 
     rng = check_random_state(random_state)
 
-    if ds_init is None:
-        d_hat = rng.randn(n_atoms, n_times_atom)
-    else:
-        d_hat = ds_init.copy()
-    d_norm = np.linalg.norm(d_hat, axis=1)
-    d_hat /= d_norm[:, None]
+    # reuse multivariate atoms init function
+    if isinstance(ds_init, np.ndarray):
+        ds_init = ds_init[:, None, :]
+    d_hat = init_dictionary(X[:, None, :], n_atoms, n_times_atom,
+                            D_init=ds_init, rank1=False,
+                            D_init_params=ds_init_params, random_state=rng)
+    d_hat = d_hat[:, 0, :]
 
+    # strategy for rescaling the regularization parameter
     reg0 = reg
     lambda_max = get_lambda_max(X[:, None, :], d_hat[:, None, :]).max()
     if lmbd_max == "scaled":
