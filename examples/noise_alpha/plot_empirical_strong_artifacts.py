@@ -14,14 +14,20 @@ The convolutional sparse coding (CSC) model is able to learn the prototypical
 waveforms of the signal, on which we can clearly see the CFC. However, when the
 CSC model is fitted on a data section with strong artifacts, the learned atoms
 do not show the expected CFC waveforms. To solve this problem, another model
-can be used, called alpha-CSC, which is less affected by strong artifacts in
-the data.
+can be used, called alpha-CSC [2]_, which is less affected by strong artifacts
+in the data.
 
 .. [1] G. Dallérac, M. Graupner, J. Knippenberg, R. C. R. Martinez,
     T. F. Tavares, L. Tallot, N. El Massioui, A. Verschueren, S. Höhn,
     J.B. Bertolus, et al. Updating temporal expectancy of an aversive event
     engages striatal plasticity under amygdala control.
     Nature Communications, 8:13920, 2017
+
+.. [2] Jas, M., Dupré La Tour, T., Şimşekli, U., & Gramfort, A. (2017).
+    `Learning the Morphology of Brain Signals Using Alpha-Stable Convolutional
+    Sparse Coding
+    <https://papers.nips.cc/paper/6710-learning-the-morphology-of-brain-signals-using-alpha-stable-convolutional-sparse-coding.pdf>`_.
+    Advances in Neural Information Processing Systems (NIPS), pages 1099--1108.
 """
 
 # Authors: Tom Dupre La Tour <tom.duprelatour@telecom-paristech.fr>

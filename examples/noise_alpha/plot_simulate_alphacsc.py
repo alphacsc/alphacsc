@@ -3,8 +3,13 @@
 Alpha CSC on simulated data
 ===========================
 
-This example demonstrates alphaCSC on simulated data.
+This example demonstrates alphaCSC [1]_ on simulated data.
 
+.. [1] Jas, M., Dupré La Tour, T., Şimşekli, U., & Gramfort, A. (2017).
+    `Learning the Morphology of Brain Signals Using Alpha-Stable Convolutional
+    Sparse Coding
+    <https://papers.nips.cc/paper/6710-learning-the-morphology-of-brain-signals-using-alpha-stable-convolutional-sparse-coding.pdf>`_.
+    Advances in Neural Information Processing Systems (NIPS), pages 1099--1108.
 """
 
 # Authors: Mainak Jas <mainak.jas@telecom-paristech.fr>

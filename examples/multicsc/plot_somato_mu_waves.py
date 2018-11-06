@@ -3,10 +3,14 @@
 Extracting :math:`\mu`-wave from the somato-sensory dataset
 ===========================================================
 
-This example illustrates how to learn rank1 atoms on the somato-sensorymotor
-dataset from :code:`mne`. The displayed results highlight the presence of
-:math:`\mu`-waves located in the SI cortex.
+This example illustrates how to learn rank-1 atoms [1]_ on the multivariate
+somato-sensorymotor dataset from :code:`mne`. The displayed results highlight
+the presence of :math:`\mu`-waves located in the SI cortex.
 
+.. [1] Dupré La Tour, T., Moreau, T., Jas, M., & Gramfort, A. (2018).
+    `Multivariate Convolutional Sparse Coding for Electromagnetic Brain Signals
+    <https://arxiv.org/abs/1805.09654v2>`_. Advances in Neural Information
+    Processing Systems (NIPS).
 """
 
 # Authors: Thomas Moreau <thomas.moreau@inria.fr>

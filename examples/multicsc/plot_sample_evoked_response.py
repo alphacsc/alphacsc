@@ -3,11 +3,15 @@
 Extracting artifact and evoked response atoms from the sample dataset
 =====================================================================
 
-This example illustrates how to learn rank1 atoms on the sample
-dataset from :code:`mne`. We display a selection of atoms, featuring
+This example illustrates how to learn rank-1 [1]_ atoms on the multivariate
+sample dataset from :code:`mne`. We display a selection of atoms, featuring
 heartbeat and eyeblink artifacts, three atoms of evoked responses, and a
 non-sinusoidal oscillation.
 
+.. [1] Dupré La Tour, T., Moreau, T., Jas, M., & Gramfort, A. (2018).
+    `Multivariate Convolutional Sparse Coding for Electromagnetic Brain Signals
+    <https://arxiv.org/abs/1805.09654v2>`_. Advances in Neural Information
+    Processing Systems (NIPS).
 """
 
 # Authors: Thomas Moreau <thomas.moreau@inria.fr>
