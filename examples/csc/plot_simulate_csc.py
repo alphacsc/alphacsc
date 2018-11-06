@@ -55,7 +55,7 @@ idx_corrupted = rng.randint(0, n_trials,
 ###############################################################################
 # Let us look at the first 10 trials to see how they look.
 
-from alphacsc.utils import plot_data # noqa
+from alphacsc.viz.callback import plot_data # noqa
 plot_data([X[:10]])
 
 ###############################################################################
@@ -68,7 +68,7 @@ from alphacsc import learn_d_z # noqa
 
 random_state = 60
 
-pobj, times, d_hat, z_hat = learn_d_z(
+pobj, times, d_hat, z_hat, reg = learn_d_z(
     X, n_atoms, n_times_atom, reg=reg, n_iter=n_iter,
     solver_d_kwargs=dict(factr=100), random_state=random_state,
     n_jobs=1, verbose=1)
@@ -88,17 +88,17 @@ plt.plot(ds_true.T, 'k--')
 plot_data([z[:10] for z in z_hat], ['stem'] * n_atoms)
 
 ###############################################################################
-# Note if the data is corrupted with impulsive noise, this method may not
-# be the best.  Check out our
-# :ref:`example using alphacsc <sphx_glr_auto_examples_plot_simulate_alphacsc.py>`
-# to learn how to deal with such data.
+# Note if the data is corrupted with impulsive noise, this method may not be
+# the best.  Check out our :ref:`example using alphacsc
+# <sphx_glr_auto_examples_plot_simulate_alphacsc.py>` to learn how to deal with
+# such data.
 
 alpha = 1.2
 noise_level = 0.005
 X[idx_corrupted] += levy_stable.rvs(alpha, 0, loc=0, scale=noise_level,
                                     size=(n_corrupted_trials, n_times),
                                     random_state=random_state_simulate)
-pobj, times, d_hat, z_hat = learn_d_z(
+pobj, times, d_hat, z_hat, reg = learn_d_z(
     X, n_atoms, n_times_atom, reg=reg, n_iter=n_iter,
     solver_d_kwargs=dict(factr=100), random_state=random_state,
     n_jobs=1, verbose=1)

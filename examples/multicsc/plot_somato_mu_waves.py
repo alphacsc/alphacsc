@@ -28,7 +28,7 @@ n_times_atom = int(round(sfreq * 1.0))  # 1000. ms
 ###############################################################################
 # Next, we define the parameters for multivariate CSC
 
-from alphacsc import BatchCDL  # noqa
+from alphacsc import BatchCDL
 cdl = BatchCDL(
     # Shape of the dictionary
     n_atoms=n_atoms,
@@ -54,7 +54,7 @@ cdl = BatchCDL(
 # in epochs. The epochs are selected around the stim, starting 2 seconds
 # before and finishing 4 seconds after.
 
-from alphacsc.datasets.somato import load_data  # noqa
+from alphacsc.datasets.somato import load_data
 t_lim = (-2, 4)
 X, info = load_data(epoch=t_lim, sfreq=sfreq)
 
@@ -67,9 +67,9 @@ cdl.fit(X)
 # Display the 4-th atom, which displays a :math:`\mu`-waveform in its temporal
 # pattern.
 
-import mne  # noqa
-import numpy as np  # noqa
-import matplotlib.pyplot as plt  # noqa
+import mne
+import numpy as np
+import matplotlib.pyplot as plt
 
 i_atom = 4
 n_plots = 3

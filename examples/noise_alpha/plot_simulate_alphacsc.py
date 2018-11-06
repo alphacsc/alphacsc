@@ -36,7 +36,7 @@ n_burnin_mcmc = 50
 ###############################################################################
 # Here, we simulate the data
 
-from alphacsc.simulate import simulate_data # noqa
+from alphacsc.simulate import simulate_data
 
 random_state_simulate = 1
 X, ds_true, z_true = simulate_data(n_trials, n_times, n_times_atom,
@@ -45,8 +45,8 @@ X, ds_true, z_true = simulate_data(n_trials, n_times, n_times_atom,
 ###############################################################################
 # Add some noise and corrupt some trials even with impulsive noise
 
-from scipy.stats import levy_stable # noqa
-from alphacsc import check_random_state # noqa
+from scipy.stats import levy_stable
+from alphacsc import check_random_state
 
 fraction_corrupted = 0.02
 n_corrupted_trials = int(fraction_corrupted * n_trials)
@@ -66,8 +66,7 @@ X[idx_corrupted] += levy_stable.rvs(alpha, 0, loc=0, scale=noise_level,
 ###############################################################################
 # and then alpha CSC on the same data
 
-from functools import partial # noqa
-from alphacsc import learn_d_z_weighted # noqa
+from alphacsc import learn_d_z_weighted
 
 d_hat, z_hat, Tau = learn_d_z_weighted(
     X, n_atoms, n_times_atom, reg=reg, alpha=alpha,
@@ -80,7 +79,7 @@ d_hat, z_hat, Tau = learn_d_z_weighted(
 # Finally, let's compare the results. Now, it works even in the presence
 # of impulsive noise.
 
-import matplotlib.pyplot as plt # noqa
+import matplotlib.pyplot as plt
 
 plt.figure()
 plt.plot(d_hat.T, 'b', label=r'$\alpha$CSC')

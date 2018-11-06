@@ -14,7 +14,7 @@ atoms from Local Field Potential (LFP) data [1].
 ###############################################################################
 # First, let us fetch the data (~14 MB)
 import os
-from mne.utils import _fetch_file # noqa
+from mne.utils import _fetch_file
 
 url = ('https://github.com/hitziger/AWL/raw/master/Experiments/data/'
        'LFP_data_contiguous_1250_Hz.mat')
@@ -24,15 +24,15 @@ if not os.path.exists(fname):
 
 ###############################################################################
 # It is a mat file, so we use scipy to load it
-from scipy import io # noqa
+from scipy import io
 
 data = io.loadmat(fname)
 X, sfreq = data['X'].T, float(data['sfreq'])
 
 ###############################################################################
 # And now let us look at the data
-import numpy as np # noqa
-import matplotlib.pyplot as plt # noqa
+import numpy as np
+import matplotlib.pyplot as plt
 
 start, stop = 11000, 15000
 times = np.arange(start, stop) / sfreq
@@ -44,9 +44,9 @@ plt.xlim([9., 12.])
 ###############################################################################
 # and filter it using a convenient function from MNE. This will remove low
 # frequency drifts, but we keep the high frequencies
-from mne.filter import filter_data # noqa
-X = filter_data(X.astype(np.float64), sfreq, l_freq=1, h_freq=None,
-                fir_design='firwin')
+from mne.filter import filter_data
+X = filter_data(
+    X.astype(np.float64), sfreq, l_freq=1, h_freq=None, fir_design='firwin')
 
 ###############################################################################
 # Now, we define the parameters of our model.
@@ -87,7 +87,7 @@ X_new /= np.std(X_new)
 # The convolutions can result in edge artifacts at the edges of the trials.
 # Therefore, we discount the contributions from the edges by windowing the
 # trials.
-from numpy import hamming # noqa
+from numpy import hamming
 X_new *= hamming(n_times)[None, :]
 
 ###############################################################################
@@ -96,10 +96,10 @@ X_new *= hamming(n_times)[None, :]
 # half the epoch length).
 #
 # Now, we run regular CSC since the trials are not too noisy
-from alphacsc import learn_d_z # noqa
-pobj, times, d_hat, z_hat = learn_d_z(X_new, n_atoms, n_times_atom, reg=reg,
-                                      n_iter=n_iter, random_state=random_state,
-                                      n_jobs=1)
+from alphacsc import learn_d_z
+pobj, times, d_hat, z_hat, reg = learn_d_z(X_new, n_atoms, n_times_atom,
+                                           reg=reg, n_iter=n_iter,
+                                           random_state=random_state, n_jobs=1)
 
 ###############################################################################
 # Let's look at the atoms now.

@@ -56,7 +56,7 @@ from alphacsc import learn_d_z # noqa
 pobjs, d_hats = list(), list()
 for random_state in range(5):
     print('\nRandom state: %d' % random_state)
-    pobj, times, d_hat, z_hat = learn_d_z(
+    pobj, times, d_hat, z_hat, reg = learn_d_z(
         X, n_atoms, n_times_atom, reg=reg, n_iter=n_iter,
         solver_d_kwargs=dict(factr=100), random_state=random_state,
         n_jobs=1, verbose=1)

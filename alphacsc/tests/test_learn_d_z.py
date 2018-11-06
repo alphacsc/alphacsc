@@ -65,7 +65,7 @@ def test_learn_codes_atoms():
     func_d_1 = partial(update_d_block, projection='primal', n_iter=5)
     for func_d in [func_d_0, func_d_1, update_d]:
         for solver_z in ('l-bfgs', 'ista', 'fista'):
-            pobj, times, d_hat, _ = learn_d_z(
+            pobj, times, d_hat, _, _ = learn_d_z(
                 X, n_atoms, n_times_atom, func_d=func_d, solver_z=solver_z,
                 reg=reg, n_iter=n_iter, verbose=0, random_state=random_state,
                 solver_z_kwargs=dict(factr=1e7, max_iter=200))
@@ -247,11 +247,11 @@ def test_learn_codes_atoms_sample_weights(func_d, solver_z):
 
     # sample_weights all equal to one is equivalent to sample_weights=None.
     sample_weights = np.ones_like(X)
-    pobj_0, _, _, _ = learn_d_z(
+    pobj_0, _, _, _, _ = learn_d_z(
         X, n_atoms, n_times_atom, func_d=func_d, solver_z=solver_z,
         reg=reg, n_iter=n_iter, random_state=0, verbose=0,
         sample_weights=sample_weights, ds_init=ds_init)
-    pobj_1, _, _, _ = learn_d_z(
+    pobj_1, _, _, _, _ = learn_d_z(
         X, n_atoms, n_times_atom, func_d=func_d, solver_z=solver_z,
         reg=reg, n_iter=n_iter, random_state=0, verbose=0,
         sample_weights=None, ds_init=ds_init)
@@ -267,12 +267,12 @@ def test_learn_codes_atoms_sample_weights(func_d, solver_z):
         sample_weights = np.ones_like(X)
         sample_weights[:n_duplicated] = 2
         X_duplicated = np.vstack([X[:n_duplicated], X])
-        pobj_0, _, d_hat_0, z_hat_0 = learn_d_z(
+        pobj_0, _, d_hat_0, z_hat_0, _ = learn_d_z(
             X, n_atoms, n_times_atom, func_d=func_d, solver_z=solver_z,
             reg=reg, n_iter=n_iter, random_state=0, verbose=0,
             sample_weights=sample_weights, ds_init=ds_init,
             solver_z_kwargs=dict(factr=1e9))
-        pobj_1, _, d_hat_1, z_hat_1 = learn_d_z(
+        pobj_1, _, d_hat_1, z_hat_1, _ = learn_d_z(
             X_duplicated, n_atoms, n_times_atom, func_d=func_d,
             solver_z=solver_z, reg=reg, n_iter=n_iter, random_state=0,
             verbose=0, sample_weights=None, ds_init=ds_init,

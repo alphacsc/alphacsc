@@ -37,8 +37,8 @@ min_spacing = 200  # G
 
 ###############################################################################
 # Now, we can simulate
-from alphacsc import check_random_state # noqa
-from alphacsc.simulate import simulate_data # noqa
+from alphacsc import check_random_state
+from alphacsc.simulate import simulate_data
 
 random_state_simulate = 1
 X, ds_true, z_true = simulate_data(n_trials, n_times, n_times_atom,
@@ -52,12 +52,12 @@ X += 0.01 * rng.randn(*X.shape)
 # We expect 10 occurences of the atom in total.
 # So, let us define 10 random locations for the algorithm to start with.
 # If this number is not known, we will end up estimating more/less windows.
-import numpy as np # noqa
+import numpy as np
 window_starts = rng.choice(np.arange(n_trials * n_times), size=n_trials)
 
 ###############################################################################
 # Now, we apply the SWM algorithm now.
-from alphacsc.other.swm import sliding_window_matching # noqa
+from alphacsc.other.swm import sliding_window_matching
 
 random_state = 42
 X = X.reshape(X.shape[0] * X.shape[1])  # expects 1D time series
@@ -67,7 +67,7 @@ d_hat, window_starts, J = sliding_window_matching(
 
 ###############################################################################
 # Let us look at the data at the time windows when the atoms are found.
-import matplotlib.pyplot as plt # noqa
+import matplotlib.pyplot as plt
 fig, axes = plt.subplots(2, n_trials // 2, sharex=True, sharey=True,
                          figsize=(15, 3))
 axes = axes.ravel()

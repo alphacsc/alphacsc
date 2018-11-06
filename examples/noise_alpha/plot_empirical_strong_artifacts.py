@@ -1,6 +1,6 @@
 """
 ==========================================================
-Fitting CSC on empirical time-series with strong artifacts
+Alpha CSC on empirical time-series with strong artifacts
 ==========================================================
 
 This example illustrates how to learn univariate atoms on a univariate
@@ -46,19 +46,6 @@ data = np.load('../rodent_striatum.npy')
 print(data.shape)
 
 ###############################################################################
-# This sample contains CFC between 3 Hz and 80 Hz. This phenomenon can be
-# described with a comodulogram, computed for instance with the `pactools
-# <http://pactools.github.io/>`_ Python library.
-
-from pactools import Comodulogram
-
-comod = Comodulogram(fs=sfreq, low_fq_range=np.arange(0.2, 10.2, 0.2),
-                     low_fq_width=2., method='duprelatour')
-comod.fit(data[:, 35000:])
-comod.plot()
-plt.show()
-
-###############################################################################
 # Now let us take a closer look, plotting the 100 first seconds of the signal.
 
 start, stop = [0, 100]  # in seconds
@@ -97,6 +84,19 @@ data_dirty = data_dirty.reshape(50, -1)
 scale = data_clean.std()
 data_clean /= scale
 data_dirty /= scale
+
+###############################################################################
+# This sample contains CFC between 3 Hz and 80 Hz. This phenomenon can be
+# described with a comodulogram, computed for instance with the `pactools
+# <http://pactools.github.io/>`_ Python library.
+
+from pactools import Comodulogram
+
+comod = Comodulogram(fs=sfreq, low_fq_range=np.arange(0.2, 10.2, 0.2),
+                     low_fq_width=2., method='duprelatour')
+comod.fit(data_clean)
+comod.plot()
+plt.show()
 
 ###############################################################################
 # Here we define the plotting function which display the learned atoms.

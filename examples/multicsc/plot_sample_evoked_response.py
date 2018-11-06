@@ -36,7 +36,7 @@ n_jobs = 5
 ###############################################################################
 # Next, we define the parameters for multivariate CSC
 
-from alphacsc import GreedyCDL  # noqa
+from alphacsc import GreedyCDL
 cdl = GreedyCDL(
     # Shape of the dictionary
     n_atoms=n_atoms,
@@ -76,7 +76,7 @@ cdl = GreedyCDL(
 # but we split it into 12 parts to make the most of multiple processors during
 # the model fitting.
 
-from alphacsc.datasets.somato import load_data  # noqa
+from alphacsc.datasets.somato import load_data
 X_split, info = load_data(sfreq=sfreq, dataset='sample', n_splits=2 * n_jobs)
 
 ###############################################################################
@@ -98,9 +98,9 @@ z_hat = cdl.transform(X)
 # eyeblink artifact, three atoms of evoked responses, and a non-sinusoidal
 # oscillation.
 
-import mne  # noqa
-import numpy as np  # noqa
-import matplotlib.pyplot as plt  # noqa
+import mne
+import numpy as np
+import matplotlib.pyplot as plt
 
 from alphacsc.utils.convolution import construct_X_multi
 from alphacsc.viz.epoch import plot_evoked_surrogates
