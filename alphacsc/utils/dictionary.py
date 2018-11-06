@@ -57,19 +57,40 @@ def _patch_reconstruction_error(X, z, D):
                    for diff_i in diff], axis=1)
 
 
-def get_lambda_max(X, D_hat):
-    n_channels = X.shape[1]
+def get_lambda_max(X, D_hat, sample_weights=None):
 
+    # univariate case, add a dimension (n_channels = 1)
+    if X.ndim == 2:
+        X = X[:, None, :]
+        D_hat = D_hat[:, None, :]
+        if sample_weights is not None:
+            sample_weights = sample_weights[:, None, :]
+
+    n_trials, n_channels, n_times = X.shape
+
+    if sample_weights is None:
+        # no need for the last dimension if we only have ones
+        if D_hat.ndim == 2:
+            sample_weights = np.ones(n_trials)
+        else:
+            sample_weights = np.ones((n_trials, n_channels))
+
+    # multivariate rank-1 case
     if D_hat.ndim == 2:
         return np.max([[
-            np.convolve(np.dot(uv_k[:n_channels], X_i),
-                        uv_k[:n_channels - 1:-1], mode='valid')
-            for X_i in X] for uv_k in D_hat], axis=(1, 2))[:, None]
+            np.convolve(
+                np.dot(uv_k[:n_channels], X_i * W_i), uv_k[:n_channels - 1:-1],
+                mode='valid') for X_i, W_i in zip(X, sample_weights)
+        ] for uv_k in D_hat], axis=(1, 2))[:, None]
+
+    # multivariate general case
     else:
         return np.max([[
-            np.sum([np.correlate(D_kp, X_ip, mode='valid')
-                    for D_kp, X_ip in zip(D_k, X_i)], axis=0)
-            for X_i in X] for D_k in D_hat], axis=(1, 2))[:, None]
+            np.sum([
+                np.correlate(D_kp, X_ip * W_ip, mode='valid')
+                for D_kp, X_ip, W_ip in zip(D_k, X_i, W_i)
+            ], axis=0) for X_i, W_i in zip(X, sample_weights)
+        ] for D_k in D_hat], axis=(1, 2))[:, None]
 
 
 def tukey_window(n_times_atom):

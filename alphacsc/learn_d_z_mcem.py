@@ -88,7 +88,7 @@ def learn_d_z_weighted(
     n_trials, n_times = X.shape
 
     if init_tau:
-        phi = np.tile(np.std(X, axis=1)[:, None] ** 2, X.shape[1])
+        phi = np.tile(np.var(X, axis=1)[:, None], X.shape[1])
         tau = 1 / phi
     else:
         # assume gaussian to start with
@@ -101,17 +101,18 @@ def learn_d_z_weighted(
     for ii in range(n_iter_global):
 
         if verbose > 0:
-            print("Global Iter: %d/%d" % (ii, n_iter_global), end='',
+            print("Global Iter: %d/%d\t" % (ii, n_iter_global), end='',
                   flush=True)
 
         # Optimize d and z wrt the new weights
-        pobj, times, d_hat, z_hat = learn_d_z(
+        pobj, times, d_hat, z_hat, reg = learn_d_z(
             X, n_atoms, n_times_atom, func_d, reg=reg, lmbd_max=lmbd_max,
             n_iter=n_iter_optim, random_state=rng, sample_weights=2 * tau,
             ds_init=d_hat, ds_init_params=ds_init_params,
             solver_d_kwargs=solver_d_kwargs, solver_z_kwargs=solver_z_kwargs,
             verbose=verbose, solver_z=solver_z, n_jobs=n_jobs,
             callback=callback)
+        lmbd_max = 'fixed'  # subsequent iterations use the same regularization
 
         # Estimate the expectation via MCMC
         X_hat = construct_X(z_hat, d_hat)

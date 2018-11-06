@@ -5,7 +5,6 @@
 
 from __future__ import print_function
 import time
-import sys
 
 import numpy as np
 from scipy import linalg
@@ -111,6 +110,8 @@ def learn_d_z(X, n_atoms, n_times_atom, func_d=update_d_block, reg=0.1,
         The estimated atoms.
     z_hat : array, shape (n_atoms, n_trials, n_times - n_times_atom + 1)
         The sparse activation matrix.
+    reg : float
+        Regularization parameter used.
     """
     n_trials, n_times = X.shape
 
@@ -126,9 +127,10 @@ def learn_d_z(X, n_atoms, n_times_atom, func_d=update_d_block, reg=0.1,
 
     # strategy for rescaling the regularization parameter
     reg0 = reg
-    lambda_max = get_lambda_max(X[:, None, :], d_hat[:, None, :]).max()
+    lambda_max = get_lambda_max(X, d_hat, sample_weights).max()
     if lmbd_max == "scaled":
         reg = reg0 * lambda_max
+    print(lambda_max)
 
     pobj = list()
     times = list()
@@ -147,14 +149,13 @@ def learn_d_z(X, n_atoms, n_times_atom, func_d=update_d_block, reg=0.1,
         for ii in range(n_iter):  # outer loop of coordinate descent
             if verbose == 1:
                 msg = '.' if (ii % 50 != 0) else 'V_%d/%d ' % (ii, n_iter)
-                print(msg, end='')
-                sys.stdout.flush()
+                print(msg, end='', flush=True)
             if verbose > 1:
                 print('Coordinate descent loop %d / %d [n_jobs=%d]' %
                       (ii, n_iter, n_jobs))
 
             if lmbd_max not in ['fixed', 'scaled']:
-                lambda_max = get_lambda_max(X[:, None, :], d_hat[:, None, :])
+                lambda_max = get_lambda_max(X, d_hat, sample_weights)
                 reg = reg0 * lambda_max
                 if lmbd_max == 'shared':
                     reg = reg.max()
@@ -200,4 +201,7 @@ def learn_d_z(X, n_atoms, n_times_atom, func_d=update_d_block, reg=0.1,
             if stopping_pobj is not None and pobj[-1] < stopping_pobj:
                 break
 
-    return pobj, times, d_hat, z_hat
+        if verbose == 1:
+            print('')
+
+    return pobj, times, d_hat, z_hat, reg

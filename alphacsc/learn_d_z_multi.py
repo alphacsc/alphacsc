@@ -140,6 +140,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         The atoms to learn from the data.
     z_hat : array, shape (n_trials, n_atoms, n_times_valid)
         The sparse activation matrix.
+    reg : float
+        Regularization parameter used.
     """
 
     assert lmbd_max in ['fixed', 'scaled', 'per_atom', 'shared'], (
