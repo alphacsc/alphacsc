@@ -195,10 +195,15 @@ def data_generator(n_trials=10, data_type='rest', sfreq=150, epoch=None,
 
     records = rng.permutation(records)[:n_trials]
     for i, (subject, run_index) in enumerate(records):
-        X_n, info_n = load_one_record(
-            data_type, subject, int(run_index), sfreq=sfreq, epoch=epoch,
-            filter_params=filter_params, n_jobs=n_jobs)
-        yield X_n, info_n
+        try:
+            X_n, info_n = load_one_record(
+                data_type, subject, int(run_index), sfreq=sfreq, epoch=epoch,
+                filter_params=filter_params, n_jobs=n_jobs)
+            X_n /= X_n.std()
+            yield X_n, info_n
+        except UnicodeDecodeError:
+            print("failed to load {}-{}-{}"
+                  .format(subject, data_type, run_index))
 
 
 def make_array(X, equalize='zeropad'):

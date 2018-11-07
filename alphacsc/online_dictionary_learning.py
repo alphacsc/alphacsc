@@ -115,7 +115,7 @@ class OnlineCDL(ConvolutionalDictionaryLearning):
             return
 
         self.constants = {}
-        n_channels = X.shape[1]
+        self.n_channels_ = n_channels = X.shape[1]
 
         self.constants['n_channels'] = n_channels
         self.constants['ztz'] = np.zeros((self.n_atoms, self.n_atoms,
