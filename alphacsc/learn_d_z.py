@@ -116,7 +116,7 @@ def learn_d_z(X, n_atoms, n_times_atom, func_d=update_d_block, reg=0.1,
 
     rng = check_random_state(random_state)
 
-    # reuse multivariate atoms init function
+    # reuse multivariate atoms init function
     if isinstance(ds_init, np.ndarray):
         ds_init = ds_init[:, None, :]
     d_hat = init_dictionary(X[:, None, :], n_atoms, n_times_atom,
@@ -124,7 +124,7 @@ def learn_d_z(X, n_atoms, n_times_atom, func_d=update_d_block, reg=0.1,
                             D_init_params=ds_init_params, random_state=rng)
     d_hat = d_hat[:, 0, :]
 
-    # strategy for rescaling the regularization parameter
+    # strategy for rescaling the regularization parameter
     reg0 = reg
     lambda_max = get_lambda_max(X, d_hat, sample_weights).max()
     if lmbd_max == "scaled":

@@ -69,7 +69,7 @@ def get_lambda_max(X, D_hat, sample_weights=None):
     n_trials, n_channels, n_times = X.shape
 
     if sample_weights is None:
-        # no need for the last dimension if we only have ones
+        # no need for the last dimension if we only have ones
         if D_hat.ndim == 2:
             sample_weights = np.ones(n_trials)
         else:
