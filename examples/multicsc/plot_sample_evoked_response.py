@@ -31,7 +31,7 @@ sfreq = 150.
 n_atoms = 40
 n_times_atom = int(round(sfreq * 1.0))  # 1000. ms
 
-# Regularization parameter which control sparsity
+# Regularization parameter which control sparsity
 reg = 0.1
 
 # number of processors for parallel computing
@@ -164,7 +164,7 @@ fig.tight_layout()
 from copy import deepcopy
 from alphacsc.utils.signal import fast_hilbert
 
-# time window around the events
+# time window around the events
 t_lim = (-0.1, 0.5)
 
 n_plots = len(np.atleast_1d(info['event_id']))
