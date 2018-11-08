@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 =====================================================================
 Extracting artifact and evoked response atoms from the sample dataset
@@ -154,11 +155,11 @@ for ii, kk in enumerate(plotted_atoms):
 fig.tight_layout()
 
 ###############################################################################
-# Display the evoked reconstructed enveloppe:
-# For each atom (columns), and for each event (rows), we compute the enveloppe
+# Display the evoked reconstructed envelope:
+# For each atom (columns), and for each event (rows), we compute the envelope
 # of the reconstructed signal, align it with respect to the event onsets, and
 # take the average. For some atoms, the activations are correlated with the
-# events, leading to a large evoked enveloppe. The gray area corresponds to
+# events, leading to a large evoked envelope. The gray area corresponds to
 # not statistically significant values.
 
 from copy import deepcopy
@@ -201,6 +202,6 @@ for ii, kk in enumerate(plotted_atoms):
         ax = next(it_axes)
         plot_evoked_surrogates(correlation, info=this_info, t_lim=t_lim, ax=ax,
                                n_jobs=n_jobs, label='event %d' % this_event_id)
-        ax.set(xlabel='Time (sec)', title="Evoked enveloppe %d" % kk)
+        ax.set(xlabel='Time (sec)', title="Evoked envelope %d" % kk)
 
 fig.tight_layout()
