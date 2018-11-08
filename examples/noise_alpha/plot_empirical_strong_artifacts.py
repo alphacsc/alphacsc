@@ -135,7 +135,7 @@ def plot_atoms(d_hat):
 common_params = dict(
     n_atoms=3,
     n_times_atom=int(sfreq * 1.0),  # 1000. ms
-    reg=5.,
+    reg=3.,
     solver_z='l-bfgs',
     solver_z_kwargs=dict(factr=1e9),
     solver_d_kwargs=dict(factr=1e2),
@@ -183,6 +183,6 @@ X = data_dirty
 
 d_hat, z_hat, tau = learn_d_z_weighted(
     X, n_iter_optim=n_iter, n_iter_global=3, n_iter_mcmc=300,
-    n_burnin_mcmc=100, alpha=alpha, init_tau=True, **common_params)
+    n_burnin_mcmc=100, alpha=alpha, **common_params)
 
 plot_atoms(d_hat)

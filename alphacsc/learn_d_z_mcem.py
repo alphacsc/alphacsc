@@ -91,11 +91,12 @@ def learn_d_z_weighted(
         tau = 1 / phi
     else:
         # assume gaussian to start with
-        phi = np.full(shape=(n_trials, n_times), fill_value=2)
+        phi = np.full(shape=(n_trials, n_times), fill_value=2.0)
         tau = np.full(shape=(n_trials, n_times), fill_value=0.5)
 
     rng = check_random_state(random_state)
     d_hat = ds_init
+    z_hat = None
     # Run the MCEM algorithm
     for ii in range(n_iter_global):
 
@@ -103,7 +104,16 @@ def learn_d_z_weighted(
             print("Global Iter: %d/%d\t" % (ii, n_iter_global), end='',
                   flush=True)
 
-        # Optimize d and z wrt the new weights
+        # E-step: Estimate the expectation via MCMC
+        if ii == 0:
+            X_hat = np.zeros_like(X)
+        else:
+            X_hat = construct_X(z_hat, d_hat)
+        phi, tau, loglk_mcmc = estimate_phi_mh(
+            X, X_hat, alpha, phi, n_iter_mcmc, n_burnin_mcmc, random_state=rng,
+            return_loglk=True, verbose=verbose)
+
+        # M-step: Optimize d and z wrt the new weights
         pobj, times, d_hat, z_hat, reg = learn_d_z(
             X, n_atoms, n_times_atom, func_d, reg=reg, lmbd_max=lmbd_max,
             n_iter=n_iter_optim, random_state=rng, sample_weights=2 * tau,
@@ -112,11 +122,5 @@ def learn_d_z_weighted(
             verbose=verbose, solver_z=solver_z, n_jobs=n_jobs,
             callback=callback)
         lmbd_max = 'fixed'  # subsequent iterations use the same regularization
-
-        # Estimate the expectation via MCMC
-        X_hat = construct_X(z_hat, d_hat)
-        phi, tau, loglk_mcmc = estimate_phi_mh(
-            X, X_hat, alpha, phi, n_iter_mcmc, n_burnin_mcmc, random_state=rng,
-            return_loglk=True, verbose=verbose)
 
     return d_hat, z_hat, tau
