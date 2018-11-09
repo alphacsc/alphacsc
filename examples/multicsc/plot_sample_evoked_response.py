@@ -77,26 +77,55 @@ cdl = GreedyCDL(
 
 
 ###############################################################################
-# Here, we load the data from the sample datase. The data is not epoched yet,
+# Here, we load the MNE sample data. The data is not epoched yet,
 # but we split it into 12 parts to make the most of multiple processors during
 # the model fitting.
 
-from alphacsc.datasets.somato import load_data
-X_split, info = load_data(sfreq=sfreq, dataset='sample', n_splits=2 * n_jobs)
+import os.path as op
+
+import mne
+from mne.datasets import sample
+
+data_path = mne.datasets.sample.data_path()
+raw_fname = op.join(data_path, 'MEG', 'sample', 'sample_audvis_raw.fif')
+raw = mne.io.read_raw_fif(raw_fname, preload=True)
+
+###############################################################################
+# The only temporal filter we apply on our data is a notch filter.
+import numpy as np
+raw.notch_filter(np.arange(60, 181, 60), n_jobs=n_jobs)
+raw.pick_types(meg='grad', eeg=False, eog=False, stim=False)
+
+###############################################################################
+# We extract the multivariate time series as a numpy array
+
+n_splits = 12
+X = raw.get_data()
+n_channels, n_times = X.shape
+n_times = n_times // n_splits
+X_split = X[:, :n_splits * n_times]
+X_split = X_split.reshape(n_channels, n_splits, n_times).swapaxes(0, 1)
+
+n_splits, n_channels, n_times = X_split.shape
+
+###############################################################################
+# Then we apply a Tukey window to the time series to avoid edge artifacts
+# when learning the atoms
+from scipy.signal import tukey
+
+X_split *= tukey(n_times, alpha=0.1)[None, None, :]
+X_split /= np.std(X_split)
 
 ###############################################################################
 # Fit the model and learn rank1 atoms
 cdl.fit(X_split)
 
 ###############################################################################
-# To avoid artifacts due to the splitting, we can optionally reload the data.
-X, info = load_data(sfreq=sfreq, dataset='sample', n_splits=1)
-
-###############################################################################
 # Then we call the `transform` method, which returns the sparse codes
 # associated with X, without changing the dictionary learned during the `fit`.
-z_hat = cdl.transform(X)
-
+# Note that we transform on the *unsplit* data so that the sparse codes
+# reflect the original data and not the windowed data.
+z_hat = cdl.transform(X[None, :])
 
 ###############################################################################
 # Display a selection of atoms. We recognize a heartbeat artifact, an
@@ -187,17 +216,12 @@ for ii, kk in enumerate(plotted_atoms):
     z_k = z_hat[:, kk:kk + 1]
     X_k = construct_X_multi(z_k, v_k_1, n_channels=1)[0, 0]
 
-    # compute the 'enveloppe' of the reconstructed signal X_k
+    # compute the 'envelope' of the reconstructed signal X_k
     correlation = np.abs(fast_hilbert(X_k))
 
     # loop over all events IDs
-    for this_event_id in np.atleast_1d(info['event_id']):
-        # select the event by its ID, and create a new info dictionary
-        this_info = deepcopy(info)
-        this_info['events'] = this_info['events'][this_info['events'][:, 2] ==
-                                                  this_event_id]
-        this_info['event_id'] = this_event_id
-
+    for this_event_id in event_id:
+        this_events = events[[events][:, 2] == this_event_id]
         # plotting function
         ax = next(it_axes)
         plot_evoked_surrogates(correlation, info=this_info, t_lim=t_lim, ax=ax,
