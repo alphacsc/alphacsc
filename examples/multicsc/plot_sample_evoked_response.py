@@ -77,10 +77,7 @@ cdl = GreedyCDL(
 
 
 ###############################################################################
-# Here, we load the MNE sample data. The data is not epoched yet,
-# but we split it into 12 parts to make the most of multiple processors during
-# the model fitting.
-
+# Here, we load the MNE sample data.
 import os.path as op
 
 import mne
@@ -91,13 +88,24 @@ raw_fname = op.join(data_path, 'MEG', 'sample', 'sample_audvis_raw.fif')
 raw = mne.io.read_raw_fif(raw_fname, preload=True)
 
 ###############################################################################
+# The MNE sample data contains data for auditory (event_id=1 and 2) and
+# visual stimuli (event_id=3 and 4). We extract the events now so that we can
+# later identify the atoms related to different events. Note that the
+# convolutional sparse coding method does not need to know the events for
+# learning atoms.
+event_id = [1, 2, 3, 4]
+events = mne.find_events(raw, stim_channel='STI 014')
+events = mne.pick_events(events, include=event_id)
+
+###############################################################################
 # The only temporal filter we apply on our data is a notch filter.
 import numpy as np
 raw.notch_filter(np.arange(60, 181, 60), n_jobs=n_jobs)
 raw.pick_types(meg='grad', eeg=False, eog=False, stim=False)
 
 ###############################################################################
-# We extract the multivariate time series as a numpy array
+# We extract the multivariate time series as a numpy array and split it into
+# 12 parts to make the most of multiple processors during the model fitting.
 
 n_splits = 12
 X = raw.get_data()
@@ -160,7 +168,7 @@ for ii, kk in enumerate(plotted_atoms):
 
     # Plot the spatial map of the atom using mne topomap
     ax = next(it_axes)
-    mne.viz.plot_topomap(u_k, info, axes=ax, show=False)
+    mne.viz.plot_topomap(u_k, raw.info, axes=ax, show=False)
     ax.set(title="Spatial pattern %d" % (kk, ))
 
     # Plot the temporal pattern of the atom
@@ -190,14 +198,12 @@ fig.tight_layout()
 # take the average. For some atoms, the activations are correlated with the
 # events, leading to a large evoked envelope. The gray area corresponds to
 # not statistically significant values.
-
-from copy import deepcopy
 from alphacsc.utils.signal import fast_hilbert
 
 # time window around the events
 t_lim = (-0.1, 0.5)
 
-n_plots = len(np.atleast_1d(info['event_id']))
+n_plots = len(event_id)
 n_columns = min(6, len(plotted_atoms))
 split = int(np.ceil(len(plotted_atoms) / n_columns))
 figsize = (4 * n_columns, 3 * n_plots * split)
@@ -221,11 +227,48 @@ for ii, kk in enumerate(plotted_atoms):
 
     # loop over all events IDs
     for this_event_id in event_id:
-        this_events = events[[events][:, 2] == this_event_id]
+        this_events = events[events[:, 2] == this_event_id]
         # plotting function
         ax = next(it_axes)
-        plot_evoked_surrogates(correlation, info=this_info, t_lim=t_lim, ax=ax,
+        info = raw.info.copy()
+        info['event_id'] = this_event_id
+        info['events'] = events
+        plot_evoked_surrogates(correlation, info=info, t_lim=t_lim, ax=ax,
                                n_jobs=n_jobs, label='event %d' % this_event_id)
         ax.set(xlabel='Time (sec)', title="Evoked envelope %d" % kk)
 
 fig.tight_layout()
+
+###############################################################################
+# Finally, let us fit a dipole to one of the atoms. To fit a dipole,
+# we need the following:
+#
+# * BEM solution: Obtained by running the cortical reconstruction pipeline
+#   of Freesurfer and describes the conductivity of different tissues in
+#   the head.
+# * Trans: An affine transformation matrix needed to bring the data
+#   from sensor space to head space. This is usually done by coregistering
+#   the fiducials with the MRI.
+# * Noise covariance matrix: To whiten the data so that the assumption
+#   of Gaussian noise model with identity covariance matrix is satisfied.
+#
+# We recommend users to consult the MNE documentation for further information.
+
+subjects_dir = op.join(data_path, 'subjects')
+fname_bem = op.join(subjects_dir, 'sample', 'bem', 'sample-5120-bem-sol.fif')
+fname_trans = op.join(data_path, 'MEG', 'sample',
+                      'sample_audvis_raw-trans.fif')
+fname_cov = op.join(data_path, 'MEG', 'sample', 'sample_audvis-cov.fif')
+
+###############################################################################
+# Let us construct an evoked object for MNE from the spatial pattern of the
+# 15th atom.
+evoked = mne.EvokedArray(cdl.u_hat_[15][:, None], raw.info)
+
+###############################################################################
+# Finally, we can fit a dipole.
+dip = mne.fit_dipole(evoked, fname_cov, fname_bem, fname_trans)[0]
+
+###############################################################################
+# and plot it.
+dip.plot_locations(fname_trans, 'sample', subjects_dir)
