@@ -1,14 +1,12 @@
 import time
 
+import numba
 import numpy as np
 import pandas as pd
 from joblib import Memory
-from numpy import convolve
 import matplotlib.pyplot as plt
 from scipy.signal import fftconvolve
 from scipy.stats.mstats import gmean
-
-from numba import jit
 
 memory = Memory(location='', verbose=0)
 
@@ -40,11 +38,11 @@ def numpy_convolve(ztz, D):
     for k0 in range(n_atoms):
         for k1 in range(n_atoms):
             for p in range(n_channels):
-                G[k0, p] += convolve(ztz[k0, k1], D[k1, p], mode='valid')
+                G[k0, p] += np.convolve(ztz[k0, k1], D[k1, p], mode='valid')
     return G
 
 
-@jit(nogil=True)
+@numba.jit(nogil=True)
 def dot_and_numba(ztz, D):
     """
     ztz.shape = n_atoms, n_atoms, 2 * n_times_atom - 1
@@ -61,7 +59,7 @@ def dot_and_numba(ztz, D):
     return G
 
 
-@jit(nogil=True)
+@numba.jit(nogil=True)
 def sum_and_numba(ztz, D):
     """
     ztz.shape = n_atoms, n_atoms, 2 * n_times_atom - 1
@@ -109,8 +107,8 @@ def numpy_convolve_uv(ztz, uv):
     G = np.zeros((n_atoms, n_channels, n_times_atom))
     for k0 in range(n_atoms):
         for k1 in range(n_atoms):
-            G[k0, :, :] += (convolve(ztz[k0, k1], v[k1], mode='valid')[None, :]
-                            * u[k1, :][:, None])
+            G[k0, :, :] += (np.convolve(
+                ztz[k0, k1], v[k1], mode='valid')[None, :] * u[k1, :][:, None])
 
     return G
 
@@ -123,46 +121,6 @@ all_func = [
     tensordot,
     numpy_convolve_uv,
 ]
-
-try:
-    from numba import jit
-
-    @jit(nogil=True)
-    def dot_and_numba(ztz, D):
-        """
-        ztz.shape = n_atoms, n_atoms, 2 * n_times_atom - 1
-        D.shape = n_atoms, n_channels, n_times_atom
-        """
-        n_atoms, n_channels, n_times_atom = D.shape
-        G = np.zeros(D.shape)
-        for k0 in range(n_atoms):
-            for k1 in range(n_atoms):
-                for p in range(n_channels):
-                    for t in range(n_times_atom):
-                        G[k0, p, t] += np.dot(ztz[k0, k1, t:t + n_times_atom],
-                                              D[k1, p, ::-1])
-        return G
-
-    @jit(nogil=True)
-    def sum_and_numba(ztz, D):
-        """
-        ztz.shape = n_atoms, n_atoms, 2 * n_times_atom - 1
-        D.shape = n_atoms, n_channels, n_times_atom
-        """
-        n_atoms, n_channels, n_times_atom = D.shape
-
-        G = np.zeros(D.shape)
-        for k0 in range(n_atoms):
-            for p in range(n_channels):
-                for t in range(n_times_atom):
-                    G[k0, p, t] += np.sum(
-                        ztz[k0, :, t:t + n_times_atom] * D[:, p, ::-1])
-        return G
-
-    all_func.extend([dot_and_numba, sum_and_numba])
-
-except ImportError:
-    pass
 
 
 try:

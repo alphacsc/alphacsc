@@ -1,17 +1,17 @@
 import time
 
+import numba
 import numpy as np
 import pandas as pd
 from joblib import Memory
 import matplotlib.pyplot as plt
 from scipy.stats.mstats import gmean
 
-from alphacsc.utils.compat import numba, jit
 
 memory = Memory(location='', verbose=0)
 
 
-@jit((numba.float64[:, :, :], numba.float64[:, :]), cache=True)
+@numba.jit((numba.float64[:, :, :], numba.float64[:, :]), cache=True)
 def numpy_convolve_uv(ztz, uv):
     """Compute the multivariate (valid) convolution of ztz and D
 
@@ -45,7 +45,8 @@ def numpy_convolve_uv(ztz, uv):
     return G
 
 
-@jit((numba.float64[:, :, :], numba.float64[:, :]), cache=True, nopython=True)
+@numba.jit((numba.float64[:, :, :], numba.float64[:, :]), cache=True,
+           nopython=True)
 def numpy_convolve_uv_nopython(ztz, uv):
     """Compute the multivariate (valid) convolution of ztz and D
 

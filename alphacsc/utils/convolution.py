@@ -6,10 +6,10 @@
 #          Umut Simsekli <umut.simsekli@telecom-paristech.fr>
 #          Alexandre Gramfort <alexandre.gramfort@telecom-paristech.fr>
 
+import numba
 import numpy as np
 
 from .. import cython_code
-from .compat import numba, jit
 from .lil import get_z_shape, is_lil
 
 
@@ -193,7 +193,8 @@ def _choose_convolve_multi(z_i, D=None, n_channels=None):
             return _dense_convolve_multi(z_i, D)
 
 
-@jit((numba.float64[:, :, :], numba.float64[:, :]), cache=True, nopython=True)
+@numba.jit((numba.float64[:, :, :], numba.float64[:, :]), cache=True,
+           nopython=True)
 def numpy_convolve_uv(ztz, uv):
     """Compute the multivariate (valid) convolution of ztz and D
 

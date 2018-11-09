@@ -1,5 +1,6 @@
 import time
 
+import numba
 import numpy as np
 import pandas as pd
 from scipy import sparse
@@ -7,7 +8,6 @@ from joblib import Memory
 import matplotlib.pyplot as plt
 from scipy.stats.mstats import gmean
 
-from alphacsc.utils.compat import numba, jit
 from alphacsc.cython import _fast_compute_ztz_lil
 from alphacsc.cython import _fast_compute_ztz_csr
 
@@ -37,7 +37,7 @@ def naive_sum(z, n_times_atom):
     return ztz
 
 
-@jit((numba.float64[:, :, :], numba.int64))
+@numba.jit((numba.float64[:, :, :], numba.int64))
 def sum_numba(z, n_times_atom):
     """
     ztz.shape = n_atoms, n_atoms, 2 * n_times_atom - 1
