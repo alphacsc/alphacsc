@@ -98,10 +98,16 @@ events = mne.find_events(raw, stim_channel='STI 014')
 events = mne.pick_events(events, include=event_id)
 
 ###############################################################################
-# The only temporal filter we apply on our data is a notch filter.
+# The only temporal filter we apply on our data is a notch filter and a
+# highpass filter at 2 Hz.
 import numpy as np
 raw.notch_filter(np.arange(60, 181, 60), n_jobs=n_jobs)
+raw.filter(2, None, n_jobs=n_jobs)
 raw.pick_types(meg='grad', eeg=False, eog=False, stim=False)
+
+###############################################################################
+# Then, we resample the time series for faster computation.
+raw, events = raw.resample(sfreq, events=events, npad='auto', n_jobs=n_jobs)
 
 ###############################################################################
 # We extract the multivariate time series as a numpy array and split it into
