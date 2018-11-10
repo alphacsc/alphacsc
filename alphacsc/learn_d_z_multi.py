@@ -289,9 +289,10 @@ def _batch_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
         z_hat = lil.init_zeros(use_sparse_z, n_trials, 0, n_times_valid)
 
         if n_iter < n_atoms:
-            raise ValueError('The greedy method needs at least %d to learn %d '
-                             'atoms. Got only %d. Please increase n_iter.'
-                             % (n_iter_by_atom * n_iter, n_atoms, n_iter))
+            raise ValueError('The greedy method needs at least %d iteration '
+                             'to learn %d atoms. Got only n_iter=%d. Please '
+                             'increase n_iter.' % (
+                                 n_iter_by_atom * n_atoms, n_atoms, n_iter))
 
     # monitor cost function
     times = [0]
