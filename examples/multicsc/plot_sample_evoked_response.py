@@ -268,13 +268,25 @@ fname_cov = op.join(data_path, 'MEG', 'sample', 'sample_audvis-cov.fif')
 
 ###############################################################################
 # Let us construct an evoked object for MNE from the spatial pattern of the
-# 15th atom.
-evoked = mne.EvokedArray(cdl.u_hat_[15][:, None], raw.info)
+# atoms.
+evoked = mne.EvokedArray(cdl.u_hat_.T, raw.info)
 
 ###############################################################################
-# Finally, we can fit a dipole.
-dip = mne.fit_dipole(evoked, fname_cov, fname_bem, fname_trans)[0]
+# Finally, we can fit a dipole to each of the atoms.
+dip = mne.fit_dipole(evoked, fname_cov, fname_bem, fname_trans,
+                     n_jobs=n_jobs)[0]
 
 ###############################################################################
-# and plot it.
-dip.plot_locations(fname_trans, 'sample', subjects_dir)
+# and plot the top 5 atoms with the best goodness of fit.
+best_idx = dip.gof.argsort()[::-1][:5]
+fig = plt.figure(figsize=(18, 7))
+for idx in range(5):
+    ax = fig.add_subplot(2, 5, idx + 1, projection='3d')
+    dip.plot_locations(fname_trans, 'sample', subjects_dir, idx=best_idx[idx],
+                       ax=ax)
+    ax.set_title('Atom #%d (GOF %.2f%%)'
+                 % (best_idx[idx], dip.gof[best_idx[idx]]))
+    ax = fig.add_subplot(2, 5, idx + 6)
+    mne.viz.plot_topomap(cdl.u_hat_[best_idx[idx]], raw.info, axes=ax)
+fig.suptitle('')
+fig.tight_layout()
