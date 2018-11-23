@@ -111,9 +111,9 @@ raw, events = raw.resample(sfreq, events=events, npad='auto', n_jobs=n_jobs)
 
 ###############################################################################
 # We extract the multivariate time series as a numpy array and split it into
-# 12 parts to make the most of multiple processors during the model fitting.
+# 10 parts to make the most of multiple processors during the model fitting.
 
-n_splits = 12
+n_splits = 2 * n_jobs
 X = raw.get_data()
 n_channels, n_times = X.shape
 n_times = n_times // n_splits
