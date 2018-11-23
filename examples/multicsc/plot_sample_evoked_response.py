@@ -278,6 +278,8 @@ dip = mne.fit_dipole(evoked, fname_cov, fname_bem, fname_trans,
 
 ###############################################################################
 # and plot the top 5 atoms with the best goodness of fit.
+from mpl_toolkits.mplot3d import Axes3D
+
 best_idx = dip.gof.argsort()[::-1][:5]
 fig = plt.figure(figsize=(18, 7))
 for idx in range(5):
