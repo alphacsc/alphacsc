@@ -30,7 +30,16 @@ Installation
 To install this package, the easiest way is using ``pip``. It will install this
 package and its dependencies. The ``setup.py`` depends on ``numpy`` and
 ``cython`` for the installation so it is advised to install them beforehand. To
-install this package, please run
+install this package, please run one of the two commands:
+
+(Latest stable version)
+
+.. code::
+
+    pip install numpy cython
+    pip install alphacsc
+
+(Development version)
 
 .. code::
 

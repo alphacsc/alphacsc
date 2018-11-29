@@ -15,6 +15,7 @@ figures
 save_exp
 
 # tools directories
+dist
 joblib
 .cache
 .vscode
