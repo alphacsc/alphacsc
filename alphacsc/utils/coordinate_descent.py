@@ -1,3 +1,5 @@
+# Authors: Thomas Moreau <thomas.moreau@inria.fr>
+
 import time
 import numpy as np
 from scipy import sparse

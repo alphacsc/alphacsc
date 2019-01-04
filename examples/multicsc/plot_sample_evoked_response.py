@@ -110,7 +110,7 @@ from alphacsc.utils.convolution import construct_X_multi
 from alphacsc.viz.epoch import plot_evoked_surrogates
 
 # preselected atoms of interest
-plotted_atoms = [2, 0, 3, 15, 20, 11]
+plotted_atoms = [1, 0, 3, 16, 20, 7]
 
 n_plots = 3  # number of plots by atom
 n_columns = min(6, len(plotted_atoms))
