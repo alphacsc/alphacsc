@@ -107,7 +107,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
     D_init : str or array, shape (n_atoms, n_channels + n_times_atoms) or \
                            shape (n_atoms, n_channels, n_times_atom)
         The initial atoms or an initialization scheme in {'kmeans' | 'ssa' |
-        'chunks' | 'random'}.
+        'chunk' | 'random'}.
     D_init_params : dict
         Dictionnary of parameters for the kmeans init method.
     unbiased_z_hat : boolean

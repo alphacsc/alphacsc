@@ -88,7 +88,7 @@ DOC_FMT = """{desc}
     D_init : str or array
         The initial atoms with shape (n_atoms, n_channels + n_times_atoms) or
         (n_atoms, n_channels, n_times_atom) or an initialization scheme str in
-        {{'kmeans' | 'ssa' | 'chunks' | 'random'}}.
+        {{'kmeans' | 'ssa' | 'chunk' | 'random'}}.
     D_init_params : dict
         Dictionnary of parameters for the kmeans init method.
 

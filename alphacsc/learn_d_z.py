@@ -87,7 +87,7 @@ def learn_d_z(X, n_atoms, n_times_atom, func_d=update_d_block, reg=0.1,
         Additional keyword arguments to pass to update_z
     ds_init : str or array, shape (n_atoms, n_times_atom)
         The initial atoms or an initialization scheme in {'kmeans' | 'ssa' |
-        'chunks' | 'random'}.
+        'chunk' | 'random'}.
     ds_init_params : dict
         Dictionnary of parameters for the kmeans init method.
     sample_weights : array, shape (n_trials, n_times)
