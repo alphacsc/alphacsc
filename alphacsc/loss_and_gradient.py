@@ -572,4 +572,4 @@ def _dense_transpose_convolve_d(residual_i, D=None, n_channels=None):
     else:
         return np.sum([[np.correlate(res_ip, d_kp, mode='valid')
                         for res_ip, d_kp in zip(residual_i, d_k)]
-                       for d_k in D[..., ::-1]], axis=1)
+                       for d_k in D], axis=1)
