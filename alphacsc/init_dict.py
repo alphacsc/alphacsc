@@ -352,7 +352,7 @@ def get_max_error_dict(X, z, D, uv_constraint='separate', window=False):
         n_times_atom = D.shape[2]
     patch_rec_error = _patch_reconstruction_error(X, z, D)
     i0 = patch_rec_error.argmax()
-    n0, t0 = np.unravel_index(i0, (n_trials, n_times))
+    n0, t0 = np.unravel_index(i0, patch_rec_error.shape)
 
     d0 = X[n0, :, t0:t0 + n_times_atom][None]
 
