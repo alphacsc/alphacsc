@@ -15,6 +15,8 @@ def test_online_partial_fit(rank1, alpha):
 
     rng = check_random_state(42)
     X = rng.randn(n_trials, n_channels, n_times)
+    # Need to have a unit norm signal to have the equivalence between
+    # successive partial_fit and OnlineCDL
     X /= X.std()
 
     # The initial regularization is different for fit and partial_fit. It is
