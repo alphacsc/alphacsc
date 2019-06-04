@@ -84,8 +84,8 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
         pobj = [objective(z_hat)]
         t_start = time.time()
 
-    beta, dz_opt = _init_beta(Xi, z_hat, D, constants, reg, norm_Dk,
-                              tol, use_sparse_dz=False)
+    beta, dz_opt, tol = _init_beta(Xi, z_hat, D, constants, reg, norm_Dk,
+                                   tol, use_sparse_dz=False)
 
     # If we freeze the support, we put dz_opt to zero outside the support of z0
     if freeze_support:
@@ -186,11 +186,12 @@ def _init_beta(Xi, z_hat, D, constants, reg, norm_Dk, tol,
     else:
         dz_opt = np.maximum(-beta - reg, 0) / norm_Dk - z_hat
 
+    tol = tol * np.std(Xi)
     if use_sparse_dz:
         dz_opt[abs(dz_opt) < tol] = 0
         dz_opt = sparse.lil_matrix(dz_opt)
 
-    return beta, dz_opt
+    return beta, dz_opt, tol
 
 
 def _update_beta(beta, dz_opt, accumulator, active_segs, z_hat, DtD, norm_Dk,

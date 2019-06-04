@@ -210,7 +210,7 @@ def _update_z_multi_idx(X_i, D, reg, z0_i, debug, solver='l-bfgs',
             f0 = f0.reshape(n_atoms, n_times_valid)
 
         # Default values
-        tol = solver_kwargs.get('tol', 1e-1)
+        tol = solver_kwargs.get('tol', 1e-3)
         n_seg = solver_kwargs.get('n_seg', 'auto')
         max_iter = solver_kwargs.get('max_iter', 1e15)
         strategy = solver_kwargs.get('strategy', 'greedy')
