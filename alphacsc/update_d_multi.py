@@ -17,34 +17,41 @@ from .loss_and_gradient import compute_objective, compute_X_and_objective_multi
 from .loss_and_gradient import gradient_uv, gradient_d
 
 
+def squeeze_all_except_one(X, axis=0):
+    squeeze_axis = tuple(set(range(X.ndim)) - set([axis]))
+    return X.squeeze(axis=squeeze_axis)
+
+
 def prox_uv(uv, uv_constraint='joint', n_channels=None, return_norm=False):
     if uv_constraint == 'joint':
-        norm_uv = np.maximum(1, np.linalg.norm(uv, axis=1))
-        uv /= norm_uv[:, None]
+        norm_uv = np.maximum(1, np.linalg.norm(uv, axis=1, keepdims=True))
+        uv /= norm_uv
 
     elif uv_constraint == 'separate':
         assert n_channels is not None
-        norm_u = np.maximum(1, np.linalg.norm(uv[:, :n_channels], axis=1))
-        norm_v = np.maximum(1, np.linalg.norm(uv[:, n_channels:], axis=1))
+        norm_u = np.maximum(1, np.linalg.norm(uv[:, :n_channels],
+                                              axis=1, keepdims=True))
+        norm_v = np.maximum(1, np.linalg.norm(uv[:, n_channels:],
+                                              axis=1, keepdims=True))
 
-        uv[:, :n_channels] /= norm_u[:, None]
-        uv[:, n_channels:] /= norm_v[:, None]
+        uv[:, :n_channels] /= norm_u
+        uv[:, n_channels:] /= norm_v
         norm_uv = norm_u * norm_v
     else:
         raise ValueError('Unknown uv_constraint: %s.' % (uv_constraint, ))
 
     if return_norm:
-        return uv, norm_uv
+        return uv, squeeze_all_except_one(norm_uv, axis=0)
     else:
         return uv
 
 
 def prox_d(D, return_norm=False):
-    norm_d = np.maximum(1, np.linalg.norm(D, axis=(1, 2)))
-    D /= norm_d[:, None, None]
+    norm_d = np.maximum(1, np.linalg.norm(D, axis=(1, 2), keepdims=True))
+    D /= norm_d
 
     if return_norm:
-        return D, norm_d
+        return D, squeeze_all_except_one(norm_d, axis=0)
     else:
         return D
 
@@ -136,7 +143,7 @@ def update_uv(X, z, uv_hat0, constants=None, b_hat_0=None, debug=False,
                 grad[:, n_channels:] *= tukey_window_
             return grad
 
-        def prox(uv):
+        def prox(uv, step_size=None):
             if window:
                 uv[:, n_channels:] *= tukey_window_
             uv = prox_uv(uv, uv_constraint=uv_constraint,
@@ -158,14 +165,14 @@ def update_uv(X, z, uv_hat0, constants=None, b_hat_0=None, debug=False,
         uv_hat = uv_hat0.copy()
         u_hat, v_hat = uv_hat[:, :n_channels], uv_hat[:, n_channels:]
 
-        def prox_u(u):
-            u /= np.maximum(1., np.linalg.norm(u, axis=1))[:, None]
+        def prox_u(u, step_size=None):
+            u /= np.maximum(1., np.linalg.norm(u, axis=1, keepdims=True))
             return u
 
-        def prox_v(v):
+        def prox_v(v, step_size=None):
             if window:
                 v *= tukey_window_
-            v /= np.maximum(1., np.linalg.norm(v, axis=1))[:, None]
+            v /= np.maximum(1., np.linalg.norm(v, axis=1, keepdims=True))
             if window:
                 v /= tukey_window_
             return v
@@ -317,7 +324,7 @@ def update_d(X, z, D_hat0, constants=None, b_hat_0=None, debug=False,
                 grad *= tukey_window_
             return grad
 
-        def prox(D):
+        def prox(D, step_size=None):
             if window:
                 D *= tukey_window_
             D = prox_d(D)
@@ -362,7 +369,8 @@ def _get_d_update_constants(X, z):
     return constants
 
 
-def compute_lipschitz(uv0, constants, variable, b_hat_0=None):
+def compute_lipschitz(uv0, constants, variable, b_hat_0=None,
+                      random_state=None):
 
     n_channels = constants['n_channels']
     u0, v0 = uv0[:, :n_channels], uv0[:, n_channels:]

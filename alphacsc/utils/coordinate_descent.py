@@ -6,6 +6,7 @@ from scipy import sparse
 
 from .lil import is_lil
 from .. import cython_code
+from . import check_random_state
 from ..loss_and_gradient import gradient_zi
 from .convolution import _choose_convolve_multi
 
@@ -13,7 +14,7 @@ from .convolution import _choose_convolve_multi
 def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
                             tol=1e-1, strategy='greedy', n_seg='auto',
                             freeze_support=False, debug=False, timing=False,
-                            name="CD", verbose=0):
+                            random_state=None, name="CD", verbose=0):
     """Compute the coding signal associated to Xi with coordinate descent.
 
     Parameters
@@ -66,6 +67,8 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
             n_seg = 1
             n_coordinates = n_times_valid * n_atoms
 
+    rng = check_random_state(random_state)
+
     max_iter *= n_seg
     n_times_seg = n_times_valid // n_seg + 1
 
@@ -105,7 +108,7 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
     for ii in range(int(max_iter)):
         k0, t0, dz = _select_coordinate(strategy, dz_opt, active_segs[i_seg],
                                         n_atoms, n_times_valid, n_times_seg,
-                                        seg_bounds)
+                                        seg_bounds, rng=rng)
         if strategy in ['random', 'cyclic']:
             # accumulate on all coordinates from the stopping criterion
             if ii % n_coordinates == 0:
@@ -250,11 +253,11 @@ def _update_beta(beta, dz_opt, accumulator, active_segs, z_hat, DtD, norm_Dk,
 
 
 def _select_coordinate(strategy, dz_opt, active_seg, n_atoms, n_times_valid,
-                       n_times_seg, seg_bounds):
+                       n_times_seg, seg_bounds, rng):
     # Pick a coordinate to update
     if strategy == 'random':
-        k0 = np.random.randint(n_atoms)
-        t0 = np.random.randint(n_times_valid)
+        k0 = rng.randint(n_atoms)
+        t0 = rng.randint(n_times_valid)
         dz = dz_opt[k0, t0]
 
     elif strategy == 'cyclic':
