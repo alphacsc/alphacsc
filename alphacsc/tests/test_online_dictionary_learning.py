@@ -10,11 +10,14 @@ from alphacsc.online_dictionary_learning import OnlineCDL
 def test_online_partial_fit(rank1, alpha):
     # Ensure that partial fit reproduce the behavior of the online algorithm if
     # feed with the same batch size and order.
-    n_trials, n_channels, n_times = 10, 3, 100
+    n_trials, n_channels, n_times = 10, 3, 30
     n_times_atom, n_atoms = 6, 4
 
     rng = check_random_state(42)
     X = rng.randn(n_trials, n_channels, n_times)
+    # Need to have a unit norm signal to have the equivalence between
+    # successive partial_fit and OnlineCDL
+    X /= X.std()
 
     # The initial regularization is different for fit and partial_fit. It is
     # computed in batch mode for fit and with the first mini-batch in

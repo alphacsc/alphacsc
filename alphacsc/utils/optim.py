@@ -7,6 +7,9 @@ from .compute_constants import compute_DtD
 from . import check_random_state
 
 
+MIN_STEP_SIZE = 1e-20
+
+
 def _support_least_square(X, uv, z, debug=False):
     """WIP, not fonctional!"""
     n_trials, n_channels, n_times = X.shape
@@ -45,8 +48,11 @@ def _support_least_square(X, uv, z, debug=False):
 
 def fista(f_obj, f_grad, f_prox, step_size, x0, max_iter, verbose=0,
           momentum=False, eps=None, adaptive_step_size=False, debug=False,
-          scipy_line_search=True, name='ISTA', timing=False, restart=None):
-    """ISTA and FISTA algorithm
+          scipy_line_search=True, name='ISTA', timing=False):
+    """Proximal Gradient Descent (PGD) and Accelerated PDG.
+
+    This reduces to ISTA and FISTA when the loss function is the l2 loss and
+    the proximal operator is the soft-thresholding.
 
     Parameters
     ----------
@@ -76,8 +82,6 @@ def fista(f_obj, f_grad, f_prox, step_size, x0, max_iter, verbose=0,
     timing : boolean
         If True, compute the objective function at each step, and the duration
         of each step, and return both lists at the end.
-    restart : int or None
-        If not None, restart the momentum every `restart` iterations.
 
     Returns
     -------
@@ -87,61 +91,72 @@ def fista(f_obj, f_grad, f_prox, step_size, x0, max_iter, verbose=0,
         If debug is True, pobj contains the value of the cost function at each
         iteration.
     """
+    obj_uv = f_obj(x0)
     pobj = None
-    if debug:
-        pobj = list()
+    if debug or timing:
+        pobj = [obj_uv]
     if timing:
         times = [0]
-        pobj = [f_obj(x0)]
         start = time.time()
 
     if step_size is None:
         step_size = 1.
     if eps is None:
         eps = np.finfo(np.float32).eps
-    obj_uv = None
 
     tk = 1.0
     x_hat = x0.copy()
     x_hat_aux = x_hat.copy()
     grad = np.empty(x_hat.shape)
     diff = np.empty(x_hat.shape)
+    last_up = t_start = time.time()
     for ii in range(max_iter):
-        # restart every n iterations
-        if restart is not None and ii > 0 and (ii % restart) == 0:
-            x_hat_aux = x_hat.copy()
-            tk = 1.0
+        t_update = time.time()
+        if verbose > 1 and t_update - last_up > 1:
+            print("\r[FISTA:PROGRESS] {:.0f}s - {:7.2%} iterations"
+                  .format(t_update - t_start, ii / max_iter),
+                  end="", flush=True)
+        has_restarted = False
 
         grad[:] = f_grad(x_hat_aux)
 
         if adaptive_step_size:
+
+            def compute_obj_and_step(step_size, return_x_hat=False):
+                x_hat = f_prox(x_hat_aux - step_size * grad,
+                               step_size=step_size)
+                pobj = f_obj(x_hat)
+                if return_x_hat:
+                    return pobj, x_hat
+                else:
+                    return pobj
+
             if scipy_line_search:
-
-                def f_obj_(x_hat):
-                    x_hat = np.reshape(x_hat, x0.shape)
-                    return f_obj(f_prox(x_hat))
-
-                step_size, _, obj_uv = optimize.linesearch.line_search_armijo(
-                    f_obj_, x_hat.ravel(), -grad.ravel(), grad.ravel(), obj_uv,
-                    c1=1e-5, alpha0=step_size)
-                if step_size is None:
-                    step_size = 0
-                x_hat_aux -= step_size * grad
-                x_hat_aux = f_prox(x_hat_aux)
+                norm_grad = np.dot(grad.ravel(), grad.ravel())
+                step_size, obj_uv = optimize.linesearch.scalar_search_armijo(
+                    compute_obj_and_step, obj_uv, -norm_grad, c1=1e-5,
+                    alpha0=step_size, amin=MIN_STEP_SIZE)
+                if step_size is not None:
+                    # compute the next point
+                    x_hat_aux -= step_size * grad
+                    x_hat_aux = f_prox(x_hat_aux, step_size=step_size)
 
             else:
-
-                def f(step_size):
-                    x_hat = f_prox(x_hat_aux - step_size * grad)
-                    pobj = f_obj(x_hat)
-                    return pobj, x_hat
-
+                from functools import partial
+                f = partial(compute_obj_and_step, return_x_hat=True)
                 obj_uv, x_hat_aux, step_size = _adaptive_step_size(
                     f, obj_uv, alpha=step_size)
 
+            if step_size is None or step_size < MIN_STEP_SIZE:
+                # We did not find a valid step size. We should restart
+                # the momentum for APGD or stop the algorithm for PDG.
+                x_hat_aux = x_hat
+                has_restarted = momentum
+                step_size = 1.
+
         else:
             x_hat_aux -= step_size * grad
-            x_hat_aux = f_prox(x_hat_aux)
+            x_hat_aux = f_prox(x_hat_aux, step_size=step_size)
 
         diff[:] = x_hat_aux - x_hat
         x_hat[:] = x_hat_aux
@@ -150,23 +165,24 @@ def fista(f_obj, f_grad, f_prox, step_size, x0, max_iter, verbose=0,
             x_hat_aux += (tk - 1) / tk_new * diff
             tk = tk_new
 
-        if debug:
+        if debug or timing:
             pobj.append(f_obj(x_hat))
+            if adaptive_step_size:
+                assert len(pobj) < 2 or pobj[-1] <= pobj[-2]
         if timing:
             times.append(time.time() - start)
-            pobj.append(f_obj(x_hat))
             start = time.time()
 
         f = np.sum(abs(diff))
-        if f <= eps:
+        if f <= eps and not has_restarted:
             break
         if f > 1e50:
             raise RuntimeError("The D update have diverged.")
     else:
         if verbose > 1:
-            print('[{}] update did not converge'.format(name))
-    if verbose > 5:
-        print('[{}]: {} iterations'.format(name, ii + 1))
+            print('\r[{}] update did not converge'.format(name))
+    if verbose > 1:
+        print('\r[{}]: {} iterations'.format(name, ii + 1))
 
     if timing:
         return x_hat, pobj, times
@@ -203,7 +219,7 @@ def _adaptive_step_size(f, f0=None, alpha=None, tau=2):
     if i == 0:
         alpha /= tau * tau
         f_alpha, x_alpha = f(alpha)
-        while f0 <= f_alpha and alpha > 1e-20:
+        while f0 <= f_alpha and alpha > MIN_STEP_SIZE:
             alpha /= tau
             f_alpha, x_alpha = f(alpha)
         return f_alpha, x_alpha, alpha

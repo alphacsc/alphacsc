@@ -151,6 +151,10 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
     n_trials, n_channels, n_times = X.shape
     n_times_valid = n_times - n_times_atom + 1
 
+    # Rescale the problem to avoid underflow issues
+    std_X = X.std()
+    X = X / std_X
+
     # initialization
     start = time.time()
     rng = check_random_state(random_state)
@@ -263,6 +267,10 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
     if verbose > 0:
         print("[%s] Fit in %.1fs" % (name, time.time() - start))
 
+    # Rescale the solution to match the given scale of the problem
+    z_hat *= std_X
+    reg *= std_X
+
     return pobj, times, D_hat, z_hat, reg
 
 
@@ -271,7 +279,6 @@ def _batch_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
                  lmbd_max='fixed', reg=None, verbose=0, greedy=False,
                  random_state=None, name="batch", uv_constraint='separate',
                  window=False):
-
     reg_ = reg
 
     # Initialize constants dictionary
@@ -413,7 +420,8 @@ def _online_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
         # Compute z update
         start = time.time()
         if batch_selection == 'random':
-            i0 = np.random.choice(n_trials, batch_size, replace=False)
+            rng = check_random_state(random_state)
+            i0 = rng.choice(n_trials, batch_size, replace=False)
         elif batch_selection == 'cyclic':
             i_slice = (ii * batch_size) % n_trials
             i0 = slice(i_slice, i_slice + batch_size)

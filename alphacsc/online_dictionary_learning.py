@@ -57,6 +57,9 @@ class OnlineCDL(ConvolutionalDictionaryLearning):
             name="OnlineCDL")
 
     def partial_fit(self, X, y=None):
+        # Successive partial_fit are equivalent to OnlineCDL only if
+        # the X passed to this method are taken from a normalized
+        # X_full ( X_full / X_full.std())
         self._check_param_partial_fit()
         self._ensure_fit_init(X)
 

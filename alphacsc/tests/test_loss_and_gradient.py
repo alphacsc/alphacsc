@@ -75,8 +75,8 @@ def gradient_checker(func, grad, shape, args=(), kwargs={}, n_checks=10,
 def test_consistency(loss, func):
     """Check that the result are the same for the full rank D and rank 1 uv.
     """
-    n_trials, n_channels, n_times = 5, 3, 100
-    n_atoms, n_times_atom = 10, 15
+    n_trials, n_channels, n_times = 5, 3, 30
+    n_atoms, n_times_atom = 4, 7
 
     loss_params = dict(gamma=.01)
 

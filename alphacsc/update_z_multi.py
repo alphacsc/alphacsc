@@ -6,12 +6,13 @@
 import time
 
 import numpy as np
-from scipy import optimize, sparse
+from scipy import optimize
 from joblib import Parallel, delayed
 
 
 from . import cython_code
 from .utils.optim import fista
+from .utils import check_random_state
 from .loss_and_gradient import gradient_zi
 from .utils.lil import is_list_of_lil, is_lil
 from .utils.coordinate_descent import _coordinate_descent_idx
@@ -20,7 +21,8 @@ from .utils.compute_constants import compute_DtD, compute_ztz, compute_ztX
 
 def update_z_multi(X, D, reg, z0=None, solver='l-bfgs', solver_kwargs=dict(),
                    loss='l2', loss_params=dict(), freeze_support=False,
-                   return_ztz=False, timing=False, n_jobs=1, debug=False):
+                   return_ztz=False, timing=False, n_jobs=1,
+                   random_state=None, debug=False):
     """Update z using L-BFGS with positivity constraints
 
     Parameters
@@ -53,8 +55,12 @@ def update_z_multi(X, D, reg, z0=None, solver='l-bfgs', solver_kwargs=dict(),
         time taken by each iteration for each signal.
     n_jobs : int
         The number of parallel jobs.
+    random_state : None or int or RandomState
+        random_state to make randomized experiments determinist. If None, no
+        random_state is given. If it is an integer, it will be used to seed a
+        RandomState.
     debug : bool
-        If True, check the grad.
+        If True, check the gradients.
 
     Returns
     -------
@@ -69,6 +75,10 @@ def update_z_multi(X, D, reg, z0=None, solver='l-bfgs', solver_kwargs=dict(),
         n_atoms, n_channels, n_times_atom = D.shape
     n_times_valid = n_times - n_times_atom + 1
 
+    # Generate different seeds for the parallel updates
+    rng = check_random_state(random_state)
+    parallel_seeds = [rng.randint(2**32) for _ in range(n_trials)]
+
     if z0 is None:
         z0 = np.zeros((n_trials, n_atoms, n_times_valid))
 
@@ -78,8 +88,9 @@ def update_z_multi(X, D, reg, z0=None, solver='l-bfgs', solver_kwargs=dict(),
     results = Parallel(n_jobs=n_jobs)(
         delayed_update_z(X[i], D, reg, z0[i], debug, solver, solver_kwargs,
                          freeze_support, loss, loss_params=loss_params,
-                         return_ztz=return_ztz, timing=timing)
-        for i in np.arange(n_trials))
+                         return_ztz=return_ztz,
+                         timing=timing, random_state=seed)
+        for i, seed in enumerate(parallel_seeds))
 
     # Post process the results to get separate objects
     z_hats, pobj, times = [], [], []
@@ -121,7 +132,8 @@ class BoundGenerator(object):
 
 def _update_z_multi_idx(X_i, D, reg, z0_i, debug, solver='l-bfgs',
                         solver_kwargs=dict(), freeze_support=False, loss='l2',
-                        loss_params=dict(), return_ztz=False, timing=False):
+                        loss_params=dict(), return_ztz=False,
+                        timing=False, random_state=None):
     t_start = time.time()
     n_channels, n_times = X_i.shape
     if D.ndim == 2:
@@ -136,6 +148,8 @@ def _update_z_multi_idx(X_i, D, reg, z0_i, debug, solver='l-bfgs',
     if is_lil(z0_i) and solver != "lgcd":
         raise NotImplementedError()
 
+    rng = check_random_state(random_state)
+
     constants = {}
     if solver == "lgcd":
         constants['DtD'] = compute_DtD(D=D, n_channels=n_channels)
@@ -147,21 +161,18 @@ def _update_z_multi_idx(X_i, D, reg, z0_i, debug, solver='l-bfgs',
                            loss=loss, loss_params=loss_params)
 
     if z0_i is None:
-        f0 = np.zeros(n_atoms * n_times_valid)
-    elif is_lil(z0_i):
-        f0 = z0_i
-    else:
-        f0 = z0_i.reshape(n_atoms * n_times_valid)
+        z0_i = np.zeros(n_atoms, n_times_valid)
 
     times, pobj = None, None
     if timing:
         times = [init_timing]
-        pobj = [func_and_grad(f0)[0]]
+        pobj = [func_and_grad(z0_i)[0]]
         t_start = [time.time()]
 
     if solver == 'l-bfgs':
+        z0_i = z0_i.ravel()
         if freeze_support:
-            bounds = [(0, 0) if z == 0 else (0, None) for z in f0]
+            bounds = [(0, 0) if z == 0 else (0, None) for z in z0_i]
         else:
             bounds = BoundGenerator(n_atoms * n_times_valid)
         if timing:
@@ -175,14 +186,13 @@ def _update_z_multi_idx(X_i, D, reg, z0_i, debug, solver='l-bfgs',
         factr = solver_kwargs.get('factr', 1e15)  # default value
         maxiter = solver_kwargs.get('maxiter', 15000)  # default value
         z_hat, f, d = optimize.fmin_l_bfgs_b(
-            func_and_grad, f0, fprime=None, args=(), approx_grad=False,
+            func_and_grad, x0=z0_i, fprime=None, args=(), approx_grad=False,
             bounds=bounds, factr=factr, maxiter=maxiter, callback=callback)
 
     elif solver in ("ista", "fista"):
         # Default args
         fista_kwargs = dict(
-            max_iter=100, eps=None, verbose=0, restart=None,
-            scipy_line_search=False,
+            max_iter=100, eps=None, verbose=0, scipy_line_search=False,
             momentum=(solver == "fista")
         )
         fista_kwargs.update(solver_kwargs)
@@ -193,10 +203,10 @@ def _update_z_multi_idx(X_i, D, reg, z0_i, debug, solver='l-bfgs',
         def grad(z_hat):
             return func_and_grad(z_hat)[1]
 
-        def prox(z_hat,):
-            return np.maximum(z_hat, 0.)
-
-        output = fista(objective, grad, prox, None, f0,
+        def prox(z_hat, step_size=0):
+            return np.maximum(z_hat - step_size * reg, 0.)
+        z0_i = z0_i.ravel()
+        output = fista(objective, grad, prox, step_size=None, x0=z0_i,
                        adaptive_step_size=True, timing=timing,
                        name="Update z", **fista_kwargs)
         if timing:
@@ -206,18 +216,17 @@ def _update_z_multi_idx(X_i, D, reg, z0_i, debug, solver='l-bfgs',
             z_hat, pobj = output
 
     elif solver == "lgcd":
-        if not sparse.isspmatrix_lil(f0):
-            f0 = f0.reshape(n_atoms, n_times_valid)
 
         # Default values
-        tol = solver_kwargs.get('tol', 1e-1)
+        tol = solver_kwargs.get('tol', 1e-3)
         n_seg = solver_kwargs.get('n_seg', 'auto')
         max_iter = solver_kwargs.get('max_iter', 1e15)
         strategy = solver_kwargs.get('strategy', 'greedy')
         output = _coordinate_descent_idx(
-            X_i, D, constants, reg=reg, z0=f0,
-            freeze_support=freeze_support, tol=tol, max_iter=max_iter,
-            n_seg=n_seg, strategy=strategy, timing=timing, name="Update z")
+            X_i, D, constants, reg=reg, z0=z0_i, max_iter=max_iter, tol=tol,
+            strategy=strategy, n_seg=n_seg, freeze_support=freeze_support,
+            timing=timing, random_state=rng, name="Update z")
+
         if timing:
             z_hat, pobj, times = output
             times[0] += init_timing

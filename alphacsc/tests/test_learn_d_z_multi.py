@@ -20,8 +20,8 @@ from alphacsc.init_dict import init_dictionary
     ])
 def test_learn_d_z_multi(loss, solver_d, uv_constraint, rank1, window):
     # smoke test for learn_d_z_multi
-    n_trials, n_channels, n_times = 2, 3, 100
-    n_times_atom, n_atoms = 10, 4
+    n_trials, n_channels, n_times = 2, 3, 30
+    n_times_atom, n_atoms = 6, 4
 
     loss_params = dict(gamma=1, sakoe_chiba_band=10, ordar=10)
 

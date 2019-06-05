@@ -20,7 +20,7 @@ def test_ista():
     def grad(x):
         return A.T.dot(A.dot(x) - b)
 
-    def prox(x):
+    def prox(x, step_size=0):
         return x / max(np.linalg.norm(x), 1.)
 
     x0 = np.random.rand(p)
