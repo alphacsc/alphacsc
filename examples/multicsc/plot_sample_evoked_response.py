@@ -308,23 +308,28 @@ dip = mne.fit_dipole(evoked, fname_cov, fname_bem, fname_trans,
 # Plot the dipole fit from the 3rd atom, linked to mu-wave and display the
 # goodness of fit.
 #
+
+atom_dipole_idx = 4
+
 from mpl_toolkits.mplot3d import Axes3D
 
 fig = plt.figure(figsize=(10, 4))
 
 # Display the dipole fit
 ax = fig.add_subplot(1, 3, 1, projection='3d')
-dip.plot_locations(fname_trans, 'sample', subjects_dir, idx=3, ax=ax)
-ax.set_title('Atom #3 (GOF {:.2f}%)'.format(dip.gof[3]))
+dip.plot_locations(fname_trans, 'sample', subjects_dir, idx=atom_dipole_idx,
+                   ax=ax)
+ax.set_title('Atom #{} (GOF {:.2f}%)'.format(atom_dipole_idx,
+                                             dip.gof[atom_dipole_idx]))
 
 # Plot the spatial map
 ax = fig.add_subplot(1, 3, 2)
-mne.viz.plot_topomap(cdl.u_hat_[3], info, axes=ax)
+mne.viz.plot_topomap(cdl.u_hat_[atom_dipole_idx], info, axes=ax)
 
 # Plot the temporal atom
 ax = fig.add_subplot(1, 3, 3)
 t = np.arange(n_times_atom) / sfreq
-ax.plot(t, cdl.v_hat_[3])
+ax.plot(t, cdl.v_hat_[atom_dipole_idx])
 ax.set_xlim(0, n_times_atom / sfreq)
 ax.set(xlabel='Time (sec)', title="Temporal pattern 3")
 
