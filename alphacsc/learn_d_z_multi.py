@@ -295,7 +295,7 @@ def _batch_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
         n_trials, n_atoms, n_times_valid = lil.get_z_shape(z_hat)
         z_hat = lil.init_zeros(use_sparse_z, n_trials, 0, n_times_valid)
 
-        if n_iter < n_atoms:
+        if n_iter < n_atoms * n_iter_by_atom:
             raise ValueError('The greedy method needs at least %d iteration '
                              'to learn %d atoms. Got only n_iter=%d. Please '
                              'increase n_iter.' % (

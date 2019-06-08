@@ -77,7 +77,7 @@ import matplotlib.pyplot as plt
 
 i_atom = 4
 n_plots = 3
-figsize = (n_plots * 3.5, 5)
+figsize = (n_plots * 5, 5.5)
 fig, axes = plt.subplots(1, n_plots, figsize=figsize, squeeze=False)
 
 # Plot the spatial map of the learn atom using mne topomap

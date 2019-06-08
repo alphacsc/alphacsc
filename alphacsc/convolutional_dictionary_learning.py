@@ -211,7 +211,8 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
 
         if self.unbiased_z_hat:
             if self.verbose > 0:
-                print("Refitting the activation to avoid amplitude bias...")
+                print("Refitting the activation to avoid amplitude bias...",
+                      end='', flush=True)
             z_hat, _, _ = update_z_multi(
                 X, self._D_hat, z0=z_hat, n_jobs=self.n_jobs,
                 reg=0, freeze_support=True,
@@ -233,7 +234,8 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
 
         if self.unbiased_z_hat:
             if self.verbose > 0:
-                print("Refitting the activation to avoid amplitude bias...")
+                print("Refitting the activation to avoid amplitude bias...",
+                      end='', flush=True)
             z_hat, _, _ = update_z_multi(
                 X, self._D_hat, z0=z_hat, n_jobs=self.n_jobs,
                 reg=0, freeze_support=True,
