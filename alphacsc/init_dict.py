@@ -6,13 +6,11 @@
 import itertools
 
 import numpy as np
-import matplotlib.pyplot as plt
 
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 
-from .viz.callback import COLORS
 from .utils import check_random_state
 from .other.kmc2 import custom_distances
 from .update_d_multi import prox_uv, prox_d
@@ -244,6 +242,9 @@ def kmeans_init(X, n_atoms, n_times_atom, max_iter=0, random_state=None,
 
 def plot_tsne(X_embed, X_centers, labels=None, metric='euclidean',
               random_state=None):
+
+    import matplotlib.pyplot as plt
+    from .viz.callback import COLORS
 
     tsne = TSNE(n_components=2, random_state=random_state, perplexity=5,
                 metric=metric, verbose=2)

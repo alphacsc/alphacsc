@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy import signal
 
 from .arma import Arma
@@ -40,6 +39,7 @@ def whitening(X, ordar=10, block_length=256, sfreq=1., zero_phase=True,
                             alpha=3 / float(n_times_white))[None, None, :]
 
     if plot:  # pragma: no cover
+        import matplotlib.pyplot as plt
         # plot the Power Spectral Density (PSD) before/after
         ar_model.arma2psd(hold=True)
         if zero_phase:
@@ -106,6 +106,7 @@ def unwhitening(ar_model, X_white, estimate=True, zero_phase=True, plot=False):
     assert X_unwhite.shape == X_white.shape
 
     if plot:
+        import matplotlib.pyplot as plt
         # plot the Power Spectral Density (PSD) before/after
         ar_model.periodogram(
             X_white.reshape(-1, n_times), hold=False, mean_psd=True)

@@ -1,4 +1,6 @@
 #! /usr/bin/env python
+import os
+import re
 import numpy as np
 from Cython.Build import cythonize
 from setuptools import setup, Extension, find_packages
@@ -11,7 +13,21 @@ MAINTAINER = 'Mainak Jas'
 MAINTAINER_EMAIL = 'mainakjas@gmail.com'
 LICENSE = 'BSD (3-clause)'
 DOWNLOAD_URL = 'https://github.com/alphacsc/alphacsc.git'
-VERSION = '0.4.dev0'
+
+
+# Function to parse __version__ in `alphacsc`
+def find_version():
+    here = os.path.abspath(os.path.dirname(__file__))
+    with open(os.path.join(here, 'alphacsc', '__init__.py'), 'r') as fp:
+        version_file = fp.read()
+    version_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]",
+                              version_file, re.M)
+    if version_match:
+        return version_match.group(1)
+    raise RuntimeError("Unable to find version string.")
+
+
+VERSION = find_version()
 
 # Add cython extensions
 kmc2 = Extension('alphacsc.other.kmc2.kmc2',
