@@ -331,7 +331,8 @@ ax = fig.add_subplot(1, 3, 3)
 t = np.arange(n_times_atom) / sfreq
 ax.plot(t, cdl.v_hat_[atom_dipole_idx])
 ax.set_xlim(0, n_times_atom / sfreq)
-ax.set(xlabel='Time (sec)', title="Temporal pattern 3")
+ax.set(xlabel='Time (sec)', title="Temporal pattern {}"
+       .format(atom_dipole_idx))
 
 fig.suptitle('')
 fig.tight_layout()
