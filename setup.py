@@ -11,7 +11,7 @@ MAINTAINER = 'Mainak Jas'
 MAINTAINER_EMAIL = 'mainakjas@gmail.com'
 LICENSE = 'BSD (3-clause)'
 DOWNLOAD_URL = 'https://github.com/alphacsc/alphacsc.git'
-VERSION = '0.3.dev'
+VERSION = '0.3'
 
 # Add cython extensions
 kmc2 = Extension('alphacsc.other.kmc2.kmc2',
