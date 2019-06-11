@@ -4,6 +4,8 @@ import mne
 import numpy as np
 from joblib import Parallel, delayed
 
+from ..utils.convolution import construct_sources
+
 
 def make_epochs(z_hat, info, t_lim, n_times_atom=1):
     """Make Epochs on the activations of atoms.
@@ -105,3 +107,148 @@ def plot_evoked_surrogates(array, info, t_lim, ax, n_jobs, label='',
     # ax.axvline(threshold_low, color='k', linestyle='--')
     # ax.axvline(threshold_high, color='k', linestyle='--')
     # ax.legend()
+
+
+def plot_epochs_of_selected_atoms(model, z_hat, X_full, info, t_lim,
+                                  idx_atoms, channel=None,
+                                  align=False):
+    import matplotlib.pyplot as plt
+    import matplotlib.colors as colors
+
+    topomap = model.u_hat_
+    v_hat = model.v_hat_
+    sources = construct_sources(model, z_hat)
+
+    color_atoms = ['C%d' % d for d in [1, 2, 4, 5, 6, 7, 8, 9]]
+
+    # check idx_atoms
+    if isinstance(idx_atoms, str) and idx_atoms == 'all':
+        idx_atoms = np.arange(topomap.shape[0])
+    idx_atoms = np.atleast_1d(idx_atoms)
+    n_atoms = len(idx_atoms)
+
+    # select one channel
+    if channel is None:
+        u_ks = topomap[idx_atoms]
+        channel = np.argsort(np.sum(np.abs(u_ks), axis=0))[-1]
+    trut = X_full[channel]
+
+    # select atoms
+    pred = np.dot(topomap[idx_atoms].T, sources[idx_atoms])
+    pred = pred[channel]
+    acti = z_hat[0, idx_atoms]
+    v_hat = v_hat[idx_atoms]
+    # roll to put activation in the peak of the atoms
+    for kk in range(n_atoms):
+        shift = np.argmax(np.abs(v_hat[kk]))
+        acti[kk] = np.roll(acti[kk], shift)
+    epoched_acti = make_epochs(acti[None], info, t_lim=t_lim)
+
+    epoched_trut = make_epochs(trut[None, None], info, t_lim=t_lim)[:, 0]
+    epoched_pred = make_epochs(pred[None, None], info, t_lim=t_lim)[:, 0]
+    n_epochs, n_times_epoch = epoched_trut.shape
+    time_array = np.linspace(*t_lim, n_times_epoch)
+    vmax = max(
+        np.percentile(np.abs(epoched_trut), 95),
+        np.percentile(np.abs(epoched_pred), 95))
+
+    # prepare plots
+    n_ids = len(info['event_id'])
+    nrows = 4
+    height = 11
+    fig, axes = plt.subplots(nrows, n_ids, figsize=(4 * n_ids, height),
+                             sharex=True)
+
+    for jj, this_event_id in enumerate(info['event_id']):
+        mask = info['events'][:, -1] == this_event_id
+        masked_trut = epoched_trut[mask, :].copy()
+        masked_pred = epoched_pred[mask, :].copy()
+        n_epochs_event = masked_pred.shape[0]
+
+        # order epochs
+        if np.mean(masked_pred) > 0:
+            order = np.argsort(np.argmax(masked_pred, axis=1))
+        else:
+            order = np.argsort(np.argmin(masked_pred, axis=1))
+        masked_trut = masked_trut[order]
+        masked_pred = masked_pred[order]
+        masked_acti = epoched_acti[mask].copy()[order]
+
+        onsets = np.argmin(np.abs(time_array)) * np.ones(
+            n_epochs_event, dtype='int')
+
+        # experimental: roll to align activations
+        if align:
+            roll_idx = np.argmin(masked_pred, axis=1)
+            mask = roll_idx != 0
+            roll_idx[mask] -= np.int_(np.median(roll_idx[mask]))
+            roll_idx = [idx if -20 < idx < 20 else 0 for idx in roll_idx]
+            masked_trut = np.array([
+                np.roll(epoch, -idx)
+                for epoch, idx in zip(masked_trut, roll_idx)
+            ])
+            masked_pred = np.array([
+                np.roll(epoch, -idx)
+                for epoch, idx in zip(masked_pred, roll_idx)
+            ])
+            onsets += roll_idx
+
+        # for the channel data, and the channel data as approximated by 1 atom
+        for ii, epoched in enumerate([masked_trut, masked_pred]):
+            atom_str = '%d-atom%s' % (n_atoms, 's' if n_atoms > 1 else '')
+            label = ['raw', atom_str][ii]
+            color = ['C0', 'C3'][ii]
+
+            # first plot the epochs
+            ax = axes[2 * ii, jj]
+            extent = (*t_lim, 0, n_epochs_event)
+            ax.imshow(epoched, cmap='RdBu_r', aspect='auto', vmin=-vmax,
+                      vmax=vmax, extent=extent, interpolation='bilinear',
+                      origin='lower')
+            ax.set(title='Event %d - %s' % (this_event_id, label))
+            ax.set(xlabel='Time (s)', ylabel='Epoch')
+            ax.title.set_color(color)
+
+            # plot the event onsets in black
+            ax = axes[2 * ii, jj]
+
+            ax.plot(time_array[onsets], np.arange(n_epochs_event), 'k')
+
+            # plot the activations instants
+            if ii == 1:
+                ax = axes[2 * ii, jj]
+                for kk in range(n_atoms):
+                    xx, yy = masked_acti[:, kk, :].nonzero()
+                    values = masked_acti[xx, kk, yy]
+                    values /= values.max()
+                    color_array = np.asarray([(*colors.to_rgb(color_atoms[kk]),
+                                               alpha) for alpha in values])
+                    ax.scatter(time_array[yy], xx, marker='.',
+                               color=color_array)
+                    ax.set_ylim(0, n_epochs_event)
+
+            # then plot the mean evoked response
+            ax = axes[1, jj]
+            ax.get_shared_y_axes().join(ax, axes[1, 0])
+            mean, std = epoched.mean(axis=0), epoched.std(axis=0) / 2.
+            ax.plot(time_array, mean, label=label, color=color)
+            ax.fill_between(time_array, mean - std, mean + std, color=color,
+                            alpha=0.3)
+            ax.axvline(0, color='k')
+            ax.set(xlabel='Time (s)', title='Evoked')
+            ax.legend()
+            ax.grid(True)
+
+            # plot the activations distributions
+            if ii == 1:
+                ax = axes[3, jj]
+                ax.get_shared_y_axes().join(ax, axes[3, 0])
+                for kk in range(n_atoms):
+                    xx, yy = masked_acti[:, kk, :].nonzero()
+                    ax.hist(time_array[yy], bins=n_times_epoch, range=t_lim,
+                            label='atom %d' % idx_atoms[kk], alpha=0.6,
+                            color=color_atoms[kk])
+                ax.set(xlabel='Time (s)', title='Activations')
+                ax.legend()
+    ax.set_xlim(t_lim)
+    plt.tight_layout()

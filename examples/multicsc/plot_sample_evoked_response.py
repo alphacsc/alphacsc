@@ -222,7 +222,10 @@ events[:, 0] -= raw.first_samp
 
 from alphacsc.utils.signal import fast_hilbert
 from alphacsc.viz.epoch import plot_evoked_surrogates
-from alphacsc.utils.convolution import construct_X_multi
+from alphacsc.utils.convolution import construct_X_multi, construct_sources
+
+# reconstruct univariate sources for each temporal atom.
+sources = construct_sources(model=cdl, z_hat=z_hat)
 
 # time window around the events. Note that for the sample datasets, the time
 # inter-event is around 0.5s
@@ -242,10 +245,7 @@ for ii, kk in enumerate(plotted_atoms):
     it_axes = iter(axes[i_row * n_plots:(i_row + 1) * n_plots, i_col])
 
     # Select the current atom
-    v_k = cdl.v_hat_[kk]
-    v_k_1 = np.r_[[1], v_k][None]
-    z_k = z_hat[:, kk:kk + 1]
-    X_k = construct_X_multi(z_k, v_k_1, n_channels=1)[0, 0]
+    X_k = sources[kk]
 
     # compute the 'envelope' of the reconstructed signal X_k
     correlation = np.abs(fast_hilbert(X_k))
@@ -263,6 +263,34 @@ for ii, kk in enumerate(plotted_atoms):
         ax.set(xlabel='Time (sec)', title="Evoked envelope %d" % kk)
 print("\rDisplayed {} atoms".format(len(plotted_atoms)).rjust(40))
 fig.tight_layout()
+
+###############################################################################
+# Here is a different visualization of the atoms correlated with the event
+# onsets. We first select two atoms based on previous figure. Each event
+# corresponds to a column. Then we pick the channel with the largest absolute
+# value in the spatial map of selected atoms. The top row displays the raw
+# timecourses on this channel, aligned on the event onsets, and ordered by
+# minimum raw value. The second row plots the average evoked timesourse,
+# either on the raw signal or on the signal reconstructed using the two
+# selected atoms. The third raw uses the same epoch order than the first row,
+# but displays the signal reconstructed using the two selected atoms. Colored
+# dots are present where each atom is activated. The last row depicts
+# histograms of activations for the selected atoms.
+from alphacsc.viz.epoch import plot_epochs_of_selected_atoms
+from copy import deepcopy
+
+# Select a channel to plot. None will select the channel automatically.
+channel = None
+
+# select the atoms to plot
+idx_atoms = [6, 30]
+
+this_info = deepcopy(info)
+this_info['event_id'] = [1, 2, 3, 4]
+this_info['events'] = events
+
+plot_epochs_of_selected_atoms(cdl, z_hat, X, this_info, t_lim, idx_atoms,
+                              channel=channel, align=False)
 
 ###############################################################################
 # Display the equivalent dipole for a learned topomap
