@@ -272,7 +272,7 @@ fig.tight_layout()
 # timecourses on this channel, aligned on the event onsets, and ordered by
 # minimum raw value. The second row plots the average evoked timesourse,
 # either on the raw signal or on the signal reconstructed using the two
-# selected atoms. The third raw uses the same epoch order than the first row,
+# selected atoms. The third row uses the same epoch order as the first row,
 # but displays the signal reconstructed using the two selected atoms. Colored
 # dots are present where each atom is activated. The last row depicts
 # histograms of activations for the selected atoms.
