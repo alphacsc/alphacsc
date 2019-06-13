@@ -156,11 +156,13 @@ try:
         ztz.shape = n_atoms, n_atoms, 2 * n_times_atom - 1
         D.shape = n_atoms, n_channels, n_times_atom
         """
+        return torch.nn.functional.conv1d(ztz, D).data
+
+    def torch_move_to_gpu(ztz, D):
         D = D.swapaxes(0, 1)[:, :, ::-1].copy()
-        filters = torch.autograd.Variable(torch.from_numpy(D))
-        inputs = torch.autograd.Variable(torch.from_numpy(ztz))
-        return torch.nn.functional.conv1d(inputs, filters).data.numpy()
-        # set convolution filter to D
+        D = torch.autograd.Variable(torch.from_numpy(D)).cuda()
+        ztz = torch.autograd.Variable(torch.from_numpy(ztz)).cuda()
+        return ztz, D
 
     all_func.append(torch_conv)
 
@@ -181,8 +183,12 @@ def test_equality():
     for func in all_func:
         if 'uv' in func.__name__:
             result = func(ztz, uv=np.hstack([u, v]))
+        elif 'torch' in func.__name__:
+            ztz_, D_ = torch_move_to_gpu(ztz, D)
+            result = func(ztz_, D_).cpu().numpy()
         else:
             result = func(ztz, D=D)
+
         assert np.allclose(result, reference)
 
 
@@ -195,6 +201,9 @@ def run_one(n_atoms, n_channels, n_times_atom, func):
         D = uv
     else:
         D = np.random.randn(n_atoms, n_channels, n_times_atom)
+
+    if func is torch_conv:
+        ztz, D = torch_move_to_gpu(ztz, D)
 
     start = time.time()
     func(ztz, D)
@@ -244,3 +253,4 @@ def benchmark():
 if __name__ == '__main__':
     test_equality()
     benchmark()
+
