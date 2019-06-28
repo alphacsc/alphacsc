@@ -5,7 +5,10 @@
 
 import numpy as np
 
-from .utils import construct_X, check_random_state
+from .utils import construct_X
+from .utils import check_dimension
+from .utils import check_random_state
+
 from .learn_d_z import learn_d_z
 from .update_d import update_d_block
 from .update_w import estimate_phi_mh
@@ -84,7 +87,7 @@ def learn_d_z_weighted(
         Weights estimated by the Expectation-Maximisation algorithm.
     """
 
-    n_trials, n_times = X.shape
+    n_trials, n_times = check_dimension(X, expected_shape='n_trials, n_times')
 
     if init_tau:
         phi = np.tile(np.var(X, axis=1)[:, None], X.shape[1])

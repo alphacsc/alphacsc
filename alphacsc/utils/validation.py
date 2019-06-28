@@ -24,3 +24,30 @@ def check_random_state(seed):
         return seed
     raise ValueError('%r cannot be used to seed a numpy.random.RandomState'
                      ' instance' % seed)
+
+
+def check_dimension(X, expected_shape="n_trials, n_channels, n_times"):
+    """Check the dimension of the input signal and return it.
+
+    If the dimension is not correct, return a sensible error message.
+
+    Parameters
+    -----------
+    X : ndarray
+        Input signal
+    expected_shape: str
+        Expected shape of the input signal. If X is of lower dimensionality,
+        raise a sensible error.
+
+    Return
+    ------
+    shape : tuple
+        The shape of the input signal.
+    """
+    ndim = expected_shape.split(',')
+    if X.ndim != ndim:
+        raise ValueError("Expected shape ({}) but got input signal with "
+                         "ndim={} and shape {}".format(
+                             expected_shape, X.ndim, X.shape))
+
+    return X.shape
