@@ -44,7 +44,7 @@ def check_dimension(X, expected_shape="n_trials, n_channels, n_times"):
     shape : tuple
         The shape of the input signal.
     """
-    ndim = expected_shape.split(',')
+    ndim = len(expected_shape.split(','))
     if X.ndim != ndim:
         raise ValueError("Expected shape ({}) but got input signal with "
                          "ndim={} and shape {}".format(
