@@ -11,7 +11,7 @@ from scipy import linalg
 from joblib import Parallel
 
 from .init_dict import init_dictionary
-from .utils import construct_X, check_random_state
+from .utils import construct_X, check_random_state, check_dimension
 from .utils.dictionary import get_lambda_max
 from .update_z import update_z
 from .update_d import update_d_block
@@ -112,7 +112,8 @@ def learn_d_z(X, n_atoms, n_times_atom, func_d=update_d_block, reg=0.1,
     reg : float
         Regularization parameter used.
     """
-    n_trials, n_times = X.shape
+
+    n_trials, n_times = check_dimension(X, expected_shape="n_trials, n_times")
 
     rng = check_random_state(random_state)
 

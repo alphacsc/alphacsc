@@ -11,6 +11,7 @@ import sys
 import numpy as np
 
 from .utils import lil
+from .utils import check_dimension
 from .utils import check_random_state
 from .utils.convolution import sort_atoms_by_explained_variances
 from .utils.dictionary import get_lambda_max
@@ -148,7 +149,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         "not '{}'".format(lmbd_max)
     )
 
-    n_trials, n_channels, n_times = X.shape
+    n_trials, n_channels, n_times = check_dimension(X)
     n_times_valid = n_times - n_times_atom + 1
 
     # Rescale the problem to avoid underflow issues
