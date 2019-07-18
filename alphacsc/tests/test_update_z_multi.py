@@ -156,3 +156,14 @@ def test_cd(use_sparse_lil):
         plt.plot(pobj)
         plt.show()
         raise
+
+
+def test_n_jobs_larger_than_n_trials():
+    n_trials, n_channels, n_times = 2, 3, 100
+    n_times_atom, n_atoms = 10, 4
+
+    rng = np.random.RandomState(0)
+    X = rng.randn(n_trials, n_channels, n_times)
+    uv = rng.randn(n_atoms, n_channels + n_times_atom)
+
+    z_hat, ztz, ztX = update_z_multi(X, uv, 0.1, n_jobs=3)

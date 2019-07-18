@@ -281,3 +281,10 @@ def test_learn_codes_atoms_sample_weights(func_d, solver_z):
         pobj_1 /= pobj_0[0]
         pobj_0 /= pobj_0[0]
         assert np.allclose(pobj_0, pobj_1, rtol=0, atol=1e-3)
+
+
+def test_n_jobs_larger_than_n_trials():
+    n_trials = 2
+    X, ds, z = simulate_data(n_trials, n_times, n_times_atom, n_atoms)
+    pobj, times, d_hat, _, _ = learn_d_z(X, n_atoms, n_times_atom, n_iter=3,
+                                         n_jobs=3)

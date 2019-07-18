@@ -58,11 +58,12 @@ def update_z(X, ds, reg, z0=None, debug=False, parallel=None,
         parallel = Parallel(n_jobs=1)
     else:
         assert parallel.n_jobs >= 1
+    n_jobs_used = min(parallel.n_jobs, n_trials)
 
     zhats = parallel(
         my_update_z(X, ds, reg, z0, i, debug, solver, b_hat_0, solver_kwargs,
                     sample_weights)
-        for i in np.array_split(np.arange(n_trials), parallel.n_jobs))
+        for i in np.array_split(np.arange(n_trials), n_jobs_used))
     z_hat = np.vstack(zhats)
 
     z_hat2 = z_hat.reshape((n_trials, n_atoms, n_times_valid))
@@ -133,6 +134,7 @@ def _fprime(ds, zi, Xi=None, sample_weights=None, reg=None, return_func=False):
 
 def _update_z_idx(X, ds, reg, z0, idxs, debug, solver='l-bfgs', b_hat_0=None,
                   solver_kwargs=dict(), sample_weights=None, timing=False):
+    assert len(idxs) > 0
 
     n_trials, n_times = X.shape
     n_atoms, n_times_atom = ds.shape
