@@ -288,3 +288,11 @@ def test_n_jobs_larger_than_n_trials():
     X, ds, z = simulate_data(n_trials, n_times, n_times_atom, n_atoms)
     pobj, times, d_hat, _, _ = learn_d_z(X, n_atoms, n_times_atom, n_iter=3,
                                          n_jobs=3)
+
+
+def test_z0_read_only():
+    # If n_atoms == 1, the reshape in update_z does not copy the data (cf #26)
+    n_atoms = 1
+    X, ds, z = simulate_data(n_trials, n_times, n_times_atom, n_atoms)
+    z.flags.writeable = False
+    update_z(X, ds, 0.1, z0=z, solver='ista')

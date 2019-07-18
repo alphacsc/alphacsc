@@ -160,7 +160,7 @@ def _update_z_idx(X, ds, reg, z0, idxs, debug, solver='l-bfgs', b_hat_0=None,
         if z0 is None:
             f0 = np.zeros(n_atoms * n_times_valid)
         else:
-            f0 = z0[:, i, :].reshape((n_atoms * n_times_valid))
+            f0 = z0[:, i, :].reshape((n_atoms * n_times_valid)).copy()
 
         if timing:
             times = [0]
@@ -195,7 +195,7 @@ def _update_z_idx(X, ds, reg, z0, idxs, debug, solver='l-bfgs', b_hat_0=None,
                                                 maxiter=maxiter,
                                                 callback=callback)
         elif solver == "ista":
-            zhat = f0.copy()
+            zhat = f0
             DTD = gram_block_circulant(ds, n_times_valid, 'custom',
                                        sample_weights=sample_weights_i)
             tol = solver_kwargs.get('power_iteration_tol', 1e-4)
@@ -214,7 +214,7 @@ def _update_z_idx(X, ds, reg, z0, idxs, debug, solver='l-bfgs', b_hat_0=None,
 
         elif solver == "fista":
             # init
-            x_new = f0.copy()
+            x_new = f0
             y = x_new.copy()
             t_new = 1.0
 
