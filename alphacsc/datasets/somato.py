@@ -50,8 +50,8 @@ def load_data(dataset="somato", n_splits=10, sfreq=None, epoch=None,
         data_path = mne.datasets.somato.data_path()
         subject = '01'
         task = 'somato'
-        file_name = pjoin(data_path, 'sub-{}'.format(subject), 'meg',
-                  'sub-{}_task-{}_meg.fif'.format(subject, task))
+        file_name = join(data_path, 'sub-{}'.format(subject), 'meg',
+                         'sub-{}_task-{}_meg.fif'.format(subject, task))
         subjects_dir = join(data_path, 'derivatives', 'freesurfer',
                             'subjects')
         raw = mne.io.read_raw_fif(file_name, preload=True)
@@ -60,6 +60,7 @@ def load_data(dataset="somato", n_splits=10, sfreq=None, epoch=None,
 
         # Dipole fit information
         cov = None  # see below
+        data_dir = join(data_path, 'MEG', 'somato')  # TODO fix
         file_trans = join(data_dir, "sef_raw_sss-trans.fif")
         file_bem = join(subjects_dir, 'somato', 'bem',
                         'somato-5120-bem-sol.fif')
