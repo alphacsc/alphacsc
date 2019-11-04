@@ -48,9 +48,12 @@ def load_data(dataset="somato", n_splits=10, sfreq=None, epoch=None,
 
     if dataset == 'somato':
         data_path = mne.datasets.somato.data_path()
-        subjects_dir = join(data_path, "subjects")
-        data_dir = join(data_path, 'MEG', 'somato')
-        file_name = join(data_dir, 'sef_raw_sss.fif')
+        subject = '01'
+        task = 'somato'
+        file_name = pjoin(data_path, 'sub-{}'.format(subject), 'meg',
+                  'sub-{}_task-{}_meg.fif'.format(subject, task))
+        subjects_dir = join(data_path, 'derivatives', 'freesurfer',
+                            'subjects')
         raw = mne.io.read_raw_fif(file_name, preload=True)
         raw.notch_filter(np.arange(50, 101, 50), n_jobs=n_jobs)
         event_id = 1
