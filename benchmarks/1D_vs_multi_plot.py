@@ -30,7 +30,7 @@ if __name__ == "__main__":
                                 "to run 1D_vs_multi_run.py before using this "
                                 "script.")
 
-    extension ="pdf" if args.pdf else "png"
+    extension = "pdf" if args.pdf else "png"
 
     # Load the results
     all_results_df = pd.read_pickle(file_name)
@@ -63,8 +63,8 @@ if __name__ == "__main__":
                    label="$P={}$".format(n_channels))
 
     plt.legend(loc=2, fontsize=fontsize)
-    plt.ylabel("score($\widehat v$)", fontsize=fontsize)
-    plt.xlabel("Noise level $\eta$", fontsize=fontsize)
+    plt.ylabel(r"score($\widehat v$)", fontsize=fontsize)
+    plt.xlabel(r"Noise level $\eta$", fontsize=fontsize)
     plt.tight_layout()
     plt.savefig(file_name.replace("pkl", extension), dpi=150)
 

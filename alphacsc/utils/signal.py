@@ -31,7 +31,7 @@ def split_signal(X, n_splits=1, apply_window=True):
 
     Parameters
     ----------
-    X : ndarray, shape (n_channels, n_times)
+    X : ndarray, shape (n_channels, n_times) or (1, n_channels, n_times)
         Signal to be split. It should be a single signal.
     n_splits : int (default: 1)
         Number of splits to create from the original signal. Default is 1.
@@ -45,9 +45,13 @@ def split_signal(X, n_splits=1, apply_window=True):
     X_split: ndarray, shape (n_splits, n_channels, n_times // n_splits)
         The signal splitted in ``n_splits``.
     """
+    msg = "This splitting utility is only designed for one multivariate signal"
+    if X.ndim == 3:
+        assert X.shape[0] == 1, (
+            msg + "(1, n_channels, n_times. Found X.shape={}".format(X.shape))
+        X = X[0]
     assert X.ndim == 2, (
-        "This splitting utility is only designed for one multivariate "
-        "signal (n_channels, n_times). Found X.ndim={}.".format(X.ndim))
+        msg + " (n_channels, n_times). Found X.ndim={}.".format(X.ndim))
 
     n_splits = int(n_splits)
     assert n_splits > 0, "The number of splits should be large than 0."
@@ -62,3 +66,52 @@ def split_signal(X, n_splits=1, apply_window=True):
         X_split *= tukey(n_times, alpha=0.1)[None, None, :]
 
     return X_split
+
+
+def check_univariate_signal(X):
+    """Return an array that can be used with alphacsc transformers for
+    univariate signals.
+
+    Parameters
+    ----------
+    X : ndarray, shape (n_times,) or (n_trials, n_times)
+        Signal to be reshaped. It should be a single signal.
+
+    Return
+    ------
+    X: ndarray, shape (n_trials, n_channels, n_times)
+        The signal with the correct number of dimensions to be use with
+        alphacsc transformers.
+    """
+    if X.ndim == 1:
+        return X.reshape(1, 1, -1)
+    if X.ndim == 2:
+        return X[:, None]
+    raise ValueError("This utility should only be used for univariate signals "
+                     "with shape (n_times,) or (n_trials, n_times). Got {}."
+                     .format(X.shape))
+
+
+def check_multivariate_signal(X):
+    """Return an array that can be used with alphacsc transformers for
+    multivariate signals.
+
+    Parameters
+    ----------
+    X : ndarray, shape (n_channels, n_times) or (n_trials, n_channels, n_times)
+        Signal to be reshaped. It should be a single signal.
+
+    Return
+    ------
+    X: ndarray, shape (n_trials, n_channels, n_times)
+        The signal with the correct number of dimensions to be use with
+        alphacsc transformers.
+    """
+    if X.ndim == 2:
+        return X[None]
+    if X.ndim == 3:
+        return X
+    raise ValueError("This utility should only be used with multivariate "
+                     "signals with shape (n_channels, n_times) or "
+                     "(n_trials, n_channels, n_times). Got {}."
+                     .format(X.shape))

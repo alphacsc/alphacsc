@@ -5,3 +5,5 @@ from .validation import check_random_state, check_consistent_shape
 from .validation import check_dimension
 from .profile_this import profile_this
 from .signal import split_signal
+from .signal import check_univariate_signal
+from .signal import check_multivariate_signal

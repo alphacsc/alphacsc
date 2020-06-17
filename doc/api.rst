@@ -13,6 +13,7 @@ Transformers
    :toctree: generated/
 
    BatchCDL
+   GreedyCDL
    OnlineCDL
 
 Functions
@@ -24,7 +25,6 @@ Functions to learn atoms (d) and activations (z) from the signal
    :toctree: generated/
 
    learn_d_z
-   learn_d_z_multi
    learn_d_z_weighted
 
 Utility functions (:py:mod:`alphacsc.utils`):
@@ -34,4 +34,6 @@ Utility functions (:py:mod:`alphacsc.utils`):
 .. autosummary::
    :toctree: generated/
 
+   check_univariate_signal
+   check_multivariate_signal
    split_signal

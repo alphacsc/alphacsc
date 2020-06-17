@@ -13,7 +13,9 @@ from .learn_d_z_multi import learn_d_z_multi
 from .loss_and_gradient import construct_X_multi
 
 
-DOC_FMT = """{desc}
+DOC_FMT = """{short_desc}
+
+    {desc}
 
     Parameters
     ----------
@@ -110,7 +112,15 @@ DOC_FMT = """{desc}
     """
 
 DEFAULT = dict(
-    desc="Base class for convolutional dictionary learning algorithms",
+    short_desc="Base class for convolutional dictionary learning algorithms.",
+    desc=r"""This transformer solves the following problem
+    \\[
+        \\arg\\min_{D, Z} \\sum_{n=1}^N
+            \\frac{1}{2}\\|X^{(n)} - \\sum_{k=1}^K D_k*Z^{(n)}_k\\|_2^2
+            + \\lambda\\|Z^{(n)}\\|_2
+    \\]
+    for `K = n_atoms` and `N = n_samples`.
+    """,
     algorithm="""
 
     algorithm : {'batch' | 'greedy' | 'online'}
@@ -325,7 +335,8 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
 class BatchCDL(ConvolutionalDictionaryLearning):
     _default = {}
     _default.update(DEFAULT)
-    _default['desc'] = "Batch algorithm for convolutional dictionary learning"
+    _default['short_desc'] = (
+        "Batch algorithm for convolutional dictionary learning")
     _default['algorithm'] = "    Batch algorithm\n"
     __doc__ = DOC_FMT.format(**_default)
 
@@ -350,8 +361,8 @@ class BatchCDL(ConvolutionalDictionaryLearning):
 class GreedyCDL(ConvolutionalDictionaryLearning):
     _default = {}
     _default.update(DEFAULT)
-    _default['desc'] = ("Greedy batch algorithm for convolutional dictionary "
-                        "learning")
+    _default['short_desc'] = ("Greedy batch algorithm for convolutional "
+                              "dictionary learning")
     _default['algorithm'] = "    Greedy batch algorithm\n"
     __doc__ = DOC_FMT.format(**_default)
 
