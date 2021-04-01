@@ -1,0 +1,38 @@
+name: unittests
+on:
+  pull_request:
+  push:
+    branches: master
+
+jobs:
+  test:
+    runs-on: ubuntu-20.04
+    defaults:
+      run:
+        shell: bash -l {0}
+    strategy:
+      fail-fast: false
+      matrix:
+        python: [3.6]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          python-version: ${{ matrix.python }}
+          channels: conda-forge
+      - name: Installations
+        run: |
+          conda --version
+          which python
+          pip install numpy cython
+          pip install -e .
+          pip install pytest">=3.6" coverage pytest-cov coveralls
+      - name: Run unit tests
+        run: |
+          pytest --cov=alphacsc --cov-report=xml
+      - name: Upload coverage
+        uses: codecov/codecov-action@v1
+        with:
+          flags: unittests 
+          fail_ci_if_error: true 
+          verbose: true
