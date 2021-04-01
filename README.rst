@@ -1,15 +1,7 @@
 ===================================================
 alphaCSC: Convolution sparse coding for time-series
 ===================================================
-
-
-.. image:: https://api.travis-ci.org/alphacsc/alphacsc.svg?branch=master
-    :target: https://travis-ci.org/alphacsc/alphacsc
-    :alt: Build Status
-
-.. image:: https://codecov.io/github/alphacsc/alphacsc/coverage.svg?precision=0
-	:target: https://codecov.io/gh/alphacsc/alphacsc
-	:alt: Test coverage
+|Build Status| |codecov|
 
 This is a library to perform shift-invariant `sparse dictionary learning
 <https://en.wikipedia.org/wiki/Sparse_dictionary_learning>`_, also known as
@@ -115,3 +107,7 @@ If you use this code in your project, please consider citing our work:
 	the Morphology of Brain Signals Using Alpha-Stable Convolutional Sparse Coding
 	<https://papers.nips.cc/paper/6710-learning-the-morphology-of-brain-signals-using-alpha-stable-convolutional-sparse-coding.pdf>`_.
 	Advances in Neural Information Processing Systems (NIPS), pages 1099--1108.
+
+.. |Build Status| image:: https://github.com/alphacsc/alphacsc/workflows/unittests/badge.svg
+.. |codecov| image:: https://codecov.io/gh/alphacsc/alphacsc/branch/master/graph/badge.svg
+   :target: https://codecov.io/gh/alphacsc/alphacsc
