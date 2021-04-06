@@ -221,7 +221,7 @@ def make_array(X, equalize='zeropad'):
                            axis=-1) for x in X
         ])
     else:
-        raise ValueError("The equalize '{}' is not valid. It should be in "
-                         "{'crop', 'zeropad'}".format(equalize))
+        raise ValueError("The equalize parameter should be in "
+                         f"{'crop', 'zeropad'}, got '{equalize}'.")
 
     return X

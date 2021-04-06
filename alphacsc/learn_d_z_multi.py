@@ -146,7 +146,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
 
     assert lmbd_max in ['fixed', 'scaled', 'per_atom', 'shared'], (
         "lmbd_max should be in {'fixed', 'scaled', 'per_atom', 'shared'}, "
-        "not '{}'".format(lmbd_max)
+        f"got '{lmbd_max}'"
     )
 
     n_trials, n_channels, n_times = check_dimension(X)
