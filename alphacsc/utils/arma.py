@@ -42,6 +42,7 @@ class Arma(object):
         If True, the amplitude is normalized
 
     """
+
     def __init__(self, ordar=2, ordma=0, block_length=1024, fft_length=None,
                  step=None, wfunc=np.hamming, fs=1., donorm=True):
         self.ordar = ordar
@@ -124,7 +125,7 @@ class Arma(object):
             count = 0
             while block[-1] < sig.size:
                 psd[i] += np.abs(
-                    fft(window * sig[block], fft_length, 0))[:n_freq] ** 2
+                    fft.fft(window * sig[block], fft_length, 0))[:n_freq] ** 2
                 count = count + 1
                 block = block + step
             if count == 0:
