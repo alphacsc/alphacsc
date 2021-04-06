@@ -25,10 +25,9 @@ jobs:
           conda --version
           which python
           pip install numpy cython
-          pip install pytest">=3.6" coverage pytest-cov coveralls
+          pip install -e .[test]
       - name: Run unit tests
         run: |
-          pip install -e .
           pytest --cov=alphacsc --cov-report=xml
       - name: Upload coverage
         uses: codecov/codecov-action@v1
