@@ -14,8 +14,10 @@ jobs:
         with:
           docs-folder: "doc/"
           pre-build-command: |
-            python -m pip install numpy cython
-            python -m pip install -e .[doc]
+            apt-get update
+            apt-get install -y gcc
+            pip install numpy cython
+            pip install -e .[doc]
       - name:  Upload generated HTML as artifact
         uses: actions/upload-artifact@v2
         with:
