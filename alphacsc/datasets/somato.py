@@ -48,18 +48,17 @@ def load_data(dataset="somato", n_splits=10, sfreq=None, epoch=None,
 
     if dataset == 'somato':
         data_path = mne.datasets.somato.data_path()
-        subjects_dir = join(data_path, "subjects")
-        data_dir = join(data_path, 'MEG', 'somato')
-        file_name = join(data_dir, 'sef_raw_sss.fif')
+        subjects_dir = None
+        file_name = join(data_path, 'sub-01', 'meg',
+                         'sub-01_task-somato_meg.fif')
         raw = mne.io.read_raw_fif(file_name, preload=True)
         raw.notch_filter(np.arange(50, 101, 50), n_jobs=n_jobs)
         event_id = 1
 
         # Dipole fit information
         cov = None  # see below
-        file_trans = join(data_dir, "sef_raw_sss-trans.fif")
-        file_bem = join(subjects_dir, 'somato', 'bem',
-                        'somato-5120-bem-sol.fif')
+        file_trans = None
+        file_bem = None
 
     elif dataset == 'sample':
         data_path = mne.datasets.sample.data_path()

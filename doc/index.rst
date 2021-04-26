@@ -5,7 +5,6 @@ Contents
 .. toctree::
 	:maxdepth: 2
 
-	index
 	models
 	auto_examples/index
 	api
