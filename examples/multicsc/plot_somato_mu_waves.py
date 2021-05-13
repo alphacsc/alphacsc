@@ -58,7 +58,7 @@ cdl = BatchCDL(
 # in epochs. The epochs are selected around the stim, starting 2 seconds
 # before and finishing 4 seconds after.
 
-from alphacsc.datasets.meg import load_data
+from alphacsc.datasets.mne_data import load_data
 t_lim = (-2, 4)
 X, info = load_data(dataset='somato', epoch=t_lim, sfreq=sfreq)
 

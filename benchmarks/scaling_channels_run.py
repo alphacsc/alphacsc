@@ -188,7 +188,7 @@ if __name__ == '__main__':
     delayed_one_run = delayed(cached_one_run)
 
     # load somato data
-    from alphacsc.datasets.meg import load_data
+    from alphacsc.datasets.mne_data import load_data
     X, info = load_data(dataset='somato', epoch=False, n_jobs=args.njobs)
 
     # Set dictionary learning parameters

@@ -27,7 +27,7 @@ from sporco.admm.cbpdndl import ConvBPDNDictLearn
 from alphacsc.update_d import update_d_block
 from alphacsc.learn_d_z import learn_d_z
 from alphacsc.learn_d_z_multi import learn_d_z_multi
-from alphacsc.datasets.meg import load_data
+from alphacsc.datasets.mne_data import load_data
 from alphacsc.init_dict import init_dictionary
 from alphacsc.utils.dictionary import get_uv
 
