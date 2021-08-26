@@ -84,9 +84,7 @@ class DicodileEncoder(ZEncoder):
         try:
             from dicodile.update_z.distributed_sparse_encoder import DistributedSparseEncoder
         except ImportError as ie:
-            warnings.warn(
-                'Please install dicodile by running "pip install alphacsc[dicodile]"')
-            raise
+            raise ImportError('Please install dicodile by running "pip install alphacsc[dicodile]"') from ie
         self.encoder = DistributedSparseEncoder(n_workers)
         # perform init steps (send X,D...)
         # XXX do we need to resend reg at some point?
