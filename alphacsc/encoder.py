@@ -43,7 +43,7 @@ def get_z_encoder_for(solver, z_kwargs, X, z_hat, D_hat, reg, loss, loss_params,
 
 
 class ZEncoder:
-    def update_z(self):
+    def compute_z(self):
         """
         """
         raise NotImplementedError()
@@ -90,7 +90,7 @@ class DicodileEncoder(ZEncoder):
         # XXX do we need to resend reg at some point?
         self.encoder.init_workers(X, D_hat, reg)
 
-    def update_z(self):
+    def compute_z(self):
         self.encoder.process_z_hat()
 
     def get_cost(self):
@@ -124,7 +124,7 @@ class AlphaCSCEncoder(ZEncoder):
         self.feasible_evaluation = feasible_evaluation
         self.return_X_hat = return_X_hat
 
-    def update_z(self):
+    def compute_z(self):
         # XXX missing params!!!
         self.z_hat, self.ztz, self.ztX = update_z_multi(
             self.X, self.D_hat, reg=self.reg, z0=self.z_hat, solver=self.z_alg,
