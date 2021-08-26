@@ -27,7 +27,7 @@ from sporco.admm.cbpdndl import ConvBPDNDictLearn
 from alphacsc.update_d import update_d_block
 from alphacsc.learn_d_z import learn_d_z
 from alphacsc.learn_d_z_multi import learn_d_z_multi
-from alphacsc.datasets.somato import load_data
+from alphacsc.datasets.mne_data import load_data
 from alphacsc.init_dict import init_dictionary
 from alphacsc.utils.dictionary import get_uv
 
@@ -290,7 +290,9 @@ if __name__ == '__main__':
 
         all_results = []
 
-        X, info = load_data(epoch=False, n_jobs=n_jobs, n_trials=2)
+        X, info = load_data(
+            dataset='somato', epoch=False, n_jobs=n_jobs, n_trials=2
+        )
 
         if n_channels == 1:
             X = X[:, 0, :]  # take only one channel

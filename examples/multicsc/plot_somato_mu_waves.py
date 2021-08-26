@@ -1,4 +1,4 @@
-"""
+r"""
 ===========================================================
 Extracting :math:`\mu`-wave from the somato-sensory dataset
 ===========================================================
@@ -58,9 +58,9 @@ cdl = BatchCDL(
 # in epochs. The epochs are selected around the stim, starting 2 seconds
 # before and finishing 4 seconds after.
 
-from alphacsc.datasets.somato import load_data
+from alphacsc.datasets.mne_data import load_data
 t_lim = (-2, 4)
-X, info = load_data(epoch=t_lim, sfreq=sfreq)
+X, info = load_data(dataset='somato', epoch=t_lim, sfreq=sfreq)
 
 
 ###############################################################################

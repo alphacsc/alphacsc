@@ -147,8 +147,9 @@ def one_run(X, n_channels, method, n_atoms, n_times_atom, random_state, reg):
     _, _, _, _, _ = func(X, D_init, reg_, 1, random_state, label, n_channels)
 
     # run the selected algorithm
-    pobj, times, d_hat, z_hat, reg = func(X, D_init, reg_, n_iter, random_state,
-                                          label, n_channels)
+    pobj, times, d_hat, z_hat, reg = func(
+        X, D_init, reg_, n_iter, random_state, label, n_channels
+    )
 
     # store z_hat in a sparse matrix to reduce size
     for z in z_hat:
@@ -187,8 +188,8 @@ if __name__ == '__main__':
     delayed_one_run = delayed(cached_one_run)
 
     # load somato data
-    from alphacsc.datasets.somato import load_data
-    X, info = load_data(epoch=False, n_jobs=args.njobs)
+    from alphacsc.datasets.mne_data import load_data
+    X, info = load_data(dataset='somato', epoch=False, n_jobs=args.njobs)
 
     # Set dictionary learning parameters
     n_atoms = 2  # K
