@@ -1,18 +1,7 @@
 from .loss_and_gradient import compute_X_and_objective_multi
 from .update_z_multi import update_z_multi
 
-# XXX needs additional args(signal, options...)
-# -> Either here (maybe it's simpler for a start?) or
-# in a separate `ZEncoder.init_encoder` method?
-#
-# At minimum: z solver, X, D_hat, reg.
-# AlphaCSC backend: loss, loss_params, uv_constraint, feasible_evaluation
-# DiCoDiLe backend: n_workers
 # XXX check consistency / proper use!
-# XXX reg is updated during descent steps... add a method on the encoder?
-# XXX solver_kwargs!!
-
-
 def get_z_encoder_for(solver, z_kwargs, X, z_hat, D_hat, reg, loss, loss_params, uv_constraint, feasible_evaluation, n_jobs):
     """
     Returns a z encoder for the required solver.
@@ -43,6 +32,11 @@ class BaseZEncoder:
         """
         """
         raise NotImplementedError()
+    
+    def compute_z_partial(self, i0):
+        """
+        """
+        raise NotImplementedError()
 
     def get_cost(self):
         """
@@ -61,11 +55,21 @@ class BaseZEncoder:
         raise NotImplementedError()
 
     def get_z_hat(self):
-        """
-        """
+        raise NotImplementedError()
+    
+    def get_z_hat_partial(self, i0):
         raise NotImplementedError()
 
     def set_D(self, d):
+        """
+        Update the dictionary
+        """
+        raise NotImplementedError()
+    
+    def set_reg(self, reg):
+        """
+        Update the regularization parameter
+        """
         raise NotImplementedError()
 
     def __enter__(self):
@@ -83,7 +87,6 @@ class DicodileEncoder(BaseZEncoder):
             raise ImportError('Please install dicodile by running "pip install alphacsc[dicodile]"') from ie
         self.encoder = DistributedSparseEncoder(n_workers)
         # perform init steps (send X,D...)
-        # XXX do we need to resend reg at some point?
         self.encoder.init_workers(X, D_hat, reg)
 
     def compute_z(self):
@@ -119,12 +122,19 @@ class AlphaCSCEncoder(BaseZEncoder):
         self.uv_constraint = uv_constraint
         self.feasible_evaluation = feasible_evaluation
         self.n_jobs = n_jobs
-
-    def compute_z(self):
-        # XXX missing params!!!
-        self.z_hat, self.ztz, self.ztX = update_z_multi(
-            self.X, self.D_hat, reg=self.reg, z0=self.z_hat, solver=self.z_alg,
+    
+    def _compute_z_aux(self, X, D_hat):
+        return update_z_multi(
+            X, D_hat, reg=self.reg, z0=self.z_hat, solver=self.z_alg,
             solver_kwargs=self.z_kwargs, loss=self.loss, loss_params=self.loss_params, n_jobs=self.n_jobs, return_ztz=True)
+    
+    def compute_z(self):
+        self.z_hat, self.ztz, self.ztX = self._compute_z_aux(
+            self.X, self.D_hat)
+
+    def compute_z_partial(self, i0):
+        self.z_hat[i0], self.ztz, self.ztX = self._compute_z_aux(
+            self.X[i0], self.D_hat[i0])
 
     def get_cost(self):
         cost = compute_X_and_objective_multi(self.X, self.z_hat, self.D_hat,
@@ -140,6 +150,9 @@ class AlphaCSCEncoder(BaseZEncoder):
 
     def set_D(self, D):
         self.D_hat = D
+    
+    def set_reg(self, reg):
+        self.reg = reg
 
     def get_z_hat(self):
         return self.z_hat

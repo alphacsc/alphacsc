@@ -244,7 +244,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         # recompute z_hat with no regularization and keeping the support fixed
         if unbiased_z_hat:
             start_unbiased_z_hat = time.time()
-            z_hat, _, _ = z_encoder.compute_z( #XXX
+            z_hat, _, _ = z_encoder.compute_z( #XXX should that be handled specifically in the encoder?
                 X, D_hat, reg=0, z0=z_hat, n_jobs=n_jobs, solver=solver_z,
                 solver_kwargs=solver_z_kwargs, freeze_support=True, loss=loss,
                 loss_params=loss_params)
@@ -260,6 +260,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         # Rescale the solution to match the given scale of the problem
         z_hat *= std_X
         reg *= std_X
+        z_encoder.set_reg(reg)
 
     return pobj, times, D_hat, z_hat, reg
 
@@ -317,6 +318,7 @@ def _batch_learn(X, D_hat, z_hat, z_encoder, compute_d_func,
             reg_ = reg * get_lambda_max(X, D_hat)
             if lmbd_max == 'shared':
                 reg_ = reg_.max()
+            z_encoder.set_reg(reg_) #XXX !!
 
         if verbose > 5:
             print('[{}] lambda = {:.3e}'.format(name, np.mean(reg_)))
@@ -331,7 +333,7 @@ def _batch_learn(X, D_hat, z_hat, z_encoder, compute_d_func,
 
         # XXX to adapt to Encoder class, we must fetch z_hat at each iteration.
         # XXX is that acceptable or not? (seems that DiCoDiLe does not require it)
-        z_hat = z_encoder.get_z_hat() #XXX
+        z_hat = z_encoder.get_z_hat()
         constants['ztz'], constants['ztX'] = z_encoder.get_sufficient_statistics()
         z_nnz, z_size = lil.get_nnz_and_size(z_hat)
         if verbose > 5:
@@ -360,7 +362,6 @@ def _batch_learn(X, D_hat, z_hat, z_encoder, compute_d_func,
             k0 = null_atom_indices[0]
             D_hat[k0] = get_max_error_dict(X, z_hat, D_hat, uv_constraint,
                                            window=window)[0]
-            # XXX Encoder: resend D_hat?
             z_encoder.set_D(D_hat)
             if verbose > 5:
                 print('[{}] Resampled atom {}'.format(name, k0))
@@ -411,7 +412,7 @@ def _online_learn(X, D_hat, z_hat, z_encoder, compute_d_func,
             reg_ = reg * get_lambda_max(X, D_hat)
             if lmbd_max == 'shared':
                 reg_ = reg_.max()
-                # XXX update reg in encoder?
+            z_encoder.set_reg(reg_) #XXX !!
 
         if verbose > 5:
             print('[{}] lambda = {:.3e}'.format(name, np.mean(reg_)))
@@ -428,18 +429,13 @@ def _online_learn(X, D_hat, z_hat, z_encoder, compute_d_func,
             raise NotImplementedError(
                 "the '{}' batch_selection strategy for the online learning is "
                 "not implemented.".format(batch_selection))
-        # XXX change retval
-        assert(bool(False))
-        #z_hat[i0], ztz, ztX = z_encoder.process_z(X[i0], z_hat[i0], D_hat, reg=reg_) XXX signal 'slice' changes randomly?
-        z_encoder.compute_z()
+        z_encoder.compute_z_partial(i0)
 
-        z_hat[i0] = z_encoder.get_z_hat()
+        z_hat[i0] = z_encoder.get_z_hat_partial(i0)
 
-        #constants['ztz'] = alpha * constants['ztz'] + ztz
-        #constants['ztX'] = alpha * constants['ztX'] + ztX
-
-        # XXX ??? (constants are not derived from z_enc. get_statistics... ?)
-        assert(bool(False))
+        ztz, ztX = z_encoder.get_sufficient_statistics()
+        constants['ztz'] = alpha * constants['ztz'] + ztz
+        constants['ztX'] = alpha * constants['ztX'] + ztX
 
         # monitor cost function
         times.append(time.time() - start)
