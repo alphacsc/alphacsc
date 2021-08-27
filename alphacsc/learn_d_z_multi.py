@@ -210,7 +210,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
     end_iter_func = get_iteration_func(eps, stopping_pobj, callback, lmbd_max,
                                        name, verbose, raise_on_increase)
 
-    with get_z_encoder_for(solver_z, z_kwargs, X, z_hat, D_hat, reg, loss, loss_params, uv_constraint, feasible_evaluation=True, return_X_hat=False) as z_encoder: # XXX return_X_hat
+    with get_z_encoder_for(solver_z, z_kwargs, X, z_hat, D_hat, reg, loss, loss_params, uv_constraint, feasible_evaluation=True) as z_encoder:
 
         # common parameters
         kwargs = dict(X=X, D_hat=D_hat, z_hat=z_hat, z_encoder=z_encoder,

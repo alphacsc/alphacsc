@@ -15,7 +15,7 @@ from .update_z_multi import update_z_multi
 # XXX solver_kwargs!!
 
 
-def get_z_encoder_for(solver, z_kwargs, X, z_hat, D_hat, reg, loss, loss_params, uv_constraint, feasible_evaluation, return_X_hat):
+def get_z_encoder_for(solver, z_kwargs, X, z_hat, D_hat, reg, loss, loss_params, uv_constraint, feasible_evaluation):
     """
     Returns a z encoder for the required solver.
     Allowed solvers are ['l-bfgs', 'lgcd', dicodile']
@@ -37,7 +37,7 @@ def get_z_encoder_for(solver, z_kwargs, X, z_hat, D_hat, reg, loss, loss_params,
         # -> how?
         return DicodileEncoder(X, n_workers=10)  # XXX n_workers
     elif solver in ['l-bfgs', 'lgcd']:
-        return AlphaCSCEncoder(solver, z_kwargs, X, z_hat, D_hat, reg, loss, loss_params, uv_constraint, feasible_evaluation, return_X_hat)
+        return AlphaCSCEncoder(solver, z_kwargs, X, z_hat, D_hat, reg, loss, loss_params, uv_constraint, feasible_evaluation)
     else:
         raise ValueError(f'unrecognized solver type: {solver}.')
 
@@ -111,7 +111,7 @@ class DicodileEncoder(ZEncoder):
 
 
 class AlphaCSCEncoder(ZEncoder):
-    def __init__(self, solver, z_kwargs, X, z_hat, D_hat, reg, loss, loss_params, uv_constraint, feasible_evaluation, return_X_hat):
+    def __init__(self, solver, z_kwargs, X, z_hat, D_hat, reg, loss, loss_params, uv_constraint, feasible_evaluation):
         self.z_alg = solver 
         self.z_kwargs = z_kwargs
         self.X = X
@@ -122,7 +122,6 @@ class AlphaCSCEncoder(ZEncoder):
         self.loss_params = loss_params
         self.uv_constraint = uv_constraint
         self.feasible_evaluation = feasible_evaluation
-        self.return_X_hat = return_X_hat
 
     def compute_z(self):
         # XXX missing params!!!
@@ -136,7 +135,7 @@ class AlphaCSCEncoder(ZEncoder):
                                              loss_params=self.loss_params,
                                              uv_constraint=self.uv_constraint,
                                              feasible_evaluation=True,
-                                             return_X_hat=self.return_X_hat)
+                                             return_X_hat=False)
         return cost
 
     def get_sufficient_statistics(self):
