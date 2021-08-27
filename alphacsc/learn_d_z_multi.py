@@ -309,7 +309,6 @@ def _batch_learn(X, D_hat, z_hat, z_encoder, compute_d_func,
                                           uv_constraint=uv_constraint,
                                           window=window)[0]
             D_hat = np.concatenate([D_hat, new_atom[None]])
-            # XXX I guess we should set D_hat in the encoder at that point?
             z_encoder.set_D(D_hat)
             z_hat = lil.add_one_atom_in_z(z_hat)
             # XXX what should happen here when using DiCoDiLe?
