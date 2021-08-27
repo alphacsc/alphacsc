@@ -31,8 +31,6 @@ def get_z_encoder_for(solver, z_kwargs, X, z_hat, D_hat, reg, loss, loss_params,
         ...
     """
     if solver == 'dicodile':
-        # n_workers should be user-provided (distributed, cannot set to cpu count...)
-        # -> how?
         return DicodileEncoder(X, n_workers=n_jobs) 
     elif solver in ['l-bfgs', 'lgcd']:
         return AlphaCSCEncoder(solver, z_kwargs, X, z_hat, D_hat, reg, loss, loss_params, uv_constraint, feasible_evaluation, n_jobs)
