@@ -38,7 +38,7 @@ def get_z_encoder_for(solver, z_kwargs, X, z_hat, D_hat, reg, loss, loss_params,
         raise ValueError(f'unrecognized solver type: {solver}.')
 
 
-class ZEncoder:
+class BaseZEncoder:
     def compute_z(self):
         """
         """
@@ -75,7 +75,7 @@ class ZEncoder:
         pass
 
 
-class DicodileEncoder(ZEncoder):
+class DicodileEncoder(BaseZEncoder):
     def __init__(self, X, D_hat, reg, n_workers):
         try:
             from dicodile.update_z.distributed_sparse_encoder import DistributedSparseEncoder
@@ -106,7 +106,7 @@ class DicodileEncoder(ZEncoder):
         self.encoder.shutdown_workers()
 
 
-class AlphaCSCEncoder(ZEncoder):
+class AlphaCSCEncoder(BaseZEncoder):
     def __init__(self, solver, z_kwargs, X, z_hat, D_hat, reg, loss, loss_params, uv_constraint, feasible_evaluation, n_jobs):
         self.z_alg = solver 
         self.z_kwargs = z_kwargs
