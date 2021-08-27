@@ -13,7 +13,7 @@ from .update_z_multi import update_z_multi
 # XXX solver_kwargs!!
 
 
-def get_z_encoder_for(solver, z_kwargs, X, z_hat, D_hat, reg, loss, loss_params, uv_constraint, feasible_evaluation):
+def get_z_encoder_for(solver, z_kwargs, X, z_hat, D_hat, reg, loss, loss_params, uv_constraint, feasible_evaluation, n_jobs):
     """
     Returns a z encoder for the required solver.
     Allowed solvers are ['l-bfgs', 'lgcd', dicodile']
@@ -33,9 +33,9 @@ def get_z_encoder_for(solver, z_kwargs, X, z_hat, D_hat, reg, loss, loss_params,
     if solver == 'dicodile':
         # n_workers should be user-provided (distributed, cannot set to cpu count...)
         # -> how?
-        return DicodileEncoder(X, n_workers=10)  # XXX n_workers
+        return DicodileEncoder(X, n_workers=n_jobs) 
     elif solver in ['l-bfgs', 'lgcd']:
-        return AlphaCSCEncoder(solver, z_kwargs, X, z_hat, D_hat, reg, loss, loss_params, uv_constraint, feasible_evaluation)
+        return AlphaCSCEncoder(solver, z_kwargs, X, z_hat, D_hat, reg, loss, loss_params, uv_constraint, feasible_evaluation, n_jobs)
     else:
         raise ValueError(f'unrecognized solver type: {solver}.')
 
@@ -109,7 +109,7 @@ class DicodileEncoder(ZEncoder):
 
 
 class AlphaCSCEncoder(ZEncoder):
-    def __init__(self, solver, z_kwargs, X, z_hat, D_hat, reg, loss, loss_params, uv_constraint, feasible_evaluation):
+    def __init__(self, solver, z_kwargs, X, z_hat, D_hat, reg, loss, loss_params, uv_constraint, feasible_evaluation, n_jobs):
         self.z_alg = solver 
         self.z_kwargs = z_kwargs
         self.X = X
@@ -120,12 +120,13 @@ class AlphaCSCEncoder(ZEncoder):
         self.loss_params = loss_params
         self.uv_constraint = uv_constraint
         self.feasible_evaluation = feasible_evaluation
+        self.n_jobs = n_jobs
 
     def compute_z(self):
         # XXX missing params!!!
         self.z_hat, self.ztz, self.ztX = update_z_multi(
             self.X, self.D_hat, reg=self.reg, z0=self.z_hat, solver=self.z_alg,
-            solver_kwargs=self.z_kwargs, loss=self.loss, loss_params=self.loss_params, n_jobs=1, return_ztz=True) #XXX solver_kwargs! XXX n_jobs!
+            solver_kwargs=self.z_kwargs, loss=self.loss, loss_params=self.loss_params, n_jobs=self.n_jobs, return_ztz=True)
 
     def get_cost(self):
         cost = compute_X_and_objective_multi(self.X, self.z_hat, self.D_hat,
