@@ -1,5 +1,3 @@
-import warnings
-
 from .loss_and_gradient import compute_X_and_objective_multi
 from .update_z_multi import update_z_multi
 
