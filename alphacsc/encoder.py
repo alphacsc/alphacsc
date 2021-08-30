@@ -1,5 +1,6 @@
 from .loss_and_gradient import compute_X_and_objective_multi
 from .update_z_multi import update_z_multi
+from .utils import lil
 
 # XXX check consistency / proper use!
 def get_z_encoder_for(solver, z_kwargs, X, z_hat, D_hat, reg, loss, loss_params, uv_constraint, feasible_evaluation, n_jobs):
@@ -35,6 +36,7 @@ class BaseZEncoder:
     
     def compute_z_partial(self, i0):
         """
+        (Online learning)
         """
         raise NotImplementedError()
 
@@ -58,6 +60,9 @@ class BaseZEncoder:
         raise NotImplementedError()
     
     def get_z_hat_partial(self, i0):
+        """
+        (Online learning)
+        """
         raise NotImplementedError()
 
     def set_D(self, d):
@@ -69,6 +74,12 @@ class BaseZEncoder:
     def set_reg(self, reg):
         """
         Update the regularization parameter
+        """
+        raise NotImplementedError()
+    
+    def add_one_atom_in_z(self):
+        """
+        (Online learning)
         """
         raise NotImplementedError()
 
@@ -153,6 +164,9 @@ class AlphaCSCEncoder(BaseZEncoder):
     
     def set_reg(self, reg):
         self.reg = reg
+    
+    def add_one_atom_in_z(self):
+        self.z_hat = lil.add_one_atom_in_z(self.z_hat)
 
     def get_z_hat(self):
         return self.z_hat

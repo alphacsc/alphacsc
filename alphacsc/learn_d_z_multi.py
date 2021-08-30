@@ -311,14 +311,14 @@ def _batch_learn(X, D_hat, z_hat, z_encoder, compute_d_func,
                                           window=window)[0]
             D_hat = np.concatenate([D_hat, new_atom[None]])
             z_encoder.set_D(D_hat)
-            z_hat = lil.add_one_atom_in_z(z_hat)
             # XXX what should happen here when using DiCoDiLe?
+            z_encoder.add_one_atom_in_z()
 
         if lmbd_max not in ['fixed', 'scaled']:
             reg_ = reg * get_lambda_max(X, D_hat)
             if lmbd_max == 'shared':
                 reg_ = reg_.max()
-            z_encoder.set_reg(reg_) #XXX !!
+            z_encoder.set_reg(reg_)
 
         if verbose > 5:
             print('[{}] lambda = {:.3e}'.format(name, np.mean(reg_)))
@@ -412,7 +412,7 @@ def _online_learn(X, D_hat, z_hat, z_encoder, compute_d_func,
             reg_ = reg * get_lambda_max(X, D_hat)
             if lmbd_max == 'shared':
                 reg_ = reg_.max()
-            z_encoder.set_reg(reg_) #XXX !!
+            z_encoder.set_reg(reg_)
 
         if verbose > 5:
             print('[{}] lambda = {:.3e}'.format(name, np.mean(reg_)))
