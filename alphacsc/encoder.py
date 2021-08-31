@@ -134,18 +134,18 @@ class AlphaCSCEncoder(BaseZEncoder):
         self.feasible_evaluation = feasible_evaluation
         self.n_jobs = n_jobs
     
-    def _compute_z_aux(self, X, D_hat):
+    def _compute_z_aux(self, X, z0):
         return update_z_multi(
-            X, D_hat, reg=self.reg, z0=self.z_hat, solver=self.z_alg,
+            X, self.D_hat, reg=self.reg, z0=z0, solver=self.z_alg,
             solver_kwargs=self.z_kwargs, loss=self.loss, loss_params=self.loss_params, n_jobs=self.n_jobs, return_ztz=True)
     
     def compute_z(self):
         self.z_hat, self.ztz, self.ztX = self._compute_z_aux(
-            self.X, self.D_hat)
+            self.X, self.z_hat)
 
     def compute_z_partial(self, i0):
         self.z_hat[i0], self.ztz, self.ztX = self._compute_z_aux(
-            self.X[i0], self.D_hat[i0])
+            self.X[i0], self.z_hat[i0])
 
     def get_cost(self):
         cost = compute_X_and_objective_multi(self.X, self.z_hat, self.D_hat,
@@ -170,3 +170,7 @@ class AlphaCSCEncoder(BaseZEncoder):
 
     def get_z_hat(self):
         return self.z_hat
+
+    # XXX is that necessary?
+    def get_z_hat_partial(self, i0):
+        return self.z_hat[i0]

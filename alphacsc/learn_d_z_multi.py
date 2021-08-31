@@ -431,7 +431,8 @@ def _online_learn(X, D_hat, z_hat, z_encoder, compute_d_func,
                 "not implemented.".format(batch_selection))
         z_encoder.compute_z_partial(i0)
 
-        z_hat[i0] = z_encoder.get_z_hat_partial(i0)
+        #z_hat[i0] = z_encoder.get_z_hat_partial(i0) XXX
+        z_hat = z_encoder.get_z_hat()
 
         ztz, ztX = z_encoder.get_sufficient_statistics()
         constants['ztz'] = alpha * constants['ztz'] + ztz
