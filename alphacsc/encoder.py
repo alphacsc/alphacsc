@@ -1,15 +1,17 @@
 from .loss_and_gradient import compute_X_and_objective_multi
 from .update_z_multi import update_z_multi
-from .utils import lil
+from .utils import check_dimension, lil
 
 # XXX check consistency / proper use!
-def get_z_encoder_for(solver, z_kwargs, X, z_hat, D_hat, reg, loss, loss_params, uv_constraint, feasible_evaluation, n_jobs):
+def get_z_encoder_for(solver, z_kwargs, X, D_hat, n_atoms, atom_support, algorithm, reg, loss, loss_params, uv_constraint, feasible_evaluation, n_jobs):
     """
     Returns a z encoder for the required solver.
     Allowed solvers are ['l-bfgs', 'lgcd', dicodile']
 
     Parameters
     ----------
+    algorithm : 'batch' | 'greedy' | 'online' | 'stochastic'
+        Dictionary learning algorithm.
 
     Returns
     -------
@@ -21,9 +23,10 @@ def get_z_encoder_for(solver, z_kwargs, X, z_hat, D_hat, reg, loss, loss_params,
         ...
     """
     if solver == 'dicodile':
+        assert loss == 'l2'
         return DicodileEncoder(X, n_workers=n_jobs) 
     elif solver in ['l-bfgs', 'lgcd']:
-        return AlphaCSCEncoder(solver, z_kwargs, X, z_hat, D_hat, reg, loss, loss_params, uv_constraint, feasible_evaluation, n_jobs)
+        return AlphaCSCEncoder(solver, z_kwargs, X, D_hat, n_atoms, atom_support, algorithm, reg, loss, loss_params, uv_constraint, feasible_evaluation, n_jobs)
     else:
         raise ValueError(f'unrecognized solver type: {solver}.')
 
@@ -121,18 +124,37 @@ class DicodileEncoder(BaseZEncoder):
 
 
 class AlphaCSCEncoder(BaseZEncoder):
-    def __init__(self, solver, z_kwargs, X, z_hat, D_hat, reg, loss, loss_params, uv_constraint, feasible_evaluation, n_jobs):
+    def __init__(self, solver, z_kwargs, X, D_hat, n_atoms, atom_support, algorithm, reg, loss, loss_params, uv_constraint, feasible_evaluation, n_jobs):
         self.z_alg = solver 
         self.z_kwargs = z_kwargs
         self.X = X
-        self.z_hat = z_hat
         self.D_hat = D_hat
+        self.n_atoms = n_atoms
+        self.atom_support = atom_support
+        self.algorithm = algorithm
         self.reg = reg
         self.loss = loss
         self.loss_params = loss_params
         self.uv_constraint = uv_constraint
         self.feasible_evaluation = feasible_evaluation
         self.n_jobs = n_jobs
+
+        self._init_z_hat()
+    
+    def _init_z_hat(self):
+        n_trials, _, n_times = check_dimension(self.X)
+        n_times_valid = n_times - self.atom_support + 1
+
+        self.z_hat = lil.init_zeros(False, n_trials, self.n_atoms, n_times_valid) #XXX use_sparse_z forced to False
+
+
+        if self.algorithm == 'greedy':
+            # remove all atoms
+            self.D_hat = self.D_hat[0:0]
+            # remove all activations
+            use_sparse_z = lil.is_list_of_lil(self.z_hat)
+            n_trials, _, n_times_valid = lil.get_z_shape(self.z_hat)
+            self.z_hat = lil.init_zeros(use_sparse_z, n_trials, 0, n_times_valid)
     
     def _compute_z_aux(self, X, z0):
         return update_z_multi(
@@ -170,7 +192,3 @@ class AlphaCSCEncoder(BaseZEncoder):
 
     def get_z_hat(self):
         return self.z_hat
-
-    # XXX is that necessary?
-    def get_z_hat_partial(self, i0):
-        return self.z_hat[i0]
