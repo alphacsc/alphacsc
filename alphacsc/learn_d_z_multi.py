@@ -294,6 +294,7 @@ def _batch_learn(X, D_hat, z_encoder, n_atoms, compute_d_func,
         if verbose > 1:
             print('[{}] CD iterations {} / {}'.format(name, ii, n_iter))
 
+        D_hat = z_encoder.D_hat
         if greedy and ii % n_iter_by_atom == 0 and D_hat.shape[0] < n_atoms:
             # add a new atom every n_iter_by_atom iterations
             new_atom = get_max_error_dict(X, z_encoder.get_z_hat(), D_hat,
@@ -362,7 +363,7 @@ def _batch_learn(X, D_hat, z_encoder, n_atoms, compute_d_func,
         if end_iter_func(X, z_hat, D_hat, pobj, ii):
             break
 
-    return pobj, times, D_hat, z_hat
+    return pobj, times, D_hat, z_encoder.get_z_hat()
 
 
 def _online_learn(X, D_hat, z_encoder, n_atoms, compute_d_func,
@@ -469,7 +470,7 @@ def _online_learn(X, D_hat, z_encoder, n_atoms, compute_d_func,
         if end_iter_func(X, z_hat, D_hat, pobj, ii):
             break
 
-    return pobj, times, D_hat, z_hat
+    return pobj, times, D_hat, z_encoder.get_z_hat()
 
 
 def get_iteration_func(eps, stopping_pobj, callback, lmbd_max, name, verbose,
