@@ -7,7 +7,6 @@
 from __future__ import print_function
 import time
 import sys
-from matplotlib.pyplot import get
 
 import numpy as np
 
@@ -31,7 +30,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
                     solver_z='l-bfgs', solver_z_kwargs=dict(),
                     solver_d='alternate_adaptive', solver_d_kwargs=dict(),
                     D_init=None, D_init_params=dict(),
-                    unbiased_z_hat=False, use_sparse_z=False,
+                    unbiased_z_hat=False, use_sparse_z=False, #XXX use_sparse_z force to False currently
                     stopping_pobj=None, raise_on_increase=True,
                     verbose=10, callback=None, random_state=None, name="DL",
                     window=False, sort_atoms=False):
