@@ -38,9 +38,8 @@ def update_z_multi(X, D, reg, z0=None, solver='l-bfgs', solver_kwargs=dict(),
     z0 : None | array, shape (n_trials, n_atoms, n_times_valid) |
          list of sparse lil_matrices, shape (n_atoms, n_times_valid)
         Init for z (can be used for warm restart).
-    solver : 'l-bfgs' | "lgcd" | 'dicodile'
-        The solver to use. Note that the "dicodile" solver requires installing
-        the dicodile package as well as an MPI implementation.
+    solver : 'l-bfgs' | "lgcd"
+        The solver to use.
     solver_kwargs : dict
         Parameters for the solver
     loss : 'l2' | 'dtw' | 'whitening'
@@ -82,7 +81,7 @@ def update_z_multi(X, D, reg, z0=None, solver='l-bfgs', solver_kwargs=dict(),
 
     if z0 is None:
         z0 = np.zeros((n_trials, n_atoms, n_times_valid))
-    
+
     # now estimate the codes
     delayed_update_z = delayed(_update_z_multi_idx)
 
@@ -233,10 +232,6 @@ def _update_z_multi_idx(X_i, D, reg, z0_i, debug, solver='l-bfgs',
             times[0] += init_timing
         else:
             z_hat = output
-    
-    elif solver == "dicodile":
-        raise NotImplementedError("dicodile")
-
     else:
         raise ValueError("Unrecognized solver %s. Must be 'ista', 'fista',"
                          " 'l-bfgs', or 'lgcd'." % solver)
