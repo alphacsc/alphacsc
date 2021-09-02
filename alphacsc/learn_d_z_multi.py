@@ -294,19 +294,16 @@ def _batch_learn(X, D_hat, z_encoder, n_atoms, compute_d_func,
         if verbose > 1:
             print('[{}] CD iterations {} / {}'.format(name, ii, n_iter))
 
-        D_hat = z_encoder.D_hat
-        if greedy and ii % n_iter_by_atom == 0 and D_hat.shape[0] < n_atoms:
+        if greedy and ii % n_iter_by_atom == 0 and z_encoder.D_hat.shape[0] < n_atoms:
             # add a new atom every n_iter_by_atom iterations
-            new_atom = get_max_error_dict(X, z_encoder.get_z_hat(), D_hat,
+            new_atom = get_max_error_dict(X, z_encoder.get_z_hat(), z_encoder.D_hat,
                                           uv_constraint=uv_constraint,
                                           window=window)[0]
-            D_hat = np.concatenate([D_hat, new_atom[None]])
-            z_encoder.set_D(D_hat)
             # XXX what should happen here when using DiCoDiLe?
-            z_encoder.add_one_atom_in_z()
+            z_encoder.add_one_atom(new_atom)
 
         if lmbd_max not in ['fixed', 'scaled']:
-            reg_ = reg * get_lambda_max(X, D_hat)
+            reg_ = reg * get_lambda_max(X, z_encoder.D_hat)
             if lmbd_max == 'shared':
                 reg_ = reg_.max()
             z_encoder.set_reg(reg_)
@@ -341,7 +338,7 @@ def _batch_learn(X, D_hat, z_encoder, n_atoms, compute_d_func,
 
         # Compute D update
         start = time.time()
-        D_hat = compute_d_func(X, z_hat, D_hat, constants)
+        D_hat = compute_d_func(X, z_hat, z_encoder.D_hat, constants)
         z_encoder.set_D(D_hat)
 
         # monitor cost function

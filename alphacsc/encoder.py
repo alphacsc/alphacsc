@@ -1,3 +1,4 @@
+import numpy as np
 from .loss_and_gradient import compute_X_and_objective_multi
 from .update_z_multi import update_z_multi
 from .utils import check_dimension, lil
@@ -80,9 +81,9 @@ class BaseZEncoder:
         """
         raise NotImplementedError()
     
-    def add_one_atom_in_z(self):
+    def add_one_atom(self, new_atom):
         """
-        (Online learning)
+        (Greedy learning)
         """
         raise NotImplementedError()
 
@@ -187,7 +188,8 @@ class AlphaCSCEncoder(BaseZEncoder):
     def set_reg(self, reg):
         self.reg = reg
     
-    def add_one_atom_in_z(self):
+    def add_one_atom(self, new_atom):
+        self.D_hat = np.concatenate([self.D_hat, new_atom[None]])
         self.z_hat = lil.add_one_atom_in_z(self.z_hat)
 
     def get_z_hat(self):
