@@ -205,7 +205,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
             callback(X, D_hat, z_encoder.get_z_hat(), [])
 
         end_iter_func = get_iteration_func(eps, stopping_pobj, callback, lmbd_max,
-                                       name, verbose, raise_on_increase)
+                                           name, verbose, raise_on_increase)
 
         # common parameters
         kwargs = dict(X=X, D_hat=D_hat, z_encoder=z_encoder,
