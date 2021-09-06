@@ -4,7 +4,22 @@ from .update_z_multi import update_z_multi
 from .utils import check_dimension, lil
 
 # XXX check consistency / proper use!
-def get_z_encoder_for(solver, z_kwargs, X, D_hat, n_atoms, atom_support, algorithm, reg, loss, loss_params, uv_constraint, feasible_evaluation, n_jobs):
+
+
+def get_z_encoder_for(
+        solver,
+        z_kwargs,
+        X,
+        D_hat,
+        n_atoms,
+        atom_support,
+        algorithm,
+        reg,
+        loss,
+        loss_params,
+        uv_constraint,
+        feasible_evaluation,
+        n_jobs):
     """
     Returns a z encoder for the required solver.
     Allowed solvers are ['l-bfgs', 'lgcd']
@@ -24,7 +39,20 @@ def get_z_encoder_for(solver, z_kwargs, X, D_hat, n_atoms, atom_support, algorit
         ...
     """
     if solver in ['l-bfgs', 'lgcd']:
-        return AlphaCSCEncoder(solver, z_kwargs, X, D_hat, n_atoms, atom_support, algorithm, reg, loss, loss_params, uv_constraint, feasible_evaluation, n_jobs)
+        return AlphaCSCEncoder(
+            solver,
+            z_kwargs,
+            X,
+            D_hat,
+            n_atoms,
+            atom_support,
+            algorithm,
+            reg,
+            loss,
+            loss_params,
+            uv_constraint,
+            feasible_evaluation,
+            n_jobs)
     else:
         raise ValueError(f'unrecognized solver type: {solver}.')
 
@@ -32,9 +60,11 @@ def get_z_encoder_for(solver, z_kwargs, X, D_hat, n_atoms, atom_support, algorit
 class BaseZEncoder:
     def compute_z(self):
         """
+        Perform one incremental z update.
+        This is the "main" function of the algorithm.
         """
         raise NotImplementedError()
-    
+
     def compute_z_partial(self, i0):
         """
         (Online learning)
@@ -57,9 +87,17 @@ class BaseZEncoder:
         """
         raise NotImplementedError()
 
+    def get_sufficient_statistics_partial(self):
+        """
+        Compute the partial sufficient statistics
+        that were computed during the last call to
+        compute_z_partial
+        """
+        raise NotImplementedError()
+
     def get_z_hat(self):
         raise NotImplementedError()
-    
+
     def get_z_hat_partial(self, i0):
         """
         (Online learning)
@@ -71,16 +109,19 @@ class BaseZEncoder:
         Update the dictionary
         """
         raise NotImplementedError()
-    
+
     def set_reg(self, reg):
         """
         Update the regularization parameter
         """
         raise NotImplementedError()
-    
+
     def add_one_atom(self, new_atom):
         """
         (Greedy learning)
+        Parameters
+        ----------
+        new_atom:
         """
         raise NotImplementedError()
 
@@ -92,8 +133,22 @@ class BaseZEncoder:
 
 
 class AlphaCSCEncoder(BaseZEncoder):
-    def __init__(self, solver, z_kwargs, X, D_hat, n_atoms, atom_support, algorithm, reg, loss, loss_params, uv_constraint, feasible_evaluation, n_jobs):
-        self.z_alg = solver 
+    def __init__(
+            self,
+            solver,
+            z_kwargs,
+            X,
+            D_hat,
+            n_atoms,
+            atom_support,
+            algorithm,
+            reg,
+            loss,
+            loss_params,
+            uv_constraint,
+            feasible_evaluation,
+            n_jobs):
+        self.z_alg = solver
         self.z_kwargs = z_kwargs
         self.X = X
         self.D_hat = D_hat
@@ -108,13 +163,14 @@ class AlphaCSCEncoder(BaseZEncoder):
         self.n_jobs = n_jobs
 
         self._init_z_hat()
-    
+
     def _init_z_hat(self):
         n_trials, _, n_times = check_dimension(self.X)
         n_times_valid = n_times - self.atom_support + 1
 
-        self.z_hat = lil.init_zeros(False, n_trials, self.n_atoms, n_times_valid) #XXX use_sparse_z forced to False
-
+        # XXX use_sparse_z forced to False
+        self.z_hat = lil.init_zeros(
+            False, n_trials, self.n_atoms, n_times_valid)
 
         if self.algorithm == 'greedy':
             # remove all atoms
@@ -122,15 +178,25 @@ class AlphaCSCEncoder(BaseZEncoder):
             # remove all activations
             use_sparse_z = lil.is_list_of_lil(self.z_hat)
             n_trials, _, n_times_valid = lil.get_z_shape(self.z_hat)
-            self.z_hat = lil.init_zeros(use_sparse_z, n_trials, 0, n_times_valid)
-    
+            self.z_hat = lil.init_zeros(
+                use_sparse_z, n_trials, 0, n_times_valid)
+
     def _compute_z_aux(self, X, z0, unbiased_z_hat):
         reg = self.reg if not unbiased_z_hat else 0
 
         return update_z_multi(
-            X, self.D_hat, reg=reg, z0=z0, solver=self.z_alg,
-            solver_kwargs=self.z_kwargs, freeze_support=unbiased_z_hat, loss=self.loss, loss_params=self.loss_params, n_jobs=self.n_jobs, return_ztz=True)
-    
+            X,
+            self.D_hat,
+            reg=reg,
+            z0=z0,
+            solver=self.z_alg,
+            solver_kwargs=self.z_kwargs,
+            freeze_support=unbiased_z_hat,
+            loss=self.loss,
+            loss_params=self.loss_params,
+            n_jobs=self.n_jobs,
+            return_ztz=True)
+
     def compute_z(self, unbiased_z_hat=False):
         self.z_hat, self.ztz, self.ztX = self._compute_z_aux(
             self.X, self.z_hat, unbiased_z_hat)
@@ -150,22 +216,16 @@ class AlphaCSCEncoder(BaseZEncoder):
 
     def get_sufficient_statistics(self):
         return self.ztz, self.ztX
-    
+
     def get_sufficient_statistics_partial(self):
-        """
-        Compute the partial sufficient statistics
-        that were computed during the last call to 
-        compute_z_partial
-        """
         return self.ztz_i0, self.ztX_i0
-    
 
     def set_D(self, D):
         self.D_hat = D
-    
+
     def set_reg(self, reg):
         self.reg = reg
-    
+
     def add_one_atom(self, new_atom):
         self.D_hat = np.concatenate([self.D_hat, new_atom[None]])
         self.z_hat = lil.add_one_atom_in_z(self.z_hat)
