@@ -7,7 +7,7 @@ from .utils import check_dimension, lil
 def get_z_encoder_for(solver, z_kwargs, X, D_hat, n_atoms, atom_support, algorithm, reg, loss, loss_params, uv_constraint, feasible_evaluation, n_jobs):
     """
     Returns a z encoder for the required solver.
-    Allowed solvers are ['l-bfgs', 'lgcd', dicodile']
+    Allowed solvers are ['l-bfgs', 'lgcd']
 
     Parameters
     ----------
@@ -20,13 +20,10 @@ def get_z_encoder_for(solver, z_kwargs, X, D_hat, n_atoms, atom_support, algorit
 
     Example usage
     -------------
-    with get_encoder_for('dicodile') as enc:
+    with get_encoder_for('lgcd') as enc:
         ...
     """
-    if solver == 'dicodile':
-        assert loss == 'l2'
-        return DicodileEncoder(X, n_workers=n_jobs) 
-    elif solver in ['l-bfgs', 'lgcd']:
+    if solver in ['l-bfgs', 'lgcd']:
         return AlphaCSCEncoder(solver, z_kwargs, X, D_hat, n_atoms, atom_support, algorithm, reg, loss, loss_params, uv_constraint, feasible_evaluation, n_jobs)
     else:
         raise ValueError(f'unrecognized solver type: {solver}.')
@@ -92,36 +89,6 @@ class BaseZEncoder:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         pass
-
-
-class DicodileEncoder(BaseZEncoder):
-    def __init__(self, X, D_hat, reg, n_workers):
-        try:
-            from dicodile.update_z.distributed_sparse_encoder import DistributedSparseEncoder
-        except ImportError as ie:
-            raise ImportError('Please install dicodile by running "pip install alphacsc[dicodile]"') from ie
-        self.encoder = DistributedSparseEncoder(n_workers)
-        # perform init steps (send X,D...)
-        self.encoder.init_workers(X, D_hat, reg)
-
-    def compute_z(self):
-        self.encoder.process_z_hat()
-
-    def get_cost(self):
-        return self.encoder.get_cost()
-
-    def get_sufficient_statistics(self):
-        return self.encoder.get_sufficient_statistics()
-
-    def set_D(self, D):
-        self.encoder.set_worker_D(D)
-
-    def get_z_hat(self):
-        return self.encoder.get_z_hat()
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.encoder.release_workers()
-        self.encoder.shutdown_workers()
 
 
 class AlphaCSCEncoder(BaseZEncoder):
