@@ -167,7 +167,7 @@ class AlphaCSCEncoder(BaseZEncoder):
             self.X, self.z_hat)
 
     def compute_z_partial(self, i0):
-        self.z_hat[i0], self.ztz, self.ztX = self._compute_z_aux(
+        self.z_hat[i0], self.ztz_i0, self.ztX_i0 = self._compute_z_aux( #XXX
             self.X[i0], self.z_hat[i0])
 
     def get_cost(self):
@@ -181,6 +181,15 @@ class AlphaCSCEncoder(BaseZEncoder):
 
     def get_sufficient_statistics(self):
         return self.ztz, self.ztX
+    
+    def get_sufficient_statistics_partial(self):
+        """
+        Compute the partial sufficient statistics
+        that were computed during the last call to 
+        compute_z_partial
+        """
+        return self.ztz_i0, self.ztX_i0
+    
 
     def set_D(self, D):
         self.D_hat = D

@@ -17,7 +17,7 @@ from .utils.convolution import sort_atoms_by_explained_variances
 from .utils.dictionary import get_lambda_max
 from .utils.whitening import whitening
 from .init_dict import init_dictionary, get_max_error_dict
-from .encoder import get_z_encoder_for
+from ._encoder import get_z_encoder_for
 from .update_d_multi import update_uv, update_d
 
 
@@ -419,12 +419,11 @@ def _online_learn(X, D_hat, z_encoder, n_atoms, compute_d_func,
                 "not implemented.".format(batch_selection))
         z_encoder.compute_z_partial(i0)
 
-        #z_hat[i0] = z_encoder.get_z_hat_partial(i0) XXX
-        z_hat = z_encoder.get_z_hat()
+        z_hat = z_encoder.get_z_hat() #XXX consider get_z_hat_partial?
 
-        ztz, ztX = z_encoder.get_sufficient_statistics()
-        constants['ztz'] = alpha * constants['ztz'] + ztz
-        constants['ztX'] = alpha * constants['ztX'] + ztX
+        ztz_i0, ztX_i0 = z_encoder.get_sufficient_statistics_partial()
+        constants['ztz'] = alpha * constants['ztz'] + ztz_i0
+        constants['ztX'] = alpha * constants['ztX'] + ztX_i0
 
         # monitor cost function
         times.append(time.time() - start)
