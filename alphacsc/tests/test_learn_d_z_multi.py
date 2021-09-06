@@ -18,7 +18,8 @@ from alphacsc.init_dict import init_dictionary
         ('joint', 'joint', False),  # ('alternate', 'separate', True),
         ('alternate_adaptive', 'separate', True)
     ])
-def test_learn_d_z_multi(loss, solver_d, uv_constraint, rank1, window):
+@pytest.mark.parametrize('unbiased_z_hat', [False, True])
+def test_learn_d_z_multi(loss, solver_d, uv_constraint, rank1, window, unbiased_z_hat):
     # smoke test for learn_d_z_multi
     n_trials, n_channels, n_times = 2, 3, 30
     n_times_atom, n_atoms = 6, 4
@@ -29,7 +30,7 @@ def test_learn_d_z_multi(loss, solver_d, uv_constraint, rank1, window):
     X = rng.randn(n_trials, n_channels, n_times)
     pobj, times, uv_hat, z_hat, reg = learn_d_z_multi(
         X, n_atoms, n_times_atom, uv_constraint=uv_constraint, rank1=rank1,
-        solver_d=solver_d, random_state=0, n_iter=30, eps=-np.inf,
+        solver_d=solver_d, unbiased_z_hat=unbiased_z_hat, random_state=0, n_iter=30, eps=-np.inf,
         solver_z='l-bfgs', window=window, verbose=0, loss=loss,
         loss_params=loss_params)
 

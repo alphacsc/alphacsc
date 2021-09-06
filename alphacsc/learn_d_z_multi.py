@@ -238,10 +238,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         # recompute z_hat with no regularization and keeping the support fixed
         if unbiased_z_hat:
             start_unbiased_z_hat = time.time()
-            z_hat, _, _ = z_encoder.compute_z( #XXX should that be handled specifically in the encoder?
-                X, D_hat, reg=0, z0=z_hat, n_jobs=n_jobs, solver=solver_z,
-                solver_kwargs=solver_z_kwargs, freeze_support=True, loss=loss,
-                loss_params=loss_params)
+            z_encoder.compute_z(unbiased_z_hat=True)
+            z_hat = z_encoder.get_z_hat()
             if verbose > 1:
                 print("[{}] Compute the final z_hat with support freeze in "
                       "{:.2f}s".format(name, time.time() - start_unbiased_z_hat))

@@ -124,18 +124,20 @@ class AlphaCSCEncoder(BaseZEncoder):
             n_trials, _, n_times_valid = lil.get_z_shape(self.z_hat)
             self.z_hat = lil.init_zeros(use_sparse_z, n_trials, 0, n_times_valid)
     
-    def _compute_z_aux(self, X, z0):
+    def _compute_z_aux(self, X, z0, unbiased_z_hat):
+        reg = self.reg if not unbiased_z_hat else 0
+
         return update_z_multi(
-            X, self.D_hat, reg=self.reg, z0=z0, solver=self.z_alg,
-            solver_kwargs=self.z_kwargs, loss=self.loss, loss_params=self.loss_params, n_jobs=self.n_jobs, return_ztz=True)
+            X, self.D_hat, reg=reg, z0=z0, solver=self.z_alg,
+            solver_kwargs=self.z_kwargs, freeze_support=unbiased_z_hat, loss=self.loss, loss_params=self.loss_params, n_jobs=self.n_jobs, return_ztz=True)
     
-    def compute_z(self):
+    def compute_z(self, unbiased_z_hat=False):
         self.z_hat, self.ztz, self.ztX = self._compute_z_aux(
-            self.X, self.z_hat)
+            self.X, self.z_hat, unbiased_z_hat)
 
     def compute_z_partial(self, i0):
-        self.z_hat[i0], self.ztz_i0, self.ztX_i0 = self._compute_z_aux( #XXX
-            self.X[i0], self.z_hat[i0])
+        self.z_hat[i0], self.ztz_i0, self.ztX_i0 = self._compute_z_aux(
+            self.X[i0], self.z_hat[i0], unbiased_z_hat=False)
 
     def get_cost(self):
         cost = compute_X_and_objective_multi(self.X, self.z_hat, self.D_hat,
