@@ -124,7 +124,6 @@ def test_transformers(klass):
 
 
 def test_unbiased_z_hat():
-    # smoke test for learn_d_z_multi
     n_trials, n_channels, n_times = 2, 3, 30
     n_times_atom, n_atoms = 6, 4
 
