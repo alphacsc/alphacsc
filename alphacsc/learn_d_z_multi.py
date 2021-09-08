@@ -204,7 +204,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
                            n_times_atom, algorithm, reg, loss,
                            loss_params, uv_constraint,
                            feasible_evaluation=True,
-                           n_jobs=n_jobs) as z_encoder:
+                           n_jobs=n_jobs, 
+                           use_sparse_z=use_sparse_z) as z_encoder:
         if callable(callback):
             callback(X, D_hat, z_encoder.get_z_hat(), [])
 
@@ -358,7 +359,7 @@ def _batch_learn(X, D_hat, z_encoder, n_atoms, compute_d_func,
         if np.all(z_nnz == 0):
             import warnings
             warnings.warn("Regularization parameter `reg` is too large "
-                          "and all the activations are zero. No atoms has"
+                          "and all the activations are zero. No atom has"
                           " been learned.", UserWarning)
             break
 

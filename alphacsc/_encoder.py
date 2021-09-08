@@ -18,7 +18,8 @@ def get_z_encoder_for(
         loss_params,
         uv_constraint,
         feasible_evaluation,
-        n_jobs):
+        n_jobs,
+        use_sparse_z):
     """
     Returns a z encoder for the required solver.
     Allowed solvers are ['l-bfgs', 'lgcd']
@@ -51,7 +52,8 @@ def get_z_encoder_for(
             loss_params,
             uv_constraint,
             feasible_evaluation,
-            n_jobs)
+            n_jobs,
+            use_sparse_z)
     else:
         raise ValueError(f'unrecognized solver type: {solver}.')
 
@@ -130,7 +132,7 @@ class BaseZEncoder:
         ----------
         d
             An updated dictionary, to be used for the next
-            computation of z_hat
+            computation of z_hat.
         """
         raise NotImplementedError()
 
@@ -179,7 +181,8 @@ class AlphaCSCEncoder(BaseZEncoder):
             loss_params,
             uv_constraint,
             feasible_evaluation,
-            n_jobs):
+            n_jobs,
+            use_sparse_z):
         self.z_alg = solver
         self.z_kwargs = z_kwargs
         self.X = X
@@ -193,6 +196,7 @@ class AlphaCSCEncoder(BaseZEncoder):
         self.uv_constraint = uv_constraint
         self.feasible_evaluation = feasible_evaluation
         self.n_jobs = n_jobs
+        self.use_sparse_z = use_sparse_z
 
         self._init_z_hat()
 
@@ -200,9 +204,8 @@ class AlphaCSCEncoder(BaseZEncoder):
         n_trials, _, n_times = check_dimension(self.X)
         n_times_valid = n_times - self.atom_support + 1
 
-        # XXX use_sparse_z forced to False
         self.z_hat = lil.init_zeros(
-            False, n_trials, self.n_atoms, n_times_valid)
+            self.use_sparse_z, n_trials, self.n_atoms, n_times_valid)
 
         if self.algorithm == 'greedy':
             # remove all atoms

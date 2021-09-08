@@ -1,5 +1,7 @@
 import numpy as np
 
+import pytest
+
 from alphacsc._encoder import get_z_encoder_for
 from alphacsc.init_dict import init_dictionary
 from alphacsc.utils import check_random_state
@@ -22,7 +24,7 @@ def test_add_one_atom():
                            reg=None, loss='l2',
                            loss_params=loss_params, uv_constraint='joint',
                            feasible_evaluation=True,
-                           n_jobs=2) as z_encoder:
+                           n_jobs=2, use_sparse_z=False) as z_encoder:
         new_atom = np.random.rand(n_channels + n_times_atom)
         z_encoder.add_one_atom(new_atom)
         n_atoms_plus_one = z_encoder.D_hat.shape[0]
