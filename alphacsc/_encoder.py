@@ -3,9 +3,8 @@ from .loss_and_gradient import compute_X_and_objective_multi
 from .update_z_multi import update_z_multi
 from .utils import check_dimension, lil
 
+
 # XXX check consistency / proper use!
-
-
 def get_z_encoder_for(
         solver,
         z_kwargs,
@@ -67,12 +66,20 @@ class BaseZEncoder:
 
     def compute_z_partial(self, i0):
         """
-        (Online learning)
+        Compute z on a slice of the signal X,
+        for online learning.
+
+        Parameters
+        ----------
+        i0 : int
+             Slice index.
         """
         raise NotImplementedError()
 
     def get_cost(self):
         """
+        Computes the cost of the current sparse representation (z_hat)
+
         Returns
         -------
         cost: float
@@ -81,47 +88,72 @@ class BaseZEncoder:
 
     def get_sufficient_statistics(self):
         """
+        Computes sufficient statistics to update D.
+
         Returns
         -------
-        ztz, ztX
+        ztz, ztX : (float, float)
+            Sufficient statistics.
         """
         raise NotImplementedError()
 
     def get_sufficient_statistics_partial(self):
         """
-        Compute the partial sufficient statistics
+        Returns the partial sufficient statistics
         that were computed during the last call to
-        compute_z_partial
+        compute_z_partial.
+
+        Returns
+        -------
+        ztz, ztX : (float, float)
+            Sufficient statistics for the slice that was
+            selected in the last call of ``compute_z_partial``
         """
         raise NotImplementedError()
 
     def get_z_hat(self):
-        raise NotImplementedError()
-
-    def get_z_hat_partial(self, i0):
         """
-        (Online learning)
+        Returns a sparse encoding of the signal.
+
+        Returns
+        -------
+        z_hat
+            Sparse encoding of the signal X.
         """
         raise NotImplementedError()
 
     def set_D(self, d):
         """
-        Update the dictionary
+        Update the dictionary.
+
+        Parameters
+        ----------
+        d
+            An updated dictionary, to be used for the next
+            computation of z_hat
         """
         raise NotImplementedError()
 
     def set_reg(self, reg):
         """
-        Update the regularization parameter
+        Update the regularization parameter.
+
+        Parameters
+        ----------
+        reg : float
+              Regularization parameter
         """
         raise NotImplementedError()
 
     def add_one_atom(self, new_atom):
         """
-        (Greedy learning)
+        Add one atom to the dictionary and extend z_hat
+        to match the new dimensions.
+
         Parameters
         ----------
-        new_atom:
+        new_atom : array, shape (n_channels + n_times_atom)
+            A new atom to add to the dictionary.
         """
         raise NotImplementedError()
 
