@@ -184,13 +184,13 @@ class AlphaCSCEncoder(BaseZEncoder):
             n_jobs,
             use_sparse_z):
         self.z_alg = solver
-        self.z_kwargs = z_kwargs
+        self.z_kwargs = z_kwargs or dict()
         self.X = X
         self.D_hat = D_hat
         self.n_atoms = n_atoms
         self.atom_support = atom_support
         self.algorithm = algorithm
-        self.reg = reg
+        self.reg = reg or 0.1
         self.loss = loss
         self.loss_params = loss_params
         self.uv_constraint = uv_constraint

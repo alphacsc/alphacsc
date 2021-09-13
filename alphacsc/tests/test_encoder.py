@@ -67,6 +67,18 @@ def test_get_cost(X, D_hat, loss_params):
         assert not z_encoder.get_z_hat().any()
 
 
+def test_compute_z(X, D_hat, loss_params):
+    with get_z_encoder_for(solver='lgcd', z_kwargs=None, X=X,
+                           D_hat=D_hat, n_atoms=N_ATOMS,
+                           atom_support=N_TIMES_ATOM, algorithm='batch',
+                           reg=None, loss='l2',
+                           loss_params=loss_params, uv_constraint='joint',
+                           feasible_evaluation=True,
+                           n_jobs=2, use_sparse_z=False) as z_encoder:
+        z_encoder.compute_z()
+        assert z_encoder.get_z_hat().any()
+
+
 def test_add_one_atom(X, D_hat, loss_params):
 
     with get_z_encoder_for(solver='lgcd', z_kwargs=None, X=X,
