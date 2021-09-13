@@ -183,6 +183,10 @@ class AlphaCSCEncoder(BaseZEncoder):
             feasible_evaluation,
             n_jobs,
             use_sparse_z):
+
+        if X is None:
+            raise ValueError(
+                'X should be a valid array of shape (n_trials, n_channels, n_times)')
         self.z_alg = solver
         self.z_kwargs = z_kwargs or dict()
         self.X = X
