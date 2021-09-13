@@ -38,6 +38,7 @@ def test_get_encoder_for(X, D_hat, loss_params, solver_z):
                            feasible_evaluation=True,
                            n_jobs=2, use_sparse_z=False) as z_encoder:
         assert z_encoder is not None
+        assert not z_encoder.get_z_hat().any()
 
 
 @pytest.mark.parametrize('solver_z', [None, 'other'])
