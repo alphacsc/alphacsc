@@ -55,7 +55,7 @@ def test_get_encoder_for(solver_z, X, D_hat, algorithm, reg,
                            use_sparse_z=False) as z_encoder:
 
         assert z_encoder is not None
-        assert not z_encoder.get_z_hat().any()
+        assert z_encoder.z_kwargs == dict()
 
 
 @pytest.mark.parametrize('solver_z', [None, 'other'])
@@ -99,6 +99,55 @@ def test_get_encoder_for_error_X(X, D_hat, loss_params):
                           use_sparse_z=False)
         assert error.value.args[
             0] == 'X should be a valid array of shape (n_trials, n_channels, n_times)'
+
+
+def test_get_z_hat(X, D_hat, loss_params):
+    """Test for valid values."""
+
+    with get_z_encoder_for(solver='lgcd',
+                           z_kwargs=None,
+                           X=X,
+                           D_hat=D_hat,
+                           n_atoms=N_ATOMS,
+                           atom_support=N_TIMES_ATOM,
+                           algorithm='batch',
+                           reg=None,
+                           loss='l2',
+                           loss_params=loss_params,
+                           uv_constraint='joint',
+                           feasible_evaluation=True,
+                           n_jobs=2,
+                           use_sparse_z=False) as z_encoder:
+
+        assert z_encoder is not None
+        assert not z_encoder.get_z_hat().any()
+
+        z_encoder.compute_z()
+        assert z_encoder.get_z_hat().any()
+
+    with get_z_encoder_for(solver='lgcd',
+                           z_kwargs=None,
+                           X=X,
+                           D_hat=D_hat,
+                           n_atoms=N_ATOMS,
+                           atom_support=N_TIMES_ATOM,
+                           algorithm='batch',
+                           reg=None,
+                           loss='l2',
+                           loss_params=loss_params,
+                           uv_constraint='joint',
+                           feasible_evaluation=True,
+                           n_jobs=2,
+                           use_sparse_z=True) as z_encoder:
+
+        assert z_encoder is not None
+
+        for matrix in z_encoder.get_z_hat():
+            assert not matrix.count_nonzero()
+
+        z_encoder.compute_z()
+        for matrix in z_encoder.get_z_hat():
+            assert matrix.count_nonzero()
 
 
 def test_get_cost(X, D_hat, loss_params):
