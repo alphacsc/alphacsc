@@ -33,8 +33,10 @@ def loss_params():
 @pytest.mark.parametrize('reg', [None, 0.1])
 @pytest.mark.parametrize('loss', ['l2', 'dwt'])
 @pytest.mark.parametrize('uv_constraint', ['joint', 'separate'])
+@pytest.mark.parametrize('feasible_evaluation', [True, False])
 def test_get_encoder_for(solver_z, X, D_hat, algorithm, reg,
-                         loss, loss_params, uv_constraint):
+                         loss, loss_params, uv_constraint,
+                         feasible_evaluation):
     """Test for valid values."""
 
     with get_z_encoder_for(solver=solver_z,
@@ -48,7 +50,7 @@ def test_get_encoder_for(solver_z, X, D_hat, algorithm, reg,
                            loss=loss,
                            loss_params=loss_params,
                            uv_constraint=uv_constraint,
-                           feasible_evaluation=True,
+                           feasible_evaluation=feasible_evaluation,
                            n_jobs=2,
                            use_sparse_z=False) as z_encoder:
 
