@@ -28,15 +28,30 @@ def loss_params():
 
 
 @pytest.mark.parametrize('solver_z', ['l-bfgs', 'lgcd'])
-def test_get_encoder_for(X, D_hat, loss_params, solver_z):
+@pytest.mark.parametrize('algorithm', ['batch', 'greedy', 'online',
+                                       'stochastic'])
+@pytest.mark.parametrize('reg', [None, 0.1])
+@pytest.mark.parametrize('loss', ['l2', 'dwt'])
+@pytest.mark.parametrize('uv_constraint', ['joint', 'separate'])
+def test_get_encoder_for(solver_z, X, D_hat, algorithm, reg,
+                         loss, loss_params, uv_constraint):
+    """Test for valid values."""
 
-    with get_z_encoder_for(solver=solver_z, z_kwargs=None, X=X,
-                           D_hat=D_hat, n_atoms=N_ATOMS,
-                           atom_support=N_TIMES_ATOM, algorithm='batch',
-                           reg=None, loss='l2',
-                           loss_params=loss_params, uv_constraint='joint',
+    with get_z_encoder_for(solver=solver_z,
+                           z_kwargs=None,
+                           X=X,
+                           D_hat=D_hat,
+                           n_atoms=N_ATOMS,
+                           atom_support=N_TIMES_ATOM,
+                           algorithm=algorithm,
+                           reg=reg,
+                           loss=loss,
+                           loss_params=loss_params,
+                           uv_constraint=uv_constraint,
                            feasible_evaluation=True,
-                           n_jobs=2, use_sparse_z=False) as z_encoder:
+                           n_jobs=2,
+                           use_sparse_z=False) as z_encoder:
+
         assert z_encoder is not None
         assert not z_encoder.get_z_hat().any()
 
