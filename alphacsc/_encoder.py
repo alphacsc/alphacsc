@@ -22,12 +22,44 @@ def get_z_encoder_for(
         use_sparse_z):
     """
     Returns a z encoder for the required solver.
-    Allowed solvers are ['l-bfgs', 'lgcd']
 
     Parameters
     ----------
+    solver : str
+        The solver to use for the z update. Options are
+        {{'l_bfgs' | 'lgcd'}}.
+    z_kwargs : dict
+        Additional keyword arguments to pass to update_z_multi.
+    X : array, shape (n_trials, n_channels, n_times)
+        The data on which to perform CSC.
+    D_hat : array, shape (n_atoms, n_channels + atom_support)
+        The dictionary used to encode the signal X. Can be either in the form
+        f a full rank dictionary D (n_atoms, n_channels, atom_support) or with
+        the spatial and temporal atoms uv (n_atoms, n_channels + atom_support)
+    n_atoms : int
+        The number of atoms to learn.
+    atom_support : int
+        The support of the atom.
     algorithm : 'batch' | 'greedy' | 'online' | 'stochastic'
         Dictionary learning algorithm.
+    reg : float
+        The regularization parameter.
+    loss : {{ 'l2' | 'dtw' }}
+        Loss for the data-fit term. Either the norm l2 or the soft-DTW.
+    loss_params : dict
+        Parameters of the loss.
+    uv_constraint : {{'joint' | 'separate'}}
+        The kind of norm constraint on the atoms:
+
+        - :code:`'joint'`: the constraint is ||[u, v]||_2 <= 1
+        - :code:`'separate'`: the constraint is ||u||_2 <= 1 and ||v||_2 <= 1
+    feasible_evaluation : boolean
+        If feasible_evaluation is True, it first projects on the feasible set,
+        i.e. norm(uv_hat) <= 1.
+    n_jobs : int
+        The number of parallel jobs.
+    use_sparse_z : boolean
+        Use sparse lil_matrices to store the activations.
 
     Returns
     -------
