@@ -78,6 +78,9 @@ def get_z_encoder_for(
     assert (D_hat is not None and len(D_hat.shape) in [2, 3]), \
         'D_hat should be a valid array of shape(n_trials, n_channels, n_times) or (n_atoms, n_channels + atom_support).'
 
+    # TO_ASK can reg be less than 0?
+    assert reg is not None, 'reg value cannot be None.'
+
     if solver in ['l-bfgs', 'lgcd']:
         return AlphaCSCEncoder(
             solver,
@@ -231,7 +234,7 @@ class AlphaCSCEncoder(BaseZEncoder):
         self.n_atoms = n_atoms
         self.atom_support = atom_support
         self.algorithm = algorithm
-        self.reg = reg or 0.1
+        self.reg = reg
         self.loss = loss
         self.loss_params = loss_params
         self.uv_constraint = uv_constraint

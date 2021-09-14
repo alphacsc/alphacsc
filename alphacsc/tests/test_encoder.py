@@ -10,6 +10,8 @@ N_TRIALS, N_CHANNELS, N_TIMES = 2, 3, 30
 
 N_TIMES_ATOM, N_ATOMS = 6, 4
 
+REG = 0.1
+
 rng = check_random_state(42)
 
 
@@ -31,13 +33,11 @@ def loss_params():
 @pytest.mark.parametrize('solver_z', ['l-bfgs', 'lgcd'])
 @pytest.mark.parametrize('algorithm', ['batch', 'greedy', 'online',
                                        'stochastic'])
-@pytest.mark.parametrize('reg', [None, 0.1])
 @pytest.mark.parametrize('loss', ['l2', 'dwt'])
 @pytest.mark.parametrize('uv_constraint', ['joint', 'separate'])
 @pytest.mark.parametrize('feasible_evaluation', [True, False])
-def test_get_encoder_for(solver_z, X, D_hat, algorithm, reg,
-                         loss, loss_params, uv_constraint,
-                         feasible_evaluation):
+def test_get_encoder_for(solver_z, X, D_hat, algorithm, loss, loss_params,
+                         uv_constraint, feasible_evaluation):
     """Test for valid values."""
 
     with get_z_encoder_for(solver=solver_z,
@@ -47,7 +47,7 @@ def test_get_encoder_for(solver_z, X, D_hat, algorithm, reg,
                            n_atoms=N_ATOMS,
                            atom_support=N_TIMES_ATOM,
                            algorithm=algorithm,
-                           reg=reg,
+                           reg=REG,
                            loss=loss,
                            loss_params=loss_params,
                            uv_constraint=uv_constraint,
@@ -71,7 +71,7 @@ def test_get_encoder_for_error_solver_z(X, D_hat, loss_params, solver_z):
                           n_atoms=N_ATOMS,
                           atom_support=N_TIMES_ATOM,
                           algorithm='batch',
-                          reg=None,
+                          reg=REG,
                           loss='l2',
                           loss_params=loss_params,
                           uv_constraint='joint',
@@ -91,7 +91,7 @@ def test_get_encoder_for_error_z_kwargs(X, D_hat, loss_params):
                           n_atoms=N_ATOMS,
                           atom_support=N_TIMES_ATOM,
                           algorithm='batch',
-                          reg=None,
+                          reg=REG,
                           loss='l2',
                           loss_params=loss_params,
                           uv_constraint='joint',
@@ -113,7 +113,7 @@ def test_get_encoder_for_error_X(D_hat, loss_params):
                           n_atoms=N_ATOMS,
                           atom_support=N_TIMES_ATOM,
                           algorithm='batch',
-                          reg=None,
+                          reg=REG,
                           loss='l2',
                           loss_params=loss_params,
                           uv_constraint='joint',
@@ -133,7 +133,7 @@ def test_get_encoder_for_error_X(D_hat, loss_params):
                           n_atoms=N_ATOMS,
                           atom_support=N_TIMES_ATOM,
                           algorithm='batch',
-                          reg=None,
+                          reg=0.1,
                           loss='l2',
                           loss_params=loss_params,
                           uv_constraint='joint',
@@ -156,7 +156,7 @@ def test_get_encoder_for_error_D_hat(X, loss_params):
                           n_atoms=N_ATOMS,
                           atom_support=N_TIMES_ATOM,
                           algorithm='batch',
-                          reg=None,
+                          reg=REG,
                           loss='l2',
                           loss_params=loss_params,
                           uv_constraint='joint',
@@ -174,7 +174,7 @@ def test_get_encoder_for_error_D_hat(X, loss_params):
                           n_atoms=N_ATOMS,
                           atom_support=N_TIMES_ATOM,
                           algorithm='batch',
-                          reg=None,
+                          reg=REG,
                           loss='l2',
                           loss_params=loss_params,
                           uv_constraint='joint',
@@ -182,6 +182,28 @@ def test_get_encoder_for_error_D_hat(X, loss_params):
                           n_jobs=2,
                           use_sparse_z=False)
         assert error.value.message == 'D_hat should be a valid array of shape(n_trials, n_channels, n_times) or (n_atoms, n_channels + atom_support).'
+
+
+def test_get_encoder_for_error_reg(X, D_hat, loss_params):
+    """Tests for invalid value of `reg`."""
+
+    # test for d_hat = None
+    with pytest.raises(AssertionError) as error:
+        get_z_encoder_for(solver='lgcd',
+                          z_kwargs=dict(),
+                          X=X,
+                          D_hat=D_hat,
+                          n_atoms=N_ATOMS,
+                          atom_support=N_TIMES_ATOM,
+                          algorithm='batch',
+                          reg=None,
+                          loss='l2',
+                          loss_params=loss_params,
+                          uv_constraint='joint',
+                          feasible_evaluation=True,
+                          n_jobs=2,
+                          use_sparse_z=False)
+    assert error.value.args[0] == 'reg value cannot be None.'
 
 
 def test_get_z_hat(X, D_hat, loss_params):
@@ -194,7 +216,7 @@ def test_get_z_hat(X, D_hat, loss_params):
                            n_atoms=N_ATOMS,
                            atom_support=N_TIMES_ATOM,
                            algorithm='batch',
-                           reg=None,
+                           reg=REG,
                            loss='l2',
                            loss_params=loss_params,
                            uv_constraint='joint',
@@ -215,7 +237,7 @@ def test_get_z_hat(X, D_hat, loss_params):
                            n_atoms=N_ATOMS,
                            atom_support=N_TIMES_ATOM,
                            algorithm='batch',
-                           reg=None,
+                           reg=REG,
                            loss='l2',
                            loss_params=loss_params,
                            uv_constraint='joint',
@@ -242,7 +264,7 @@ def test_get_cost(X, D_hat, loss_params):
                            n_atoms=N_ATOMS,
                            atom_support=N_TIMES_ATOM,
                            algorithm='batch',
-                           reg=None,
+                           reg=REG,
                            loss='l2',
                            loss_params=loss_params,
                            uv_constraint='joint',
@@ -266,7 +288,7 @@ def test_compute_z(X, D_hat, loss_params):
                            n_atoms=N_ATOMS,
                            atom_support=N_TIMES_ATOM,
                            algorithm='batch',
-                           reg=None,
+                           reg=REG,
                            loss='l2',
                            loss_params=loss_params,
                            uv_constraint='joint',
@@ -286,7 +308,7 @@ def test_add_one_atom(X, D_hat, loss_params):
                            n_atoms=N_ATOMS,
                            atom_support=N_TIMES_ATOM,
                            algorithm='batch',
-                           reg=None,
+                           reg=REG,
                            loss='l2',
                            loss_params=loss_params,
                            uv_constraint='joint',
