@@ -40,7 +40,7 @@ def test_get_encoder_for(solver_z, X, D_hat, algorithm, reg,
     """Test for valid values."""
 
     with get_z_encoder_for(solver=solver_z,
-                           z_kwargs=None,
+                           z_kwargs=dict(),
                            X=X,
                            D_hat=D_hat,
                            n_atoms=N_ATOMS,
@@ -64,7 +64,7 @@ def test_get_encoder_for_error_solver_z(X, D_hat, loss_params, solver_z):
 
     with pytest.raises(ValueError) as error:
         get_z_encoder_for(solver=solver_z,
-                          z_kwargs=None,
+                          z_kwargs=dict(),
                           X=X,
                           D_hat=D_hat,
                           n_atoms=N_ATOMS,
@@ -80,11 +80,11 @@ def test_get_encoder_for_error_solver_z(X, D_hat, loss_params, solver_z):
         assert error.value.message == f'unrecognized solver type: {solver_z}.'
 
 
-def test_get_encoder_for_error_X(X, D_hat, loss_params):
+def test_get_encoder_for_error_X(D_hat, loss_params):
     """Tests for invalid value of `X`."""
-    with pytest.raises(ValueError) as error:
+    with pytest.raises(AssertionError) as error:
         get_z_encoder_for(solver='lgcd',
-                          z_kwargs=None,
+                          z_kwargs=dict(),
                           X=None,
                           D_hat=D_hat,
                           n_atoms=N_ATOMS,
@@ -97,14 +97,34 @@ def test_get_encoder_for_error_X(X, D_hat, loss_params):
                           feasible_evaluation=True,
                           n_jobs=2,
                           use_sparse_z=False)
-        assert error.value.message == 'X should be a valid array of shape (n_trials, n_channels, n_times)'
+        assert error.value.message == 'X should be a valid array of shape (n_trials, n_channels, n_times).'
+
+
+def test_get_encoder_for_error_z_kwargs(X, D_hat, loss_params):
+    """Tests for invalid value of `z_kwargs`."""
+    with pytest.raises(AssertionError) as error:
+        get_z_encoder_for(solver='lgcd',
+                          z_kwargs=None,
+                          X=X,
+                          D_hat=D_hat,
+                          n_atoms=N_ATOMS,
+                          atom_support=N_TIMES_ATOM,
+                          algorithm='batch',
+                          reg=None,
+                          loss='l2',
+                          loss_params=loss_params,
+                          uv_constraint='joint',
+                          feasible_evaluation=True,
+                          n_jobs=2,
+                          use_sparse_z=False)
+        assert error.value.message == 'z_kwargs should be a valid dictionary.'
 
 
 def test_get_z_hat(X, D_hat, loss_params):
     """Test for valid values."""
 
     with get_z_encoder_for(solver='lgcd',
-                           z_kwargs=None,
+                           z_kwargs=dict(),
                            X=X,
                            D_hat=D_hat,
                            n_atoms=N_ATOMS,
@@ -125,7 +145,7 @@ def test_get_z_hat(X, D_hat, loss_params):
         assert z_encoder.get_z_hat().any()
 
     with get_z_encoder_for(solver='lgcd',
-                           z_kwargs=None,
+                           z_kwargs=dict(),
                            X=X,
                            D_hat=D_hat,
                            n_atoms=N_ATOMS,
@@ -152,7 +172,7 @@ def test_get_z_hat(X, D_hat, loss_params):
 def test_get_cost(X, D_hat, loss_params):
 
     with get_z_encoder_for(solver='lgcd',
-                           z_kwargs=None,
+                           z_kwargs=dict(),
                            X=X,
                            D_hat=D_hat,
                            n_atoms=N_ATOMS,
@@ -176,7 +196,7 @@ def test_get_cost(X, D_hat, loss_params):
 
 def test_compute_z(X, D_hat, loss_params):
     with get_z_encoder_for(solver='lgcd',
-                           z_kwargs=None,
+                           z_kwargs=dict(),
                            X=X,
                            D_hat=D_hat,
                            n_atoms=N_ATOMS,
@@ -196,7 +216,7 @@ def test_compute_z(X, D_hat, loss_params):
 def test_add_one_atom(X, D_hat, loss_params):
 
     with get_z_encoder_for(solver='lgcd',
-                           z_kwargs=None,
+                           z_kwargs=dict(),
                            X=X,
                            D_hat=D_hat,
                            n_atoms=N_ATOMS,

@@ -70,6 +70,11 @@ def get_z_encoder_for(
     with get_encoder_for('lgcd') as enc:
         ...
     """
+    assert isinstance(z_kwargs, dict), 'z_kwargs should be a valid dictionary.'
+
+    assert X is not None, \
+        'X should be a valid array of shape (n_trials, n_channels, n_times).'
+
     if solver in ['l-bfgs', 'lgcd']:
         return AlphaCSCEncoder(
             solver,
@@ -216,9 +221,6 @@ class AlphaCSCEncoder(BaseZEncoder):
             n_jobs,
             use_sparse_z):
 
-        if X is None:
-            raise ValueError(
-                'X should be a valid array of shape (n_trials, n_channels, n_times)')
         self.z_alg = solver
         self.z_kwargs = z_kwargs or dict()
         self.X = X
