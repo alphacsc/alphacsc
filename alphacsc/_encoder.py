@@ -85,6 +85,11 @@ def get_z_encoder_for(
 
     assert loss in ['l2', 'dwt', 'whitening'], f'unrecognized loss type: {loss}.'
 
+    assert isinstance(
+        loss_params, dict), 'loss_params should be a valid dictionary.'
+
+    # ASK check invalid values for n_atoms, atom_support, n_jobs
+
     if solver in ['l-bfgs', 'lgcd']:
         return AlphaCSCEncoder(
             solver,

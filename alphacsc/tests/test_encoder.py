@@ -248,6 +248,28 @@ def test_get_encoder_for_error_loss(X, D_hat, loss_params, loss):
     assert error.value.args[0] == f'unrecognized loss type: {loss}.'
 
 
+def test_get_encoder_for_error_loss_params(X, D_hat):
+    """Tests for invalid value of `loss_params`."""
+
+    with pytest.raises(AssertionError) as error:
+        get_z_encoder_for(solver='lgcd',
+                          z_kwargs=dict(),
+                          X=X,
+                          D_hat=D_hat,
+                          n_atoms=N_ATOMS,
+                          atom_support=N_TIMES_ATOM,
+                          algorithm='batch',
+                          reg=REG,
+                          loss='l2',
+                          loss_params=None,
+                          uv_constraint='joint',
+                          feasible_evaluation=True,
+                          n_jobs=2,
+                          use_sparse_z=False)
+    assert error.value.args[
+        0] == 'loss_params should be a valid dictionary.'
+
+
 def test_get_z_hat(X, D_hat, loss_params):
     """Test for valid values."""
 
