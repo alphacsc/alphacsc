@@ -88,6 +88,7 @@ def get_z_encoder_for(
     assert isinstance(
         loss_params, dict), 'loss_params should be a valid dictionary.'
 
+    assert uv_constraint in ['joint', 'separate'], f'unrecognized uv_constraint type: {uv_constraint}.'
     # ASK check invalid values for n_atoms, atom_support, n_jobs
 
     if solver in ['l-bfgs', 'lgcd']:

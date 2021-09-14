@@ -270,6 +270,28 @@ def test_get_encoder_for_error_loss_params(X, D_hat):
         0] == 'loss_params should be a valid dictionary.'
 
 
+@pytest.mark.parametrize('uv_constraint', [None, 'other'])
+def test_get_encoder_for_error_uv_constraint(X, D_hat, loss_params, uv_constraint):
+    """Tests for invalid values of `uv_constraint`."""
+
+    with pytest.raises(AssertionError) as error:
+        get_z_encoder_for(solver='lgcd',
+                          z_kwargs=dict(),
+                          X=X,
+                          D_hat=D_hat,
+                          n_atoms=N_ATOMS,
+                          atom_support=N_TIMES_ATOM,
+                          algorithm='batch',
+                          reg=REG,
+                          loss='l2',
+                          loss_params=loss_params,
+                          uv_constraint=uv_constraint,
+                          feasible_evaluation=True,
+                          n_jobs=2,
+                          use_sparse_z=False)
+    assert error.value.args[0] == f'unrecognized uv_constraint type: {uv_constraint}.'
+
+
 def test_get_z_hat(X, D_hat, loss_params):
     """Test for valid values."""
 
