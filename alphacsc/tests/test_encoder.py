@@ -7,9 +7,7 @@ from alphacsc.init_dict import init_dictionary
 from alphacsc.utils import check_random_state
 
 N_TRIALS, N_CHANNELS, N_TIMES = 2, 3, 30
-
 N_TIMES_ATOM, N_ATOMS = 6, 4
-
 REG = 0.1
 
 rng = check_random_state(42)
@@ -181,7 +179,7 @@ def test_get_encoder_for_error_D_hat(X, loss_params):
                           feasible_evaluation=True,
                           n_jobs=2,
                           use_sparse_z=False)
-        assert error.value.message == 'D_hat should be a valid array of shape(n_trials, n_channels, n_times) or (n_atoms, n_channels + atom_support).'
+    assert error.value.args[0] == 'D_hat should be a valid array of shape(n_trials, n_channels, n_times) or (n_atoms, n_channels + atom_support).'
 
 
 def test_get_encoder_for_error_reg(X, D_hat, loss_params):
