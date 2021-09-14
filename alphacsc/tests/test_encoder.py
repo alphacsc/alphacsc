@@ -31,7 +31,7 @@ def loss_params():
 @pytest.mark.parametrize('solver_z', ['l-bfgs', 'lgcd'])
 @pytest.mark.parametrize('algorithm', ['batch', 'greedy', 'online',
                                        'stochastic'])
-@pytest.mark.parametrize('loss', ['l2', 'dwt'])
+@pytest.mark.parametrize('loss', ['l2', 'dwt', 'whitening'])
 @pytest.mark.parametrize('uv_constraint', ['joint', 'separate'])
 @pytest.mark.parametrize('feasible_evaluation', [True, False])
 def test_get_encoder_for(solver_z, X, D_hat, algorithm, loss, loss_params,
@@ -224,6 +224,28 @@ def test_get_encoder_for_error_reg(X, D_hat, loss_params):
                           n_jobs=2,
                           use_sparse_z=False)
     assert error.value.args[0] == 'reg value cannot be None.'
+
+
+@pytest.mark.parametrize('loss', [None, 'other'])
+def test_get_encoder_for_error_loss(X, D_hat, loss_params, loss):
+    """Tests for invalid values of `loss`."""
+
+    with pytest.raises(AssertionError) as error:
+        get_z_encoder_for(solver='lgcd',
+                          z_kwargs=dict(),
+                          X=X,
+                          D_hat=D_hat,
+                          n_atoms=N_ATOMS,
+                          atom_support=N_TIMES_ATOM,
+                          algorithm='batch',
+                          reg=REG,
+                          loss=loss,
+                          loss_params=loss_params,
+                          uv_constraint='joint',
+                          feasible_evaluation=True,
+                          n_jobs=2,
+                          use_sparse_z=False)
+    assert error.value.args[0] == f'unrecognized loss type: {loss}.'
 
 
 def test_get_z_hat(X, D_hat, loss_params):

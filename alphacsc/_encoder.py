@@ -44,7 +44,7 @@ def get_z_encoder_for(
         Dictionary learning algorithm.
     reg : float
         The regularization parameter.
-    loss : {{ 'l2' | 'dtw' }}
+    loss : {{ 'l2' | 'dtw' | 'whitening'}}
         Loss for the data-fit term. Either the norm l2 or the soft-DTW.
     loss_params : dict
         Parameters of the loss.
@@ -82,6 +82,8 @@ def get_z_encoder_for(
 
     # TO_ASK can reg be less than 0?
     assert reg is not None, 'reg value cannot be None.'
+
+    assert loss in ['l2', 'dwt', 'whitening'], f'unrecognized loss type: {loss}.'
 
     if solver in ['l-bfgs', 'lgcd']:
         return AlphaCSCEncoder(
