@@ -32,7 +32,7 @@ def get_z_encoder_for(
         Additional keyword arguments to pass to update_z_multi.
     X : array, shape (n_trials, n_channels, n_times)
         The data on which to perform CSC.
-    D_hat : array, shape (n_atoms, n_channels + atom_support)
+    D_hat : array, shape e(n_trials, n_channels, n_times) or (n_atoms, n_channels + atom_support)
         The dictionary used to encode the signal X. Can be either in the form
         f a full rank dictionary D (n_atoms, n_channels, atom_support) or with
         the spatial and temporal atoms uv (n_atoms, n_channels + atom_support)
@@ -72,8 +72,11 @@ def get_z_encoder_for(
     """
     assert isinstance(z_kwargs, dict), 'z_kwargs should be a valid dictionary.'
 
-    assert X is not None, \
+    assert (X is not None and len(X.shape) == 3), \
         'X should be a valid array of shape (n_trials, n_channels, n_times).'
+
+    assert (D_hat is not None and len(D_hat.shape) in [2, 3]), \
+        'D_hat should be a valid array of shape(n_trials, n_channels, n_times) or (n_atoms, n_channels + atom_support).'
 
     if solver in ['l-bfgs', 'lgcd']:
         return AlphaCSCEncoder(
@@ -222,7 +225,7 @@ class AlphaCSCEncoder(BaseZEncoder):
             use_sparse_z):
 
         self.z_alg = solver
-        self.z_kwargs = z_kwargs or dict()
+        self.z_kwargs = z_kwargs
         self.X = X
         self.D_hat = D_hat
         self.n_atoms = n_atoms
