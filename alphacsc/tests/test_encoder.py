@@ -182,6 +182,28 @@ def test_get_encoder_for_error_D_hat(X, loss_params):
     assert error.value.args[0] == 'D_hat should be a valid array of shape(n_trials, n_channels, n_times) or (n_atoms, n_channels + atom_support).'
 
 
+@pytest.mark.parametrize('algorithm', [None, 'other'])
+def test_get_encoder_for_error_algorithm(X, D_hat, loss_params, algorithm):
+    """Tests for invalid values of `algorithm`."""
+
+    with pytest.raises(AssertionError) as error:
+        get_z_encoder_for(solver='lgcd',
+                          z_kwargs=dict(),
+                          X=X,
+                          D_hat=D_hat,
+                          n_atoms=N_ATOMS,
+                          atom_support=N_TIMES_ATOM,
+                          algorithm=algorithm,
+                          reg=REG,
+                          loss='l2',
+                          loss_params=loss_params,
+                          uv_constraint='joint',
+                          feasible_evaluation=True,
+                          n_jobs=2,
+                          use_sparse_z=False)
+    assert error.value.args[0] == f'unrecognized algorithm type: {algorithm}.'
+
+
 def test_get_encoder_for_error_reg(X, D_hat, loss_params):
     """Tests for invalid value of `reg`."""
 

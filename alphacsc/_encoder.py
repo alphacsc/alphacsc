@@ -78,6 +78,8 @@ def get_z_encoder_for(
     assert (D_hat is not None and len(D_hat.shape) in [2, 3]), \
         'D_hat should be a valid array of shape(n_trials, n_channels, n_times) or (n_atoms, n_channels + atom_support).'
 
+    assert algorithm in ['batch', 'greedy', 'online', 'stochastic'], f'unrecognized algorithm type: {algorithm}.'
+
     # TO_ASK can reg be less than 0?
     assert reg is not None, 'reg value cannot be None.'
 
