@@ -167,6 +167,12 @@ def test_get_cost(X, D_hat, loss_params):
                            n_jobs=2,
                            use_sparse_z=False) as z_encoder:
         assert not z_encoder.get_z_hat().any()
+        initial_cost = z_encoder.get_cost()
+
+        z_encoder.compute_z()
+        final_cost = z_encoder.get_cost()
+
+        assert final_cost < initial_cost
 
 
 def test_compute_z(X, D_hat, loss_params):
