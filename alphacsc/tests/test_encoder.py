@@ -77,7 +77,7 @@ def test_get_encoder_for_error_solver_z(X, D_hat, loss_params, solver_z):
                           feasible_evaluation=True,
                           n_jobs=2,
                           use_sparse_z=False)
-        assert error.value.args[0] == f'unrecognized solver type: {solver_z}.'
+        assert error.value.message == f'unrecognized solver type: {solver_z}.'
 
 
 def test_get_encoder_for_error_X(X, D_hat, loss_params):
@@ -97,8 +97,7 @@ def test_get_encoder_for_error_X(X, D_hat, loss_params):
                           feasible_evaluation=True,
                           n_jobs=2,
                           use_sparse_z=False)
-        assert error.value.args[
-            0] == 'X should be a valid array of shape (n_trials, n_channels, n_times)'
+        assert error.value.message == 'X should be a valid array of shape (n_trials, n_channels, n_times)'
 
 
 def test_get_z_hat(X, D_hat, loss_params):
