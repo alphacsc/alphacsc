@@ -414,6 +414,12 @@ def test_get_sufficient_statistics(X, D_hat, loss_params):
     assert error.value.args[0] == \
         'compute_z should be called to access the statistics.'
 
+    # test after calling compute_z
+    z_encoder.compute_z()
+
+    ztz, ztX = z_encoder.get_sufficient_statistics()
+    assert ztz is not None and ztX is not None
+
 
 def test_get_sufficient_statistics_partial(X, D_hat, loss_params):
     z_encoder = get_z_encoder_for(solver='lgcd',
@@ -437,6 +443,13 @@ def test_get_sufficient_statistics_partial(X, D_hat, loss_params):
 
     assert error.value.args[0] == \
         'compute_z_partial should be called to access the statistics.'
+
+    # test after calling compute_z_partial
+    i0 = rng.choice(N_TRIALS, 1, replace=False)
+    z_encoder.compute_z_partial(i0)
+
+    ztz_i0, ztX_i0 = z_encoder.get_sufficient_statistics_partial()
+    assert ztz_i0 is not None and ztX_i0 is not None
 
 
 def test_add_one_atom(X, D_hat, loss_params):
