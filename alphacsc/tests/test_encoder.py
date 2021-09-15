@@ -81,6 +81,7 @@ def test_get_encoder_for_error_solver_z(X, D_hat, loss_params, solver_z):
 
 def test_get_encoder_for_error_z_kwargs(X, D_hat, loss_params):
     """Tests for invalid value of `z_kwargs`."""
+
     with pytest.raises(AssertionError) as error:
         get_z_encoder_for(solver='lgcd',
                           z_kwargs=None,
@@ -348,6 +349,7 @@ def test_get_z_hat(X, D_hat, loss_params):
 
 
 def test_get_cost(X, D_hat, loss_params):
+    """Test for valid values."""
 
     with get_z_encoder_for(solver='lgcd',
                            z_kwargs=dict(),
@@ -373,6 +375,8 @@ def test_get_cost(X, D_hat, loss_params):
 
 
 def test_compute_z(X, D_hat, loss_params):
+    """Test for valid values."""
+
     with get_z_encoder_for(solver='lgcd',
                            z_kwargs=dict(),
                            X=X,
@@ -391,7 +395,56 @@ def test_compute_z(X, D_hat, loss_params):
         assert z_encoder.get_z_hat().any()
 
 
+def test_compute_z_partial(X, D_hat, loss_params):
+    """Test for valid values."""
+
+    with get_z_encoder_for(solver='lgcd',
+                           z_kwargs=dict(),
+                           X=X,
+                           D_hat=D_hat,
+                           n_atoms=N_ATOMS,
+                           atom_support=N_TIMES_ATOM,
+                           algorithm='batch',
+                           reg=REG,
+                           loss='l2',
+                           loss_params=loss_params,
+                           uv_constraint='joint',
+                           feasible_evaluation=True,
+                           n_jobs=2,
+                           use_sparse_z=False) as z_encoder:
+
+        i0 = rng.choice(N_TRIALS, 1, replace=False)
+        z_encoder.compute_z_partial(i0)
+        assert z_encoder.get_z_hat().any()
+
+
 def test_get_sufficient_statistics(X, D_hat, loss_params):
+    """Test for valid values."""
+
+    z_encoder = get_z_encoder_for(solver='lgcd',
+                                  z_kwargs=dict(),
+                                  X=X,
+                                  D_hat=D_hat,
+                                  n_atoms=N_ATOMS,
+                                  atom_support=N_TIMES_ATOM,
+                                  algorithm='batch',
+                                  reg=REG,
+                                  loss='l2',
+                                  loss_params=loss_params,
+                                  uv_constraint='joint',
+                                  feasible_evaluation=True,
+                                  n_jobs=2,
+                                  use_sparse_z=False)
+
+    z_encoder.compute_z()
+
+    ztz, ztX = z_encoder.get_sufficient_statistics()
+    assert ztz is not None and ztX is not None
+
+
+def test_get_sufficient_statistics_error(X, D_hat, loss_params):
+    """Test for invalid call to function."""
+
     z_encoder = get_z_encoder_for(solver='lgcd',
                                   z_kwargs=dict(),
                                   X=X,
@@ -414,14 +467,35 @@ def test_get_sufficient_statistics(X, D_hat, loss_params):
     assert error.value.args[0] == \
         'compute_z should be called to access the statistics.'
 
-    # test after calling compute_z
-    z_encoder.compute_z()
-
-    ztz, ztX = z_encoder.get_sufficient_statistics()
-    assert ztz is not None and ztX is not None
-
 
 def test_get_sufficient_statistics_partial(X, D_hat, loss_params):
+    """Test for valid values."""
+
+    z_encoder = get_z_encoder_for(solver='lgcd',
+                                  z_kwargs=dict(),
+                                  X=X,
+                                  D_hat=D_hat,
+                                  n_atoms=N_ATOMS,
+                                  atom_support=N_TIMES_ATOM,
+                                  algorithm='batch',
+                                  reg=REG,
+                                  loss='l2',
+                                  loss_params=loss_params,
+                                  uv_constraint='joint',
+                                  feasible_evaluation=True,
+                                  n_jobs=2,
+                                  use_sparse_z=False)
+
+    i0 = rng.choice(N_TRIALS, 1, replace=False)
+    z_encoder.compute_z_partial(i0)
+
+    ztz_i0, ztX_i0 = z_encoder.get_sufficient_statistics_partial()
+    assert ztz_i0 is not None and ztX_i0 is not None
+
+
+def test_get_sufficient_statistics_partial_error(X, D_hat, loss_params):
+    """Test for invalid call to function."""
+
     z_encoder = get_z_encoder_for(solver='lgcd',
                                   z_kwargs=dict(),
                                   X=X,
@@ -444,15 +518,9 @@ def test_get_sufficient_statistics_partial(X, D_hat, loss_params):
     assert error.value.args[0] == \
         'compute_z_partial should be called to access the statistics.'
 
-    # test after calling compute_z_partial
-    i0 = rng.choice(N_TRIALS, 1, replace=False)
-    z_encoder.compute_z_partial(i0)
-
-    ztz_i0, ztX_i0 = z_encoder.get_sufficient_statistics_partial()
-    assert ztz_i0 is not None and ztX_i0 is not None
-
 
 def test_add_one_atom(X, D_hat, loss_params):
+    """Test for valid values."""
 
     with get_z_encoder_for(solver='lgcd',
                            z_kwargs=dict(),
