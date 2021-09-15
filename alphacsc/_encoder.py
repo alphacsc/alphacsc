@@ -301,8 +301,11 @@ class AlphaCSCEncoder(BaseZEncoder):
             self.X[i0], self.z_hat[i0], unbiased_z_hat=False)
 
     def get_cost(self):
-        cost = compute_X_and_objective_multi(self.X, self.z_hat, self.D_hat,
-                                             reg=self.reg, loss=self.loss,
+        cost = compute_X_and_objective_multi(self.X,
+                                             self.z_hat,
+                                             self.D_hat,
+                                             reg=self.reg,
+                                             loss=self.loss,
                                              loss_params=self.loss_params,
                                              uv_constraint=self.uv_constraint,
                                              feasible_evaluation=True,
