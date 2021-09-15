@@ -146,7 +146,7 @@ def test_get_encoder_for_error_X(D_hat, loss_params):
 def test_get_encoder_for_error_D_hat(X, loss_params):
     """Tests for invalid values of `D_hat`."""
 
-    # test for d_hat = None
+    # test for D_hat = None
     with pytest.raises(AssertionError) as error:
         get_z_encoder_for(solver='lgcd',
                           z_kwargs=dict(),
@@ -166,6 +166,7 @@ def test_get_encoder_for_error_D_hat(X, loss_params):
         '(n_trials, n_channels, n_times) or ' \
         '(n_atoms, n_channels + atom_support).'
 
+    # test for invalid D_hat shape
     D_hat = rng.randn(N_TRIALS)
     with pytest.raises(AssertionError) as error:
         get_z_encoder_for(solver='lgcd',
@@ -212,7 +213,6 @@ def test_get_encoder_for_error_algorithm(X, D_hat, loss_params, algorithm):
 def test_get_encoder_for_error_reg(X, D_hat, loss_params):
     """Tests for invalid value of `reg`."""
 
-    # test for d_hat = None
     with pytest.raises(AssertionError) as error:
         get_z_encoder_for(solver='lgcd',
                           z_kwargs=dict(),
@@ -302,6 +302,7 @@ def test_get_encoder_for_error_uv_constraint(X, D_hat, loss_params,
 def test_get_z_hat(X, D_hat, loss_params):
     """Test for valid values."""
 
+    # tests when use_sparse_z = False
     with get_z_encoder_for(solver='lgcd',
                            z_kwargs=dict(),
                            X=X,
@@ -323,6 +324,7 @@ def test_get_z_hat(X, D_hat, loss_params):
         z_encoder.compute_z()
         assert z_encoder.get_z_hat().any()
 
+    # tests when use_sparse_z = True
     with get_z_encoder_for(solver='lgcd',
                            z_kwargs=dict(),
                            X=X,
