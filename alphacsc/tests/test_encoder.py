@@ -118,8 +118,8 @@ def test_get_encoder_for_error_X(D_hat, loss_params):
                           feasible_evaluation=True,
                           n_jobs=2,
                           use_sparse_z=False)
-    assert error.value.args[
-        0] == 'X should be a valid array of shape (n_trials, n_channels, n_times).'
+    assert error.value.args[0] == 'X should be a valid array of shape ' \
+        '(n_trials, n_channels, n_times).'
 
     # test for invalid shape of X
     X = rng.randn(N_TRIALS, N_CHANNELS)
@@ -138,8 +138,8 @@ def test_get_encoder_for_error_X(D_hat, loss_params):
                           feasible_evaluation=True,
                           n_jobs=2,
                           use_sparse_z=False)
-    assert error.value.args[
-        0] == 'X should be a valid array of shape (n_trials, n_channels, n_times).'
+    assert error.value.args[0] == 'X should be a valid array of shape ' \
+        '(n_trials, n_channels, n_times).'
 
 
 def test_get_encoder_for_error_D_hat(X, loss_params):
@@ -161,7 +161,9 @@ def test_get_encoder_for_error_D_hat(X, loss_params):
                           feasible_evaluation=True,
                           n_jobs=2,
                           use_sparse_z=False)
-    assert error.value.args[0] == 'D_hat should be a valid array of shape(n_trials, n_channels, n_times) or (n_atoms, n_channels + atom_support).'
+    assert error.value.args[0] == 'D_hat should be a valid array of shape '\
+        '(n_trials, n_channels, n_times) or ' \
+        '(n_atoms, n_channels + atom_support).'
 
     D_hat = rng.randn(N_TRIALS)
     with pytest.raises(AssertionError) as error:
@@ -179,7 +181,9 @@ def test_get_encoder_for_error_D_hat(X, loss_params):
                           feasible_evaluation=True,
                           n_jobs=2,
                           use_sparse_z=False)
-    assert error.value.args[0] == 'D_hat should be a valid array of shape(n_trials, n_channels, n_times) or (n_atoms, n_channels + atom_support).'
+    assert error.value.args[0] == 'D_hat should be a valid array of shape '\
+        '(n_trials, n_channels, n_times) or ' \
+        '(n_atoms, n_channels + atom_support).'
 
 
 @pytest.mark.parametrize('algorithm', [None, 'other'])
@@ -271,7 +275,8 @@ def test_get_encoder_for_error_loss_params(X, D_hat):
 
 
 @pytest.mark.parametrize('uv_constraint', [None, 'other'])
-def test_get_encoder_for_error_uv_constraint(X, D_hat, loss_params, uv_constraint):
+def test_get_encoder_for_error_uv_constraint(X, D_hat, loss_params,
+                                             uv_constraint):
     """Tests for invalid values of `uv_constraint`."""
 
     with pytest.raises(AssertionError) as error:
@@ -289,7 +294,8 @@ def test_get_encoder_for_error_uv_constraint(X, D_hat, loss_params, uv_constrain
                           feasible_evaluation=True,
                           n_jobs=2,
                           use_sparse_z=False)
-    assert error.value.args[0] == f'unrecognized uv_constraint type: {uv_constraint}.'
+    assert error.value.args[0] == \
+        f'unrecognized uv_constraint type: {uv_constraint}.'
 
 
 def test_get_z_hat(X, D_hat, loss_params):
@@ -400,10 +406,13 @@ def test_get_sufficient_statistics(X, D_hat, loss_params):
                                   feasible_evaluation=True,
                                   n_jobs=2,
                                   use_sparse_z=False)
+
+    # test before calling compute_z
     with pytest.raises(AssertionError) as error:
         z_encoder.get_sufficient_statistics()
 
-    assert error.value.args[0] == 'compute_z should be called to access the statistics.'
+    assert error.value.args[0] == \
+        'compute_z should be called to access the statistics.'
 
 
 def test_get_sufficient_statistics_partial(X, D_hat, loss_params):
@@ -421,10 +430,13 @@ def test_get_sufficient_statistics_partial(X, D_hat, loss_params):
                                   feasible_evaluation=True,
                                   n_jobs=2,
                                   use_sparse_z=False)
+
+    # test before calling compute_z_partial
     with pytest.raises(AssertionError) as error:
         z_encoder.get_sufficient_statistics_partial()
 
-    assert error.value.args[0] == 'compute_z_partial should be called to access the statistics.'
+    assert error.value.args[0] == \
+        'compute_z_partial should be called to access the statistics.'
 
 
 def test_add_one_atom(X, D_hat, loss_params):

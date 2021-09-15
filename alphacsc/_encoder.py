@@ -32,7 +32,8 @@ def get_z_encoder_for(
         Additional keyword arguments to pass to update_z_multi.
     X : array, shape (n_trials, n_channels, n_times)
         The data on which to perform CSC.
-    D_hat : array, shape e(n_trials, n_channels, n_times) or (n_atoms, n_channels + atom_support)
+    D_hat : array, shape e(n_trials, n_channels, n_times) or
+        (n_atoms, n_channels + atom_support)
         The dictionary used to encode the signal X. Can be either in the form
         f a full rank dictionary D (n_atoms, n_channels, atom_support) or with
         the spatial and temporal atoms uv (n_atoms, n_channels + atom_support)
@@ -76,19 +77,24 @@ def get_z_encoder_for(
         'X should be a valid array of shape (n_trials, n_channels, n_times).'
 
     assert (D_hat is not None and len(D_hat.shape) in [2, 3]), \
-        'D_hat should be a valid array of shape(n_trials, n_channels, n_times) or (n_atoms, n_channels + atom_support).'
+        'D_hat should be a valid array of shape ' \
+        '(n_trials, n_channels, n_times) ' \
+        'or (n_atoms, n_channels + atom_support).'
 
-    assert algorithm in ['batch', 'greedy', 'online', 'stochastic'], f'unrecognized algorithm type: {algorithm}.'
+    assert algorithm in ['batch', 'greedy', 'online', 'stochastic'], \
+        f'unrecognized algorithm type: {algorithm}.'
 
     # ASK can reg be less than 0?
     assert reg is not None, 'reg value cannot be None.'
 
-    assert loss in ['l2', 'dtw', 'whitening'], f'unrecognized loss type: {loss}.'
+    assert loss in ['l2', 'dtw', 'whitening'], \
+        f'unrecognized loss type: {loss}.'
 
     assert isinstance(
         loss_params, dict), 'loss_params should be a valid dictionary.'
 
-    assert uv_constraint in ['joint', 'separate'], f'unrecognized uv_constraint type: {uv_constraint}.'
+    assert uv_constraint in ['joint', 'separate'], \
+        f'unrecognized uv_constraint type: {uv_constraint}.'
     # ASK check invalid values for n_atoms, atom_support, n_jobs
 
     if solver in ['l-bfgs', 'lgcd']:
