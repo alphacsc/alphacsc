@@ -22,12 +22,45 @@ def get_z_encoder_for(
         use_sparse_z):
     """
     Returns a z encoder for the required solver.
-    Allowed solvers are ['l-bfgs', 'lgcd']
 
     Parameters
     ----------
+    solver : str
+        The solver to use for the z update. Options are
+        {{'l_bfgs' | 'lgcd'}}.
+    z_kwargs : dict
+        Additional keyword arguments to pass to update_z_multi.
+    X : array, shape (n_trials, n_channels, n_times)
+        The data on which to perform CSC.
+    D_hat : array, shape e(n_trials, n_channels, n_times) or
+        (n_atoms, n_channels + atom_support)
+        The dictionary used to encode the signal X. Can be either in the form
+        f a full rank dictionary D (n_atoms, n_channels, atom_support) or with
+        the spatial and temporal atoms uv (n_atoms, n_channels + atom_support)
+    n_atoms : int
+        The number of atoms to learn.
+    atom_support : int
+        The support of the atom.
     algorithm : 'batch' | 'greedy' | 'online' | 'stochastic'
         Dictionary learning algorithm.
+    reg : float
+        The regularization parameter.
+    loss : {{ 'l2' | 'dtw' | 'whitening'}}
+        Loss for the data-fit term. Either the norm l2 or the soft-DTW.
+    loss_params : dict
+        Parameters of the loss.
+    uv_constraint : {{'joint' | 'separate'}}
+        The kind of norm constraint on the atoms:
+
+        - :code:`'joint'`: the constraint is ||[u, v]||_2 <= 1
+        - :code:`'separate'`: the constraint is ||u||_2 <= 1 and ||v||_2 <= 1
+    feasible_evaluation : boolean
+        If feasible_evaluation is True, it first projects on the feasible set,
+        i.e. norm(uv_hat) <= 1.
+    n_jobs : int
+        The number of parallel jobs.
+    use_sparse_z : boolean
+        Use sparse lil_matrices to store the activations.
 
     Returns
     -------
@@ -38,6 +71,32 @@ def get_z_encoder_for(
     with get_encoder_for('lgcd') as enc:
         ...
     """
+    assert isinstance(z_kwargs, dict), 'z_kwargs should be a valid dictionary.'
+
+    assert (X is not None and len(X.shape) == 3), \
+        'X should be a valid array of shape (n_trials, n_channels, n_times).'
+
+    assert (D_hat is not None and len(D_hat.shape) in [2, 3]), \
+        'D_hat should be a valid array of shape ' \
+        '(n_trials, n_channels, n_times) ' \
+        'or (n_atoms, n_channels + atom_support).'
+
+    assert algorithm in ['batch', 'greedy', 'online', 'stochastic'], \
+        f'unrecognized algorithm type: {algorithm}.'
+
+    # ASK can reg be less than 0?
+    assert reg is not None, 'reg value cannot be None.'
+
+    assert loss in ['l2', 'dtw', 'whitening'], \
+        f'unrecognized loss type: {loss}.'
+
+    assert isinstance(
+        loss_params, dict), 'loss_params should be a valid dictionary.'
+
+    assert uv_constraint in ['joint', 'separate'], \
+        f'unrecognized uv_constraint type: {uv_constraint}.'
+    # ASK check invalid values for n_atoms, atom_support, n_jobs
+
     if solver in ['l-bfgs', 'lgcd']:
         return AlphaCSCEncoder(
             solver,
@@ -183,6 +242,7 @@ class AlphaCSCEncoder(BaseZEncoder):
             feasible_evaluation,
             n_jobs,
             use_sparse_z):
+
         self.z_alg = solver
         self.z_kwargs = z_kwargs
         self.X = X
@@ -241,8 +301,11 @@ class AlphaCSCEncoder(BaseZEncoder):
             self.X[i0], self.z_hat[i0], unbiased_z_hat=False)
 
     def get_cost(self):
-        cost = compute_X_and_objective_multi(self.X, self.z_hat, self.D_hat,
-                                             reg=self.reg, loss=self.loss,
+        cost = compute_X_and_objective_multi(self.X,
+                                             self.z_hat,
+                                             self.D_hat,
+                                             reg=self.reg,
+                                             loss=self.loss,
                                              loss_params=self.loss_params,
                                              uv_constraint=self.uv_constraint,
                                              feasible_evaluation=True,
@@ -250,9 +313,13 @@ class AlphaCSCEncoder(BaseZEncoder):
         return cost
 
     def get_sufficient_statistics(self):
+        assert hasattr(self, 'ztz') and hasattr(self, 'ztX'), \
+            'compute_z should be called to access the statistics.'
         return self.ztz, self.ztX
 
     def get_sufficient_statistics_partial(self):
+        assert hasattr(self, 'ztz_i0') and hasattr(self, 'ztX_i0'), \
+            'compute_z_partial should be called to access the statistics.'
         return self.ztz_i0, self.ztX_i0
 
     def set_D(self, D):
