@@ -385,6 +385,48 @@ def test_compute_z(X, D_hat, loss_params):
         assert z_encoder.get_z_hat().any()
 
 
+def test_get_sufficient_statistics(X, D_hat, loss_params):
+    z_encoder = get_z_encoder_for(solver='lgcd',
+                                  z_kwargs=dict(),
+                                  X=X,
+                                  D_hat=D_hat,
+                                  n_atoms=N_ATOMS,
+                                  atom_support=N_TIMES_ATOM,
+                                  algorithm='batch',
+                                  reg=REG,
+                                  loss='l2',
+                                  loss_params=loss_params,
+                                  uv_constraint='joint',
+                                  feasible_evaluation=True,
+                                  n_jobs=2,
+                                  use_sparse_z=False)
+    with pytest.raises(AssertionError) as error:
+        z_encoder.get_sufficient_statistics()
+
+    assert error.value.args[0] == 'compute_z should be called to access the statistics.'
+
+
+def test_get_sufficient_statistics_partial(X, D_hat, loss_params):
+    z_encoder = get_z_encoder_for(solver='lgcd',
+                                  z_kwargs=dict(),
+                                  X=X,
+                                  D_hat=D_hat,
+                                  n_atoms=N_ATOMS,
+                                  atom_support=N_TIMES_ATOM,
+                                  algorithm='batch',
+                                  reg=REG,
+                                  loss='l2',
+                                  loss_params=loss_params,
+                                  uv_constraint='joint',
+                                  feasible_evaluation=True,
+                                  n_jobs=2,
+                                  use_sparse_z=False)
+    with pytest.raises(AssertionError) as error:
+        z_encoder.get_sufficient_statistics_partial()
+
+    assert error.value.args[0] == 'compute_z_partial should be called to access the statistics.'
+
+
 def test_add_one_atom(X, D_hat, loss_params):
 
     with get_z_encoder_for(solver='lgcd',

@@ -80,7 +80,7 @@ def get_z_encoder_for(
 
     assert algorithm in ['batch', 'greedy', 'online', 'stochastic'], f'unrecognized algorithm type: {algorithm}.'
 
-    # TO_ASK can reg be less than 0?
+    # ASK can reg be less than 0?
     assert reg is not None, 'reg value cannot be None.'
 
     assert loss in ['l2', 'dwt', 'whitening'], f'unrecognized loss type: {loss}.'
@@ -304,9 +304,13 @@ class AlphaCSCEncoder(BaseZEncoder):
         return cost
 
     def get_sufficient_statistics(self):
+        assert hasattr(self, 'ztz') and hasattr(self, 'ztX'), \
+            'compute_z should be called to access the statistics.'
         return self.ztz, self.ztX
 
     def get_sufficient_statistics_partial(self):
+        assert hasattr(self, 'ztz_i0') and hasattr(self, 'ztX_i0'), \
+            'compute_z_partial should be called to access the statistics.'
         return self.ztz_i0, self.ztX_i0
 
     def set_D(self, D):
