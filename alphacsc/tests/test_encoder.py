@@ -31,7 +31,7 @@ def loss_params():
 @pytest.mark.parametrize('solver_z', ['l-bfgs', 'lgcd'])
 @pytest.mark.parametrize('algorithm', ['batch', 'greedy', 'online',
                                        'stochastic'])
-@pytest.mark.parametrize('loss', ['l2', 'dwt', 'whitening'])
+@pytest.mark.parametrize('loss', ['l2', 'dtw', 'whitening'])
 @pytest.mark.parametrize('uv_constraint', ['joint', 'separate'])
 @pytest.mark.parametrize('feasible_evaluation', [True, False])
 def test_get_encoder_for(solver_z, X, D_hat, algorithm, loss, loss_params,

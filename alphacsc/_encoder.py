@@ -83,7 +83,7 @@ def get_z_encoder_for(
     # ASK can reg be less than 0?
     assert reg is not None, 'reg value cannot be None.'
 
-    assert loss in ['l2', 'dwt', 'whitening'], f'unrecognized loss type: {loss}.'
+    assert loss in ['l2', 'dtw', 'whitening'], f'unrecognized loss type: {loss}.'
 
     assert isinstance(
         loss_params, dict), 'loss_params should be a valid dictionary.'
