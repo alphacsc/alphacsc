@@ -32,7 +32,7 @@ def get_z_encoder_for(
         Additional keyword arguments to pass to update_z_multi.
     X : array, shape (n_trials, n_channels, n_times)
         The data on which to perform CSC.
-    D_hat : array, shape e(n_trials, n_channels, n_times) or
+    D_hat : array, shape (n_trials, n_channels, n_times) or
         (n_atoms, n_channels + atom_support)
         The dictionary used to encode the signal X. Can be either in the form
         of a full rank dictionary D (n_atoms, n_channels, atom_support) or with
