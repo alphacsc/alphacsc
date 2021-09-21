@@ -127,8 +127,7 @@ class BaseZEncoder:
 
     def compute_z_partial(self, i0):
         """
-        Compute z on a slice of the signal X,
-        for online learning.
+        Compute z on a slice of the signal X, for online learning.
 
         Parameters
         ----------
