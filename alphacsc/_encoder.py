@@ -35,7 +35,7 @@ def get_z_encoder_for(
     D_hat : array, shape e(n_trials, n_channels, n_times) or
         (n_atoms, n_channels + atom_support)
         The dictionary used to encode the signal X. Can be either in the form
-        f a full rank dictionary D (n_atoms, n_channels, atom_support) or with
+        of a full rank dictionary D (n_atoms, n_channels, atom_support) or with
         the spatial and temporal atoms uv (n_atoms, n_channels + atom_support)
     n_atoms : int
         The number of atoms to learn.
