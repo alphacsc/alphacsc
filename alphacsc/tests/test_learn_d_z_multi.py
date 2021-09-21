@@ -135,13 +135,13 @@ def test_unbiased_z_hat():
     _, _, _, z_hat, _ = learn_d_z_multi(
         X, n_atoms, n_times_atom, uv_constraint='joint', rank1=False,
         solver_d='joint', random_state=0, unbiased_z_hat=False,
-        n_iter=30, eps=-np.inf, solver_z='l-bfgs', window=False,
+        n_iter=1, eps=-np.inf, solver_z='l-bfgs', window=False,
         verbose=0, loss='l2', loss_params=loss_params)
 
     _, _, _, z_hat_unbiased, _ = learn_d_z_multi(
         X, n_atoms, n_times_atom, uv_constraint='joint', rank1=False,
         solver_d='joint', random_state=0, unbiased_z_hat=True,
-        n_iter=30, eps=-np.inf, solver_z='l-bfgs', window=False,
+        n_iter=1, eps=-np.inf, solver_z='l-bfgs', window=False,
         verbose=0, loss='l2', loss_params=loss_params)
 
     assert np.all(z_hat_unbiased[z_hat == 0] == 0)
