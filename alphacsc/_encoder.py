@@ -182,13 +182,13 @@ class BaseZEncoder:
         """
         raise NotImplementedError()
 
-    def set_D(self, d):
+    def set_D(self, D):
         """
         Update the dictionary.
 
         Parameters
         ----------
-        d
+        D : ndarray, shape (n_atoms, n_channels, n_time_atoms)
             An updated dictionary, to be used for the next
             computation of z_hat.
         """
