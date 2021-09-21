@@ -66,11 +66,6 @@ def get_z_encoder_for(
     -------
     enc : instance of ZEncoder
         The encoder.
-
-    Example usage
-    -------------
-    with get_encoder_for('lgcd') as enc:
-        ...
     """
     assert isinstance(z_kwargs, dict), 'z_kwargs should be a valid dictionary.'
 
@@ -153,7 +148,7 @@ class BaseZEncoder:
 
         Returns
         -------
-        ztz, ztX : (float, float)
+        ztz, ztX : (ndarray, ndarray)
             Sufficient statistics.
         """
         raise NotImplementedError()
@@ -166,7 +161,7 @@ class BaseZEncoder:
 
         Returns
         -------
-        ztz, ztX : (float, float)
+        ztz, ztX : (ndarray, ndarray)
             Sufficient statistics for the slice that was
             selected in the last call of ``compute_z_partial``
         """
