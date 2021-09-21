@@ -144,4 +144,4 @@ def test_unbiased_z_hat():
         n_iter=30, eps=-np.inf, solver_z='l-bfgs', window=False,
         verbose=0, loss='l2', loss_params=loss_params)
 
-    assert np.all(z_hat[z_hat == 0] == z_hat_unbiased[z_hat_unbiased == 0])
+    assert np.all(z_hat_unbiased[z_hat == 0] == 0)
