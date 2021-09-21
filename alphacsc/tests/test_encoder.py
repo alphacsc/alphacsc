@@ -14,6 +14,7 @@ rng = check_random_state(42)
 X = rng.randn(N_TRIALS, N_CHANNELS, N_TIMES)
 X.setflags(write=False)
 
+
 @pytest.fixture
 def D_hat():
     return init_dictionary(X, N_ATOMS, N_TIMES_ATOM, random_state=0)
