@@ -64,7 +64,8 @@ def get_z_encoder_for(
 
     Returns
     -------
-    enc - a ZEncoder instance
+    enc : instance of ZEncoder
+        The encoder.
 
     Example usage
     -------------
