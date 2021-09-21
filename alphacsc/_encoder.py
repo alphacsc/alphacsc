@@ -133,7 +133,7 @@ class BaseZEncoder:
         Parameters
         ----------
         i0 : int
-             Slice index.
+            Slice index.
         """
         raise NotImplementedError()
 
