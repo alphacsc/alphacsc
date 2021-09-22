@@ -29,4 +29,5 @@ def validate_doc():
 
 if __name__ == "__main__":
     obj_errors = validate_doc()
-    sys.exit(0 if not obj_errors else 1)
+    if obj_errors:
+        sys.exit(1)
