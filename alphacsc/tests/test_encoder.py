@@ -25,7 +25,7 @@ def D_hat():
 @pytest.mark.parametrize('loss', ['l2', 'dtw', 'whitening'])
 @pytest.mark.parametrize('uv_constraint', ['joint', 'separate'])
 @pytest.mark.parametrize('feasible_evaluation', [True, False])
-def test_get_encoder_for(solver_z, D_hat, algorithm, loss, 
+def test_get_encoder_for(solver_z, D_hat, algorithm, loss,
                          uv_constraint, feasible_evaluation):
     """Test for valid values."""
 
@@ -38,8 +38,7 @@ def test_get_encoder_for(solver_z, D_hat, algorithm, loss,
                            loss=loss,
                            uv_constraint=uv_constraint,
                            feasible_evaluation=feasible_evaluation,
-                           n_jobs=2,
-                           use_sparse_z=False) as z_encoder:
+                           n_jobs=2) as z_encoder:
 
         assert z_encoder is not None
         assert z_encoder.z_kwargs == dict()
@@ -56,8 +55,7 @@ def test_get_encoder_for_error_solver_z(D_hat,  solver_z):
                           D_hat=D_hat,
                           n_atoms=N_ATOMS,
                           atom_support=N_TIMES_ATOM,
-                          n_jobs=2,
-                          use_sparse_z=False)
+                          n_jobs=2)
     assert error.value.args[0] == f'unrecognized solver type: {solver_z}.'
 
 
@@ -71,8 +69,7 @@ def test_get_encoder_for_error_z_kwargs(D_hat):
                           D_hat=D_hat,
                           n_atoms=N_ATOMS,
                           atom_support=N_TIMES_ATOM,
-                          n_jobs=2,
-                          use_sparse_z=False)
+                          n_jobs=2)
     assert error.value.args[0] == 'z_kwargs should be a valid dictionary.'
 
 
@@ -87,8 +84,7 @@ def test_get_encoder_for_error_X(D_hat):
                           D_hat=D_hat,
                           n_atoms=N_ATOMS,
                           atom_support=N_TIMES_ATOM,
-                          n_jobs=2,
-                          use_sparse_z=False)
+                          n_jobs=2)
     assert error.value.args[0] == 'X should be a valid array of shape ' \
         '(n_trials, n_channels, n_times).'
 
@@ -101,8 +97,7 @@ def test_get_encoder_for_error_X(D_hat):
                           D_hat=D_hat,
                           n_atoms=N_ATOMS,
                           atom_support=N_TIMES_ATOM,
-                          n_jobs=2,
-                          use_sparse_z=False)
+                          n_jobs=2)
     assert error.value.args[0] == 'X should be a valid array of shape ' \
         '(n_trials, n_channels, n_times).'
 
@@ -118,8 +113,7 @@ def test_get_encoder_for_error_D_hat():
                           D_hat=None,
                           n_atoms=N_ATOMS,
                           atom_support=N_TIMES_ATOM,
-                          n_jobs=2,
-                          use_sparse_z=False)
+                          n_jobs=2)
     assert error.value.args[0] == 'D_hat should be a valid array of shape '\
         '(n_trials, n_channels, n_times) or ' \
         '(n_atoms, n_channels + atom_support).'
@@ -133,8 +127,7 @@ def test_get_encoder_for_error_D_hat():
                           D_hat=D_hat,
                           n_atoms=N_ATOMS,
                           atom_support=N_TIMES_ATOM,
-                          n_jobs=2,
-                          use_sparse_z=False)
+                          n_jobs=2)
     assert error.value.args[0] == 'D_hat should be a valid array of shape '\
         '(n_trials, n_channels, n_times) or ' \
         '(n_atoms, n_channels + atom_support).'
@@ -152,8 +145,7 @@ def test_get_encoder_for_error_algorithm(D_hat,  algorithm):
                           n_atoms=N_ATOMS,
                           atom_support=N_TIMES_ATOM,
                           algorithm=algorithm,
-                          n_jobs=2,
-                          use_sparse_z=False)
+                          n_jobs=2)
     assert error.value.args[0] == f'unrecognized algorithm type: {algorithm}.'
 
 
@@ -168,8 +160,7 @@ def test_get_encoder_for_error_reg(D_hat):
                           n_atoms=N_ATOMS,
                           atom_support=N_TIMES_ATOM,
                           reg=None,
-                          n_jobs=2,
-                          use_sparse_z=False)
+                          n_jobs=2)
     assert error.value.args[0] == 'reg value cannot be None.'
 
 
@@ -185,8 +176,7 @@ def test_get_encoder_for_error_loss(D_hat,  loss):
                           n_atoms=N_ATOMS,
                           atom_support=N_TIMES_ATOM,
                           loss=loss,
-                          n_jobs=2,
-                          use_sparse_z=False)
+                          n_jobs=2)
     assert error.value.args[0] == f'unrecognized loss type: {loss}.'
 
 
@@ -201,14 +191,13 @@ def test_get_encoder_for_error_loss_params(D_hat):
                           n_atoms=N_ATOMS,
                           atom_support=N_TIMES_ATOM,
                           loss_params=42,
-                          n_jobs=2,
-                          use_sparse_z=False)
+                          n_jobs=2)
     assert error.value.args[
         0] == 'loss_params should be a valid dict or None.'
 
 
 @pytest.mark.parametrize('uv_constraint', [None, 'other'])
-def test_get_encoder_for_error_uv_constraint(D_hat, 
+def test_get_encoder_for_error_uv_constraint(D_hat,
                                              uv_constraint):
     """Tests for invalid values of `uv_constraint`."""
 
@@ -220,8 +209,7 @@ def test_get_encoder_for_error_uv_constraint(D_hat,
                           n_atoms=N_ATOMS,
                           atom_support=N_TIMES_ATOM,
                           uv_constraint=uv_constraint,
-                          n_jobs=2,
-                          use_sparse_z=False)
+                          n_jobs=2)
     assert error.value.args[0] == \
         f'unrecognized uv_constraint type: {uv_constraint}.'
 
@@ -274,8 +262,7 @@ def test_get_cost(D_hat):
                            D_hat=D_hat,
                            n_atoms=N_ATOMS,
                            atom_support=N_TIMES_ATOM,
-                           n_jobs=2,
-                           use_sparse_z=False) as z_encoder:
+                           n_jobs=2) as z_encoder:
         assert not z_encoder.get_z_hat().any()
         initial_cost = z_encoder.get_cost()
 
@@ -294,8 +281,7 @@ def test_compute_z(D_hat):
                            D_hat=D_hat,
                            n_atoms=N_ATOMS,
                            atom_support=N_TIMES_ATOM,
-                           n_jobs=2,
-                           use_sparse_z=False) as z_encoder:
+                           n_jobs=2) as z_encoder:
         z_encoder.compute_z()
         assert z_encoder.get_z_hat().any()
 
@@ -309,8 +295,7 @@ def test_compute_z_partial(D_hat):
                            D_hat=D_hat,
                            n_atoms=N_ATOMS,
                            atom_support=N_TIMES_ATOM,
-                           n_jobs=2,
-                           use_sparse_z=False) as z_encoder:
+                           n_jobs=2) as z_encoder:
 
         i0 = rng.choice(N_TRIALS, 1, replace=False)
         z_encoder.compute_z_partial(i0)
@@ -326,8 +311,7 @@ def test_get_sufficient_statistics(D_hat):
                                   D_hat=D_hat,
                                   n_atoms=N_ATOMS,
                                   atom_support=N_TIMES_ATOM,
-                                  n_jobs=2,
-                                  use_sparse_z=False)
+                                  n_jobs=2)
 
     z_encoder.compute_z()
 
@@ -344,8 +328,7 @@ def test_get_sufficient_statistics_error(D_hat):
                                   D_hat=D_hat,
                                   n_atoms=N_ATOMS,
                                   atom_support=N_TIMES_ATOM,
-                                  n_jobs=2,
-                                  use_sparse_z=False)
+                                  n_jobs=2)
 
     # test before calling compute_z
     with pytest.raises(AssertionError) as error:
@@ -364,8 +347,7 @@ def test_get_sufficient_statistics_partial(D_hat):
                                   D_hat=D_hat,
                                   n_atoms=N_ATOMS,
                                   atom_support=N_TIMES_ATOM,
-                                  n_jobs=2,
-                                  use_sparse_z=False)
+                                  n_jobs=2)
 
     i0 = rng.choice(N_TRIALS, 1, replace=False)
     z_encoder.compute_z_partial(i0)
@@ -383,8 +365,7 @@ def test_get_sufficient_statistics_partial_error(D_hat):
                                   D_hat=D_hat,
                                   n_atoms=N_ATOMS,
                                   atom_support=N_TIMES_ATOM,
-                                  n_jobs=2,
-                                  use_sparse_z=False)
+                                  n_jobs=2)
 
     # test before calling compute_z_partial
     with pytest.raises(AssertionError) as error:
@@ -403,8 +384,7 @@ def test_add_one_atom(D_hat):
                            D_hat=D_hat,
                            n_atoms=N_ATOMS,
                            atom_support=N_TIMES_ATOM,
-                           n_jobs=2,
-                           use_sparse_z=False) as z_encoder:
+                           n_jobs=2) as z_encoder:
         new_atom = np.random.rand(N_CHANNELS + N_TIMES_ATOM)
         z_encoder.add_one_atom(new_atom)
         n_atoms_plus_one = z_encoder.D_hat.shape[0]
