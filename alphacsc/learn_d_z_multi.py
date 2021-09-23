@@ -200,11 +200,10 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
                             uv_constraint=uv_constraint, loss=loss,
                             loss_params=loss_params, window=window, **d_kwargs)
 
-    with get_z_encoder_for(solver_z, z_kwargs, X, D_hat, n_atoms,
-                           n_times_atom, algorithm, reg, loss,
+    with get_z_encoder_for(X, D_hat, n_atoms, n_times_atom, n_jobs,
+                           solver_z, z_kwargs, algorithm, reg, loss,
                            loss_params, uv_constraint,
                            feasible_evaluation=True,
-                           n_jobs=n_jobs,
                            use_sparse_z=use_sparse_z) as z_encoder:
         if callable(callback):
             callback(X, D_hat, z_encoder.get_z_hat(), [])

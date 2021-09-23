@@ -6,30 +6,25 @@ from .utils import check_dimension, lil
 
 # XXX check consistency / proper use!
 def get_z_encoder_for(
-        solver,
-        z_kwargs,
         X,
         D_hat,
         n_atoms,
         atom_support,
-        algorithm,
-        reg,
-        loss,
-        loss_params,
-        uv_constraint,
-        feasible_evaluation,
         n_jobs,
-        use_sparse_z):
+        solver='l-bfgs',
+        z_kwargs=dict(),
+        algorithm='batch',
+        reg=0.1,
+        loss='l2',
+        loss_params=None,
+        uv_constraint='separate',
+        feasible_evaluation=True,
+        use_sparse_z=False):
     """
     Returns a z encoder for the required solver.
 
     Parameters
     ----------
-    solver : str
-        The solver to use for the z update. Options are
-        {{'l_bfgs' | 'lgcd'}}.
-    z_kwargs : dict
-        Additional keyword arguments to pass to update_z_multi.
     X : array, shape (n_trials, n_channels, n_times)
         The data on which to perform CSC.
     D_hat : array, shape (n_trials, n_channels, n_times) or
@@ -41,25 +36,30 @@ def get_z_encoder_for(
         The number of atoms to learn.
     atom_support : int
         The support of the atom.
-    algorithm : 'batch' | 'greedy' | 'online' | 'stochastic'
+    n_jobs : int
+        The number of parallel jobs.
+    solver : str
+        The solver to use for the z update. Options are
+        {{'l_bfgs' (default) | 'lgcd'}}.
+    z_kwargs : dict
+        Additional keyword arguments to pass to update_z_multi.
+    algorithm : 'batch' (default) | 'greedy' | 'online' | 'stochastic'
         Dictionary learning algorithm.
     reg : float
         The regularization parameter.
-    loss : {{ 'l2' | 'dtw' | 'whitening'}}
+    loss : {{ 'l2' (default) | 'dtw' | 'whitening'}}
         Loss for the data-fit term. Either the norm l2 or the soft-DTW.
-    loss_params : dict
+    loss_params : dict | None
         Parameters of the loss.
     uv_constraint : {{'joint' | 'separate'}}
         The kind of norm constraint on the atoms:
 
         - :code:`'joint'`: the constraint is ||[u, v]||_2 <= 1
         - :code:`'separate'`: the constraint is ||u||_2 <= 1 and ||v||_2 <= 1
-    feasible_evaluation : boolean
+    feasible_evaluation : boolean, default True
         If feasible_evaluation is True, it first projects on the feasible set,
         i.e. norm(uv_hat) <= 1.
-    n_jobs : int
-        The number of parallel jobs.
-    use_sparse_z : boolean
+    use_sparse_z : bool, default False
         Use sparse lil_matrices to store the activations.
 
     Returns
@@ -86,8 +86,8 @@ def get_z_encoder_for(
     assert loss in ['l2', 'dtw', 'whitening'], \
         f'unrecognized loss type: {loss}.'
 
-    assert isinstance(
-        loss_params, dict), 'loss_params should be a valid dictionary.'
+    assert (loss_params is None) or isinstance(
+        loss_params, dict), 'loss_params should be a valid dict or None.'
 
     assert uv_constraint in ['joint', 'separate'], \
         f'unrecognized uv_constraint type: {uv_constraint}.'
@@ -95,19 +95,19 @@ def get_z_encoder_for(
 
     if solver in ['l-bfgs', 'lgcd']:
         return AlphaCSCEncoder(
-            solver,
-            z_kwargs,
             X,
             D_hat,
             n_atoms,
             atom_support,
+            n_jobs,
+            solver,
+            z_kwargs,
             algorithm,
             reg,
             loss,
             loss_params,
             uv_constraint,
             feasible_evaluation,
-            n_jobs,
             use_sparse_z)
     else:
         raise ValueError(f'unrecognized solver type: {solver}.')
@@ -223,34 +223,37 @@ class BaseZEncoder:
 class AlphaCSCEncoder(BaseZEncoder):
     def __init__(
             self,
-            solver,
-            z_kwargs,
             X,
             D_hat,
             n_atoms,
             atom_support,
+            n_jobs,
+            solver,
+            z_kwargs,
             algorithm,
             reg,
             loss,
             loss_params,
             uv_constraint,
             feasible_evaluation,
-            n_jobs,
             use_sparse_z):
 
-        self.z_alg = solver
-        self.z_kwargs = z_kwargs
+        if loss_params is None:
+            loss_params = dict(gamma=.1, sakoe_chiba_band=10, ordar=10)
+
         self.X = X
         self.D_hat = D_hat
         self.n_atoms = n_atoms
         self.atom_support = atom_support
+        self.n_jobs = n_jobs
+        self.z_alg = solver
+        self.z_kwargs = z_kwargs
         self.algorithm = algorithm
         self.reg = reg
         self.loss = loss
         self.loss_params = loss_params
         self.uv_constraint = uv_constraint
         self.feasible_evaluation = feasible_evaluation
-        self.n_jobs = n_jobs
         self.use_sparse_z = use_sparse_z
 
         self._init_z_hat()
