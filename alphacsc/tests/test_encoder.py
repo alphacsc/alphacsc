@@ -322,11 +322,9 @@ def test_get_sufficient_statistics_error(D_hat):
                                   n_jobs=2)
 
     # test before calling compute_z
-    with pytest.raises(AssertionError) as error:
+    with pytest.raises(AssertionError,
+                       match="compute_z should be called.*"):
         z_encoder.get_sufficient_statistics()
-
-    assert error.value.args[0] == \
-        'compute_z should be called to access the statistics.'
 
 
 def test_get_sufficient_statistics_partial(D_hat):
