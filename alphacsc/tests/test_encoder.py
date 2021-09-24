@@ -220,8 +220,8 @@ def test_get_cost(D_hat):
         assert final_cost < initial_cost
 
         X_hat = construct_X_multi(z_hat, D_hat, n_channels=N_CHANNELS)
-        cost = compute_objective(
-            X=X, X_hat=X_hat, z_hat=z_hat, reg=0.1, D=D_hat)
+        cost = compute_objective(X=X, X_hat=X_hat, z_hat=z_hat, reg=0.1,
+                                 D=D_hat)
 
         assert np.isclose(cost, final_cost)
 
