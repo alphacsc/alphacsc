@@ -17,8 +17,7 @@ from .utils.convolution import sort_atoms_by_explained_variances
 from .utils.dictionary import get_lambda_max
 from .utils.whitening import whitening
 from .init_dict import init_dictionary, get_max_error_dict
-from .loss_and_gradient import compute_X_and_objective_multi
-from .update_z_multi import update_z_multi
+from ._encoder import get_z_encoder_for
 from .update_d_multi import update_uv, update_d
 
 
@@ -31,6 +30,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
                     solver_z='l-bfgs', solver_z_kwargs=dict(),
                     solver_d='alternate_adaptive', solver_d_kwargs=dict(),
                     D_init=None, D_init_params=dict(),
+                    # XXX use_sparse_z force to False currently
                     unbiased_z_hat=False, use_sparse_z=False,
                     stopping_pobj=None, raise_on_increase=True,
                     verbose=10, callback=None, random_state=None, name="DL",
@@ -74,7 +74,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
     eps : float
         Stopping criterion. If the cost descent after a uv and a z update is
         smaller than eps, return.
-    algorithm : 'batch' | 'greedy' | 'online'
+    algorithm : 'batch' | 'greedy' | 'online' | 'stochastic'
         Dictionary learning algorithm.
     algorithm_params : dict
         Parameters for the global algorithm used to learn the dictionary:
@@ -97,7 +97,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
             iteration.
     solver_z : str
         The solver to use for the z update. Options are
-        'l-bfgs' (default) | "lgcd"
+        'l-bfgs' (default) | 'lgcd'
     solver_z_kwargs : dict
         Additional keyword arguments to pass to update_z_multi
     solver_d : str
@@ -149,8 +149,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         f"got '{lmbd_max}'"
     )
 
-    n_trials, n_channels, n_times = check_dimension(X)
-    n_times_valid = n_times - n_times_atom + 1
+    _, n_channels, _ = check_dimension(X)
 
     # Rescale the problem to avoid underflow issues
     std_X = X.std()
@@ -167,8 +166,6 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
     b_hat_0 = rng.randn(n_atoms * (n_channels + n_times_atom))
     init_duration = time.time() - start
 
-    z_hat = lil.init_zeros(use_sparse_z, n_trials, n_atoms, n_times_valid)
-
     z_kwargs = dict(verbose=verbose)
     z_kwargs.update(solver_z_kwargs)
 
@@ -181,20 +178,6 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         print("[{}] Max value for lambda: {}".format(name, _lmbd_max))
     if lmbd_max == "scaled":
         reg = reg * _lmbd_max
-
-    def compute_z_func(X, z_hat, D_hat, reg=None):
-        return update_z_multi(X, D_hat, reg=reg, z0=z_hat,
-                              solver=solver_z, solver_kwargs=z_kwargs,
-                              loss=loss, loss_params=loss_params,
-                              n_jobs=n_jobs, return_ztz=True)
-
-    def obj_func(X, z_hat, D_hat, reg=None, return_X_hat=False):
-        return compute_X_and_objective_multi(X, z_hat, D_hat,
-                                             reg=reg, loss=loss,
-                                             loss_params=loss_params,
-                                             uv_constraint=uv_constraint,
-                                             feasible_evaluation=True,
-                                             return_X_hat=return_X_hat)
 
     d_kwargs = dict(verbose=verbose, eps=1e-8)
     d_kwargs.update(solver_d_kwargs)
@@ -217,66 +200,90 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
                             uv_constraint=uv_constraint, loss=loss,
                             loss_params=loss_params, window=window, **d_kwargs)
 
-    if callable(callback):
-        callback(X, D_hat, z_hat, [])
+    with get_z_encoder_for(X, D_hat, n_atoms, n_times_atom, n_jobs,
+                           solver_z, z_kwargs, algorithm, reg, loss,
+                           loss_params, uv_constraint,
+                           feasible_evaluation=True,
+                           use_sparse_z=use_sparse_z) as z_encoder:
+        if callable(callback):
+            callback(X, D_hat, z_encoder.get_z_hat(), [])
 
-    end_iter_func = get_iteration_func(eps, stopping_pobj, callback, lmbd_max,
-                                       name, verbose, raise_on_increase)
+        end_iter_func = get_iteration_func(
+            eps,
+            stopping_pobj,
+            callback,
+            lmbd_max,
+            name,
+            verbose,
+            raise_on_increase)
 
-    # common parameters
-    kwargs = dict(X=X, D_hat=D_hat, z_hat=z_hat, compute_z_func=compute_z_func,
-                  compute_d_func=compute_d_func, obj_func=obj_func,
-                  end_iter_func=end_iter_func, n_iter=n_iter, verbose=verbose,
-                  random_state=random_state, window=window, reg=reg,
-                  lmbd_max=lmbd_max, name=name, uv_constraint=uv_constraint)
-    kwargs.update(algorithm_params)
+        # common parameters
+        kwargs = dict(
+            X=X,
+            D_hat=D_hat,
+            z_encoder=z_encoder,
+            n_atoms=n_atoms,
+            compute_d_func=compute_d_func,
+            end_iter_func=end_iter_func,
+            n_iter=n_iter,
+            verbose=verbose,
+            random_state=random_state,
+            window=window,
+            reg=reg,
+            lmbd_max=lmbd_max,
+            name=name,
+            uv_constraint=uv_constraint)
+        kwargs.update(algorithm_params)
 
-    if algorithm == 'batch':
-        pobj, times, D_hat, z_hat = _batch_learn(greedy=False, **kwargs)
-    elif algorithm == "greedy":
-        pobj, times, D_hat, z_hat = _batch_learn(greedy=True, **kwargs)
-    elif algorithm == "online":
-        pobj, times, D_hat, z_hat = _online_learn(**kwargs)
-    elif algorithm == "stochastic":
-        # For stochastic learning, set forgetting factor alpha of the
-        # online algorithm to 0, making each step independent of previous
-        # steps and set D-update max_iter to a low value (typically 1).
-        kwargs['alpha'] = 0
-        pobj, times, D_hat, z_hat = _online_learn(**kwargs)
-    else:
-        raise NotImplementedError(
-            "Algorithm '{}' is not implemented to learn dictionary atoms."
-            .format(algorithm))
+        if algorithm == 'batch':
+            pobj, times, D_hat, z_hat = _batch_learn(greedy=False, **kwargs)
+        elif algorithm == "greedy":
+            pobj, times, D_hat, z_hat = _batch_learn(greedy=True, **kwargs)
+        elif algorithm == "online":
+            pobj, times, D_hat, z_hat = _online_learn(**kwargs)
+        elif algorithm == "stochastic":
+            # For stochastic learning, set forgetting factor alpha of the
+            # online algorithm to 0, making each step independent of previous
+            # steps and set D-update max_iter to a low value (typically 1).
+            kwargs['alpha'] = 0
+            pobj, times, D_hat, z_hat = _online_learn(**kwargs)
+        else:
+            raise NotImplementedError(
+                "Algorithm '{}' is not implemented to learn dictionary atoms."
+                .format(algorithm))
 
-    if sort_atoms:
-        D_hat, z_hat = sort_atoms_by_explained_variances(
-            D_hat, z_hat, n_channels=n_channels)
+        if sort_atoms:
+            D_hat, z_hat = sort_atoms_by_explained_variances(
+                D_hat, z_hat, n_channels=n_channels)
 
-    # recompute z_hat with no regularization and keeping the support fixed
-    if unbiased_z_hat:
-        start_unbiased_z_hat = time.time()
-        z_hat, _, _ = update_z_multi(
-            X, D_hat, reg=0, z0=z_hat, n_jobs=n_jobs, solver=solver_z,
-            solver_kwargs=solver_z_kwargs, freeze_support=True, loss=loss,
-            loss_params=loss_params)
-        if verbose > 1:
-            print("[{}] Compute the final z_hat with support freeze in "
-                  "{:.2f}s".format(name, time.time() - start_unbiased_z_hat))
+        # recompute z_hat with no regularization and keeping the support fixed
+        if unbiased_z_hat:
+            start_unbiased_z_hat = time.time()
+            z_encoder.compute_z(unbiased_z_hat=True)
+            z_hat = z_encoder.get_z_hat()
+            if verbose > 1:
+                print(
+                    "[{}] Compute the final z_hat with support freeze in "
+                    "{:.2f}s".format(
+                        name,
+                        time.time() -
+                        start_unbiased_z_hat))
 
-    times[0] += init_duration
+        times[0] += init_duration
 
-    if verbose > 0:
-        print("[%s] Fit in %.1fs" % (name, time.time() - start))
+        if verbose > 0:
+            print("[%s] Fit in %.1fs" % (name, time.time() - start))
 
-    # Rescale the solution to match the given scale of the problem
-    z_hat *= std_X
-    reg *= std_X
+        # Rescale the solution to match the given scale of the problem
+        z_hat *= std_X
+        reg *= std_X
+        z_encoder.set_reg(reg)
 
     return pobj, times, D_hat, z_hat, reg
 
 
-def _batch_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
-                 obj_func, end_iter_func, n_iter=100,
+def _batch_learn(X, D_hat, z_encoder, n_atoms, compute_d_func,
+                 end_iter_func, n_iter=100,
                  lmbd_max='fixed', reg=None, verbose=0, greedy=False,
                  random_state=None, name="batch", uv_constraint='separate',
                  window=False):
@@ -289,22 +296,16 @@ def _batch_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
 
     if greedy:
         n_iter_by_atom = 1
-        # remove all atoms
-        D_hat = D_hat[0:0]
-        # remove all activations
-        use_sparse_z = lil.is_list_of_lil(z_hat)
-        n_trials, n_atoms, n_times_valid = lil.get_z_shape(z_hat)
-        z_hat = lil.init_zeros(use_sparse_z, n_trials, 0, n_times_valid)
 
         if n_iter < n_atoms * n_iter_by_atom:
-            raise ValueError('The greedy method needs at least %d iteration '
+            raise ValueError('The greedy method needs at least %d iterations '
                              'to learn %d atoms. Got only n_iter=%d. Please '
                              'increase n_iter.' % (
                                  n_iter_by_atom * n_atoms, n_atoms, n_iter))
 
     # monitor cost function
     times = [0]
-    pobj = [obj_func(X, z_hat, D_hat, reg=reg_)]
+    pobj = [z_encoder.get_cost()]
 
     for ii in range(n_iter):  # outer loop of coordinate descent
         if verbose == 1:
@@ -314,31 +315,40 @@ def _batch_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
         if verbose > 1:
             print('[{}] CD iterations {} / {}'.format(name, ii, n_iter))
 
-        if greedy and ii % n_iter_by_atom == 0 and D_hat.shape[0] < n_atoms:
+        if greedy and ii % n_iter_by_atom == 0 and \
+                z_encoder.D_hat.shape[0] < n_atoms:
             # add a new atom every n_iter_by_atom iterations
-            new_atom = get_max_error_dict(X, z_hat, D_hat,
-                                          uv_constraint=uv_constraint,
-                                          window=window)[0]
-            D_hat = np.concatenate([D_hat, new_atom[None]])
-            z_hat = lil.add_one_atom_in_z(z_hat)
+            new_atom = get_max_error_dict(
+                X,
+                z_encoder.get_z_hat(),
+                z_encoder.D_hat,
+                uv_constraint=uv_constraint,
+                window=window)[0]
+            # XXX what should happen here when using DiCoDiLe?
+            z_encoder.add_one_atom(new_atom)
 
         if lmbd_max not in ['fixed', 'scaled']:
-            reg_ = reg * get_lambda_max(X, D_hat)
+            reg_ = reg * get_lambda_max(X, z_encoder.D_hat)
             if lmbd_max == 'shared':
                 reg_ = reg_.max()
+            z_encoder.set_reg(reg_)
 
         if verbose > 5:
             print('[{}] lambda = {:.3e}'.format(name, np.mean(reg_)))
 
         # Compute z update
         start = time.time()
-        z_hat, constants['ztz'], constants['ztX'] = compute_z_func(
-            X, z_hat, D_hat, reg=reg_)
+        z_encoder.compute_z()
 
         # monitor cost function
         times.append(time.time() - start)
-        pobj.append(obj_func(X, z_hat, D_hat, reg=reg_))
+        pobj.append(z_encoder.get_cost())
 
+        # XXX to adapt to Encoder class, we must fetch z_hat at each iteration.
+        # XXX is that acceptable or not? (seems that DiCoDiLe does not require
+        # it)
+        z_hat = z_encoder.get_z_hat()
+        constants['ztz'], constants['ztX'] = z_encoder.get_sufficient_statistics()  # noqa: E501
         z_nnz, z_size = lil.get_nnz_and_size(z_hat)
         if verbose > 5:
             print("[{}] sparsity: {:.3e}".format(
@@ -348,23 +358,25 @@ def _batch_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
         if np.all(z_nnz == 0):
             import warnings
             warnings.warn("Regularization parameter `reg` is too large "
-                          "and all the activations are zero. No atoms has"
+                          "and all the activations are zero. No atom has"
                           " been learned.", UserWarning)
             break
 
         # Compute D update
         start = time.time()
-        D_hat = compute_d_func(X, z_hat, D_hat, constants)
+        D_hat = compute_d_func(X, z_hat, z_encoder.D_hat, constants)
+        z_encoder.set_D(D_hat)
 
         # monitor cost function
         times.append(time.time() - start)
-        pobj.append(obj_func(X, z_hat, D_hat, reg=reg_))
+        pobj.append(z_encoder.get_cost())
 
         null_atom_indices = np.where(z_nnz == 0)[0]
         if len(null_atom_indices) > 0:
             k0 = null_atom_indices[0]
             D_hat[k0] = get_max_error_dict(X, z_hat, D_hat, uv_constraint,
                                            window=window)[0]
+            z_encoder.set_D(D_hat)
             if verbose > 5:
                 print('[{}] Resampled atom {}'.format(name, k0))
 
@@ -374,11 +386,11 @@ def _batch_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
         if end_iter_func(X, z_hat, D_hat, pobj, ii):
             break
 
-    return pobj, times, D_hat, z_hat
+    return pobj, times, D_hat, z_encoder.get_z_hat()
 
 
-def _online_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
-                  obj_func, end_iter_func, n_iter=100, verbose=0,
+def _online_learn(X, D_hat, z_encoder, n_atoms, compute_d_func,
+                  end_iter_func, n_iter=100, verbose=0,
                   random_state=None, lmbd_max='fixed', reg=None,
                   alpha=.8, batch_selection='random', batch_size=1,
                   name="online", uv_constraint='separate', window=False):
@@ -400,8 +412,9 @@ def _online_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
 
     # monitor cost function
     times = [0]
-    pobj = [obj_func(X, z_hat, D_hat, reg=reg_)]
+    pobj = [z_encoder.get_cost()]
 
+    rng = check_random_state(random_state)
     for ii in range(n_iter):  # outer loop of coordinate descent
         if verbose == 1:
             msg = '.' if (ii % 50 != 0) else '+\n'
@@ -414,6 +427,7 @@ def _online_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
             reg_ = reg * get_lambda_max(X, D_hat)
             if lmbd_max == 'shared':
                 reg_ = reg_.max()
+            z_encoder.set_reg(reg_)
 
         if verbose > 5:
             print('[{}] lambda = {:.3e}'.format(name, np.mean(reg_)))
@@ -421,7 +435,6 @@ def _online_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
         # Compute z update
         start = time.time()
         if batch_selection == 'random':
-            rng = check_random_state(random_state)
             i0 = rng.choice(n_trials, batch_size, replace=False)
         elif batch_selection == 'cyclic':
             i_slice = (ii * batch_size) % n_trials
@@ -430,14 +443,17 @@ def _online_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
             raise NotImplementedError(
                 "the '{}' batch_selection strategy for the online learning is "
                 "not implemented.".format(batch_selection))
-        z_hat[i0], ztz, ztX = compute_z_func(X[i0], z_hat[i0], D_hat, reg=reg_)
+        z_encoder.compute_z_partial(i0)
 
-        constants['ztz'] = alpha * constants['ztz'] + ztz
-        constants['ztX'] = alpha * constants['ztX'] + ztX
+        z_hat = z_encoder.get_z_hat()  # XXX consider get_z_hat_partial?
+
+        ztz_i0, ztX_i0 = z_encoder.get_sufficient_statistics_partial()
+        constants['ztz'] = alpha * constants['ztz'] + ztz_i0
+        constants['ztX'] = alpha * constants['ztX'] + ztX_i0
 
         # monitor cost function
         times.append(time.time() - start)
-        pobj.append(obj_func(X, z_hat, D_hat, reg=reg_))
+        pobj.append(z_encoder.get_cost())
 
         z_nnz, z_size = lil.get_nnz_and_size(z_hat)
         if verbose > 5:
@@ -455,16 +471,18 @@ def _online_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
         # Compute D update
         start = time.time()
         D_hat = compute_d_func(X, z_hat, D_hat, constants)
+        z_encoder.set_D(D_hat)
 
         # monitor cost function
         times.append(time.time() - start)
-        pobj.append(obj_func(X, z_hat, D_hat, reg=reg_))
+        pobj.append(z_encoder.get_cost())
 
         null_atom_indices = np.where(z_nnz == 0)[0]
         if len(null_atom_indices) > 0:
             k0 = null_atom_indices[0]
             D_hat[k0] = get_max_error_dict(X, z_hat, D_hat, uv_constraint,
                                            window=window)[0]
+            z_encoder.set_D(D_hat)
             if verbose > 5:
                 print('[{}] Resampled atom {}'.format(name, k0))
 
@@ -474,7 +492,7 @@ def _online_learn(X, D_hat, z_hat, compute_z_func, compute_d_func,
         if end_iter_func(X, z_hat, D_hat, pobj, ii):
             break
 
-    return pobj, times, D_hat, z_hat
+    return pobj, times, D_hat, z_encoder.get_z_hat()
 
 
 def get_iteration_func(eps, stopping_pobj, callback, lmbd_max, name, verbose,

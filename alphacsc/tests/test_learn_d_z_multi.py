@@ -29,9 +29,9 @@ def test_learn_d_z_multi(loss, solver_d, uv_constraint, rank1, window):
     X = rng.randn(n_trials, n_channels, n_times)
     pobj, times, uv_hat, z_hat, reg = learn_d_z_multi(
         X, n_atoms, n_times_atom, uv_constraint=uv_constraint, rank1=rank1,
-        solver_d=solver_d, random_state=0, n_iter=30, eps=-np.inf,
-        solver_z='l-bfgs', window=window, verbose=0, loss=loss,
-        loss_params=loss_params)
+        solver_d=solver_d, random_state=0,
+        n_iter=30, eps=-np.inf, solver_z='l-bfgs', window=window,
+        verbose=0, loss=loss, loss_params=loss_params)
 
     msg = "Cost function does not go down for uv_constraint {}".format(
         uv_constraint)
@@ -121,3 +121,27 @@ def test_transformers(klass):
     ]
     for attribute in attributes:
         getattr(cdl, attribute)
+
+
+def test_unbiased_z_hat():
+    n_trials, n_channels, n_times = 2, 3, 30
+    n_times_atom, n_atoms = 6, 4
+
+    loss_params = dict(gamma=1, sakoe_chiba_band=10, ordar=10)
+
+    rng = check_random_state(42)
+    X = rng.randn(n_trials, n_channels, n_times)
+
+    _, _, _, z_hat, _ = learn_d_z_multi(
+        X, n_atoms, n_times_atom, uv_constraint='joint', rank1=False,
+        solver_d='joint', random_state=0, unbiased_z_hat=False,
+        n_iter=1, eps=-np.inf, solver_z='l-bfgs', window=False,
+        verbose=0, loss='l2', loss_params=loss_params)
+
+    _, _, _, z_hat_unbiased, _ = learn_d_z_multi(
+        X, n_atoms, n_times_atom, uv_constraint='joint', rank1=False,
+        solver_d='joint', random_state=0, unbiased_z_hat=True,
+        n_iter=1, eps=-np.inf, solver_z='l-bfgs', window=False,
+        verbose=0, loss='l2', loss_params=loss_params)
+
+    assert np.all(z_hat_unbiased[z_hat == 0] == 0)
