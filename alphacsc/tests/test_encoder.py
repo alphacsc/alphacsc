@@ -93,24 +93,14 @@ def test_get_encoder_for_error_X(D_hat):
                           n_jobs=2)
 
 
-def test_get_encoder_for_error_D_hat():
+@pytest.mark.parametrize('D_init', [None, np.zeros(N_TRIALS)])
+def test_get_encoder_for_error_D_hat(D_init):
     """Tests for invalid values of `D_hat`."""
 
-    # test for D_hat = None
     with pytest.raises(AssertionError,
                        match="D_hat should be a valid array of shape.*"):
         get_z_encoder_for(X=X,
-                          D_hat=None,
-                          n_atoms=N_ATOMS,
-                          atom_support=N_TIMES_ATOM,
-                          n_jobs=2)
-
-    # test for invalid D_hat shape
-    D_hat = rng.randn(N_TRIALS)
-    with pytest.raises(AssertionError,
-                       match="D_hat should be a valid array of shape.*"):
-        get_z_encoder_for(X=X,
-                          D_hat=D_hat,
+                          D_hat=D_init,
                           n_atoms=N_ATOMS,
                           atom_support=N_TIMES_ATOM,
                           n_jobs=2)
