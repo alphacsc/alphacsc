@@ -4,7 +4,8 @@ import pytest
 
 from alphacsc._encoder import get_z_encoder_for
 from alphacsc.init_dict import init_dictionary
-from alphacsc.utils import check_random_state
+from alphacsc.loss_and_gradient import compute_objective
+from alphacsc.utils import check_random_state, construct_X_multi
 
 N_TRIALS, N_CHANNELS, N_TIMES = 2, 3, 30
 N_TIMES_ATOM, N_ATOMS = 6, 4
@@ -212,9 +213,16 @@ def test_get_cost(D_hat):
         initial_cost = z_encoder.get_cost()
 
         z_encoder.compute_z()
+        z_hat = z_encoder.get_z_hat()
         final_cost = z_encoder.get_cost()
 
         assert final_cost < initial_cost
+
+        X_hat = construct_X_multi(z_hat, D_hat, n_channels=N_CHANNELS)
+        cost = compute_objective(
+            X=X, X_hat=X_hat, z_hat=z_hat, reg=0.1, D=D_hat)
+
+        assert np.isclose(cost, final_cost)
 
 
 def test_compute_z(D_hat):
