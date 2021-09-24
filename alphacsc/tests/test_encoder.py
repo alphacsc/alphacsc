@@ -41,7 +41,6 @@ def test_get_encoder_for(solver_z, D_hat, algorithm, loss,
                            n_jobs=2) as z_encoder:
 
         assert z_encoder is not None
-        assert z_encoder.z_kwargs == dict()
 
 
 @pytest.mark.parametrize('solver_z', [None, 'other'])
@@ -51,7 +50,6 @@ def test_get_encoder_for_error_solver_z(D_hat,  solver_z):
     with pytest.raises(ValueError,
                        match=f"unrecognized solver type: {solver_z}."):
         get_z_encoder_for(solver=solver_z,
-                          z_kwargs=dict(),
                           X=X,
                           D_hat=D_hat,
                           n_atoms=N_ATOMS,
@@ -63,8 +61,7 @@ def test_get_encoder_for_error_z_kwargs(D_hat):
     """Tests for invalid value of `z_kwargs`."""
 
     with pytest.raises(AssertionError, match=".*z_kwargs should.*"):
-        get_z_encoder_for(solver='lgcd',
-                          z_kwargs=None,
+        get_z_encoder_for(z_kwargs=None,
                           X=X,
                           D_hat=D_hat,
                           n_atoms=N_ATOMS,
@@ -72,55 +69,27 @@ def test_get_encoder_for_error_z_kwargs(D_hat):
                           n_jobs=2)
 
 
-def test_get_encoder_for_error_X(D_hat):
+@pytest.mark.parametrize('X', [None, rng.rand(N_TRIALS, N_CHANNELS)])
+def test_get_encoder_for_error_X(X, D_hat):
     """Tests for invalid values of `X`."""
 
-    # test for X = None
     with pytest.raises(AssertionError,
                        match="X should be a valid array of shape.*"):
-        get_z_encoder_for(solver='lgcd',
-                          z_kwargs=dict(),
-                          X=None,
-                          D_hat=D_hat,
-                          n_atoms=N_ATOMS,
-                          atom_support=N_TIMES_ATOM,
-                          n_jobs=2)
-
-    # test for invalid shape of X
-    X = rng.randn(N_TRIALS, N_CHANNELS)
-    with pytest.raises(AssertionError,
-                       match="X should be a valid array of shape.*"):
-        get_z_encoder_for(solver='lgcd',
-                          z_kwargs=dict(),
-                          X=X,
+        get_z_encoder_for(X=X,
                           D_hat=D_hat,
                           n_atoms=N_ATOMS,
                           atom_support=N_TIMES_ATOM,
                           n_jobs=2)
 
 
-def test_get_encoder_for_error_D_hat():
+@pytest.mark.parametrize('D_init', [None, np.zeros(N_TRIALS)])
+def test_get_encoder_for_error_D_hat(D_init):
     """Tests for invalid values of `D_hat`."""
 
-    # test for D_hat = None
     with pytest.raises(AssertionError,
                        match="D_hat should be a valid array of shape.*"):
-        get_z_encoder_for(solver='lgcd',
-                          z_kwargs=dict(),
-                          X=X,
-                          D_hat=None,
-                          n_atoms=N_ATOMS,
-                          atom_support=N_TIMES_ATOM,
-                          n_jobs=2)
-
-    # test for invalid D_hat shape
-    D_hat = rng.randn(N_TRIALS)
-    with pytest.raises(AssertionError,
-                       match="D_hat should be a valid array of shape.*"):
-        get_z_encoder_for(solver='lgcd',
-                          z_kwargs=dict(),
-                          X=X,
-                          D_hat=D_hat,
+        get_z_encoder_for(X=X,
+                          D_hat=D_init,
                           n_atoms=N_ATOMS,
                           atom_support=N_TIMES_ATOM,
                           n_jobs=2)
@@ -132,9 +101,7 @@ def test_get_encoder_for_error_algorithm(D_hat,  algorithm):
 
     with pytest.raises(AssertionError,
                        match=f"unrecognized algorithm type: {algorithm}"):
-        get_z_encoder_for(solver='lgcd',
-                          z_kwargs=dict(),
-                          X=X,
+        get_z_encoder_for(X=X,
                           D_hat=D_hat,
                           n_atoms=N_ATOMS,
                           atom_support=N_TIMES_ATOM,
@@ -147,9 +114,7 @@ def test_get_encoder_for_error_reg(D_hat):
 
     with pytest.raises(AssertionError,
                        match="reg value cannot be None."):
-        get_z_encoder_for(solver='lgcd',
-                          z_kwargs=dict(),
-                          X=X,
+        get_z_encoder_for(X=X,
                           D_hat=D_hat,
                           n_atoms=N_ATOMS,
                           atom_support=N_TIMES_ATOM,
@@ -163,9 +128,7 @@ def test_get_encoder_for_error_loss(D_hat,  loss):
 
     with pytest.raises(AssertionError,
                        match=f"unrecognized loss type: {loss}."):
-        get_z_encoder_for(solver='lgcd',
-                          z_kwargs=dict(),
-                          X=X,
+        get_z_encoder_for(X=X,
                           D_hat=D_hat,
                           n_atoms=N_ATOMS,
                           atom_support=N_TIMES_ATOM,
@@ -178,9 +141,7 @@ def test_get_encoder_for_error_loss_params(D_hat):
 
     with pytest.raises(AssertionError,
                        match="loss_params should be a valid dict or None."):
-        get_z_encoder_for(solver='lgcd',
-                          z_kwargs=dict(),
-                          X=X,
+        get_z_encoder_for(X=X,
                           D_hat=D_hat,
                           n_atoms=N_ATOMS,
                           atom_support=N_TIMES_ATOM,
@@ -195,9 +156,7 @@ def test_get_encoder_for_error_uv_constraint(D_hat,
 
     with pytest.raises(AssertionError,
                        match="unrecognized uv_constraint type.*"):
-        get_z_encoder_for(solver='lgcd',
-                          z_kwargs=dict(),
-                          X=X,
+        get_z_encoder_for(X=X,
                           D_hat=D_hat,
                           n_atoms=N_ATOMS,
                           atom_support=N_TIMES_ATOM,
@@ -209,9 +168,7 @@ def test_get_z_hat(D_hat):
     """Test for valid values."""
 
     # tests when use_sparse_z = False
-    with get_z_encoder_for(solver='lgcd',
-                           z_kwargs=dict(),
-                           X=X,
+    with get_z_encoder_for(X=X,
                            D_hat=D_hat,
                            n_atoms=N_ATOMS,
                            atom_support=N_TIMES_ATOM,
@@ -226,7 +183,6 @@ def test_get_z_hat(D_hat):
 
     # tests when use_sparse_z = True
     with get_z_encoder_for(solver='lgcd',
-                           z_kwargs=dict(),
                            X=X,
                            D_hat=D_hat,
                            n_atoms=N_ATOMS,
@@ -247,9 +203,7 @@ def test_get_z_hat(D_hat):
 def test_get_cost(D_hat):
     """Test for valid values."""
 
-    with get_z_encoder_for(solver='lgcd',
-                           z_kwargs=dict(),
-                           X=X,
+    with get_z_encoder_for(X=X,
                            D_hat=D_hat,
                            n_atoms=N_ATOMS,
                            atom_support=N_TIMES_ATOM,
@@ -266,9 +220,7 @@ def test_get_cost(D_hat):
 def test_compute_z(D_hat):
     """Test for valid values."""
 
-    with get_z_encoder_for(solver='lgcd',
-                           z_kwargs=dict(),
-                           X=X,
+    with get_z_encoder_for(X=X,
                            D_hat=D_hat,
                            n_atoms=N_ATOMS,
                            atom_support=N_TIMES_ATOM,
@@ -280,9 +232,7 @@ def test_compute_z(D_hat):
 def test_compute_z_partial(D_hat):
     """Test for valid values."""
 
-    with get_z_encoder_for(solver='lgcd',
-                           z_kwargs=dict(),
-                           X=X,
+    with get_z_encoder_for(X=X,
                            D_hat=D_hat,
                            n_atoms=N_ATOMS,
                            atom_support=N_TIMES_ATOM,
@@ -296,9 +246,7 @@ def test_compute_z_partial(D_hat):
 def test_get_sufficient_statistics(D_hat):
     """Test for valid values."""
 
-    z_encoder = get_z_encoder_for(solver='lgcd',
-                                  z_kwargs=dict(),
-                                  X=X,
+    z_encoder = get_z_encoder_for(X=X,
                                   D_hat=D_hat,
                                   n_atoms=N_ATOMS,
                                   atom_support=N_TIMES_ATOM,
@@ -313,9 +261,7 @@ def test_get_sufficient_statistics(D_hat):
 def test_get_sufficient_statistics_error(D_hat):
     """Test for invalid call to function."""
 
-    z_encoder = get_z_encoder_for(solver='lgcd',
-                                  z_kwargs=dict(),
-                                  X=X,
+    z_encoder = get_z_encoder_for(X=X,
                                   D_hat=D_hat,
                                   n_atoms=N_ATOMS,
                                   atom_support=N_TIMES_ATOM,
@@ -330,9 +276,7 @@ def test_get_sufficient_statistics_error(D_hat):
 def test_get_sufficient_statistics_partial(D_hat):
     """Test for valid values."""
 
-    z_encoder = get_z_encoder_for(solver='lgcd',
-                                  z_kwargs=dict(),
-                                  X=X,
+    z_encoder = get_z_encoder_for(X=X,
                                   D_hat=D_hat,
                                   n_atoms=N_ATOMS,
                                   atom_support=N_TIMES_ATOM,
@@ -348,9 +292,7 @@ def test_get_sufficient_statistics_partial(D_hat):
 def test_get_sufficient_statistics_partial_error(D_hat):
     """Test for invalid call to function."""
 
-    z_encoder = get_z_encoder_for(solver='lgcd',
-                                  z_kwargs=dict(),
-                                  X=X,
+    z_encoder = get_z_encoder_for(X=X,
                                   D_hat=D_hat,
                                   n_atoms=N_ATOMS,
                                   atom_support=N_TIMES_ATOM,
@@ -365,9 +307,7 @@ def test_get_sufficient_statistics_partial_error(D_hat):
 def test_add_one_atom(D_hat):
     """Test for valid values."""
 
-    with get_z_encoder_for(solver='lgcd',
-                           z_kwargs=dict(),
-                           X=X,
+    with get_z_encoder_for(X=X,
                            D_hat=D_hat,
                            n_atoms=N_ATOMS,
                            atom_support=N_TIMES_ATOM,

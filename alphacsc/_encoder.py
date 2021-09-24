@@ -69,8 +69,9 @@ def get_z_encoder_for(
     """
     assert isinstance(z_kwargs, dict), 'z_kwargs should be a valid dictionary.'
 
-    assert (X is not None and len(X.shape) == 3), \
+    assert (X is not None and len(X.shape) == 3), (
         'X should be a valid array of shape (n_trials, n_channels, n_times).'
+    )
 
     assert (D_hat is not None and len(D_hat.shape) in [2, 3]), (
         'D_hat should be a valid array of shape '
@@ -78,21 +79,23 @@ def get_z_encoder_for(
         'or (n_atoms, n_channels + atom_support).'
     )
 
-    assert algorithm in ['batch', 'greedy', 'online', 'stochastic'], \
+    assert algorithm in ['batch', 'greedy', 'online', 'stochastic'], (
         f'unrecognized algorithm type: {algorithm}.'
+    )
 
-    # ASK can reg be less than 0?
     assert reg is not None, 'reg value cannot be None.'
 
-    assert loss in ['l2', 'dtw', 'whitening'], \
+    assert loss in ['l2', 'dtw', 'whitening'], (
         f'unrecognized loss type: {loss}.'
+    )
 
-    assert (loss_params is None) or isinstance(
-        loss_params, dict), 'loss_params should be a valid dict or None.'
+    assert (loss_params is None) or isinstance(loss_params, dict), (
+        'loss_params should be a valid dict or None.'
+    )
 
-    assert uv_constraint in ['joint', 'separate'], \
+    assert uv_constraint in ['joint', 'separate'], (
         f'unrecognized uv_constraint type: {uv_constraint}.'
-    # ASK check invalid values for n_atoms, atom_support, n_jobs
+    )
 
     if solver in ['l-bfgs', 'lgcd']:
         return AlphaCSCEncoder(
@@ -312,13 +315,15 @@ class AlphaCSCEncoder(BaseZEncoder):
         return cost
 
     def get_sufficient_statistics(self):
-        assert hasattr(self, 'ztz') and hasattr(self, 'ztX'), \
+        assert hasattr(self, 'ztz') and hasattr(self, 'ztX'), (
             'compute_z should be called to access the statistics.'
+        )
         return self.ztz, self.ztX
 
     def get_sufficient_statistics_partial(self):
-        assert hasattr(self, 'ztz_i0') and hasattr(self, 'ztX_i0'), \
+        assert hasattr(self, 'ztz_i0') and hasattr(self, 'ztX_i0'), (
             'compute_z_partial should be called to access the statistics.'
+        )
         return self.ztz_i0, self.ztX_i0
 
     def set_D(self, D):
