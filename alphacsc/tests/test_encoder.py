@@ -48,7 +48,8 @@ def test_get_encoder_for(solver_z, D_hat, algorithm, loss,
 def test_get_encoder_for_error_solver_z(D_hat,  solver_z):
     """Tests for invalid values of `solver_z`."""
 
-    with pytest.raises(ValueError) as error:
+    with pytest.raises(ValueError,
+                       match=f"unrecognized solver type: {solver_z}."):
         get_z_encoder_for(solver=solver_z,
                           z_kwargs=dict(),
                           X=X,
@@ -56,13 +57,12 @@ def test_get_encoder_for_error_solver_z(D_hat,  solver_z):
                           n_atoms=N_ATOMS,
                           atom_support=N_TIMES_ATOM,
                           n_jobs=2)
-    assert error.value.args[0] == f'unrecognized solver type: {solver_z}.'
 
 
 def test_get_encoder_for_error_z_kwargs(D_hat):
     """Tests for invalid value of `z_kwargs`."""
 
-    with pytest.raises(AssertionError) as error:
+    with pytest.raises(AssertionError, match=".*z_kwargs should.*"):
         get_z_encoder_for(solver='lgcd',
                           z_kwargs=None,
                           X=X,
@@ -70,14 +70,14 @@ def test_get_encoder_for_error_z_kwargs(D_hat):
                           n_atoms=N_ATOMS,
                           atom_support=N_TIMES_ATOM,
                           n_jobs=2)
-    assert error.value.args[0] == 'z_kwargs should be a valid dictionary.'
 
 
 def test_get_encoder_for_error_X(D_hat):
     """Tests for invalid values of `X`."""
 
     # test for X = None
-    with pytest.raises(AssertionError) as error:
+    with pytest.raises(AssertionError,
+                       match="X should be a valid array of shape.*"):
         get_z_encoder_for(solver='lgcd',
                           z_kwargs=dict(),
                           X=None,
@@ -85,12 +85,11 @@ def test_get_encoder_for_error_X(D_hat):
                           n_atoms=N_ATOMS,
                           atom_support=N_TIMES_ATOM,
                           n_jobs=2)
-    assert error.value.args[0] == 'X should be a valid array of shape ' \
-        '(n_trials, n_channels, n_times).'
 
     # test for invalid shape of X
     X = rng.randn(N_TRIALS, N_CHANNELS)
-    with pytest.raises(AssertionError) as error:
+    with pytest.raises(AssertionError,
+                       match="X should be a valid array of shape.*"):
         get_z_encoder_for(solver='lgcd',
                           z_kwargs=dict(),
                           X=X,
@@ -98,15 +97,14 @@ def test_get_encoder_for_error_X(D_hat):
                           n_atoms=N_ATOMS,
                           atom_support=N_TIMES_ATOM,
                           n_jobs=2)
-    assert error.value.args[0] == 'X should be a valid array of shape ' \
-        '(n_trials, n_channels, n_times).'
 
 
 def test_get_encoder_for_error_D_hat():
     """Tests for invalid values of `D_hat`."""
 
     # test for D_hat = None
-    with pytest.raises(AssertionError) as error:
+    with pytest.raises(AssertionError,
+                       match="D_hat should be a valid array of shape.*"):
         get_z_encoder_for(solver='lgcd',
                           z_kwargs=dict(),
                           X=X,
@@ -114,13 +112,11 @@ def test_get_encoder_for_error_D_hat():
                           n_atoms=N_ATOMS,
                           atom_support=N_TIMES_ATOM,
                           n_jobs=2)
-    assert error.value.args[0] == 'D_hat should be a valid array of shape '\
-        '(n_trials, n_channels, n_times) or ' \
-        '(n_atoms, n_channels + atom_support).'
 
     # test for invalid D_hat shape
     D_hat = rng.randn(N_TRIALS)
-    with pytest.raises(AssertionError) as error:
+    with pytest.raises(AssertionError,
+                       match="D_hat should be a valid array of shape.*"):
         get_z_encoder_for(solver='lgcd',
                           z_kwargs=dict(),
                           X=X,
@@ -128,16 +124,14 @@ def test_get_encoder_for_error_D_hat():
                           n_atoms=N_ATOMS,
                           atom_support=N_TIMES_ATOM,
                           n_jobs=2)
-    assert error.value.args[0] == 'D_hat should be a valid array of shape '\
-        '(n_trials, n_channels, n_times) or ' \
-        '(n_atoms, n_channels + atom_support).'
 
 
 @pytest.mark.parametrize('algorithm', [None, 'other'])
 def test_get_encoder_for_error_algorithm(D_hat,  algorithm):
     """Tests for invalid values of `algorithm`."""
 
-    with pytest.raises(AssertionError) as error:
+    with pytest.raises(AssertionError,
+                       match=f"unrecognized algorithm type: {algorithm}"):
         get_z_encoder_for(solver='lgcd',
                           z_kwargs=dict(),
                           X=X,
@@ -146,13 +140,13 @@ def test_get_encoder_for_error_algorithm(D_hat,  algorithm):
                           atom_support=N_TIMES_ATOM,
                           algorithm=algorithm,
                           n_jobs=2)
-    assert error.value.args[0] == f'unrecognized algorithm type: {algorithm}.'
 
 
 def test_get_encoder_for_error_reg(D_hat):
     """Tests for invalid value of `reg`."""
 
-    with pytest.raises(AssertionError) as error:
+    with pytest.raises(AssertionError,
+                       match="reg value cannot be None."):
         get_z_encoder_for(solver='lgcd',
                           z_kwargs=dict(),
                           X=X,
@@ -161,14 +155,14 @@ def test_get_encoder_for_error_reg(D_hat):
                           atom_support=N_TIMES_ATOM,
                           reg=None,
                           n_jobs=2)
-    assert error.value.args[0] == 'reg value cannot be None.'
 
 
 @pytest.mark.parametrize('loss', [None, 'other'])
 def test_get_encoder_for_error_loss(D_hat,  loss):
     """Tests for invalid values of `loss`."""
 
-    with pytest.raises(AssertionError) as error:
+    with pytest.raises(AssertionError,
+                       match=f"unrecognized loss type: {loss}."):
         get_z_encoder_for(solver='lgcd',
                           z_kwargs=dict(),
                           X=X,
@@ -177,13 +171,13 @@ def test_get_encoder_for_error_loss(D_hat,  loss):
                           atom_support=N_TIMES_ATOM,
                           loss=loss,
                           n_jobs=2)
-    assert error.value.args[0] == f'unrecognized loss type: {loss}.'
 
 
 def test_get_encoder_for_error_loss_params(D_hat):
     """Tests for invalid value of `loss_params`."""
 
-    with pytest.raises(AssertionError) as error:
+    with pytest.raises(AssertionError,
+                       match="loss_params should be a valid dict or None."):
         get_z_encoder_for(solver='lgcd',
                           z_kwargs=dict(),
                           X=X,
@@ -192,8 +186,6 @@ def test_get_encoder_for_error_loss_params(D_hat):
                           atom_support=N_TIMES_ATOM,
                           loss_params=42,
                           n_jobs=2)
-    assert error.value.args[
-        0] == 'loss_params should be a valid dict or None.'
 
 
 @pytest.mark.parametrize('uv_constraint', [None, 'other'])
@@ -201,7 +193,8 @@ def test_get_encoder_for_error_uv_constraint(D_hat,
                                              uv_constraint):
     """Tests for invalid values of `uv_constraint`."""
 
-    with pytest.raises(AssertionError) as error:
+    with pytest.raises(AssertionError,
+                       match="unrecognized uv_constraint type.*"):
         get_z_encoder_for(solver='lgcd',
                           z_kwargs=dict(),
                           X=X,
@@ -210,8 +203,6 @@ def test_get_encoder_for_error_uv_constraint(D_hat,
                           atom_support=N_TIMES_ATOM,
                           uv_constraint=uv_constraint,
                           n_jobs=2)
-    assert error.value.args[0] == \
-        f'unrecognized uv_constraint type: {uv_constraint}.'
 
 
 def test_get_z_hat(D_hat):
@@ -368,11 +359,9 @@ def test_get_sufficient_statistics_partial_error(D_hat):
                                   n_jobs=2)
 
     # test before calling compute_z_partial
-    with pytest.raises(AssertionError) as error:
+    with pytest.raises(AssertionError,
+                       match="compute_z_partial should be called.*"):
         z_encoder.get_sufficient_statistics_partial()
-
-    assert error.value.args[0] == \
-        'compute_z_partial should be called to access the statistics.'
 
 
 def test_add_one_atom(D_hat):
