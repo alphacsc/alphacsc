@@ -41,7 +41,6 @@ def test_get_encoder_for(solver_z, D_hat, algorithm, loss,
                            n_jobs=2) as z_encoder:
 
         assert z_encoder is not None
-        assert z_encoder.z_kwargs == dict()
 
 
 @pytest.mark.parametrize('solver_z', [None, 'other'])
