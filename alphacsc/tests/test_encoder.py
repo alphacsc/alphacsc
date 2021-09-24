@@ -70,20 +70,10 @@ def test_get_encoder_for_error_z_kwargs(D_hat):
                           n_jobs=2)
 
 
-def test_get_encoder_for_error_X(D_hat):
+@pytest.mark.parametrize('X', [None, rng.rand(N_TRIALS, N_CHANNELS)])
+def test_get_encoder_for_error_X(X, D_hat):
     """Tests for invalid values of `X`."""
 
-    # test for X = None
-    with pytest.raises(AssertionError,
-                       match="X should be a valid array of shape.*"):
-        get_z_encoder_for(X=None,
-                          D_hat=D_hat,
-                          n_atoms=N_ATOMS,
-                          atom_support=N_TIMES_ATOM,
-                          n_jobs=2)
-
-    # test for invalid shape of X
-    X = rng.randn(N_TRIALS, N_CHANNELS)
     with pytest.raises(AssertionError,
                        match="X should be a valid array of shape.*"):
         get_z_encoder_for(X=X,
