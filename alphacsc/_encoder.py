@@ -374,6 +374,9 @@ class DicodileEncoder(BaseZEncoder):
                n_workers=n_jobs
             )
 
+            assert X.shape[0] == 1
+            X = X.reshape(X.shape[1:])
+
             self._encoder.init_workers(X, D_hat, reg, {})  # XXX params
 
             self.n_atoms = n_atoms
