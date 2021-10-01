@@ -353,19 +353,20 @@ class AlphaCSCEncoder(BaseZEncoder):
     def get_z_hat(self):
         return self.z_hat
 
+
 class DicodileEncoder(BaseZEncoder):
     def __init__(
-             self,
-             X,
-             D_hat,
-             n_atoms,
-             atom_support,
-             n_jobs,
-             z_kwargs,
-             algorithm,
-             reg,
-             loss,
-             loss_params):
+            self,
+            X,
+            D_hat,
+            n_atoms,
+            atom_support,
+            n_jobs,
+            z_kwargs,
+            algorithm,
+            reg,
+            loss,
+            loss_params):
         try:
             import dicodile
 
@@ -373,7 +374,7 @@ class DicodileEncoder(BaseZEncoder):
                n_workers=n_jobs
             )
 
-            self._encoder.init_workers(X, D_hat, reg, {}) # XXX params
+            self._encoder.init_workers(X, D_hat, reg, {})  # XXX params
 
             self.n_atoms = n_atoms
             self.atom_support = atom_support
@@ -383,7 +384,9 @@ class DicodileEncoder(BaseZEncoder):
             self.loss_params = loss_params
 
         except ImportError as ie:
-            raise ImportError('Please install DiCoDiLe by running "pip install dicodile"') from ie
+            raise ImportError(
+                'Please install DiCoDiLe by running '
+                '"pip install dicodile"') from ie
 
     def compute_z(self):
         """
@@ -401,7 +404,8 @@ class DicodileEncoder(BaseZEncoder):
         i0 : int
             Slice index.
         """
-        raise NotImplementedError("compute_z_partial is not available in DiCoDiLe")
+        raise NotImplementedError(
+            "compute_z_partial is not available in DiCoDiLe")
 
     def get_cost(self):
         """
@@ -436,7 +440,8 @@ class DicodileEncoder(BaseZEncoder):
             Sufficient statistics for the slice that was
             selected in the last call of ``compute_z_partial``
         """
-        raise NotImplementedError("Partial sufficient statistics are not available in DiCoDiLe")
+        raise NotImplementedError(
+            "Partial sufficient statistics are not available in DiCoDiLe")
 
     def get_z_hat(self):
         """
@@ -470,7 +475,7 @@ class DicodileEncoder(BaseZEncoder):
         reg : float
               Regularization parameter
         """
-        self._encoder.set_worker_params({'reg': reg}) #XXX
+        self._encoder.set_worker_params({'reg': reg})  # XXX
 
     def add_one_atom(self, new_atom):
         """
@@ -482,7 +487,8 @@ class DicodileEncoder(BaseZEncoder):
         new_atom : array, shape (n_channels + n_times_atom)
             A new atom to add to the dictionary.
         """
-        raise NotImplementedError("Greedy learning is not available in DiCoDiLe")
+        raise NotImplementedError(
+            "Greedy learning is not available in DiCoDiLe")
 
     def __enter__(self):
         # XXX run init here?
