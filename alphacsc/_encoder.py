@@ -113,6 +113,19 @@ def get_z_encoder_for(
             uv_constraint,
             feasible_evaluation,
             use_sparse_z)
+    elif solver == 'dicodile':
+        return DicodileEncoder(
+            X,
+            D_hat,
+            n_atoms,
+            atom_support,
+            n_jobs,
+            z_kwargs,
+            algorithm,
+            reg,
+            loss,
+            loss_params
+        )
     else:
         raise ValueError(f'unrecognized solver type: {solver}.')
 
@@ -339,3 +352,142 @@ class AlphaCSCEncoder(BaseZEncoder):
 
     def get_z_hat(self):
         return self.z_hat
+
+class DicodileEncoder(BaseZEncoder):
+    def __init__(
+             self,
+             X,
+             D_hat,
+             n_atoms,
+             atom_support,
+             n_jobs,
+             z_kwargs,
+             algorithm,
+             reg,
+             loss,
+             loss_params):
+        try:
+            import dicodile
+
+            self._encoder = dicodile.DistributedSparseEncoder(
+               n_workers=n_jobs
+            )
+
+            self._encoder.init_workers(X, D_hat, reg, {}) # XXX params
+
+            self.n_atoms = n_atoms
+            self.atom_support = atom_support
+            self.z_kwargs = z_kwargs
+            self.algorithm = algorithm
+            self.loss = loss
+            self.loss_params = loss_params
+
+        except ImportError as ie:
+            raise ImportError('Please install DiCoDiLe by running "pip install dicodile"') from ie
+
+    def compute_z(self):
+        """
+        Perform one incremental z update.
+        This is the "main" function of the algorithm.
+        """
+        self._encoder.process_z_hat()
+
+    def compute_z_partial(self, i0):
+        """
+        Compute z on a slice of the signal X, for online learning.
+
+        Parameters
+        ----------
+        i0 : int
+            Slice index.
+        """
+        raise NotImplementedError("compute_z_partial is not available in DiCoDiLe")
+
+    def get_cost(self):
+        """
+        Computes the cost of the current sparse representation (z_hat)
+
+        Returns
+        -------
+        cost: float
+        """
+        return self._encoder.get_cost()
+
+    def get_sufficient_statistics(self):
+        """
+        Computes sufficient statistics to update D.
+
+        Returns
+        -------
+        ztz, ztX : (ndarray, ndarray)
+            Sufficient statistics.
+        """
+        return self._encoder.get_sufficient_statistics()
+
+    def get_sufficient_statistics_partial(self):
+        """
+        Returns the partial sufficient statistics
+        that were computed during the last call to
+        compute_z_partial.
+
+        Returns
+        -------
+        ztz, ztX : (ndarray, ndarray)
+            Sufficient statistics for the slice that was
+            selected in the last call of ``compute_z_partial``
+        """
+        raise NotImplementedError("Partial sufficient statistics are not available in DiCoDiLe")
+
+    def get_z_hat(self):
+        """
+        Returns a sparse encoding of the signal.
+
+        Returns
+        -------
+        z_hat
+            Sparse encoding of the signal X.
+        """
+        return self._encoder.get_z_hat()
+
+    def set_D(self, D):
+        """
+        Update the dictionary.
+
+        Parameters
+        ----------
+        D : ndarray, shape (n_atoms, n_channels, n_time_atoms)
+            An updated dictionary, to be used for the next
+            computation of z_hat.
+        """
+        self._encoder.set_worker_D(D)
+
+    def set_reg(self, reg):
+        """
+        Update the regularization parameter.
+
+        Parameters
+        ----------
+        reg : float
+              Regularization parameter
+        """
+        self._encoder.set_worker_params({'reg': reg}) #XXX
+
+    def add_one_atom(self, new_atom):
+        """
+        Add one atom to the dictionary and extend z_hat
+        to match the new dimensions.
+
+        Parameters
+        ----------
+        new_atom : array, shape (n_channels + n_times_atom)
+            A new atom to add to the dictionary.
+        """
+        raise NotImplementedError("Greedy learning is not available in DiCoDiLe")
+
+    def __enter__(self):
+        # XXX run init here?
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._encoder.release_workers()
+        self._encoder.shutdown_workers()
