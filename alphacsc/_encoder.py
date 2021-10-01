@@ -370,7 +370,7 @@ class DicodileEncoder(BaseZEncoder):
         try:
             import dicodile
 
-            self._encoder = dicodile.DistributedSparseEncoder(
+            self._encoder = dicodile.update_z.distributed_sparse_encoder.DistributedSparseEncoder(
                n_workers=n_jobs
             )
 
