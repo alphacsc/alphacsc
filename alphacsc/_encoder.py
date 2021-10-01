@@ -375,9 +375,18 @@ class DicodileEncoder(BaseZEncoder):
             )
 
             assert X.shape[0] == 1
-            X = X.reshape(X.shape[1:])
+            X = X[0]
 
-            self._encoder.init_workers(X, D_hat, reg, {})  # XXX params
+            lmbd_max = dicodile.utils.dictionary.get_lambda_max(
+                X, D_hat).max() #XXX reuse this?
+            tol = (1 - reg) * lmbd_max * 1e-3 # tol: initialization? (1e-3 here)
+            params = dicodile._dicodile.DEFAULT_DICOD_KWARGS.copy()
+            params.update(dict(
+                z_positive=False, tol=tol, #XXX z_positive
+                random_state=None, reg=reg, timing=False, #XXX random_state
+                return_ztz=False, freeze_support=False, warm_start=True,
+            ))
+            self._encoder.init_workers(X, D_hat, reg, params)  # XXX params
 
             self.n_atoms = n_atoms
             self.atom_support = atom_support
@@ -385,6 +394,7 @@ class DicodileEncoder(BaseZEncoder):
             self.algorithm = algorithm
             self.loss = loss
             self.loss_params = loss_params
+            self.D_hat = D_hat
 
         except ImportError as ie:
             raise ImportError(
@@ -455,7 +465,7 @@ class DicodileEncoder(BaseZEncoder):
         z_hat
             Sparse encoding of the signal X.
         """
-        return self._encoder.get_z_hat()
+        return self._encoder.get_z_hat()[None]
 
     def set_D(self, D):
         """
@@ -467,6 +477,7 @@ class DicodileEncoder(BaseZEncoder):
             An updated dictionary, to be used for the next
             computation of z_hat.
         """
+        self.D_hat = D
         self._encoder.set_worker_D(D)
 
     def set_reg(self, reg):
