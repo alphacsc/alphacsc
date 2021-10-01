@@ -399,7 +399,7 @@ class DicodileEncoder(BaseZEncoder):
         except ImportError as ie:
             raise ImportError(
                 'Please install DiCoDiLe by running '
-                '"pip install dicodile"') from ie
+                '"pip install alphacsc[dicodile]"') from ie
 
     def compute_z(self):
         """
