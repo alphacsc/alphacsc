@@ -45,15 +45,17 @@ def test_learn_d_z_multi(loss, solver_d, uv_constraint, rank1, window):
         plt.show()
         raise
 
+
 @pytest.mark.parametrize('window', [False, True])
-@pytest.mark.parametrize( #XXX fix
+@pytest.mark.parametrize(  # XXX fix
     'solver_d, uv_constraint, rank1',
     [
-        ('joint', 'joint', False),  
+        ('joint', 'joint', False),
     ])
 def test_learn_d_z_multi_dicodile(solver_d, uv_constraint, rank1, window):
     # smoke test for learn_d_z_multi
-    n_trials, n_channels, n_times = 1, 3, 30 # XXX For DiCoDiLe, n_trials cannot be >1 
+    # XXX For DiCoDiLe, n_trials cannot be >1
+    n_trials, n_channels, n_times = 1, 3, 30
     n_times_atom, n_atoms = 6, 4
 
     loss_params = dict(gamma=1, sakoe_chiba_band=10, ordar=10)
@@ -77,6 +79,7 @@ def test_learn_d_z_multi_dicodile(solver_d, uv_constraint, rank1, window):
         plt.title(msg)
         plt.show()
         raise
+
 
 @pytest.mark.parametrize('solver_d, uv_constraint, rank1',
                          [('joint', 'joint', True), ('joint', 'separate',
