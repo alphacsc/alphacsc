@@ -32,9 +32,11 @@ VERSION = find_version()
 # Add cython extensions
 kmc2 = Extension('alphacsc.other.kmc2.kmc2',
                  sources=['alphacsc/other/kmc2/kmc2.pyx'],
-                 extra_compile_args=['-O3'])
+                 extra_compile_args=['-O3'],
+                 include_dirs=[np.get_include()])
 sdtw = Extension('alphacsc.other.sdtw.soft_dtw_fast',
-                 sources=['alphacsc/other/sdtw/soft_dtw_fast.pyx'])
+                 sources=['alphacsc/other/sdtw/soft_dtw_fast.pyx'],
+                 include_dirs=[np.get_include()])
 modules = [kmc2, sdtw]
 
 # Create the alphacsc.cython modules
@@ -47,42 +49,10 @@ other_modules = [
 for m in other_modules:
     modules.append(
         Extension("alphacsc.cython_code.{}".format(m),
-                  sources=["alphacsc/cython_code/{}.pyx".format(m)]))
-ext_modules = cythonize(modules)
+                  sources=["alphacsc/cython_code/{}.pyx".format(m)],
+                  include_dirs=[np.get_include()]))
 
 if __name__ == "__main__":
-    setup(
-        name=DISTNAME,
-        maintainer=MAINTAINER,
-        maintainer_email=MAINTAINER_EMAIL,
-        description=DESCRIPTION,
-        license=LICENSE,
-        version=VERSION,
-        download_url=DOWNLOAD_URL,
-        long_description=open('README.rst').read(),
-        classifiers=[
-            'Intended Audience :: Science/Research',
-            'Intended Audience :: Developers',
-            'License :: OSI Approved',
-            'Programming Language :: Python',
-            'Topic :: Software Development',
-            'Topic :: Scientific/Engineering',
-            'Operating System :: Microsoft :: Windows',
-            'Operating System :: POSIX',
-            'Operating System :: Unix',
-            'Operating System :: MacOS',
-        ],
-        platforms='any',
-        ext_modules=ext_modules,
-        packages=find_packages(exclude=["tests"]),
-        setup_requires=['Cython', 'numpy'],
-        install_requires=[
-            'mne',
-            'numba',
-            'numpy',
-            'scipy',
-            'joblib',
-            'matplotlib',
-            'scikit-learn',
-        ],
-        include_dirs=[np.get_include()], )
+    from Cython.Build import cythonize
+
+    setup(ext_modules=cythonize(modules))
