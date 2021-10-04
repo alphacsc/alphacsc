@@ -1,3 +1,9 @@
 # pyproject.toml
 [build-system]
-requires = ['setuptools', 'wheel', 'numpy', 'Cython']
+requires = [
+  "setuptools>=42", # https://github.com/pypa/setuptools/issues/2312
+  'wheel',
+  "oldest-supported-numpy", # https://github.com/scipy/oldest-supported-numpy
+  'Cython',
+]
+build-backend = "setuptools.build_meta"
