@@ -23,7 +23,7 @@ url = ('https://github.com/hitziger/AWL/raw/master/Experiments/data/'
 folder_name = "LFP"
 archive_name = "LFP_data_contiguous_1250_Hz.mat"
 
-fetch_dataset(
+fname = fetch_dataset(
     {"dataset_name": "LFP_data",
      "url": url,
      "archive_name": archive_name,
@@ -34,8 +34,7 @@ fetch_dataset(
     force_update=False
 )
 
-fname = os.path.join(get_config("MNE_DATA"),
-                     "LFP", "LFP_data_contiguous_1250_Hz.mat")
+fname = os.path.join(fname, archive_name)
 
 ###############################################################################
 # It is a mat file, so we use scipy to load it
