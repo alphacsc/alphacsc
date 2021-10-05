@@ -14,13 +14,27 @@ atoms from Local Field Potential (LFP) data [1].
 ###############################################################################
 # First, let us fetch the data (~14 MB)
 import os
-from mne.utils import _fetch_file
+from mne.datasets import fetch_dataset
+from mne.utils import get_config
 
 url = ('https://github.com/hitziger/AWL/raw/master/Experiments/data/'
        'LFP_data_contiguous_1250_Hz.mat')
-fname = './LFP_data_contiguous_1250_Hz.mat'
-if not os.path.exists(fname):
-    _fetch_file(url, fname)
+
+folder_name = "LFP"
+archive_name = "LFP_data_contiguous_1250_Hz.mat"
+
+fname = fetch_dataset(
+    {"dataset_name": "LFP_data",
+     "url": url,
+     "archive_name": archive_name,
+     "folder_name": folder_name,
+     "hash": None
+     },
+    path=None,
+    force_update=False
+)
+
+fname = os.path.join(fname, archive_name)
 
 ###############################################################################
 # It is a mat file, so we use scipy to load it
