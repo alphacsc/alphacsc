@@ -14,10 +14,12 @@ N_TIMES_ATOM, N_ATOMS = 6, 4
 
 rng = check_random_state(42)
 
+
 def make_X(n_trials):
     ret = rng.randn(n_trials, N_CHANNELS, N_TIMES)
     ret.setflags(write=False)
     return ret
+
 
 X1 = make_X(n_trials=1)
 N_TRIALS_X2 = 2
@@ -25,7 +27,10 @@ X2 = make_X(n_trials=N_TRIALS_X2)
 
 
 def make_D_hat(rank1=True):
-    return init_dictionary(X1, N_ATOMS, N_TIMES_ATOM, random_state=0, rank1=rank1) # XXX change X1
+    return init_dictionary(
+        X1, N_ATOMS, N_TIMES_ATOM,
+        random_state=0, rank1=rank1)  # XXX change X1
+
 
 @pytest.fixture
 def D_hat(rank1=True):
@@ -54,6 +59,7 @@ def test_get_encoder_for(solver_z, D_hat, algorithm, loss,
                            n_jobs=2) as z_encoder:
 
         assert z_encoder is not None
+
 
 def test_get_encoder_for_dicodile():
     with get_z_encoder_for(solver='dicodile',

@@ -375,7 +375,8 @@ class DicodileEncoder(BaseZEncoder):
 
             # DiCoDiLe only supports learning from one signal at a time,
             # and expect a signal of shape (n_channels, *sig_support)
-            # whereas AlphaCSC requires a signal of shape (n_trials, n_channels, n_times)
+            # whereas AlphaCSC requires a signal of
+            # shape (n_trials, n_channels, n_times)
             assert X.shape[0] == 1
             X = X[0]
 
