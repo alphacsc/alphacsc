@@ -27,6 +27,7 @@ jobs:
           which python
           pip install numpy cython
           pip install -e .[test]
+          echo "localhost slots=16">hostfile
           ${{ matrix.dicodile }} && conda install -y openmpi mpi4py && pip install -e .[dicodile] ;
       - name: Run unit tests
         run: |
