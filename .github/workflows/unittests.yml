@@ -27,7 +27,7 @@ jobs:
           which python
           pip install numpy cython
           pip install .[test]
-          $ {{ matrix.dicodile }} && pip install .[dicodile]
+          ${{ matrix.dicodile }} && pip install .[dicodile]
       - name: Run unit tests
         run: |
           pytest --cov=alphacsc --cov-report=xml
