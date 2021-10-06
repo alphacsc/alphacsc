@@ -62,6 +62,7 @@ def test_get_encoder_for(solver_z, D_hat, algorithm, loss,
 
 
 def test_get_encoder_for_dicodile():
+    pytest.importorskip('dicodile')
     with get_z_encoder_for(solver='dicodile',
                            X=X1,
                            D_hat=make_D_hat(rank1=False),

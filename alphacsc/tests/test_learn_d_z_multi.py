@@ -53,6 +53,7 @@ def test_learn_d_z_multi(loss, solver_d, uv_constraint, rank1, window):
         ('joint', 'joint', False),
     ])
 def test_learn_d_z_multi_dicodile(solver_d, uv_constraint, rank1, window):
+    pytest.importorskip('dicodile')
     # smoke test for learn_d_z_multi
     # XXX For DiCoDiLe, n_trials cannot be >1
     n_trials, n_channels, n_times = 1, 3, 30

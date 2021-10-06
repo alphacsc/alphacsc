@@ -14,6 +14,7 @@ jobs:
       fail-fast: false
       matrix:
         python: [3.8]
+        dicodile: [false, true]
     steps:
       - uses: actions/checkout@v2
       - uses: conda-incubator/setup-miniconda@v2
@@ -25,7 +26,8 @@ jobs:
           conda --version
           which python
           pip install numpy cython
-          pip install -e .[test]
+          pip install .[test]
+          $ {{ matrix.dicodile }} && pip install .[dicodile]
       - name: Run unit tests
         run: |
           pytest --cov=alphacsc --cov-report=xml
