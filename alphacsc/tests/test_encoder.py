@@ -24,9 +24,12 @@ N_TRIALS_X2 = 2
 X2 = make_X(n_trials=N_TRIALS_X2)
 
 
+def make_D_hat(rank1=True):
+    return init_dictionary(X1, N_ATOMS, N_TIMES_ATOM, random_state=0, rank1=rank1) # XXX change X1
+
 @pytest.fixture
-def D_hat():
-    return init_dictionary(X1, N_ATOMS, N_TIMES_ATOM, random_state=0) # XXX change that
+def D_hat(rank1=True):
+    return make_D_hat()
 
 
 @pytest.mark.parametrize('solver_z', ['l-bfgs', 'lgcd'])
@@ -48,6 +51,16 @@ def test_get_encoder_for(solver_z, D_hat, algorithm, loss,
                            loss=loss,
                            uv_constraint=uv_constraint,
                            feasible_evaluation=feasible_evaluation,
+                           n_jobs=2) as z_encoder:
+
+        assert z_encoder is not None
+
+def test_get_encoder_for_dicodile():
+    with get_z_encoder_for(solver='dicodile',
+                           X=X1,
+                           D_hat=make_D_hat(rank1=False),
+                           n_atoms=N_ATOMS,
+                           atom_support=N_TIMES_ATOM,
                            n_jobs=2) as z_encoder:
 
         assert z_encoder is not None

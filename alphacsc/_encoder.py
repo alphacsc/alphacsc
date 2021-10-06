@@ -373,6 +373,9 @@ class DicodileEncoder(BaseZEncoder):
             self._encoder = dicodile.update_z.distributed_sparse_encoder.DistributedSparseEncoder(  # noqa: E501
                 n_workers=n_jobs)
 
+            # DiCoDiLe only supports learning from one signal at a time,
+            # and expect a signal of shape (n_channels, *sig_support)
+            # whereas AlphaCSC requires a signal of shape (n_trials, n_channels, n_times)
             assert X.shape[0] == 1
             X = X[0]
 
