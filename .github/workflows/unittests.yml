@@ -27,7 +27,7 @@ jobs:
           which python
           pip install numpy cython
           pip install -e .[test]
-          ${{ matrix.dicodile }} && pip install -e .[dicodile] ;
+          ${{ matrix.dicodile }} && conda install -y openmpi mpi4py && pip install -e .[dicodile] ;
       - name: Run unit tests
         run: |
           pytest --cov=alphacsc --cov-report=xml
