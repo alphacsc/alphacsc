@@ -38,6 +38,16 @@ install this package, please run one of the two commands:
 	pip install numpy cython
 	pip install git+https://github.com/alphacsc/alphacsc.git#egg=alphacsc
 
+(Dicodile backend)
+
+.. code::
+   pip install numpy cython
+   pip install alphacsc[dicodile]
+
+To use dicodile backend, do not forget to set `MPI_HOSTFILE` environment
+variable.
+
+
 If you do not have admin privileges on the computer, use the ``--user`` flag
 with ``pip``. To upgrade, use the ``--upgrade`` flag provided by ``pip``.
 
@@ -48,6 +58,7 @@ To check if everything worked fine, you can run:
 	python -c 'import alphacsc'
 
 and it should not give any error messages.
+
 
 Quickstart
 ==========
