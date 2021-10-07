@@ -41,10 +41,11 @@ install this package, please run one of the two commands:
 (Dicodile backend)
 
 .. code::
+   
    pip install numpy cython
    pip install alphacsc[dicodile]
 
-To use dicodile backend, do not forget to set `MPI_HOSTFILE` environment
+To use dicodile backend, do not forget to set ``MPI_HOSTFILE`` environment
 variable.
 
 
