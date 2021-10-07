@@ -29,12 +29,12 @@ jobs:
           pip install -e .[test]
       - name: Install dicodile
         if: ${{ matrix.dicodile }}
-        env:
-          MPI_HOSTFILE: hostfile
         run: |
           echo "localhost slots=16">hostfile
           conda install -y openmpi mpi4py && pip install -e .[dicodile]
       - name: Run unit tests
+        env:
+          MPI_HOSTFILE: hostfile
         run: |
           pytest --cov=alphacsc --cov-report=xml
       - name: Upload coverage
