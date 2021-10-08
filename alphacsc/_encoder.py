@@ -377,7 +377,9 @@ class DicodileEncoder(BaseZEncoder):
             # and expect a signal of shape (n_channels, *sig_support)
             # whereas AlphaCSC requires a signal of
             # shape (n_trials, n_channels, n_times)
-            assert X.shape[0] == 1
+            assert X.shape[0] == 1, (
+                "X should be a valid array of shape (1, n_channels, n_times)."
+            )
             X = X[0]
 
             lmbd_max = dicodile.utils.dictionary.get_lambda_max(
