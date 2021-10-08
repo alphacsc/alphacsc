@@ -49,6 +49,7 @@ def get_z_encoder_for(
         The regularization parameter.
     loss : {{ 'l2' (default) | 'dtw' | 'whitening'}}
         Loss for the data-fit term. Either the norm l2 or the soft-DTW.
+        If solver is 'dicodile', then the loss must be 'l2'.
     loss_params : dict | None
         Parameters of the loss.
     uv_constraint : {{'joint' | 'separate'}}
