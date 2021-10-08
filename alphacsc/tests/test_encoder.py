@@ -32,6 +32,12 @@ def D_hat(X, rank1):
                            )
 
 
+@pytest.fixture
+def test_dicodile(solver_z):
+    if solver_z == 'dicodile':
+        return pytest.importorskip('dicodile')
+
+
 @pytest.mark.parametrize('solver_z', ['l-bfgs', 'lgcd'])
 @pytest.mark.parametrize('algorithm', ['batch', 'greedy', 'online',
                                        'stochastic'])
@@ -40,9 +46,9 @@ def D_hat(X, rank1):
 @pytest.mark.parametrize('feasible_evaluation', [True, False])
 @pytest.mark.parametrize('n_trials', [1, 2, 5])
 @pytest.mark.parametrize('rank1', [True, False])
-def test_get_encoder_for(X, solver_z, D_hat, algorithm, loss,
-                         uv_constraint, feasible_evaluation):
-    """Test for valid values."""
+def test_get_encoder_for_alphacsc(X, solver_z, D_hat, algorithm, loss,
+                                  uv_constraint, feasible_evaluation):
+    """Test for valid values for alphacsc backend."""
 
     with get_z_encoder_for(solver=solver_z,
                            X=X,
@@ -58,12 +64,11 @@ def test_get_encoder_for(X, solver_z, D_hat, algorithm, loss,
         assert z_encoder is not None
 
 
-@pytest.mark.parametrize('n_trials', [1])
-@pytest.mark.parametrize('rank1', [False])
-def test_get_encoder_for_dicodile(X, D_hat):
-    pytest.importorskip('dicodile')
+@pytest.mark.parametrize('solver_z, n_trials, rank1', [('dicodile', 1, False)])
+def test_get_encoder_for_dicodile(X, D_hat, solver_z, test_dicodile):
+    """Test for valid values for dicodile backend."""
 
-    with get_z_encoder_for(solver='dicodile',
+    with get_z_encoder_for(solver=solver_z,
                            X=X,
                            D_hat=D_hat,
                            n_atoms=N_ATOMS,
@@ -71,6 +76,35 @@ def test_get_encoder_for_dicodile(X, D_hat):
                            n_jobs=2) as z_encoder:
 
         assert z_encoder is not None
+
+
+@pytest.mark.parametrize('solver_z, n_trials, rank1', [('dicodile', 2, False)])
+def test_get_encoder_for_dicodile_error_n_trials(solver_z, X, D_hat,
+                                                 test_dicodile):
+    """Test for invalid n_trials value for dicodile backend."""
+
+    with pytest.raises(AssertionError,
+                       match=f"X should be a valid array of shape*"):
+        get_z_encoder_for(solver=solver_z,
+                          X=X,
+                          D_hat=D_hat,
+                          n_atoms=N_ATOMS,
+                          atom_support=N_TIMES_ATOM,
+                          n_jobs=2)
+
+
+@pytest.mark.parametrize('solver_z, n_trials, rank1', [('dicodile', 1, True)])
+def test_get_encoder_for_dicodile_error_rank1(X, D_hat, test_dicodile):
+    """Test for invalid rank1 value for dicodile backend."""
+
+    with pytest.raises(ValueError,
+                       match=f"in1 and in2 should have the same dimensionality"):  # noqa
+        get_z_encoder_for(solver='dicodile',
+                          X=X,
+                          D_hat=D_hat,
+                          n_atoms=N_ATOMS,
+                          atom_support=N_TIMES_ATOM,
+                          n_jobs=2)
 
 
 @pytest.mark.parametrize('n_trials', [2])
@@ -211,13 +245,15 @@ def test_get_encoder_for_error_uv_constraint(X, D_hat,
                           n_jobs=2)
 
 
-@pytest.mark.parametrize('n_trials', [2])
-@pytest.mark.parametrize('rank1', [True])
-def test_get_z_hat(X, D_hat):
+@pytest.mark.parametrize('solver_z, n_trials, rank1',
+                         [('l-bfgs', 3, True),
+                          #                          ('dicodile', 1, False)
+                          ])
+def test_get_z_hat(solver_z, X, D_hat, test_dicodile):
     """Test for valid values."""
 
-    # tests when use_sparse_z = False
-    with get_z_encoder_for(X=X,
+    with get_z_encoder_for(solver=solver_z,
+                           X=X,
                            D_hat=D_hat,
                            n_atoms=N_ATOMS,
                            atom_support=N_TIMES_ATOM,
@@ -230,7 +266,11 @@ def test_get_z_hat(X, D_hat):
         z_encoder.compute_z()
         assert z_encoder.get_z_hat().any()
 
-    # tests when use_sparse_z = True
+
+@pytest.mark.parametrize('n_trials', [1, 3])
+@pytest.mark.parametrize('rank1', [True, False])
+def test_get_z_hat_use_sparse_z(X, D_hat):
+    """Test for valid values when use_sparse_z=True."""
     with get_z_encoder_for(solver='lgcd',
                            X=X,
                            D_hat=D_hat,
@@ -249,17 +289,18 @@ def test_get_z_hat(X, D_hat):
             assert matrix.count_nonzero()
 
 
-@pytest.mark.parametrize('n_trials', [2])
-@pytest.mark.parametrize('rank1', [True])
-def test_get_cost(X, D_hat):
+@pytest.mark.parametrize('solver_z, n_trials, rank1', [('l-bfgs', 3, True),
+                                                       #                                                       ('dicodile', 1, False)
+                                                       ])
+def test_get_cost(solver_z, X, D_hat, test_dicodile):
     """Test for valid values."""
 
-    with get_z_encoder_for(X=X,
+    with get_z_encoder_for(solver=solver_z,
+                           X=X,
                            D_hat=D_hat,
                            n_atoms=N_ATOMS,
                            atom_support=N_TIMES_ATOM,
                            n_jobs=2) as z_encoder:
-        assert not z_encoder.get_z_hat().any()
         initial_cost = z_encoder.get_cost()
 
         z_encoder.compute_z()
@@ -275,12 +316,14 @@ def test_get_cost(X, D_hat):
         assert np.isclose(cost, final_cost)
 
 
-@pytest.mark.parametrize('n_trials', [2])
-@pytest.mark.parametrize('rank1', [True])
-def test_compute_z(X, D_hat):
+@pytest.mark.parametrize('solver_z, n_trials, rank1', [('lgcd', 2, True),
+                                                       ('l-bfgs', 5, False),
+                                                       ('dicodile', 1, False)])
+def test_compute_z(solver_z, X, D_hat, test_dicodile):
     """Test for valid values."""
 
-    with get_z_encoder_for(X=X,
+    with get_z_encoder_for(solver=solver_z,
+                           X=X,
                            D_hat=D_hat,
                            n_atoms=N_ATOMS,
                            atom_support=N_TIMES_ATOM,
@@ -305,12 +348,14 @@ def test_compute_z_partial(X, D_hat, n_trials, rng):
         assert z_encoder.get_z_hat().any()
 
 
-@pytest.mark.parametrize('n_trials', [2])
-@pytest.mark.parametrize('rank1', [True])
-def test_get_sufficient_statistics(X, D_hat):
+@pytest.mark.parametrize('solver_z, n_trials, rank1', [('lgcd', 2, True),
+                                                       ('l-bfgs', 5, False),
+                                                       ('dicodile', 1, False)])
+def test_get_sufficient_statistics(solver_z, X, D_hat, test_dicodile):
     """Test for valid values."""
 
-    z_encoder = get_z_encoder_for(X=X,
+    z_encoder = get_z_encoder_for(solver=solver_z,
+                                  X=X,
                                   D_hat=D_hat,
                                   n_atoms=N_ATOMS,
                                   atom_support=N_TIMES_ATOM,
@@ -326,12 +371,15 @@ def test_get_sufficient_statistics(X, D_hat):
     assert ztX is not None and np.allclose(ztX, compute_ztX(z_hat, X))
 
 
-@pytest.mark.parametrize('n_trials', [2])
-@pytest.mark.parametrize('rank1', [True])
-def test_get_sufficient_statistics_error(X, D_hat):
+@pytest.mark.parametrize('solver_z, n_trials, rank1', [('lgcd', 2, True),
+                                                       ('l-bfgs', 5, False),
+                                                       #                                                       ('dicodile', 1, False)
+                                                       ])
+def test_get_sufficient_statistics_error(solver_z, X, D_hat, test_dicodile):
     """Test for invalid call to function."""
 
-    z_encoder = get_z_encoder_for(X=X,
+    z_encoder = get_z_encoder_for(solver=solver_z,
+                                  X=X,
                                   D_hat=D_hat,
                                   n_atoms=N_ATOMS,
                                   atom_support=N_TIMES_ATOM,
