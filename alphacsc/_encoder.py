@@ -40,7 +40,7 @@ def get_z_encoder_for(
         The number of parallel jobs.
     solver : str
         The solver to use for the z update. Options are
-        {{'l_bfgs' (default) | 'lgcd'}}.
+        {{'l_bfgs' (default) | 'lgcd' | 'dicodile'}}.
     z_kwargs : dict
         Additional keyword arguments to pass to update_z_multi.
     algorithm : 'batch' (default) | 'greedy' | 'online' | 'stochastic'

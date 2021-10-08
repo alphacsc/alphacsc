@@ -97,7 +97,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
             iteration.
     solver_z : str
         The solver to use for the z update. Options are
-        'l-bfgs' (default) | 'lgcd'
+        'l-bfgs' (default) | 'lgcd' | 'dicodile' (distributed LGCD, experimental)
     solver_z_kwargs : dict
         Additional keyword arguments to pass to update_z_multi
     solver_d : str
