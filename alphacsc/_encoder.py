@@ -115,6 +115,8 @@ def get_z_encoder_for(
             feasible_evaluation,
             use_sparse_z)
     elif solver == 'dicodile':
+        assert loss == 'l2'
+
         return DicodileEncoder(
             X,
             D_hat,
@@ -123,9 +125,7 @@ def get_z_encoder_for(
             n_jobs,
             z_kwargs,
             algorithm,
-            reg,
-            loss,
-            loss_params
+            reg
         )
     else:
         raise ValueError(f'unrecognized solver type: {solver}.')
@@ -365,9 +365,7 @@ class DicodileEncoder(BaseZEncoder):
             n_jobs,
             z_kwargs,
             algorithm,
-            reg,
-            loss,
-            loss_params):
+            reg):
         try:
             import dicodile
 
@@ -399,8 +397,6 @@ class DicodileEncoder(BaseZEncoder):
             self.atom_support = atom_support
             self.z_kwargs = z_kwargs
             self.algorithm = algorithm
-            self.loss = loss
-            self.loss_params = loss_params
             self.D_hat = D_hat
 
         except ImportError as ie:
