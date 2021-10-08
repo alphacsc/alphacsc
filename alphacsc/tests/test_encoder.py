@@ -84,7 +84,7 @@ def test_get_encoder_for_dicodile_error_n_trials(solver_z, X, D_hat,
     """Test for invalid n_trials value for dicodile backend."""
 
     with pytest.raises(AssertionError,
-                       match=f"X should be a valid array of shape*"):
+                       match="X should be a valid array of shape*"):
         get_z_encoder_for(solver=solver_z,
                           X=X,
                           D_hat=D_hat,
@@ -290,7 +290,7 @@ def test_get_z_hat_use_sparse_z(X, D_hat):
 
 
 @pytest.mark.parametrize('solver_z, n_trials, rank1', [('l-bfgs', 3, True),
-                                                       #                                                       ('dicodile', 1, False)
+                         # ('dicodile', 1, False)
                                                        ])
 def test_get_cost(solver_z, X, D_hat, test_dicodile):
     """Test for valid values."""
@@ -373,7 +373,7 @@ def test_get_sufficient_statistics(solver_z, X, D_hat, test_dicodile):
 
 @pytest.mark.parametrize('solver_z, n_trials, rank1', [('lgcd', 2, True),
                                                        ('l-bfgs', 5, False),
-                                                       #                                                       ('dicodile', 1, False)
+                         #  ('dicodile', 1, False)
                                                        ])
 def test_get_sufficient_statistics_error(solver_z, X, D_hat, test_dicodile):
     """Test for invalid call to function."""
