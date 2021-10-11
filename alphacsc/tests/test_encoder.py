@@ -33,7 +33,7 @@ def D_hat(X, rank1):
 
 
 @pytest.fixture
-def test_dicodile(solver_z):
+def requires_dicodile(solver_z):
     if solver_z == 'dicodile':
         return pytest.importorskip('dicodile')
 
@@ -65,7 +65,7 @@ def test_get_encoder_for_alphacsc(X, solver_z, D_hat, algorithm, loss,
 
 
 @pytest.mark.parametrize('solver_z, n_trials, rank1', [('dicodile', 1, False)])
-def test_get_encoder_for_dicodile(X, D_hat, solver_z, test_dicodile):
+def test_get_encoder_for_dicodile(X, D_hat, solver_z, requires_dicodile):
     """Test for valid values for dicodile backend."""
 
     with get_z_encoder_for(solver=solver_z,
@@ -80,7 +80,7 @@ def test_get_encoder_for_dicodile(X, D_hat, solver_z, test_dicodile):
 
 @pytest.mark.parametrize('solver_z, n_trials, rank1', [('dicodile', 2, False)])
 def test_get_encoder_for_dicodile_error_n_trials(solver_z, X, D_hat,
-                                                 test_dicodile):
+                                                 requires_dicodile):
     """Test for invalid n_trials value for dicodile backend."""
 
     with pytest.raises(AssertionError,
@@ -94,7 +94,7 @@ def test_get_encoder_for_dicodile_error_n_trials(solver_z, X, D_hat,
 
 
 @pytest.mark.parametrize('solver_z, n_trials, rank1', [('dicodile', 1, True)])
-def test_get_encoder_for_dicodile_error_rank1(X, D_hat, test_dicodile):
+def test_get_encoder_for_dicodile_error_rank1(X, D_hat, requires_dicodile):
     """Test for invalid rank1 value for dicodile backend."""
 
     with pytest.raises(ValueError,
@@ -249,7 +249,7 @@ def test_get_encoder_for_error_uv_constraint(X, D_hat,
                          [('l-bfgs', 3, True),
                           #                          ('dicodile', 1, False)
                           ])
-def test_get_z_hat(solver_z, X, D_hat, test_dicodile):
+def test_get_z_hat(solver_z, X, D_hat, requires_dicodile):
     """Test for valid values."""
 
     with get_z_encoder_for(solver=solver_z,
@@ -292,7 +292,7 @@ def test_get_z_hat_use_sparse_z(X, D_hat):
 @pytest.mark.parametrize('solver_z, n_trials, rank1', [('l-bfgs', 3, True),
                          # ('dicodile', 1, False)
                                                        ])
-def test_get_cost(solver_z, X, D_hat, test_dicodile):
+def test_get_cost(solver_z, X, D_hat, requires_dicodile):
     """Test for valid values."""
 
     with get_z_encoder_for(solver=solver_z,
@@ -319,7 +319,7 @@ def test_get_cost(solver_z, X, D_hat, test_dicodile):
 @pytest.mark.parametrize('solver_z, n_trials, rank1', [('lgcd', 2, True),
                                                        ('l-bfgs', 5, False),
                                                        ('dicodile', 1, False)])
-def test_compute_z(solver_z, X, D_hat, test_dicodile):
+def test_compute_z(solver_z, X, D_hat, requires_dicodile):
     """Test for valid values."""
 
     with get_z_encoder_for(solver=solver_z,
@@ -351,7 +351,7 @@ def test_compute_z_partial(X, D_hat, n_trials, rng):
 @pytest.mark.parametrize('solver_z, n_trials, rank1', [('lgcd', 2, True),
                                                        ('l-bfgs', 5, False),
                                                        ('dicodile', 1, False)])
-def test_get_sufficient_statistics(solver_z, X, D_hat, test_dicodile):
+def test_get_sufficient_statistics(solver_z, X, D_hat, requires_dicodile):
     """Test for valid values."""
 
     z_encoder = get_z_encoder_for(solver=solver_z,
@@ -375,7 +375,8 @@ def test_get_sufficient_statistics(solver_z, X, D_hat, test_dicodile):
                                                        ('l-bfgs', 5, False),
                          #  ('dicodile', 1, False)
                                                        ])
-def test_get_sufficient_statistics_error(solver_z, X, D_hat, test_dicodile):
+def test_get_sufficient_statistics_error(solver_z, X, D_hat,
+                                         requires_dicodile):
     """Test for invalid call to function."""
 
     z_encoder = get_z_encoder_for(solver=solver_z,

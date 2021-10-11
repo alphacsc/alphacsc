@@ -115,7 +115,7 @@ def get_z_encoder_for(
             feasible_evaluation,
             use_sparse_z)
     elif solver == 'dicodile':
-        assert loss == 'l2', f'DiCoDiLe requires an l2 loss, but "{loss}" was supplied.'
+        assert loss == 'l2', f"DiCoDiLe requires a l2 loss ('{loss}' passed)."
 
         return DicodileEncoder(
             X,
@@ -368,41 +368,40 @@ class DicodileEncoder(BaseZEncoder):
             reg):
         try:
             import dicodile
-
-            self._encoder = dicodile.update_z.distributed_sparse_encoder.DistributedSparseEncoder(  # noqa: E501
-                n_workers=n_jobs)
-
-            # DiCoDiLe only supports learning from one signal at a time,
-            # and expect a signal of shape (n_channels, *sig_support)
-            # whereas AlphaCSC requires a signal of
-            # shape (n_trials, n_channels, n_times)
-            assert X.shape[0] == 1, (
-                "X should be a valid array of shape (1, n_channels, n_times)."
-            )
-            X = X[0]
-
-            lmbd_max = dicodile.utils.dictionary.get_lambda_max(
-                X, D_hat).max()  # XXX reuse this?
-            # tol: initialization? (1e-3 here)
-            tol = (1 - reg) * lmbd_max * 1e-3
-            params = dicodile._dicodile.DEFAULT_DICOD_KWARGS.copy()
-            params.update(dict(
-                z_positive=False, tol=tol,  # XXX z_positive
-                random_state=None, reg=reg, timing=False,  # XXX random_state
-                return_ztz=False, freeze_support=False, warm_start=True,
-            ))
-            self._encoder.init_workers(X, D_hat, reg, params)  # XXX params
-
-            self.n_atoms = n_atoms
-            self.atom_support = atom_support
-            self.z_kwargs = z_kwargs
-            self.algorithm = algorithm
-            self.D_hat = D_hat
-
         except ImportError as ie:
             raise ImportError(
                 'Please install DiCoDiLe by running '
                 '"pip install alphacsc[dicodile]"') from ie
+
+        self._encoder = dicodile.update_z.distributed_sparse_encoder.DistributedSparseEncoder(  # noqa: E501
+            n_workers=n_jobs)
+
+        # DiCoDiLe only supports learning from one signal at a time,
+        # and expect a signal of shape (n_channels, *sig_support)
+        # whereas AlphaCSC requires a signal of
+        # shape (n_trials, n_channels, n_times)
+        assert X.shape[0] == 1, (
+            "X should be a valid array of shape (1, n_channels, n_times)."
+        )
+        X = X[0]
+
+        lmbd_max = dicodile.utils.dictionary.get_lambda_max(
+            X, D_hat).max()  # XXX reuse this?
+        # tol: initialization? (1e-3 here)
+        tol = (1 - reg) * lmbd_max * 1e-3
+        params = dicodile._dicodile.DEFAULT_DICOD_KWARGS.copy()
+        params.update(dict(
+            z_positive=False, tol=tol,  # XXX z_positive
+            random_state=None, reg=reg, timing=False,  # XXX random_state
+            return_ztz=False, freeze_support=False, warm_start=True,
+        ))
+        self._encoder.init_workers(X, D_hat, reg, params)  # XXX params
+
+        self.n_atoms = n_atoms
+        self.atom_support = atom_support
+        self.z_kwargs = z_kwargs
+        self.algorithm = algorithm
+        self.D_hat = D_hat
 
     def compute_z(self):
         """
