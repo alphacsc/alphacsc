@@ -115,7 +115,7 @@ def get_z_encoder_for(
             feasible_evaluation,
             use_sparse_z)
     elif solver == 'dicodile':
-        assert loss == 'l2'
+        assert loss == 'l2', f'DiCoDiLe requires an l2 loss, but "{loss}" was supplied.'
 
         return DicodileEncoder(
             X,
