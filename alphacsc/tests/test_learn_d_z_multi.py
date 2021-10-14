@@ -47,12 +47,8 @@ def test_learn_d_z_multi(loss, solver_d, uv_constraint, rank1, window):
 
 
 @pytest.mark.parametrize('window', [False, True])
-@pytest.mark.parametrize(  # XXX fix
-    'solver_d, uv_constraint, rank1',
-    [
-        ('joint', 'joint', False),
-    ])
-def test_learn_d_z_multi_dicodile(solver_d, uv_constraint, rank1, window):
+# TODO expand params when DiCoDiLe is rank-1-capable
+def test_learn_d_z_multi_dicodile(window):
     pytest.importorskip('dicodile')
     # smoke test for learn_d_z_multi
     # XXX For DiCoDiLe, n_trials cannot be >1
@@ -64,13 +60,12 @@ def test_learn_d_z_multi_dicodile(solver_d, uv_constraint, rank1, window):
     rng = check_random_state(42)
     X = rng.randn(n_trials, n_channels, n_times)
     pobj, times, uv_hat, z_hat, reg = learn_d_z_multi(
-        X, n_atoms, n_times_atom, uv_constraint=uv_constraint, rank1=rank1,
-        solver_d=solver_d, random_state=0,
+        X, n_atoms, n_times_atom, uv_constraint='joint', rank1=False,
+        solver_d='joint', random_state=0,
         n_iter=30, eps=-np.inf, solver_z='dicodile', window=window,
         verbose=0, loss='l2', loss_params=loss_params)
 
-    msg = "Cost function does not go down for uv_constraint {}".format(
-        uv_constraint)
+    msg = "Cost function does not go down"
 
     try:
         assert np.sum(np.diff(pobj) > 1e-13) == 0, msg
