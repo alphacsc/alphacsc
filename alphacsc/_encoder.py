@@ -384,7 +384,7 @@ class DicodileEncoder(BaseZEncoder):
             "X should be a valid array of shape (1, n_channels, n_times)."
         )
 
-        _, _, n_times = check_dimension(X)
+        n_times = X.shape[2]
         X = X[0]
 
         lmbd_max = dicodile.utils.dictionary.get_lambda_max(
