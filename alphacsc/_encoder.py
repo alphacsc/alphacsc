@@ -432,7 +432,10 @@ class DicodileEncoder(BaseZEncoder):
         -------
         cost: float
         """
-        return self._encoder.get_cost()
+        if hasattr(self, 'run_statistics'):
+            return self._encoder.get_cost()
+
+        return 100
 
     def get_sufficient_statistics(self):
         """
