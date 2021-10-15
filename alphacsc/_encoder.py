@@ -383,6 +383,8 @@ class DicodileEncoder(BaseZEncoder):
         assert X.shape[0] == 1, (
             "X should be a valid array of shape (1, n_channels, n_times)."
         )
+
+        _, _, n_times = check_dimension(X)
         X = X[0]
 
         lmbd_max = dicodile.utils.dictionary.get_lambda_max(
@@ -397,6 +399,7 @@ class DicodileEncoder(BaseZEncoder):
         ))
         self._encoder.init_workers(X, D_hat, reg, params)  # XXX params
 
+        self.n_times_valid = n_times - atom_support + 1
         self.n_atoms = n_atoms
         self.atom_support = atom_support
         self.z_kwargs = z_kwargs
@@ -408,7 +411,7 @@ class DicodileEncoder(BaseZEncoder):
         Perform one incremental z update.
         This is the "main" function of the algorithm.
         """
-        self._encoder.process_z_hat()
+        self.run_statistics = self._encoder.process_z_hat()
 
     def compute_z_partial(self, i0):
         """
@@ -441,6 +444,9 @@ class DicodileEncoder(BaseZEncoder):
         ztz, ztX : (ndarray, ndarray)
             Sufficient statistics.
         """
+        assert hasattr(self, 'run_statistics'), (
+            'compute_z should be called to access the statistics.'
+        )
         return self._encoder.get_sufficient_statistics()
 
     def get_sufficient_statistics_partial(self):
@@ -464,10 +470,13 @@ class DicodileEncoder(BaseZEncoder):
 
         Returns
         -------
-        z_hat
+        z_hat : shape (n_trials, n_atoms, n_times_valid)
             Sparse encoding of the signal X.
         """
-        return self._encoder.get_z_hat()[None]
+        if hasattr(self, 'run_statistics'):
+            return self._encoder.get_z_hat()[None]
+
+        return np.zeros([1, self.n_atoms, self.n_times_valid])
 
     def set_D(self, D):
         """

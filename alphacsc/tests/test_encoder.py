@@ -28,8 +28,7 @@ def D_hat(X, rank1):
                            N_ATOMS,
                            N_TIMES_ATOM,
                            random_state=0,
-                           rank1=rank1
-                           )
+                           rank1=rank1)
 
 
 @pytest.fixture
@@ -247,7 +246,7 @@ def test_get_encoder_for_error_uv_constraint(X, D_hat,
 
 @pytest.mark.parametrize('solver_z, n_trials, rank1',
                          [('l-bfgs', 3, True),
-                          #                          ('dicodile', 1, False)
+                          ('dicodile', 1, False)
                           ])
 def test_get_z_hat(solver_z, X, D_hat, requires_dicodile):
     """Test for valid values."""
@@ -290,7 +289,7 @@ def test_get_z_hat_use_sparse_z(X, D_hat):
 
 
 @pytest.mark.parametrize('solver_z, n_trials, rank1', [('l-bfgs', 3, True),
-                         # ('dicodile', 1, False)
+                                                       # ('dicodile', 1, False)
                                                        ])
 def test_get_cost(solver_z, X, D_hat, requires_dicodile):
     """Test for valid values."""
@@ -373,7 +372,7 @@ def test_get_sufficient_statistics(solver_z, X, D_hat, requires_dicodile):
 
 @pytest.mark.parametrize('solver_z, n_trials, rank1', [('lgcd', 2, True),
                                                        ('l-bfgs', 5, False),
-                         #  ('dicodile', 1, False)
+                                                       ('dicodile', 1, False)
                                                        ])
 def test_get_sufficient_statistics_error(solver_z, X, D_hat,
                                          requires_dicodile):
