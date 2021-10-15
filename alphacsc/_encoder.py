@@ -392,17 +392,16 @@ class DicodileEncoder(BaseZEncoder):
         # tol: initialization? (1e-3 here)
         tol = (1 - reg) * lmbd_max * 1e-3
         params = dicodile._dicodile.DEFAULT_DICOD_KWARGS.copy()
-        params.update(dict(
-            z_positive=False, tol=tol,  # XXX z_positive
-            random_state=None, reg=reg, timing=False,  # XXX random_state
-            return_ztz=False, freeze_support=False, warm_start=True,
-        ))
-        self._encoder.init_workers(X, D_hat, reg, params)  # XXX params
+        params.update(tol=tol, reg=reg, timing=False, z_positive=False,
+                      return_ztz=False, warm_start=True, freeze_support=False,
+                      random_state=None)  # DiCoDiLe defaults
+        params.update(z_kwargs)
+        self.params = params
+        self._encoder.init_workers(X, D_hat, reg, self.params)
 
         self.n_times_valid = n_times - atom_support + 1
         self.n_atoms = n_atoms
         self.atom_support = atom_support
-        self.z_kwargs = z_kwargs
         self.algorithm = algorithm
         self.D_hat = D_hat
 
