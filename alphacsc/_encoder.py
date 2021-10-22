@@ -424,6 +424,9 @@ class AlphaCSCEncoder(BaseZEncoder):
     def set_reg(self, reg):
         self.reg = reg
 
+    def get_constants(self):
+        return self.constants
+
     def add_one_atom(self, new_atom):
         assert new_atom.shape == (self.atom_support + self.X.shape[1],)
         self.D_hat = np.concatenate([self.D_hat, new_atom[None]])
