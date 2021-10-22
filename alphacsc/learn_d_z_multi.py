@@ -193,11 +193,10 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         # for D.
         d_kwargs["max_iter"] = 1
 
-    def compute_d_func(z_encoder):
+    def compute_d_func(z_encoder, constants):
         X = z_encoder.X
         z_hat = z_encoder.get_z_hat()
         D_hat = z_encoder.D_hat
-        constants = z_encoder.get_constants()
         if rank1:
             return update_uv(X, z_hat, uv_hat0=D_hat, constants=constants,
                              b_hat_0=b_hat_0, solver_d=solver_d,
@@ -369,7 +368,7 @@ def _batch_learn(X, D_hat, z_encoder, n_atoms, compute_d_func,
 
         # Compute D update
         start = time.time()
-        D_hat = compute_d_func(z_encoder)
+        D_hat = compute_d_func(z_encoder, constants)
         z_encoder.set_D(D_hat)
 
         # monitor cost function
@@ -465,7 +464,7 @@ def _online_learn(X, D_hat, z_encoder, n_atoms, compute_d_func,
 
         # Compute D update
         start = time.time()
-        D_hat = compute_d_func(z_encoder)
+        D_hat = compute_d_func(z_encoder, constants)
         z_encoder.set_D(D_hat)
 
         # monitor cost function
