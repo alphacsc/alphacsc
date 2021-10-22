@@ -179,6 +179,7 @@ class BaseZEncoder:
         self.atom_support = atom_support
         self.n_jobs = n_jobs
         self.z_alg = solver
+
         self.solver_kwargs = solver_kwargs
         self.algorithm = algorithm
         self.reg = reg
