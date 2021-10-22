@@ -1,7 +1,7 @@
 import numpy as np
 from .loss_and_gradient import compute_X_and_objective_multi
 from .update_z_multi import update_z_multi
-from .utils import check_dimension, lil
+from .utils import lil
 
 DEFAULT_TOL_Z = 1e-3
 
