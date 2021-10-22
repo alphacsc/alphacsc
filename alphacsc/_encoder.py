@@ -155,6 +155,38 @@ def get_z_encoder_for(
 
 
 class BaseZEncoder:
+
+    def __init__(
+            self,
+            X,
+            D_hat,
+            n_atoms,
+            atom_support,
+            n_jobs,
+            solver,
+            solver_kwargs,
+            algorithm,
+            reg,
+            loss,
+            loss_params,
+            uv_constraint,
+            feasible_evaluation,
+            use_sparse_z):
+
+        self.X = X
+        self.D_hat = D_hat
+        self.n_atoms = n_atoms
+        self.atom_support = atom_support
+        self.n_jobs = n_jobs
+        self.z_alg = solver
+        self.solver_kwargs = solver_kwargs
+        self.algorithm = algorithm
+        self.reg = reg
+        self.loss = loss
+
+        self.n_trials, self.n_channels, self.n_times = X.shape
+        self.n_times_valid = self.n_times - self.atom_support + 1
+
     def compute_z(self):
         """
         Perform one incremental z update.
@@ -279,19 +311,24 @@ class AlphaCSCEncoder(BaseZEncoder):
             feasible_evaluation,
             use_sparse_z):
 
+        super().__init__(X,
+                         D_hat,
+                         n_atoms,
+                         atom_support,
+                         n_jobs,
+                         solver,
+                         solver_kwargs,
+                         algorithm,
+                         reg,
+                         loss,
+                         loss_params,
+                         uv_constraint,
+                         feasible_evaluation,
+                         use_sparse_z)
+
         if loss_params is None:
             loss_params = dict(gamma=.1, sakoe_chiba_band=10, ordar=10)
 
-        self.X = X
-        self.D_hat = D_hat
-        self.n_atoms = n_atoms
-        self.atom_support = atom_support
-        self.n_jobs = n_jobs
-        self.z_alg = solver
-        self.solver_kwargs = solver_kwargs
-        self.algorithm = algorithm
-        self.reg = reg
-        self.loss = loss
         self.loss_params = loss_params
         self.uv_constraint = uv_constraint
         self.feasible_evaluation = feasible_evaluation
@@ -300,11 +337,9 @@ class AlphaCSCEncoder(BaseZEncoder):
         self._init_z_hat()
 
     def _init_z_hat(self):
-        n_trials, _, n_times = check_dimension(self.X)
-        n_times_valid = n_times - self.atom_support + 1
 
         self.z_hat = lil.init_zeros(
-            self.use_sparse_z, n_trials, self.n_atoms, n_times_valid)
+            self.use_sparse_z, self.n_trials, self.n_atoms, self.n_times_valid)
 
         if self.algorithm == 'greedy':
             # remove all atoms
