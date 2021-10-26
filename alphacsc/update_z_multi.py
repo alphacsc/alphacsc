@@ -77,7 +77,7 @@ def update_z_multi(X, D, reg, z0=None, solver='l-bfgs', solver_kwargs=dict(),
 
     # Generate different seeds for the parallel updates
     rng = check_random_state(random_state)
-    parallel_seeds = [rng.randint(2**32) for _ in range(n_trials)]
+    parallel_seeds = [rng.randint(2**32-1) for _ in range(n_trials)]
 
     if z0 is None:
         z0 = np.zeros((n_trials, n_atoms, n_times_valid))
