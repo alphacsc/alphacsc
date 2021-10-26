@@ -40,7 +40,7 @@ def requires_dicodile(solver_z):
 @pytest.mark.parametrize('algorithm', ['batch', 'greedy', 'online',
                                        'stochastic'])
 @pytest.mark.parametrize('loss', ['l2', 'dtw', 'whitening'])
-@pytest.mark.parametrize('uv_constraint', ['joint', 'separate'])
+@pytest.mark.parametrize('uv_constraint', ['joint', 'separate', 'auto'])
 @pytest.mark.parametrize('feasible_evaluation', [True, False])
 @pytest.mark.parametrize('n_trials', [1, 2, 5])
 @pytest.mark.parametrize('rank1', [True, False])
@@ -86,6 +86,87 @@ def test_get_encoder_for_dicodile_error_n_trials(solver_z, X, D_hat,
         get_z_encoder_for(solver=solver_z,
                           X=X,
                           D_hat=D_hat,
+                          n_atoms=N_ATOMS,
+                          atom_support=N_TIMES_ATOM,
+                          n_jobs=2)
+
+
+@pytest.mark.parametrize('solver_z, n_trials, rank1', [('dicodile', 1, False)])
+def test_get_encoder_for_dicodile_error_loss(solver_z, X, D_hat,
+                                             requires_dicodile):
+    """Test for invalid n_trials value for dicodile backend."""
+
+    with pytest.raises(AssertionError,
+                       match="DiCoDiLe requires a l2 loss ('{loss}' passed)."):
+        get_z_encoder_for(solver=solver_z,
+                          X=X,
+                          D_hat=D_hat,
+                          loss='dtw',
+                          n_atoms=N_ATOMS,
+                          atom_support=N_TIMES_ATOM,
+                          n_jobs=2)
+
+
+@pytest.mark.parametrize('solver_z, n_trials, rank1', [('dicodile', 1, False)])
+def test_get_encoder_for_dicodile_error_loss_params(solver_z, X, D_hat,
+                                                    requires_dicodile,
+                                                    loss_params):
+    """Test for invalid loss_params value for dicodile backend."""
+
+    with pytest.raises(AssertionError,
+                       match="DiCoDiLe requires loss_params=None."):
+        get_z_encoder_for(solver=solver_z,
+                          X=X,
+                          D_hat=D_hat,
+                          loss_params={},
+                          n_atoms=N_ATOMS,
+                          atom_support=N_TIMES_ATOM,
+                          n_jobs=2)
+
+
+@pytest.mark.parametrize('solver_z, n_trials, rank1', [('dicodile', 1, False)])
+def test_get_encoder_for_dicodile_error_feasible_ev(solver_z, X, D_hat,
+                                                    requires_dicodile):
+    """Test for invalid feasible_evaluation value for dicodile backend."""
+
+    with pytest.raises(AssertionError,
+                       match="DiCoDiLe requires feasible_evaluation=False."):
+        get_z_encoder_for(solver=solver_z,
+                          X=X,
+                          D_hat=D_hat,
+                          feasible_evaluation=True,
+                          n_atoms=N_ATOMS,
+                          atom_support=N_TIMES_ATOM,
+                          n_jobs=2)
+
+
+@pytest.mark.parametrize('solver_z, n_trials, rank1', [('dicodile', 1, False)])
+def test_get_encoder_for_dicodile_error_uv_constraint(solver_z, X, D_hat,
+                                                      requires_dicodile):
+    """Test for invalid uv_constraint value for dicodile backend."""
+
+    with pytest.raises(AssertionError,
+                       match="DiCoDiLe requires uv_constraint=auto."):
+        get_z_encoder_for(solver=solver_z,
+                          X=X,
+                          D_hat=D_hat,
+                          uv_constraint='separate',
+                          n_atoms=N_ATOMS,
+                          atom_support=N_TIMES_ATOM,
+                          n_jobs=2)
+
+
+@pytest.mark.parametrize('solver_z, n_trials, rank1', [('dicodile', 1, False)])
+def test_get_encoder_for_dicodile_error_use_sparse_z(solver_z, X, D_hat,
+                                                     requires_dicodile):
+    """Test for invalid use_sparse_z value for dicodile backend."""
+
+    with pytest.raises(AssertionError,
+                       match="DiCoDiLe requires use_sparse_z=False."):
+        get_z_encoder_for(solver=solver_z,
+                          X=X,
+                          D_hat=D_hat,
+                          use_sparse_z=False,
                           n_atoms=N_ATOMS,
                           atom_support=N_TIMES_ATOM,
                           n_jobs=2)

@@ -17,8 +17,8 @@ def get_z_encoder_for(
         reg=0.1,
         loss='l2',
         loss_params=None,
-        uv_constraint='separate',
-        feasible_evaluation=True,
+        uv_constraint='auto',
+        feasible_evaluation=False,
         use_sparse_z=False):
     """
     Returns a z encoder for the required solver.
@@ -52,16 +52,21 @@ def get_z_encoder_for(
         If solver is 'dicodile', then the loss must be 'l2'.
     loss_params : dict | None
         Parameters of the loss.
-    uv_constraint : {{'joint' | 'separate'}}
+        Does not apply to 'dicodile'.
+    uv_constraint : {{'auto' | 'joint' | 'separate'}}
         The kind of norm constraint on the atoms:
 
         - :code:`'joint'`: the constraint is ||[u, v]||_2 <= 1
         - :code:`'separate'`: the constraint is ||u||_2 <= 1 and ||v||_2 <= 1
-    feasible_evaluation : boolean, default True
+
+        Does not apply to 'dicodile'.
+    feasible_evaluation : boolean, default False
         If feasible_evaluation is True, it first projects on the feasible set,
         i.e. norm(uv_hat) <= 1.
+        Does not apply to 'dicodile'.
     use_sparse_z : bool, default False
         Use sparse lil_matrices to store the activations.
+        Does not apply to 'dicodile'.
 
     Returns
     -------
@@ -94,11 +99,14 @@ def get_z_encoder_for(
         'loss_params should be a valid dict or None.'
     )
 
-    assert uv_constraint in ['joint', 'separate'], (
+    assert uv_constraint in ['joint', 'separate', 'auto'], (
         f'unrecognized uv_constraint type: {uv_constraint}.'
     )
 
     if solver in ['l-bfgs', 'lgcd']:
+        if uv_constraint == 'auto':
+            uv_constraint = 'separate'
+
         return AlphaCSCEncoder(
             X,
             D_hat,
@@ -116,6 +124,17 @@ def get_z_encoder_for(
             use_sparse_z)
     elif solver == 'dicodile':
         assert loss == 'l2', f"DiCoDiLe requires a l2 loss ('{loss}' passed)."
+        assert loss_params is None, "DiCoDiLe requires loss_params=None."
+        assert feasible_evaluation is False, (
+            "DiCoDiLe requires feasible_evaluation=False."
+        )
+        assert uv_constraint == 'auto',  (
+            "DiCoDiLe requires uv_constraint=auto."
+        )
+
+        assert use_sparse_z is False, (
+            "DiCoDiLe requires use_sparse_z=False."
+        )
 
         return DicodileEncoder(
             X,
