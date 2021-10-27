@@ -3,8 +3,11 @@ from .loss_and_gradient import compute_X_and_objective_multi
 from .update_z_multi import update_z_multi
 from .utils import check_dimension, lil
 
+DEFAULT_TOL_Z = 1e-3
 
 # XXX check consistency / proper use!
+
+
 def get_z_encoder_for(
         X,
         D_hat,
@@ -407,12 +410,9 @@ class DicodileEncoder(BaseZEncoder):
         n_times = X.shape[2]
         X = X[0]
 
-        lmbd_max = dicodile.utils.dictionary.get_lambda_max(
-            X, D_hat).max()  # XXX reuse this?
-        # tol: initialization? (1e-3 here)
-        tol = (1 - reg) * lmbd_max * 1e-3
+        print(D_hat.shape, X.shape)
         params = dicodile._dicodile.DEFAULT_DICOD_KWARGS.copy()
-        params.update(tol=tol, reg=reg, timing=False, z_positive=False,
+        params.update(tol=DEFAULT_TOL_Z, reg=reg, timing=False, z_positive=False,
                       return_ztz=False, warm_start=True, freeze_support=False,
                       random_state=None)  # DiCoDiLe defaults
         params.update(solver_kwargs)

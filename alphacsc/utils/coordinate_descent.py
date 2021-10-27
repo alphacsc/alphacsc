@@ -12,7 +12,7 @@ from .convolution import _choose_convolve_multi
 
 
 def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
-                            tol=1e-1, strategy='greedy', n_seg='auto',
+                            tol=1e-3, strategy='greedy', n_seg='auto',
                             freeze_support=False, debug=False, timing=False,
                             random_state=None, name="CD", verbose=0):
     """Compute the coding signal associated to Xi with coordinate descent.

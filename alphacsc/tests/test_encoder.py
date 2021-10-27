@@ -176,8 +176,7 @@ def test_get_encoder_for_dicodile_error_use_sparse_z(solver, X, D_hat,
 def test_get_encoder_for_dicodile_error_rank1(X, D_hat, requires_dicodile):
     """Test for invalid rank1 value for dicodile backend."""
 
-    with pytest.raises(ValueError,
-                       match=f"in1 and in2 should have the same dimensionality"):  # noqa
+    with pytest.raises(AssertionError):
         get_z_encoder_for(solver='dicodile',
                           X=X,
                           D_hat=D_hat,
