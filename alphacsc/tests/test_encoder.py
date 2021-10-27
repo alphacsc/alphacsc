@@ -95,10 +95,10 @@ def test_get_encoder_for_dicodile_error_n_trials(solver_z, X, D_hat,
                          [('dicodile', 1, False, 'dtw')])
 def test_get_encoder_for_dicodile_error_loss(solver_z, X, D_hat, loss,
                                              requires_dicodile):
-    """Test for invalid n_trials value for dicodile backend."""
+    """Test for invalid loss value for dicodile backend."""
 
-    with pytest.raises(AssertionError,
-                       match="DiCoDiLe requires a l2 loss ('{loss}' passed)."):
+    with pytest.raises(AssertionError, match=(
+            f"DiCoDiLe requires a l2 loss \\('dtw' passed\\).")):
         get_z_encoder_for(solver=solver_z,
                           X=X,
                           D_hat=D_hat,
@@ -110,8 +110,7 @@ def test_get_encoder_for_dicodile_error_loss(solver_z, X, D_hat, loss,
 
 @pytest.mark.parametrize('solver_z, n_trials, rank1', [('dicodile', 1, False)])
 def test_get_encoder_for_dicodile_error_loss_params(solver_z, X, D_hat,
-                                                    requires_dicodile,
-                                                    loss_params):
+                                                    requires_dicodile):
     """Test for invalid loss_params value for dicodile backend."""
 
     with pytest.raises(AssertionError,
@@ -167,7 +166,7 @@ def test_get_encoder_for_dicodile_error_use_sparse_z(solver_z, X, D_hat,
         get_z_encoder_for(solver=solver_z,
                           X=X,
                           D_hat=D_hat,
-                          use_sparse_z=False,
+                          use_sparse_z=True,
                           n_atoms=N_ATOMS,
                           atom_support=N_TIMES_ATOM,
                           n_jobs=2)
