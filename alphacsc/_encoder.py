@@ -408,9 +408,13 @@ class DicodileEncoder(BaseZEncoder):
         )
 
         n_times = X.shape[2]
-        X = X[0]
+        self.X = X[0]
+        self.D_hat = D_hat
+        self.n_times_valid = n_times - atom_support + 1
+        self.n_atoms = n_atoms
+        self.atom_support = atom_support
+        self.algorithm = algorithm
 
-        print(D_hat.shape, X.shape)
         params = dicodile._dicodile.DEFAULT_DICOD_KWARGS.copy()
         # DiCoDiLe defaults
         params.update(tol=DEFAULT_TOL_Z, reg=reg, timing=False,
@@ -418,13 +422,7 @@ class DicodileEncoder(BaseZEncoder):
                       freeze_support=False, random_state=None)
         params.update(solver_kwargs)
         self.params = params
-        self._encoder.init_workers(X, D_hat, reg, self.params)
-
-        self.n_times_valid = n_times - atom_support + 1
-        self.n_atoms = n_atoms
-        self.atom_support = atom_support
-        self.algorithm = algorithm
-        self.D_hat = D_hat
+        self._encoder.init_workers(self.X, self.D_hat, reg, self.params)
 
     def compute_z(self):
         """
@@ -456,7 +454,7 @@ class DicodileEncoder(BaseZEncoder):
         if hasattr(self, 'run_statistics'):
             return self._encoder.get_cost()
 
-        return 100
+        return 0.5 * np.linalg.norm(self.X) ** 2
 
     def get_sufficient_statistics(self):
         """
