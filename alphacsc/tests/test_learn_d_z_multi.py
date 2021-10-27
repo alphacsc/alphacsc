@@ -55,15 +55,13 @@ def test_learn_d_z_multi_dicodile(window):
     n_trials, n_channels, n_times = 1, 3, 30
     n_times_atom, n_atoms = 6, 4
 
-    loss_params = dict(gamma=1, sakoe_chiba_band=10, ordar=10)
-
     rng = check_random_state(42)
     X = rng.randn(n_trials, n_channels, n_times)
     pobj, times, uv_hat, z_hat, reg = learn_d_z_multi(
-        X, n_atoms, n_times_atom, uv_constraint='joint', rank1=False,
+        X, n_atoms, n_times_atom, uv_constraint='auto', rank1=False,
         solver_d='joint', random_state=0,
         n_iter=30, eps=-np.inf, solver_z='dicodile', window=window,
-        verbose=0, loss='l2', loss_params=loss_params)
+        verbose=0, loss='l2', loss_params=None)
 
     msg = "Cost function does not go down"
 

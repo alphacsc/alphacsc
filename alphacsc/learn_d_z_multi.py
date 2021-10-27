@@ -24,7 +24,7 @@ from .update_d_multi import update_uv, update_d
 def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
                     lmbd_max='fixed', reg=0.1, loss='l2',
                     loss_params=dict(gamma=.1, sakoe_chiba_band=10, ordar=10),
-                    rank1=True, uv_constraint='separate', eps=1e-10,
+                    rank1=True, uv_constraint='auto', eps=1e-10,
                     algorithm='batch', algorithm_params=dict(),
                     detrending=None, detrending_params=dict(),
                     solver_z='l-bfgs', solver_z_kwargs=dict(),
@@ -206,7 +206,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
     with get_z_encoder_for(X, D_hat, n_atoms, n_times_atom, n_jobs,
                            solver_z, z_kwargs, algorithm, reg, loss,
                            loss_params, uv_constraint,
-                           feasible_evaluation=True,
+                           feasible_evaluation=False,
                            use_sparse_z=use_sparse_z) as z_encoder:
         if callable(callback):
             callback(X, D_hat, z_encoder.get_z_hat(), [])
