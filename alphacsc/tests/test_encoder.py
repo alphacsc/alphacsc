@@ -91,8 +91,9 @@ def test_get_encoder_for_dicodile_error_n_trials(solver_z, X, D_hat,
                           n_jobs=2)
 
 
-@pytest.mark.parametrize('solver_z, n_trials, rank1', [('dicodile', 1, False)])
-def test_get_encoder_for_dicodile_error_loss(solver_z, X, D_hat,
+@pytest.mark.parametrize('solver_z, n_trials, rank1, loss',
+                         [('dicodile', 1, False, 'dtw')])
+def test_get_encoder_for_dicodile_error_loss(solver_z, X, D_hat, loss,
                                              requires_dicodile):
     """Test for invalid n_trials value for dicodile backend."""
 
@@ -101,7 +102,7 @@ def test_get_encoder_for_dicodile_error_loss(solver_z, X, D_hat,
         get_z_encoder_for(solver=solver_z,
                           X=X,
                           D_hat=D_hat,
-                          loss='dtw',
+                          loss=loss,
                           n_atoms=N_ATOMS,
                           atom_support=N_TIMES_ATOM,
                           n_jobs=2)
