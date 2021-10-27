@@ -98,7 +98,7 @@ def test_get_encoder_for_dicodile_error_loss(solver_z, X, D_hat, loss,
     """Test for invalid loss value for dicodile backend."""
 
     with pytest.raises(AssertionError, match=(
-            f"DiCoDiLe requires a l2 loss \\('dtw' passed\\).")):
+            "DiCoDiLe requires a l2 loss \\('dtw' passed\\).")):
         get_z_encoder_for(solver=solver_z,
                           X=X,
                           D_hat=D_hat,
