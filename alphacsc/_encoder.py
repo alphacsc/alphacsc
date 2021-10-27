@@ -412,9 +412,10 @@ class DicodileEncoder(BaseZEncoder):
 
         print(D_hat.shape, X.shape)
         params = dicodile._dicodile.DEFAULT_DICOD_KWARGS.copy()
-        params.update(tol=DEFAULT_TOL_Z, reg=reg, timing=False, z_positive=False,
-                      return_ztz=False, warm_start=True, freeze_support=False,
-                      random_state=None)  # DiCoDiLe defaults
+        # DiCoDiLe defaults
+        params.update(tol=DEFAULT_TOL_Z, reg=reg, timing=False,
+                      z_positive=False, return_ztz=False, warm_start=True,
+                      freeze_support=False, random_state=None)
         params.update(solver_kwargs)
         self.params = params
         self._encoder.init_workers(X, D_hat, reg, self.params)
