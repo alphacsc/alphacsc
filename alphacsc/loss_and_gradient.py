@@ -67,9 +67,9 @@ def compute_objective(X=None, X_hat=None, z_hat=None, D=None,
 
     if reg is not None:
         if isinstance(reg, (int, float)):
-            obj += reg * safe_sum(z_hat)
+            obj += reg * safe_sum(abs(z_hat))
         else:
-            obj += np.sum(reg * safe_sum(z_hat, axis=(1, 2)))
+            obj += np.sum(reg * safe_sum(abs(z_hat), axis=(1, 2)))
 
     return obj
 
