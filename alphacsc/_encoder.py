@@ -12,7 +12,7 @@ def get_z_encoder_for(
         atom_support,
         n_jobs,
         solver='l-bfgs',
-        z_kwargs=dict(),
+        solver_kwargs=dict(),
         algorithm='batch',
         reg=0.1,
         loss='l2',
@@ -41,7 +41,7 @@ def get_z_encoder_for(
     solver : str
         The solver to use for the z update. Options are
         {{'l_bfgs' (default) | 'lgcd' | 'dicodile'}}.
-    z_kwargs : dict
+    solver_kwargs : dict
         Additional keyword arguments to pass to update_z_multi.
     algorithm : 'batch' (default) | 'greedy' | 'online' | 'stochastic'
         Dictionary learning algorithm.
@@ -73,7 +73,8 @@ def get_z_encoder_for(
     enc : instance of ZEncoder
         The encoder.
     """
-    assert isinstance(z_kwargs, dict), 'z_kwargs should be a valid dictionary.'
+    assert isinstance(
+        solver_kwargs, dict), 'solver_kwargs should be a valid dictionary.'
 
     assert (X is not None and len(X.shape) == 3), (
         'X should be a valid array of shape (n_trials, n_channels, n_times).'
@@ -114,7 +115,7 @@ def get_z_encoder_for(
             atom_support,
             n_jobs,
             solver,
-            z_kwargs,
+            solver_kwargs,
             algorithm,
             reg,
             loss,
@@ -142,7 +143,7 @@ def get_z_encoder_for(
             n_atoms,
             atom_support,
             n_jobs,
-            z_kwargs,
+            solver_kwargs,
             algorithm,
             reg
         )
@@ -266,7 +267,7 @@ class AlphaCSCEncoder(BaseZEncoder):
             atom_support,
             n_jobs,
             solver,
-            z_kwargs,
+            solver_kwargs,
             algorithm,
             reg,
             loss,
@@ -284,7 +285,7 @@ class AlphaCSCEncoder(BaseZEncoder):
         self.atom_support = atom_support
         self.n_jobs = n_jobs
         self.z_alg = solver
-        self.z_kwargs = z_kwargs
+        self.solver_kwargs = solver_kwargs
         self.algorithm = algorithm
         self.reg = reg
         self.loss = loss
@@ -320,7 +321,7 @@ class AlphaCSCEncoder(BaseZEncoder):
             reg=reg,
             z0=z0,
             solver=self.z_alg,
-            solver_kwargs=self.z_kwargs,
+            solver_kwargs=self.solver_kwargs,
             freeze_support=unbiased_z_hat,
             loss=self.loss,
             loss_params=self.loss_params,
@@ -382,7 +383,7 @@ class DicodileEncoder(BaseZEncoder):
             n_atoms,
             atom_support,
             n_jobs,
-            z_kwargs,
+            solver_kwargs,
             algorithm,
             reg):
         try:
@@ -414,7 +415,7 @@ class DicodileEncoder(BaseZEncoder):
         params.update(tol=tol, reg=reg, timing=False, z_positive=False,
                       return_ztz=False, warm_start=True, freeze_support=False,
                       random_state=None)  # DiCoDiLe defaults
-        params.update(z_kwargs)
+        params.update(solver_kwargs)
         self.params = params
         self._encoder.init_workers(X, D_hat, reg, self.params)
 
