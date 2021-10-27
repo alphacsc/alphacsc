@@ -497,6 +497,7 @@ class DicodileEncoder(BaseZEncoder):
         if hasattr(self, 'run_statistics'):
             return self._encoder.get_z_hat()[None]
 
+        # If compute_z has not been run, return 0.
         return np.zeros([1, self.n_atoms, self.n_times_valid])
 
     def set_D(self, D):
