@@ -4,6 +4,7 @@ import pytest
 
 from alphacsc._encoder import get_z_encoder_for
 from alphacsc.init_dict import init_dictionary
+from alphacsc.loss_and_gradient import compute_objective
 from alphacsc.utils import check_random_state, construct_X_multi
 from alphacsc.utils.compute_constants import compute_ztz, compute_ztX
 
@@ -386,17 +387,9 @@ def test_get_cost(solver, X, D_hat, requires_dicodile):
 
         assert final_cost < initial_cost
 
-        if solver == 'dicodile':
-            from dicodile.utils.csc import compute_objective
-            cost = compute_objective(
-                X=X[0], z_hat=z_hat[0], D=D_hat, reg=0.1)
-
-        else:
-            from alphacsc.loss_and_gradient import compute_objective
-
-            X_hat = construct_X_multi(z_hat, D_hat, n_channels=N_CHANNELS)
-            cost = compute_objective(X=X, X_hat=X_hat, z_hat=z_hat, reg=0.1,
-                                     D=D_hat)
+        X_hat = construct_X_multi(z_hat, D_hat, n_channels=N_CHANNELS)
+        cost = compute_objective(X=X, X_hat=X_hat, z_hat=z_hat, reg=0.1,
+                                 D=D_hat)
 
         assert np.isclose(cost, final_cost)
 

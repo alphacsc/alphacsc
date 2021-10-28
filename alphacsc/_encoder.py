@@ -417,8 +417,10 @@ class DicodileEncoder(BaseZEncoder):
 
         params = dicodile._dicodile.DEFAULT_DICOD_KWARGS.copy()
         # DiCoDiLe defaults
+        # Impose z_positive = True, as in alphacsc z is always considered
+        # positive
         params.update(tol=DEFAULT_TOL_Z, reg=reg, timing=False,
-                      z_positive=False, return_ztz=False, warm_start=True,
+                      z_positive=True, return_ztz=False, warm_start=True,
                       freeze_support=False, random_state=None)
         params.update(solver_kwargs)
         self.params = params
