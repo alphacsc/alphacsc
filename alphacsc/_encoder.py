@@ -76,8 +76,9 @@ def get_z_encoder_for(
     enc : instance of ZEncoder
         The encoder.
     """
-    assert isinstance(
-        solver_kwargs, dict), 'solver_kwargs should be a valid dictionary.'
+    assert isinstance(solver_kwargs, dict), (
+        'solver_kwargs should be a valid dictionary.'
+    )
 
     assert (X is not None and len(X.shape) == 3), (
         'X should be a valid array of shape (n_trials, n_channels, n_times).'
@@ -135,7 +136,6 @@ def get_z_encoder_for(
         assert uv_constraint == 'auto',  (
             "DiCoDiLe requires uv_constraint=auto."
         )
-
         assert use_sparse_z is False, (
             "DiCoDiLe requires use_sparse_z=False."
         )
