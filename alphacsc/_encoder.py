@@ -415,11 +415,13 @@ class DicodileEncoder(BaseZEncoder):
         self.atom_support = atom_support
         self.algorithm = algorithm
 
+        tol = DEFAULT_TOL_Z * np.std(self.X)
+
         params = dicodile._dicodile.DEFAULT_DICOD_KWARGS.copy()
         # DiCoDiLe defaults
         # Impose z_positive = True, as in alphacsc z is always considered
         # positive
-        params.update(tol=DEFAULT_TOL_Z, reg=reg, timing=False,
+        params.update(tol=tol, reg=reg, timing=False,
                       z_positive=True, return_ztz=False, warm_start=True,
                       freeze_support=False, random_state=None)
         params.update(solver_kwargs)
