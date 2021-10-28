@@ -458,6 +458,8 @@ class DicodileEncoder(BaseZEncoder):
         if hasattr(self, 'run_statistics'):
             return self._encoder.get_cost()
 
+        # If compute_z has not been run, return the value of cost function when
+        # z_hat = 0
         return 0.5 * np.linalg.norm(self.X) ** 2
 
     def get_sufficient_statistics(self):
