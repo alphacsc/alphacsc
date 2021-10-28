@@ -1,9 +1,11 @@
 # pyproject.toml
 [build-system]
 requires = [
-  "setuptools>=42", # https://github.com/pypa/setuptools/issues/2312
-  'wheel',
+  "setuptools>=45",
   "oldest-supported-numpy", # https://github.com/scipy/oldest-supported-numpy
-  'Cython',
+  "setuptools_scm>=6.2"
 ]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+write_to = "alphacsc/_version.py"
