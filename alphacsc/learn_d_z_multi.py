@@ -73,6 +73,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         The kind of norm constraint on the atoms:
         If 'joint', the constraint is norm_2([u, v]) <= 1
         If 'separate', the constraint is norm_2(u) <= 1 and norm_2(v) <= 1
+
+        If solver_z is 'dicodile', then uv_constraint must be auto.
     eps : float
         Stopping criterion. If the cost descent after a uv and a z update is
         smaller than eps, return.
@@ -119,6 +121,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         z_hat are recomputed with reg=0 on the frozen support.
     use_sparse_z : boolean
         Use sparse lil_matrices to store the activations.
+        If solver_z is 'dicodile', then use_sparse_z must be False.
     verbose : int
         The verbosity level.
     callback : func

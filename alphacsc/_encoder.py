@@ -55,21 +55,21 @@ def get_z_encoder_for(
         If solver is 'dicodile', then the loss must be 'l2'.
     loss_params : dict | None
         Parameters of the loss.
-        Does not apply to 'dicodile'.
+        If solver_z is 'dicodile', then loss_params should be None.
     uv_constraint : {{'auto' | 'joint' | 'separate'}}
         The kind of norm constraint on the atoms:
 
         - :code:`'joint'`: the constraint is ||[u, v]||_2 <= 1
         - :code:`'separate'`: the constraint is ||u||_2 <= 1 and ||v||_2 <= 1
 
-        Does not apply to 'dicodile'.
+        If solver_z is 'dicodile', then uv_constraint must be auto.
     feasible_evaluation : boolean, default False
         If feasible_evaluation is True, it first projects on the feasible set,
         i.e. norm(uv_hat) <= 1.
-        Does not apply to 'dicodile'.
+        If solver_z is 'dicodile', then feasible_evaluation must be False.
     use_sparse_z : bool, default False
         Use sparse lil_matrices to store the activations.
-        Does not apply to 'dicodile'.
+        If solver_z is 'dicodile', then use_sparse_z must be False.
 
     Returns
     -------
