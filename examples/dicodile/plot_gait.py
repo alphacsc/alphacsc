@@ -62,7 +62,7 @@ X = trial['data']['RAV'].to_numpy()
 # reshape X to (n_trials, n_channels, n_times)
 X = X.reshape(1, 1, *X.shape)
 
-X.shape
+print(X.shape)
 
 ###############################################################################
 # Note the use of reshape to shape the signal as per alphacsc requirements: the
@@ -85,7 +85,7 @@ D_init = init_dictionary(X,
                          D_init='chunk',
                          random_state=60)
 
-D_init.shape
+print(D_init.shape)
 
 ""
 from alphacsc import BatchCDL
@@ -100,7 +100,6 @@ cdl = BatchCDL(
     n_iter=3, 
     # number of workers to be used for dicodile
     n_jobs=4,
-    loss_params=None,
     # solver for the z-step
     solver_z='dicodile', 
     solver_z_kwargs={'max_iter': 10000}, 
@@ -123,10 +122,9 @@ fig = display_dictionaries(D_init, D_hat)
 ###############################################################################
 # Nor, let's reconstruct the original signal.
 
-z_hat = res._z_hat
-
-""
 from alphacsc.utils import construct_X_multi
+
+z_hat = res._z_hat
 
 X_hat = construct_X_multi(z_hat, D_hat)
 
