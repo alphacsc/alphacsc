@@ -134,8 +134,7 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
     __doc__ = DOC_FMT.format(**DEFAULT)
 
     def __init__(self, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
-                 loss='l2', loss_params=dict(gamma=.1, sakoe_chiba_band=10,
-                                             ordar=10),
+                 loss='l2', loss_params=None,
                  rank1=True, window=False, uv_constraint='separate',
                  solver_z='l_bfgs', solver_z_kwargs={},
                  solver_d='alternate_adaptive', solver_d_kwargs={},
