@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 ====================
 Gait (steps) example
@@ -5,17 +6,13 @@ Gait (steps) example
 In this example, we use DiCoDiLe on an open dataset of gait (steps) IMU time-series to discover patterns in the data. We will then use those to attempt to detect steps and compare our findings with the ground truth.
 """
 
-###############################################################################
 import matplotlib.pyplot as plt
 import numpy as np
-from dicodile.data.gait import get_gait_data
-
-from alphacsc.utils import construct_X_multi
-from alphacsc import learn_d_z_multi
-
 
 ###############################################################################
 # # Retrieve trial data
+
+from dicodile.data.gait import get_gait_data
 
 trial = get_gait_data(subject=6, trial=1)
 
@@ -55,7 +52,7 @@ ax.legend()
 # # Convolutional Dictionary Learning
 
 ###############################################################################
-# Now, let’s use DiCoDiLe to learn patterns from the data and reconstruct the
+# Now, let’s use "dicodile" as solver_z to learn patterns from the data and reconstruct the
 # signal from a sparse representation.
 #
 # First, we initialize a dictionary from parts of the signal:
@@ -72,26 +69,87 @@ X.shape
 # shape of the signal should be (n_trials, n_channels, n_times). Here, we have
 # a single-channel time series so it is (1, 1, n_times).
 
+from alphacsc.init_dict import init_dictionary
+
 # set dictionary size
 n_atoms = 8
 
-# set individual atom (patch) size
+# set individual atom (patch) size.
 n_times_atom = 200
 
+D_init = init_dictionary(X, 
+                         n_atoms=8, 
+                         n_times_atom=200,
+                         rank1=False,
+                         window=True,
+                         D_init='chunk',
+                         random_state=60)
+
+D_init.shape
+
 ""
+from alphacsc import BatchCDL
 
-solver_z_kwargs = {}
+cdl = BatchCDL(
+     # Shape of the dictionary
+    n_atoms, 
+    n_times_atom, 
+    rank1=False,
+    uv_constraint='auto',
+    # Number of iteration for the alternate minimization and cvg threshold
+    n_iter=3, 
+    # number of workers to be used for dicodile
+    n_jobs=4,
+    loss_params=None,
+    # solver for the z-step
+    solver_z='dicodile', 
+    solver_z_kwargs={'max_iter': 10000}, 
+    window=True,
+    D_init= D_init,
+    random_state=60)
 
-solver_z_kwargs["max_iter"] = 100000
+res = cdl.fit(X)
 
-pobj, times, D_hat, z_hat, reg = learn_d_z_multi(X,
-                                                 n_atoms,
-                                                 n_times_atom,
-                                                 n_jobs=4,
-                                                 solver_z='dicodile',
-                                                 rank1=False,
-                                                 loss_params=None,
-                                                 window=True,
-                                                 n_iter=3,
-                                                 random_state=60,
-                                                 solver_z_kwargs=solver_z_kwargs)
+""
+from dicodile.utils.viz import display_dictionaries
+
+D_hat = res._D_hat
+
+fig = display_dictionaries(D_init, D_hat)
+
+###############################################################################
+# # Signal reconstruction
+
+###############################################################################
+# Nor, let's reconstruct the original signal.
+
+z_hat = res._z_hat
+
+""
+from alphacsc.utils import construct_X_multi
+
+X_hat = construct_X_multi(z_hat, D_hat)
+
+###############################################################################
+# Plot a small part of the original and reconstructed signals
+
+fig_hat, ax_hat = plt.subplots()
+ax_hat.plot(X[0][0][5000:5800],
+            label='right foot vertical acceleration (ORIGINAL)')
+ax_hat.plot(X_hat[0][0][5000:5800],
+            label='right foot vertical acceleration (RECONSTRUCTED)')
+ax_hat.set_xlabel('time (x10ms)')
+ax_hat.set_ylabel('acceleration ($m.s^{-2}$)')
+ax_hat.legend()
+
+###############################################################################
+# Check that our representation is indeed sparse:
+
+
+np.count_nonzero(z_hat)
+
+###############################################################################
+# Besides our visual check, a measure of how closely we’re reconstructing the original signal is the (normalized) cross-correlation. Let’s compute this:
+
+np.correlate(X[0][0], X_hat[0][0]) / (
+    np.sqrt(np.correlate(X[0][0], X[0][0]) * np.correlate(X_hat[0][0], X_hat[0][0])))
