@@ -120,7 +120,7 @@ fig = display_dictionaries(D_init, D_hat)
 # # Signal reconstruction
 
 ###############################################################################
-# Nor, let's reconstruct the original signal.
+# Now, let's reconstruct the original signal.
 
 from alphacsc.utils import construct_X_multi
 
