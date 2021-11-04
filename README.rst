@@ -28,14 +28,12 @@ install this package, please run one of the two commands:
 
 .. code::
 
-    pip install numpy cython
     pip install alphacsc
 
 (Development version)
 
 .. code::
 
-	pip install numpy cython
 	pip install git+https://github.com/alphacsc/alphacsc.git#egg=alphacsc
 
 (Dicodile backend)

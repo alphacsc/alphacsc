@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Generate HTML docs
-        uses: ammaraskar/sphinx-action@master
+        uses: ax3l/sphinx-action@newer-sphinx
         with:
           docs-folder: "doc/"
           pre-build-command: |
