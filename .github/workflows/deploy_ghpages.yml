@@ -13,6 +13,8 @@ jobs:
       - uses: actions/checkout@v2
       - name: Generate HTML docs
         uses: ax3l/sphinx-action@newer-sphinx
+        env:
+          ALLOW: --allow-run-as-root
         with:
           docs-folder: "doc/"
           pre-build-command: |
