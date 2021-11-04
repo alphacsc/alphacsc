@@ -17,7 +17,7 @@ jobs:
           docs-folder: "doc/"
           pre-build-command: |
             apt-get update
-            apt-get install -y gcc git
+            apt-get install -y gcc git libopenmpi-dev openmpi-bin
             python -m pip install --upgrade pip
             python -m pip install -e .[doc,dicodile]
             python -m pip install git+https://github.com/mne-tools/mne-python.git@main
