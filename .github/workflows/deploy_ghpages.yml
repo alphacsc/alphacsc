@@ -18,9 +18,10 @@ jobs:
           pre-build-command: |
             apt-get update
             apt-get install -y gcc git
-            pip install numpy cython
-            pip install -e .[doc,dicodile]
-            pip install git+https://github.com/mne-tools/mne-python.git@main
+            python -m pip install --upgrade pip
+            python -m pip install numpy cython
+            python -m pip install -e .[doc,dicodile]
+            python -m pip install git+https://github.com/mne-tools/mne-python.git@main
       - name:  Upload generated HTML as artifact
         uses: actions/upload-artifact@v2
         with:
