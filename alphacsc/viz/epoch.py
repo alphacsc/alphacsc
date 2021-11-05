@@ -22,8 +22,9 @@ def make_epochs(z_hat, info, t_lim, n_times_atom=1):
     new_info = mne.create_info(ch_names=n_atoms, sfreq=info['sfreq'])
     rawarray = mne.io.RawArray(data=z_hat, info=new_info, verbose=False)
     t_min, t_max = t_lim
-    epochs = mne.Epochs(rawarray, info['events'], info['event_id'], t_min,
-                        t_max, verbose=False)
+    info_temp = info['temp']
+    epochs = mne.Epochs(rawarray, info_temp['events'], info_temp['event_id'],
+                        t_min, t_max, verbose=False)
     z_hat_epoched = epochs.get_data()
     return z_hat_epoched
 
@@ -42,17 +43,18 @@ def make_evoke(array, info, t_lim):
 def make_evoke_one_surrogate(array, info, t_lim):
     # generate random events
     info = deepcopy(info)
-    n_events = info['events'].shape[0]
+    info_temp = info['temp']
+    n_events = info_temp['events'].shape[0]
     events = np.random.randint(array.shape[-1], size=n_events)
     events = np.sort(np.unique(events))
     n_events = events.shape[0]
 
-    event_id = np.atleast_1d(info['event_id']).astype('int')
+    event_id = np.atleast_1d(info_temp['event_id']).astype('int')
     n_tile = int(np.ceil(n_events / float(event_id.shape[0])))
     event_id_tiled = np.tile(event_id, n_tile)[:n_events]
 
     events = np.c_[events, np.zeros_like(events), event_id_tiled]
-    info['events'] = events
+    info_temp['events'] = events
 
     # make evoked with random events
     evoked_array = make_evoke(array, info, t_lim)

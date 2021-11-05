@@ -24,7 +24,7 @@ from .update_d_multi import update_uv, update_d
 def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
                     lmbd_max='fixed', reg=0.1, loss='l2',
                     loss_params=dict(gamma=.1, sakoe_chiba_band=10, ordar=10),
-                    rank1=True, uv_constraint='separate', eps=1e-10,
+                    rank1=True, uv_constraint='auto', eps=1e-10,
                     algorithm='batch', algorithm_params=dict(),
                     detrending=None, detrending_params=dict(),
                     solver_z='l-bfgs', solver_z_kwargs=dict(),
@@ -63,14 +63,18 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         The number of parallel jobs.
     loss : 'l2' | 'dtw'
         Loss for the data-fit term. Either the norm l2 or the soft-DTW.
+        If solver_z is 'dicodile', then the loss must be 'l2'.
     loss_params : dict
         Parameters of the loss
     rank1 : boolean
         If set to True, learn rank 1 dictionary atoms.
+        If solver_z is 'dicodile', then rank1 must be False.
     uv_constraint : str in {'joint' | 'separate'}
         The kind of norm constraint on the atoms:
         If 'joint', the constraint is norm_2([u, v]) <= 1
         If 'separate', the constraint is norm_2(u) <= 1 and norm_2(v) <= 1
+
+        If solver_z is 'dicodile', then uv_constraint must be auto.
     eps : float
         Stopping criterion. If the cost descent after a uv and a z update is
         smaller than eps, return.
@@ -97,7 +101,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
             iteration.
     solver_z : str
         The solver to use for the z update. Options are
-        'l-bfgs' (default) | 'lgcd'
+        'l-bfgs' (default) | 'lgcd' |
+        'dicodile' (distributed LGCD, experimental)
     solver_z_kwargs : dict
         Additional keyword arguments to pass to update_z_multi
     solver_d : str
@@ -116,6 +121,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         z_hat are recomputed with reg=0 on the frozen support.
     use_sparse_z : boolean
         Use sparse lil_matrices to store the activations.
+        If solver_z is 'dicodile', then use_sparse_z must be False.
     verbose : int
         The verbosity level.
     callback : func
@@ -203,7 +209,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
     with get_z_encoder_for(X, D_hat, n_atoms, n_times_atom, n_jobs,
                            solver_z, z_kwargs, algorithm, reg, loss,
                            loss_params, uv_constraint,
-                           feasible_evaluation=True,
+                           feasible_evaluation=False,
                            use_sparse_z=use_sparse_z) as z_encoder:
         if callable(callback):
             callback(X, D_hat, z_encoder.get_z_hat(), [])

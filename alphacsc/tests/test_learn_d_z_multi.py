@@ -46,6 +46,35 @@ def test_learn_d_z_multi(loss, solver_d, uv_constraint, rank1, window):
         raise
 
 
+@pytest.mark.parametrize('window', [False, True])
+# TODO expand params when DiCoDiLe is rank-1-capable
+def test_learn_d_z_multi_dicodile(window):
+    pytest.importorskip('dicodile')
+    # smoke test for learn_d_z_multi
+    # XXX For DiCoDiLe, n_trials cannot be >1
+    n_trials, n_channels, n_times = 1, 3, 30
+    n_times_atom, n_atoms = 6, 4
+
+    rng = check_random_state(42)
+    X = rng.randn(n_trials, n_channels, n_times)
+    pobj, times, uv_hat, z_hat, reg = learn_d_z_multi(
+        X, n_atoms, n_times_atom, uv_constraint='auto', rank1=False,
+        solver_d='joint', random_state=0,
+        n_iter=30, eps=-np.inf, solver_z='dicodile', window=window,
+        verbose=0, loss='l2', loss_params=None)
+
+    msg = "Cost function does not go down"
+
+    try:
+        assert np.sum(np.diff(pobj) > 1e-13) == 0, msg
+    except AssertionError:
+        import matplotlib.pyplot as plt
+        plt.semilogy(pobj - np.min(pobj) + 1e-6)
+        plt.title(msg)
+        plt.show()
+        raise
+
+
 @pytest.mark.parametrize('solver_d, uv_constraint, rank1',
                          [('joint', 'joint', True), ('joint', 'separate',
                                                      True),
