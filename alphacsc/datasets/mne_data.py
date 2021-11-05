@@ -126,14 +126,15 @@ def load_data(dataset="somato", n_splits=10, sfreq=None, epoch=None,
 
     # Deep copy before modifying info to avoid issues when saving EvokedArray
     info = deepcopy(info)
-    info['events'] = events
-    info['event_id'] = event_id
-    info['subject'] = dataset
-    info['subjects_dir'] = subjects_dir
+    event_info = dict(event_id=event_id,
+                      events=events,
+                      subject=dataset,
+                      subjects_dir=subjects_dir,
+                      cov=cov,
+                      file_bem=file_bem,
+                      file_trans=file_trans)
 
-    info['cov'] = cov
-    info['file_bem'] = file_bem
-    info['file_trans'] = file_trans
+    info['temp'] = event_info
 
     if return_array:
         n_splits, n_channels, n_times = X.shape
