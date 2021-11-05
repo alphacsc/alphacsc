@@ -146,9 +146,11 @@ def get_z_encoder_for(
             n_atoms,
             atom_support,
             n_jobs,
+            solver,
             solver_kwargs,
             algorithm,
-            reg
+            reg,
+            loss
         )
     else:
         raise ValueError(f'unrecognized solver type: {solver}.')
@@ -441,15 +443,28 @@ class DicodileEncoder(BaseZEncoder):
             n_atoms,
             atom_support,
             n_jobs,
+            solver,
             solver_kwargs,
             algorithm,
-            reg):
+            reg,
+            loss):
         try:
             import dicodile
         except ImportError as ie:
             raise ImportError(
                 'Please install DiCoDiLe by running '
                 '"pip install alphacsc[dicodile]"') from ie
+
+        super().__init__(X,
+                         D_hat,
+                         n_atoms,
+                         atom_support,
+                         n_jobs,
+                         solver,
+                         solver_kwargs,
+                         algorithm,
+                         reg,
+                         loss)
 
         self._encoder = dicodile.update_z.distributed_sparse_encoder.DistributedSparseEncoder(  # noqa: E501
             n_workers=n_jobs)
