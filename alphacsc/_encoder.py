@@ -183,9 +183,7 @@ class BaseZEncoder:
         self.n_trials, self.n_channels, self.n_times = X.shape
         self.n_times_valid = self.n_times - self.atom_support + 1
 
-        self.constants = {}
-        self.constants['n_channels'] = self.n_channels
-        self.constants['XtX'] = np.dot(X.ravel(), X.ravel())
+        self.XtX = np.dot(X.ravel(), X.ravel())
 
     def compute_z(self):
         """
@@ -278,7 +276,10 @@ class BaseZEncoder:
         """
         """
 
-        return self.constants
+        return dict(n_channels=self.n_channels,
+                    XtX=self.XtX,
+                    ztz=self.ztz,
+                    ztX=self.ztX)
 
     def add_one_atom(self, new_atom):
         """
@@ -369,22 +370,23 @@ class AlphaCSCEncoder(BaseZEncoder):
             return_ztz=True)
 
     def compute_z(self, unbiased_z_hat=False):
-        self.z_hat, self.constants['ztz'], self.constants['ztX'] = self._compute_z_aux(  # noqa
-            self.X, self.z_hat, unbiased_z_hat)
+        self.z_hat, self.ztz, self.ztX = self._compute_z_aux(self.X,
+                                                             self.z_hat,
+                                                             unbiased_z_hat)
 
     def compute_z_partial(self, i0, alpha=.8):
-        if 'ztz' not in self.constants:
-            self.constants['ztz'] = np.zeros(
+        if not hasattr(self, 'ztz'):
+            self.ztz = np.zeros(
                 (self.n_atoms, self.n_atoms, 2 * self.atom_support - 1))
-        if 'ztX' not in self.constants:
-            self.constants['ztX'] = np.zeros(
+        if not hasattr(self, 'ztX'):
+            self.ztX = np.zeros(
                 (self.n_atoms, self.n_channels, self.atom_support))
 
         self.z_hat[i0], self.ztz_i0, self.ztX_i0 = self._compute_z_aux(
             self.X[i0], self.z_hat[i0], unbiased_z_hat=False)
 
-        self.constants['ztz'] = alpha * self.constants['ztz'] + self.ztz_i0
-        self.constants['ztX'] = alpha * self.constants['ztX'] + self.ztX_i0
+        self.ztz = alpha * self.ztz + self.ztz_i0
+        self.ztX = alpha * self.ztX + self.ztX_i0
 
     def get_cost(self):
         cost = compute_X_and_objective_multi(self.X,
@@ -399,10 +401,10 @@ class AlphaCSCEncoder(BaseZEncoder):
         return cost
 
     def get_sufficient_statistics(self):
-        assert 'ztz' in self.constants and 'ztX' in self.constants, (
+        assert hasattr(self, 'ztz') and hasattr(self, 'ztX'), (
             'compute_z should be called to access the statistics.'
         )
-        return self.constants['ztz'], self.constants['ztX']
+        return self.ztz, self.ztX
 
     def get_sufficient_statistics_partial(self):
         assert hasattr(self, 'ztz_i0') and hasattr(self, 'ztX_i0'), (
@@ -531,7 +533,8 @@ class DicodileEncoder(BaseZEncoder):
         assert hasattr(self, 'run_statistics'), (
             'compute_z should be called to access the statistics.'
         )
-        return self._encoder.get_sufficient_statistics()
+        self.ztz, self.ztX = self._encoder.get_sufficient_statistics()
+        return self.ztz, self.ztX
 
     def get_sufficient_statistics_partial(self):
         """
