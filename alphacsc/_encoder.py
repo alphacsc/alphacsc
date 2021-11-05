@@ -146,7 +146,6 @@ def get_z_encoder_for(
             n_atoms,
             atom_support,
             n_jobs,
-            solver,
             solver_kwargs,
             algorithm,
             reg,
@@ -165,22 +164,16 @@ class BaseZEncoder:
             n_atoms,
             atom_support,
             n_jobs,
-            solver,
             solver_kwargs,
             algorithm,
             reg,
-            loss,
-            loss_params,
-            uv_constraint,
-            feasible_evaluation,
-            use_sparse_z):
+            loss):
 
         self.X = X
         self.D_hat = D_hat
         self.n_atoms = n_atoms
         self.atom_support = atom_support
         self.n_jobs = n_jobs
-        self.solver = solver
 
         self.solver_kwargs = solver_kwargs
         self.algorithm = algorithm
@@ -284,6 +277,7 @@ class BaseZEncoder:
     def get_constants(self):
         """
         """
+
         return self.constants
 
     def add_one_atom(self, new_atom):
@@ -328,19 +322,15 @@ class AlphaCSCEncoder(BaseZEncoder):
                          n_atoms,
                          atom_support,
                          n_jobs,
-                         solver,
                          solver_kwargs,
                          algorithm,
                          reg,
-                         loss,
-                         loss_params,
-                         uv_constraint,
-                         feasible_evaluation,
-                         use_sparse_z)
+                         loss)
 
         if loss_params is None:
             loss_params = dict(gamma=.1, sakoe_chiba_band=10, ordar=10)
 
+        self.solver = solver
         self.loss_params = loss_params
         self.uv_constraint = uv_constraint
         self.feasible_evaluation = feasible_evaluation
@@ -443,7 +433,6 @@ class DicodileEncoder(BaseZEncoder):
             n_atoms,
             atom_support,
             n_jobs,
-            solver,
             solver_kwargs,
             algorithm,
             reg,
@@ -460,7 +449,6 @@ class DicodileEncoder(BaseZEncoder):
                          n_atoms,
                          atom_support,
                          n_jobs,
-                         solver,
                          solver_kwargs,
                          algorithm,
                          reg,
