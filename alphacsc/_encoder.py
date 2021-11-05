@@ -180,7 +180,7 @@ class BaseZEncoder:
         self.n_atoms = n_atoms
         self.atom_support = atom_support
         self.n_jobs = n_jobs
-        self.z_alg = solver
+        self.solver = solver
 
         self.solver_kwargs = solver_kwargs
         self.algorithm = algorithm
@@ -370,7 +370,7 @@ class AlphaCSCEncoder(BaseZEncoder):
             self.D_hat,
             reg=reg,
             z0=z0,
-            solver=self.z_alg,
+            solver=self.solver,
             solver_kwargs=self.solver_kwargs,
             freeze_support=unbiased_z_hat,
             loss=self.loss,
