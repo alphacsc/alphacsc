@@ -493,6 +493,7 @@ class DicodileEncoder(BaseZEncoder):
         This is the "main" function of the algorithm.
         """
         self.run_statistics = self._encoder.process_z_hat()
+        self.ztz, self.ztX = self._encoder.get_sufficient_statistics()
 
     def compute_z_partial(self, i0):
         """
@@ -533,7 +534,6 @@ class DicodileEncoder(BaseZEncoder):
         assert hasattr(self, 'run_statistics'), (
             'compute_z should be called to access the statistics.'
         )
-        self.ztz, self.ztX = self._encoder.get_sufficient_statistics()
         return self.ztz, self.ztX
 
     def get_sufficient_statistics_partial(self):
