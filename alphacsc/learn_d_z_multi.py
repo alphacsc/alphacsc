@@ -229,10 +229,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
 
         # common parameters
         kwargs = dict(
-            X=X,
-            D_hat=D_hat,
             z_encoder=z_encoder,
-            n_atoms=n_atoms,
             compute_d_func=compute_d_func,
             end_iter_func=end_iter_func,
             n_iter=n_iter,
@@ -292,11 +289,13 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
     return pobj, times, D_hat, z_hat, reg
 
 
-def _batch_learn(X, D_hat, z_encoder, n_atoms, compute_d_func,
-                 end_iter_func, n_iter=100,
+def _batch_learn(z_encoder, compute_d_func, end_iter_func, n_iter=100,
                  lmbd_max='fixed', reg=None, verbose=0, greedy=False,
                  random_state=None, name="batch", uv_constraint='separate',
                  window=False):
+
+    X = z_encoder.X
+    n_atoms = z_encoder.n_atoms
     reg_ = reg
 
     if greedy:
@@ -391,14 +390,17 @@ def _batch_learn(X, D_hat, z_encoder, n_atoms, compute_d_func,
         if end_iter_func(X, z_hat, D_hat, pobj, ii):
             break
 
-    return pobj, times, D_hat, z_encoder.get_z_hat()
+    return pobj, times, z_encoder.D_hat, z_encoder.get_z_hat()
 
 
-def _online_learn(X, D_hat, z_encoder, n_atoms, compute_d_func,
-                  end_iter_func, n_iter=100, verbose=0,
-                  random_state=None, lmbd_max='fixed', reg=None,
+def _online_learn(z_encoder, compute_d_func, end_iter_func, n_iter=100,
+                  verbose=0, random_state=None, lmbd_max='fixed', reg=None,
                   alpha=.8, batch_selection='random', batch_size=1,
                   name="online", uv_constraint='separate', window=False):
+
+    X = z_encoder.X
+    D_hat = z_encoder.D_hat
+    n_atoms = z_encoder.n_atoms
 
     reg_ = reg
 
@@ -487,7 +489,7 @@ def _online_learn(X, D_hat, z_encoder, n_atoms, compute_d_func,
         if end_iter_func(X, z_hat, D_hat, pobj, ii):
             break
 
-    return pobj, times, D_hat, z_encoder.get_z_hat()
+    return pobj, times, z_encoder.D_hat, z_encoder.get_z_hat()
 
 
 def get_iteration_func(eps, stopping_pobj, callback, lmbd_max, name, verbose,
