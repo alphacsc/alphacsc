@@ -10,7 +10,6 @@ import sys
 
 import numpy as np
 
-from .utils import lil
 from .utils import check_dimension
 from .utils import check_random_state
 from .utils.convolution import sort_atoms_by_explained_variances
@@ -19,6 +18,7 @@ from .utils.whitening import whitening
 from .init_dict import init_dictionary, get_max_error_dict
 from ._encoder import get_z_encoder_for
 from .update_d_multi import update_uv, update_d
+from .update_d_multi import check_solver_and_constraints
 
 
 def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
@@ -26,15 +26,13 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
                     loss_params=dict(gamma=.1, sakoe_chiba_band=10, ordar=10),
                     rank1=True, uv_constraint='auto', eps=1e-10,
                     algorithm='batch', algorithm_params=dict(),
-                    detrending=None, detrending_params=dict(),
                     solver_z='l-bfgs', solver_z_kwargs=dict(),
-                    solver_d='alternate_adaptive', solver_d_kwargs=dict(),
+                    solver_d='auto', solver_d_kwargs=dict(),
                     D_init=None, D_init_params=dict(),
-                    # XXX use_sparse_z force to False currently
-                    unbiased_z_hat=False, use_sparse_z=False,
-                    stopping_pobj=None, raise_on_increase=True,
-                    verbose=10, callback=None, random_state=None, name="DL",
-                    window=False, sort_atoms=False):
+                    unbiased_z_hat=False, stopping_pobj=None,
+                    raise_on_increase=True, verbose=10, callback=None,
+                    random_state=None, name="DL", window=False,
+                    sort_atoms=False):
     """Multivariate Convolutional Sparse Coding with optional rank-1 constraint
 
     Parameters
@@ -69,12 +67,11 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
     rank1 : boolean
         If set to True, learn rank 1 dictionary atoms.
         If solver_z is 'dicodile', then rank1 must be False.
-    uv_constraint : str in {'joint' | 'separate'}
-        The kind of norm constraint on the atoms:
+    uv_constraint : str in {'joint' | 'separate' | 'auto'}
+        The kind of norm constraint on the atoms if using rank=True.
         If 'joint', the constraint is norm_2([u, v]) <= 1
         If 'separate', the constraint is norm_2(u) <= 1 and norm_2(v) <= 1
-
-        If solver_z is 'dicodile', then uv_constraint must be auto.
+        If rank1 is False, then uv_constraint must be 'auto'.
     eps : float
         Stopping criterion. If the cost descent after a uv and a z update is
         smaller than eps, return.
@@ -106,8 +103,9 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
     solver_z_kwargs : dict
         Additional keyword arguments to pass to update_z_multi
     solver_d : str
-        The solver to use for the d update. Options are
-        'alternate' | 'alternate_adaptive' (default) | 'joint'
+        The solver to use for the d update. If rank1 is False, only option is
+        'fista'. Else, options are 'alternate', 'alternate_adaptive' (default)
+        or 'joint'.
     solver_d_kwargs : dict
         Additional keyword arguments to provide to update_d
     D_init : str or array, shape (n_atoms, n_channels + n_times_atoms) or \
@@ -119,14 +117,11 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
     unbiased_z_hat : boolean
         If set to True, the value of the non-zero coefficients in the returned
         z_hat are recomputed with reg=0 on the frozen support.
-    use_sparse_z : boolean
-        Use sparse lil_matrices to store the activations.
-        If solver_z is 'dicodile', then use_sparse_z must be False.
     verbose : int
         The verbosity level.
     callback : func
         A callback function called at the end of each loop of the
-        coordinate descent.
+        coordinate descent, with z_encoder and pob as its arguments.
     random_state : int | None
         The random state.
     raise_on_increase : boolean
@@ -155,6 +150,10 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         f"got '{lmbd_max}'"
     )
 
+    solver_d, uv_constraint = check_solver_and_constraints(
+        rank1, solver_d, uv_constraint
+    )
+
     _, n_channels, _ = check_dimension(X)
 
     # Rescale the problem to avoid underflow issues
@@ -172,8 +171,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
     b_hat_0 = rng.randn(n_atoms * (n_channels + n_times_atom))
     init_duration = time.time() - start
 
-    z_kwargs = dict(verbose=verbose)
-    z_kwargs.update(solver_z_kwargs)
+    z_kwargs = dict(verbose=verbose, **solver_z_kwargs)
 
     # Compute the coefficients to whiten X. TODO: add timing
     if loss == 'whitening':
@@ -191,7 +189,13 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         # The typical stochastic algorithm samples one signal, compute the
         # associated value z and then perform one step of gradient descent
         # for D.
+        assert 'max_iter' not in solver_d_kwargs, (
+            "with algorithm='stochastic', max_iter is forced to 1."
+        )
         d_kwargs["max_iter"] = 1
+    elif algorithm == 'greedy':
+        # Initialize D with no atoms as they will be added sequentially.
+        D_hat = D_hat[:0]
 
     def compute_d_func(z_encoder):
         X = z_encoder.X
@@ -199,24 +203,23 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         D_hat = z_encoder.D_hat
         constants = z_encoder.get_constants()
         if rank1:
-            return update_uv(X, z_hat, uv_hat0=D_hat, constants=constants,
-                             b_hat_0=b_hat_0, solver_d=solver_d,
-                             uv_constraint=uv_constraint, loss=loss,
-                             loss_params=loss_params, window=window,
-                             **d_kwargs)
+            return update_uv(
+                X, z_hat, uv_hat0=D_hat, constants=constants, b_hat_0=b_hat_0,
+                solver_d=solver_d, uv_constraint=uv_constraint, window=window,
+                loss=loss, loss_params=loss_params, **d_kwargs
+            )
         else:
-            return update_d(X, z_hat, D_hat0=D_hat, constants=constants,
-                            b_hat_0=b_hat_0, solver_d=solver_d,
-                            uv_constraint=uv_constraint, loss=loss,
-                            loss_params=loss_params, window=window, **d_kwargs)
+            return update_d(
+                X, z_hat, D_hat0=D_hat, constants=constants,
+                b_hat_0=b_hat_0, solver_d=solver_d, window=window,
+                loss=loss, loss_params=loss_params, **d_kwargs
+            )
 
-    with get_z_encoder_for(X, D_hat, n_atoms, n_times_atom, n_jobs,
-                           solver_z, z_kwargs, algorithm, reg, loss,
-                           loss_params, uv_constraint,
-                           feasible_evaluation=False,
-                           use_sparse_z=use_sparse_z) as z_encoder:
+    with get_z_encoder_for(X, D_hat, n_atoms, n_times_atom, n_jobs, solver_z,
+                           z_kwargs, reg, loss, loss_params, uv_constraint,
+                           feasible_evaluation=False) as z_encoder:
         if callable(callback):
-            callback(X, D_hat, z_encoder.get_z_hat(), [])
+            callback(z_encoder, [])
 
         end_iter_func = get_iteration_func(
             eps,
@@ -225,7 +228,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
             lmbd_max,
             name,
             verbose,
-            raise_on_increase)
+            raise_on_increase
+        )
 
         # common parameters
         kwargs = dict(
@@ -239,7 +243,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
             reg=reg,
             lmbd_max=lmbd_max,
             name=name,
-            uv_constraint=uv_constraint)
+            uv_constraint=uv_constraint
+        )
         kwargs.update(algorithm_params)
 
         if algorithm == 'batch':
@@ -323,10 +328,7 @@ def _batch_learn(z_encoder, compute_d_func, end_iter_func, n_iter=100,
                 z_encoder.D_hat.shape[0] < n_atoms:
             # add a new atom every n_iter_by_atom iterations
             new_atom = get_max_error_dict(
-                X,
-                z_encoder.get_z_hat(),
-                z_encoder.D_hat,
-                uv_constraint=uv_constraint,
+                z_encoder, uv_constraint=uv_constraint,
                 window=window)[0]
             # XXX what should happen here when using DiCoDiLe?
             z_encoder.add_one_atom(new_atom)
@@ -351,13 +353,12 @@ def _batch_learn(z_encoder, compute_d_func, end_iter_func, n_iter=100,
         # XXX to adapt to Encoder class, we must fetch z_hat at each iteration.
         # XXX is that acceptable or not? (seems that DiCoDiLe does not require
         # it)
-        z_hat = z_encoder.get_z_hat()
-
-        z_nnz, z_size = lil.get_nnz_and_size(z_hat)
+        z_nnz = z_encoder.get_z_nnz()
         if verbose > 5:
-            print("[{}] sparsity: {:.3e}".format(
-                name, z_nnz.sum() / z_size))
-            print('[{}] Objective (z) : {:.3e}'.format(name, pobj[-1]))
+            print(
+                '[{}] Objective (z) : {:.3e} (sparsity: {:.3e})'
+                .format(name, pobj[-1], z_nnz.mean())
+            )
 
         if np.all(z_nnz == 0):
             import warnings
@@ -378,7 +379,7 @@ def _batch_learn(z_encoder, compute_d_func, end_iter_func, n_iter=100,
         null_atom_indices = np.where(z_nnz == 0)[0]
         if len(null_atom_indices) > 0:
             k0 = null_atom_indices[0]
-            D_hat[k0] = get_max_error_dict(X, z_hat, D_hat, uv_constraint,
+            D_hat[k0] = get_max_error_dict(z_encoder, uv_constraint,
                                            window=window)[0]
             z_encoder.set_D(D_hat)
             if verbose > 5:
@@ -387,7 +388,8 @@ def _batch_learn(z_encoder, compute_d_func, end_iter_func, n_iter=100,
         if verbose > 5:
             print('[{}] Objective (d) : {:.3e}'.format(name, pobj[-1]))
 
-        if end_iter_func(X, z_hat, D_hat, pobj, ii):
+        if ((not greedy or D_hat.shape[0] == n_atoms)
+                and end_iter_func(z_encoder, pobj, ii)):
             break
 
     return pobj, times, z_encoder.D_hat, z_encoder.get_z_hat()
@@ -446,17 +448,16 @@ def _online_learn(z_encoder, compute_d_func, end_iter_func, n_iter=100,
                 "not implemented.".format(batch_selection))
         z_encoder.compute_z_partial(i0, alpha)
 
-        z_hat = z_encoder.get_z_hat()  # XXX consider get_z_hat_partial?
-
         # monitor cost function
         times.append(time.time() - start)
         pobj.append(z_encoder.get_cost())
 
-        z_nnz, z_size = lil.get_nnz_and_size(z_hat)
+        z_nnz = z_encoder.get_z_nnz()
         if verbose > 5:
-            print("[{}] sparsity: {:.3e}".format(
-                name, z_nnz.sum() / z_size))
-            print('[{}] Objective (z) : {:.3e}'.format(name, pobj[-1]))
+            print(
+                '[{}] Objective (z) : {:.3e} (sparsity: {:.3e})'
+                .format(name, pobj[-1], z_nnz.mean())
+            )
 
         if np.all(z_nnz == 0):
             import warnings
@@ -477,7 +478,7 @@ def _online_learn(z_encoder, compute_d_func, end_iter_func, n_iter=100,
         null_atom_indices = np.where(z_nnz == 0)[0]
         if len(null_atom_indices) > 0:
             k0 = null_atom_indices[0]
-            D_hat[k0] = get_max_error_dict(X, z_hat, D_hat, uv_constraint,
+            D_hat[k0] = get_max_error_dict(z_encoder, uv_constraint,
                                            window=window)[0]
             z_encoder.set_D(D_hat)
             if verbose > 5:
@@ -486,7 +487,7 @@ def _online_learn(z_encoder, compute_d_func, end_iter_func, n_iter=100,
         if verbose > 5:
             print('[{}] Objective (d) : {:.3e}'.format(name, pobj[-1]))
 
-        if end_iter_func(X, z_hat, D_hat, pobj, ii):
+        if end_iter_func(z_encoder, pobj, ii):
             break
 
     return pobj, times, z_encoder.D_hat, z_encoder.get_z_hat()
@@ -494,9 +495,9 @@ def _online_learn(z_encoder, compute_d_func, end_iter_func, n_iter=100,
 
 def get_iteration_func(eps, stopping_pobj, callback, lmbd_max, name, verbose,
                        raise_on_increase):
-    def end_iteration(X, z_hat, D_hat, pobj, iteration):
+    def end_iteration(z_encoder, pobj, iteration):
         if callable(callback):
-            callback(X, D_hat, z_hat, pobj)
+            callback(z_encoder, pobj)
 
         # Only check that the cost is always going down when the regularization
         # parameter is fixed.

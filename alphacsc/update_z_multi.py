@@ -10,11 +10,10 @@ from scipy import optimize
 from joblib import Parallel, delayed
 
 
-from . import cython_code
 from .utils.optim import fista
 from .utils import check_random_state
+from .utils.dictionary import get_D_shape
 from .loss_and_gradient import gradient_zi
-from .utils.lil import is_list_of_lil, is_lil
 from .utils.coordinate_descent import _coordinate_descent_idx
 from .utils.compute_constants import compute_DtD, compute_ztz, compute_ztX
 
@@ -35,8 +34,7 @@ def update_z_multi(X, D, reg, z0=None, solver='l-bfgs', solver_kwargs=dict(),
         the spatial and temporal atoms uv (n_atoms, n_channels + n_times_atom).
     reg : float
         The regularization constant
-    z0 : None | array, shape (n_trials, n_atoms, n_times_valid) |
-         list of sparse lil_matrices, shape (n_atoms, n_times_valid)
+    z0 : None | array, shape (n_trials, n_atoms, n_times_valid)
         Init for z (can be used for warm restart).
     solver : 'l-bfgs' | "lgcd"
         The solver to use.
@@ -68,11 +66,7 @@ def update_z_multi(X, D, reg, z0=None, solver='l-bfgs', solver_kwargs=dict(),
         The true codes.
     """
     n_trials, n_channels, n_times = X.shape
-    if D.ndim == 2:
-        n_atoms, n_channels_n_times_atom = D.shape
-        n_times_atom = n_channels_n_times_atom - n_channels
-    else:
-        n_atoms, n_channels, n_times_atom = D.shape
+    n_atoms, n_channels, n_times_atom = get_D_shape(D, n_channels)
     n_times_valid = n_times - n_times_atom + 1
 
     # Generate different seeds for the parallel updates
@@ -105,9 +99,8 @@ def update_z_multi(X, D, reg, z0=None, solver='l-bfgs', solver_kwargs=dict(),
             ztz += ztz_i
             ztX += ztX_i
 
-    # If z_hat is a ndarray, stack and reorder the columns
-    if not is_list_of_lil(z0):
-        z_hats = np.array(z_hats).reshape(n_trials, n_atoms, n_times_valid)
+    # stack and reorder the columns
+    z_hats = np.array(z_hats).reshape(n_trials, n_atoms, n_times_valid)
 
     return z_hats, ztz, ztX
 
@@ -136,17 +129,10 @@ def _update_z_multi_idx(X_i, D, reg, z0_i, debug, solver='l-bfgs',
                         timing=False, random_state=None):
     t_start = time.time()
     n_channels, n_times = X_i.shape
-    if D.ndim == 2:
-        n_atoms, n_channels_n_times_atom = D.shape
-        n_times_atom = n_channels_n_times_atom - n_channels
-    else:
-        n_atoms, n_channels, n_times_atom = D.shape
+    n_atoms, n_channels, n_times_atom = get_D_shape(D, n_channels)
     n_times_valid = n_times - n_times_atom + 1
 
     assert not (freeze_support and z0_i is None), 'Impossible !'
-
-    if is_lil(z0_i) and solver != "lgcd":
-        raise NotImplementedError()
 
     rng = check_random_state(random_state)
 
@@ -236,17 +222,11 @@ def _update_z_multi_idx(X_i, D, reg, z0_i, debug, solver='l-bfgs',
         raise ValueError("Unrecognized solver %s. Must be 'ista', 'fista',"
                          " 'l-bfgs', or 'lgcd'." % solver)
 
-    if not is_lil(z_hat):
-        z_hat = z_hat.reshape(n_atoms, n_times_valid)
+    z_hat = z_hat.reshape(n_atoms, n_times_valid)
 
     if loss == 'l2' and return_ztz:
-        if not is_lil(z_hat):
-            ztz = compute_ztz(z_hat[None], n_times_atom)
-            ztX = compute_ztX(z_hat[None], X_i[None])
-        else:
-            cython_code._assert_cython()
-            ztz = cython_code._fast_compute_ztz([z_hat], n_times_atom)
-            ztX = cython_code._fast_compute_ztX([z_hat], X_i[None])
+        ztz = compute_ztz(z_hat[None], n_times_atom)
+        ztX = compute_ztX(z_hat[None], X_i[None])
     else:
         ztz, ztX = None, None
 

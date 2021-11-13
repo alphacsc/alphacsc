@@ -9,8 +9,7 @@
 import numba
 import numpy as np
 
-from .. import cython_code
-from .lil import get_z_shape, is_lil
+from .dictionary import get_D_shape
 
 
 def construct_X(z, ds):
@@ -56,12 +55,9 @@ def construct_X_multi(z, D=None, n_channels=None):
     -------
     X : array, shape (n_trials, n_channels, n_times)
     """
-    n_trials, n_atoms, n_times_valid = get_z_shape(z)
+    n_trials, n_atoms, n_times_valid = z.shape
     assert n_atoms == D.shape[0]
-    if D.ndim == 2:
-        n_times_atom = D.shape[1] - n_channels
-    else:
-        _, n_channels, n_times_atom = D.shape
+    _, n_channels, n_times_atom = get_D_shape(D, n_channels)
     n_times = n_times_valid + n_times_atom - 1
 
     X = np.zeros((n_trials, n_channels, n_times))
@@ -172,15 +168,7 @@ def _choose_convolve_multi(z_i, D=None, n_channels=None):
     """
     assert z_i.shape[0] == D.shape[0]
 
-    if is_lil(z_i):
-        cython_code._assert_cython()
-        if D.ndim == 2:
-            return cython_code._fast_sparse_convolve_multi_uv(
-                z_i, D, n_channels, compute_D=True)
-        else:
-            return cython_code._fast_sparse_convolve_multi(z_i, D)
-
-    elif np.sum(z_i != 0) < 0.01 * z_i.size:
+    if np.sum(z_i != 0) < 0.01 * z_i.size:
         if D.ndim == 2:
             return _sparse_convolve_multi_uv(z_i, D, n_channels)
         else:

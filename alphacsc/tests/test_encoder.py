@@ -38,23 +38,20 @@ def requires_dicodile(solver):
 
 
 @pytest.mark.parametrize('solver', ['l-bfgs', 'lgcd'])
-@pytest.mark.parametrize('algorithm', ['batch', 'greedy', 'online',
-                                       'stochastic'])
 @pytest.mark.parametrize('loss', ['l2', 'dtw', 'whitening'])
 @pytest.mark.parametrize('uv_constraint', ['joint', 'separate', 'auto'])
 @pytest.mark.parametrize('feasible_evaluation', [True, False])
 @pytest.mark.parametrize('n_trials', [1, 2, 5])
 @pytest.mark.parametrize('rank1', [True, False])
-def test_get_encoder_for_alphacsc(X, solver, D_hat, algorithm, loss,
-                                  uv_constraint, feasible_evaluation):
+def test_get_encoder_for_alphacsc(X, solver, D_hat, loss, uv_constraint,
+                                  feasible_evaluation):
     """Test for valid values for alphacsc backend."""
 
     with get_z_encoder_for(solver=solver,
                            X=X,
                            D_hat=D_hat,
                            n_atoms=N_ATOMS,
-                           atom_support=N_TIMES_ATOM,
-                           algorithm=algorithm,
+                           n_times_atom=N_TIMES_ATOM,
                            loss=loss,
                            uv_constraint=uv_constraint,
                            feasible_evaluation=feasible_evaluation,
@@ -71,7 +68,7 @@ def test_get_encoder_for_dicodile(X, D_hat, solver, requires_dicodile):
                            X=X,
                            D_hat=D_hat,
                            n_atoms=N_ATOMS,
-                           atom_support=N_TIMES_ATOM,
+                           n_times_atom=N_TIMES_ATOM,
                            n_jobs=2) as z_encoder:
 
         assert z_encoder is not None
@@ -88,7 +85,7 @@ def test_get_encoder_for_dicodile_error_n_trials(solver, X, D_hat,
                           X=X,
                           D_hat=D_hat,
                           n_atoms=N_ATOMS,
-                          atom_support=N_TIMES_ATOM,
+                          n_times_atom=N_TIMES_ATOM,
                           n_jobs=2)
 
 
@@ -105,7 +102,7 @@ def test_get_encoder_for_dicodile_error_loss(solver, X, D_hat, loss,
                           D_hat=D_hat,
                           loss=loss,
                           n_atoms=N_ATOMS,
-                          atom_support=N_TIMES_ATOM,
+                          n_times_atom=N_TIMES_ATOM,
                           n_jobs=2)
 
 
@@ -121,7 +118,7 @@ def test_get_encoder_for_dicodile_error_loss_params(solver, X, D_hat,
                           D_hat=D_hat,
                           loss_params={},
                           n_atoms=N_ATOMS,
-                          atom_support=N_TIMES_ATOM,
+                          n_times_atom=N_TIMES_ATOM,
                           n_jobs=2)
 
 
@@ -137,7 +134,7 @@ def test_get_encoder_for_dicodile_error_feasible_ev(solver, X, D_hat,
                           D_hat=D_hat,
                           feasible_evaluation=True,
                           n_atoms=N_ATOMS,
-                          atom_support=N_TIMES_ATOM,
+                          n_times_atom=N_TIMES_ATOM,
                           n_jobs=2)
 
 
@@ -153,23 +150,7 @@ def test_get_encoder_for_dicodile_error_uv_constraint(solver, X, D_hat,
                           D_hat=D_hat,
                           uv_constraint='separate',
                           n_atoms=N_ATOMS,
-                          atom_support=N_TIMES_ATOM,
-                          n_jobs=2)
-
-
-@pytest.mark.parametrize('solver, n_trials, rank1', [('dicodile', 1, False)])
-def test_get_encoder_for_dicodile_error_use_sparse_z(solver, X, D_hat,
-                                                     requires_dicodile):
-    """Test for invalid use_sparse_z value for dicodile backend."""
-
-    with pytest.raises(AssertionError,
-                       match="DiCoDiLe requires use_sparse_z=False."):
-        get_z_encoder_for(solver=solver,
-                          X=X,
-                          D_hat=D_hat,
-                          use_sparse_z=True,
-                          n_atoms=N_ATOMS,
-                          atom_support=N_TIMES_ATOM,
+                          n_times_atom=N_TIMES_ATOM,
                           n_jobs=2)
 
 
@@ -182,7 +163,7 @@ def test_get_encoder_for_dicodile_error_rank1(X, D_hat, requires_dicodile):
                           X=X,
                           D_hat=D_hat,
                           n_atoms=N_ATOMS,
-                          atom_support=N_TIMES_ATOM,
+                          n_times_atom=N_TIMES_ATOM,
                           n_jobs=2)
 
 
@@ -198,7 +179,7 @@ def test_get_encoder_for_error_solver(X, D_hat,  solver):
                           X=X,
                           D_hat=D_hat,
                           n_atoms=N_ATOMS,
-                          atom_support=N_TIMES_ATOM,
+                          n_times_atom=N_TIMES_ATOM,
                           n_jobs=2)
 
 
@@ -212,7 +193,7 @@ def test_get_encoder_for_error_solver_kwargs(X, D_hat):
                           X=X,
                           D_hat=D_hat,
                           n_atoms=N_ATOMS,
-                          atom_support=N_TIMES_ATOM,
+                          n_times_atom=N_TIMES_ATOM,
                           n_jobs=2)
 
 
@@ -227,7 +208,7 @@ def test_get_encoder_for_error_X(X_error, D_hat):
         get_z_encoder_for(X=X_error,
                           D_hat=D_hat,
                           n_atoms=N_ATOMS,
-                          atom_support=N_TIMES_ATOM,
+                          n_times_atom=N_TIMES_ATOM,
                           n_jobs=2)
 
 
@@ -241,23 +222,7 @@ def test_get_encoder_for_error_D_hat(X, D_init):
         get_z_encoder_for(X=X,
                           D_hat=D_init,
                           n_atoms=N_ATOMS,
-                          atom_support=N_TIMES_ATOM,
-                          n_jobs=2)
-
-
-@pytest.mark.parametrize('n_trials', [2])
-@pytest.mark.parametrize('rank1', [True])
-@pytest.mark.parametrize('algorithm', [None, 'other'])
-def test_get_encoder_for_error_algorithm(X, D_hat,  algorithm):
-    """Tests for invalid values of `algorithm`."""
-
-    with pytest.raises(AssertionError,
-                       match=f"unrecognized algorithm type: {algorithm}"):
-        get_z_encoder_for(X=X,
-                          D_hat=D_hat,
-                          n_atoms=N_ATOMS,
-                          atom_support=N_TIMES_ATOM,
-                          algorithm=algorithm,
+                          n_times_atom=N_TIMES_ATOM,
                           n_jobs=2)
 
 
@@ -271,7 +236,7 @@ def test_get_encoder_for_error_reg(X, D_hat):
         get_z_encoder_for(X=X,
                           D_hat=D_hat,
                           n_atoms=N_ATOMS,
-                          atom_support=N_TIMES_ATOM,
+                          n_times_atom=N_TIMES_ATOM,
                           reg=None,
                           n_jobs=2)
 
@@ -287,7 +252,7 @@ def test_get_encoder_for_error_loss(X, D_hat,  loss):
         get_z_encoder_for(X=X,
                           D_hat=D_hat,
                           n_atoms=N_ATOMS,
-                          atom_support=N_TIMES_ATOM,
+                          n_times_atom=N_TIMES_ATOM,
                           loss=loss,
                           n_jobs=2)
 
@@ -302,7 +267,7 @@ def test_get_encoder_for_error_loss_params(X, D_hat):
         get_z_encoder_for(X=X,
                           D_hat=D_hat,
                           n_atoms=N_ATOMS,
-                          atom_support=N_TIMES_ATOM,
+                          n_times_atom=N_TIMES_ATOM,
                           loss_params=42,
                           n_jobs=2)
 
@@ -319,7 +284,7 @@ def test_get_encoder_for_error_uv_constraint(X, D_hat,
         get_z_encoder_for(X=X,
                           D_hat=D_hat,
                           n_atoms=N_ATOMS,
-                          atom_support=N_TIMES_ATOM,
+                          n_times_atom=N_TIMES_ATOM,
                           uv_constraint=uv_constraint,
                           n_jobs=2)
 
@@ -335,37 +300,14 @@ def test_get_z_hat(solver, X, D_hat, requires_dicodile):
                            X=X,
                            D_hat=D_hat,
                            n_atoms=N_ATOMS,
-                           atom_support=N_TIMES_ATOM,
-                           n_jobs=2,
-                           use_sparse_z=False) as z_encoder:
+                           n_times_atom=N_TIMES_ATOM,
+                           n_jobs=2) as z_encoder:
 
         assert z_encoder is not None
         assert not z_encoder.get_z_hat().any()
 
         z_encoder.compute_z()
         assert z_encoder.get_z_hat().any()
-
-
-@pytest.mark.parametrize('n_trials', [1, 3])
-@pytest.mark.parametrize('rank1', [True, False])
-def test_get_z_hat_use_sparse_z(X, D_hat):
-    """Test for valid values when use_sparse_z=True."""
-    with get_z_encoder_for(solver='lgcd',
-                           X=X,
-                           D_hat=D_hat,
-                           n_atoms=N_ATOMS,
-                           atom_support=N_TIMES_ATOM,
-                           n_jobs=2,
-                           use_sparse_z=True) as z_encoder:
-
-        assert z_encoder is not None
-
-        for matrix in z_encoder.get_z_hat():
-            assert not matrix.count_nonzero()
-
-        z_encoder.compute_z()
-        for matrix in z_encoder.get_z_hat():
-            assert matrix.count_nonzero()
 
 
 @pytest.mark.parametrize('solver, n_trials, rank1', [('l-bfgs', 3, True),
@@ -377,7 +319,7 @@ def test_get_cost(solver, X, D_hat, requires_dicodile):
                            X=X,
                            D_hat=D_hat,
                            n_atoms=N_ATOMS,
-                           atom_support=N_TIMES_ATOM,
+                           n_times_atom=N_TIMES_ATOM,
                            n_jobs=2) as z_encoder:
         initial_cost = z_encoder.get_cost()
 
@@ -404,7 +346,7 @@ def test_compute_z(solver, X, D_hat, requires_dicodile):
                            X=X,
                            D_hat=D_hat,
                            n_atoms=N_ATOMS,
-                           atom_support=N_TIMES_ATOM,
+                           n_times_atom=N_TIMES_ATOM,
                            n_jobs=2) as z_encoder:
         z_encoder.compute_z()
         assert z_encoder.get_z_hat().any()
@@ -418,7 +360,7 @@ def test_compute_z_partial(X, D_hat, n_trials, rng):
     with get_z_encoder_for(X=X,
                            D_hat=D_hat,
                            n_atoms=N_ATOMS,
-                           atom_support=N_TIMES_ATOM,
+                           n_times_atom=N_TIMES_ATOM,
                            n_jobs=2) as z_encoder:
 
         i0 = rng.choice(n_trials, 1, replace=False)
@@ -436,7 +378,7 @@ def test_get_sufficient_statistics(solver, X, D_hat, requires_dicodile):
                                   X=X,
                                   D_hat=D_hat,
                                   n_atoms=N_ATOMS,
-                                  atom_support=N_TIMES_ATOM,
+                                  n_times_atom=N_TIMES_ATOM,
                                   n_jobs=2)
 
     z_encoder.compute_z()
@@ -461,7 +403,7 @@ def test_get_sufficient_statistics_error(solver, X, D_hat,
                                   X=X,
                                   D_hat=D_hat,
                                   n_atoms=N_ATOMS,
-                                  atom_support=N_TIMES_ATOM,
+                                  n_times_atom=N_TIMES_ATOM,
                                   n_jobs=2)
 
     # test before calling compute_z
@@ -478,7 +420,7 @@ def test_get_sufficient_statistics_partial(X, D_hat, n_trials, rng):
     z_encoder = get_z_encoder_for(X=X,
                                   D_hat=D_hat,
                                   n_atoms=N_ATOMS,
-                                  atom_support=N_TIMES_ATOM,
+                                  n_times_atom=N_TIMES_ATOM,
                                   n_jobs=2)
 
     i0 = rng.choice(n_trials, 1, replace=False)
@@ -496,7 +438,7 @@ def test_get_sufficient_statistics_partial_error(X, D_hat):
     z_encoder = get_z_encoder_for(X=X,
                                   D_hat=D_hat,
                                   n_atoms=N_ATOMS,
-                                  atom_support=N_TIMES_ATOM,
+                                  n_times_atom=N_TIMES_ATOM,
                                   n_jobs=2)
 
     # test before calling compute_z_partial
@@ -513,7 +455,7 @@ def test_add_one_atom(X, D_hat):
     with get_z_encoder_for(X=X,
                            D_hat=D_hat,
                            n_atoms=N_ATOMS,
-                           atom_support=N_TIMES_ATOM,
+                           n_times_atom=N_TIMES_ATOM,
                            n_jobs=2) as z_encoder:
         new_atom = np.random.rand(N_CHANNELS + N_TIMES_ATOM)
         z_encoder.add_one_atom(new_atom)

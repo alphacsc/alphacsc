@@ -1,3 +1,4 @@
+from alphacsc.update_d_multi import check_solver_and_constraints
 import pytest
 import numpy as np
 
@@ -11,14 +12,16 @@ from alphacsc.init_dict import init_dictionary
 @pytest.mark.parametrize('window', [False, True])
 @pytest.mark.parametrize('loss', ['l2', 'dtw', 'whitening'])
 @pytest.mark.parametrize(
-    'solver_d, uv_constraint, rank1',
+    'rank1, solver_d, uv_constraint',
     [
-        ('joint', 'joint', True),
-        ('joint', 'separate', True),
-        ('joint', 'joint', False),  # ('alternate', 'separate', True),
-        ('alternate_adaptive', 'separate', True)
+        (True, 'auto', 'auto'),
+        (False, 'auto', 'auto'),
+        (False, 'fista', 'auto'),
+        (True, 'joint', 'joint'),
+        (True, 'joint', 'separate'),
+        (True, 'alternate_adaptive', 'separate')
     ])
-def test_learn_d_z_multi(loss, solver_d, uv_constraint, rank1, window):
+def test_learn_d_z_multi(loss, rank1, solver_d, uv_constraint, window):
     # smoke test for learn_d_z_multi
     n_trials, n_channels, n_times = 2, 3, 30
     n_times_atom, n_atoms = 6, 4
@@ -59,7 +62,7 @@ def test_learn_d_z_multi_dicodile(window):
     X = rng.randn(n_trials, n_channels, n_times)
     pobj, times, uv_hat, z_hat, reg = learn_d_z_multi(
         X, n_atoms, n_times_atom, uv_constraint='auto', rank1=False,
-        solver_d='joint', random_state=0,
+        solver_d='auto', random_state=0,
         n_iter=30, eps=-np.inf, solver_z='dicodile', window=window,
         verbose=0, loss='l2', loss_params=None)
 
@@ -75,12 +78,17 @@ def test_learn_d_z_multi_dicodile(window):
         raise
 
 
-@pytest.mark.parametrize('solver_d, uv_constraint, rank1',
-                         [('joint', 'joint', True), ('joint', 'separate',
-                                                     True),
-                          ('joint', 'joint', False), ('alternate_adaptive',
-                                                      'separate', True)])
-def test_window(solver_d, uv_constraint, rank1):
+@pytest.mark.parametrize(
+    'rank1, solver_d, uv_constraint',
+    [
+        (True, 'auto', 'auto'),
+        (False, 'auto', 'auto'),
+        (False, 'fista', 'auto'),
+        (True, 'joint', 'joint'),
+        (True, 'joint', 'separate'),
+        (True, 'alternate_adaptive', 'separate')
+    ])
+def test_window(rank1, solver_d, uv_constraint):
     # Smoke test that the parameter window does something
     n_trials, n_channels, n_times = 2, 3, 100
     n_times_atom, n_atoms = 10, 4
@@ -88,11 +96,15 @@ def test_window(solver_d, uv_constraint, rank1):
     rng = check_random_state(42)
     X = rng.randn(n_trials, n_channels, n_times)
 
-    D_init = init_dictionary(X, n_atoms, n_times_atom, rank1=True,
-                             uv_constraint=uv_constraint, random_state=0)
+    *_, uv_constraint_ = check_solver_and_constraints(
+        rank1, solver_d, uv_constraint
+    )
+
+    D_init = init_dictionary(X, n_atoms, n_times_atom, rank1=rank1,
+                             uv_constraint=uv_constraint_, random_state=0)
 
     kwargs = dict(X=X, n_atoms=n_atoms, n_times_atom=n_times_atom, verbose=0,
-                  uv_constraint=uv_constraint, solver_d=solver_d,
+                  uv_constraint=uv_constraint, solver_d=solver_d, rank1=rank1,
                   random_state=0, n_iter=1, solver_z='l-bfgs', D_init=D_init)
     res_False = learn_d_z_multi(window=False, **kwargs)
     res_True = learn_d_z_multi(window=True, **kwargs)
@@ -152,7 +164,8 @@ def test_transformers(klass):
         getattr(cdl, attribute)
 
 
-def test_unbiased_z_hat():
+@pytest.mark.parametrize('solver_z', ['l-bfgs', 'lgcd'])
+def test_unbiased_z_hat(solver_z):
     n_trials, n_channels, n_times = 2, 3, 30
     n_times_atom, n_atoms = 6, 4
 
@@ -162,15 +175,15 @@ def test_unbiased_z_hat():
     X = rng.randn(n_trials, n_channels, n_times)
 
     _, _, _, z_hat, _ = learn_d_z_multi(
-        X, n_atoms, n_times_atom, uv_constraint='joint', rank1=False,
-        solver_d='joint', random_state=0, unbiased_z_hat=False,
-        n_iter=1, eps=-np.inf, solver_z='l-bfgs', window=False,
+        X, n_atoms, n_times_atom, uv_constraint='auto', rank1=False,
+        solver_d='auto', random_state=0, unbiased_z_hat=False,
+        n_iter=1, eps=-np.inf, solver_z=solver_z, window=False,
         verbose=0, loss='l2', loss_params=loss_params)
 
     _, _, _, z_hat_unbiased, _ = learn_d_z_multi(
-        X, n_atoms, n_times_atom, uv_constraint='joint', rank1=False,
-        solver_d='joint', random_state=0, unbiased_z_hat=True,
-        n_iter=1, eps=-np.inf, solver_z='l-bfgs', window=False,
+        X, n_atoms, n_times_atom, uv_constraint='auto', rank1=False,
+        solver_d='auto', random_state=0, unbiased_z_hat=True,
+        n_iter=1, eps=-np.inf, solver_z=solver_z, window=False,
         verbose=0, loss='l2', loss_params=loss_params)
 
     assert np.all(z_hat_unbiased[z_hat == 0] == 0)

@@ -14,8 +14,10 @@ from sklearn.manifold import TSNE
 from .utils import check_random_state
 from .other.kmc2 import custom_distances
 from .update_d_multi import prox_uv, prox_d
-from .utils.dictionary import get_uv, get_D, _patch_reconstruction_error
+
+from .utils.dictionary import get_D_shape
 from .utils.dictionary import tukey_window
+from .utils.dictionary import get_uv, get_D
 
 ried = custom_distances.roll_invariant_euclidean_distances
 tied = custom_distances.translation_invariant_euclidean_distances
@@ -45,7 +47,7 @@ def init_dictionary(X, n_atoms, n_times_atom, uv_constraint='separate',
     D_init : array or {'kmeans' | 'ssa' | 'chunk' | 'random'}
         The initialization scheme for the dictionary or the initial
         atoms. The shape should match the required dictionary shape, ie if
-        rank1 is TRue, (n_atoms, n_channels + n_times_atom) and else
+        rank1 is True, (n_atoms, n_channels + n_times_atom) and else
         (n_atoms, n_channels, n_times_atom)
     D_init_params : dict
         Dictionnary of parameters for the kmeans init method.
@@ -317,19 +319,15 @@ def _embed(x, dim, lag=1):
     return X.T
 
 
-def get_max_error_dict(X, z, D, uv_constraint='separate', window=False):
+def get_max_error_dict(z_encoder, uv_constraint='separate', window=False):
     """Get the maximal reconstruction error patch from the data as a new atom
 
     This idea is used for instance in [Yellin2017]
 
     Parameters
     ----------
-    X: array, shape (n_trials, n_channels, n_times)
-        Signals encoded in the CSC.
-    z: array, shape (n_atoms, n_trials, n_times_valid)
-        Current estimate of the coding signals.
-    D: array, shape (n_atoms, n_channels + n_times_atom)
-        Current estimate of the rank1 multivariate dictionary.
+    z_encoder : BaseZEncoder
+        ZEncoder object to be able to compute the largest error patch.
     uv_constraint : str in {'joint' | 'separate'}
         The kind of norm constraint on the atoms:
         If 'joint', the constraint is norm_2([u, v]) <= 1
@@ -346,16 +344,10 @@ def get_max_error_dict(X, z, D, uv_constraint='separate', window=False):
     [Yellin2017] BLOOD CELL DETECTION AND COUNTING IN HOLOGRAPHIC LENS-FREE
     IMAGING BY CONVOLUTIONAL SPARSE DICTIONARY LEARNING AND CODING.
     """
-    n_trials, n_channels, n_times = X.shape
-    if D.ndim == 2:
-        n_times_atom = D.shape[1] - n_channels
-    else:
-        n_times_atom = D.shape[2]
-    patch_rec_error = _patch_reconstruction_error(X, z, D)
-    i0 = patch_rec_error.argmax()
-    n0, t0 = np.unravel_index(i0, patch_rec_error.shape)
-
-    d0 = X[n0, :, t0:t0 + n_times_atom][None]
+    X, D = z_encoder.X, z_encoder.D_hat
+    _, n_channels, _ = X.shape
+    *_, n_times_atom = get_D_shape(D, n_channels)
+    d0 = z_encoder.get_max_error_patch()
 
     if window:
         d0 = d0 * tukey_window(n_times_atom)[None, :]
