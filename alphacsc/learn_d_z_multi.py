@@ -193,7 +193,11 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         # for D.
         d_kwargs["max_iter"] = 1
 
-    def compute_d_func(X, z_hat, D_hat, constants):
+    def compute_d_func(z_encoder):
+        X = z_encoder.X
+        z_hat = z_encoder.get_z_hat()
+        D_hat = z_encoder.D_hat
+        constants = z_encoder.get_constants()
         if rank1:
             return update_uv(X, z_hat, uv_hat0=D_hat, constants=constants,
                              b_hat_0=b_hat_0, solver_d=solver_d,
@@ -225,10 +229,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
 
         # common parameters
         kwargs = dict(
-            X=X,
-            D_hat=D_hat,
             z_encoder=z_encoder,
-            n_atoms=n_atoms,
             compute_d_func=compute_d_func,
             end_iter_func=end_iter_func,
             n_iter=n_iter,
@@ -288,17 +289,14 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
     return pobj, times, D_hat, z_hat, reg
 
 
-def _batch_learn(X, D_hat, z_encoder, n_atoms, compute_d_func,
-                 end_iter_func, n_iter=100,
+def _batch_learn(z_encoder, compute_d_func, end_iter_func, n_iter=100,
                  lmbd_max='fixed', reg=None, verbose=0, greedy=False,
                  random_state=None, name="batch", uv_constraint='separate',
                  window=False):
-    reg_ = reg
 
-    # Initialize constants dictionary
-    constants = {}
-    constants['n_channels'] = X.shape[1]
-    constants['XtX'] = np.dot(X.ravel(), X.ravel())
+    X = z_encoder.X
+    n_atoms = z_encoder.n_atoms
+    reg_ = reg
 
     if greedy:
         n_iter_by_atom = 1
@@ -354,7 +352,7 @@ def _batch_learn(X, D_hat, z_encoder, n_atoms, compute_d_func,
         # XXX is that acceptable or not? (seems that DiCoDiLe does not require
         # it)
         z_hat = z_encoder.get_z_hat()
-        constants['ztz'], constants['ztX'] = z_encoder.get_sufficient_statistics()  # noqa: E501
+
         z_nnz, z_size = lil.get_nnz_and_size(z_hat)
         if verbose > 5:
             print("[{}] sparsity: {:.3e}".format(
@@ -370,7 +368,7 @@ def _batch_learn(X, D_hat, z_encoder, n_atoms, compute_d_func,
 
         # Compute D update
         start = time.time()
-        D_hat = compute_d_func(X, z_hat, z_encoder.D_hat, constants)
+        D_hat = compute_d_func(z_encoder)
         z_encoder.set_D(D_hat)
 
         # monitor cost function
@@ -392,29 +390,26 @@ def _batch_learn(X, D_hat, z_encoder, n_atoms, compute_d_func,
         if end_iter_func(X, z_hat, D_hat, pobj, ii):
             break
 
-    return pobj, times, D_hat, z_encoder.get_z_hat()
+    return pobj, times, z_encoder.D_hat, z_encoder.get_z_hat()
 
 
-def _online_learn(X, D_hat, z_encoder, n_atoms, compute_d_func,
-                  end_iter_func, n_iter=100, verbose=0,
-                  random_state=None, lmbd_max='fixed', reg=None,
+def _online_learn(z_encoder, compute_d_func, end_iter_func, n_iter=100,
+                  verbose=0, random_state=None, lmbd_max='fixed', reg=None,
                   alpha=.8, batch_selection='random', batch_size=1,
                   name="online", uv_constraint='separate', window=False):
 
+    X = z_encoder.X
+    D_hat = z_encoder.D_hat
+    n_atoms = z_encoder.n_atoms
+
     reg_ = reg
 
-    # Initialize constants dictionary
-    constants = {}
     n_trials, n_channels = X.shape[:2]
     if D_hat.ndim == 2:
         n_atoms, n_times_atom = D_hat.shape
         n_times_atom -= n_channels
     else:
         n_atoms, _, n_times_atom = D_hat.shape
-    constants['n_channels'] = n_channels
-    constants['XtX'] = np.dot(X.ravel(), X.ravel())
-    constants['ztz'] = np.zeros((n_atoms, n_atoms, 2 * n_times_atom - 1))
-    constants['ztX'] = np.zeros((n_atoms, n_channels, n_times_atom))
 
     # monitor cost function
     times = [0]
@@ -449,13 +444,9 @@ def _online_learn(X, D_hat, z_encoder, n_atoms, compute_d_func,
             raise NotImplementedError(
                 "the '{}' batch_selection strategy for the online learning is "
                 "not implemented.".format(batch_selection))
-        z_encoder.compute_z_partial(i0)
+        z_encoder.compute_z_partial(i0, alpha)
 
         z_hat = z_encoder.get_z_hat()  # XXX consider get_z_hat_partial?
-
-        ztz_i0, ztX_i0 = z_encoder.get_sufficient_statistics_partial()
-        constants['ztz'] = alpha * constants['ztz'] + ztz_i0
-        constants['ztX'] = alpha * constants['ztX'] + ztX_i0
 
         # monitor cost function
         times.append(time.time() - start)
@@ -476,7 +467,7 @@ def _online_learn(X, D_hat, z_encoder, n_atoms, compute_d_func,
 
         # Compute D update
         start = time.time()
-        D_hat = compute_d_func(X, z_hat, D_hat, constants)
+        D_hat = compute_d_func(z_encoder)
         z_encoder.set_D(D_hat)
 
         # monitor cost function
@@ -498,7 +489,7 @@ def _online_learn(X, D_hat, z_encoder, n_atoms, compute_d_func,
         if end_iter_func(X, z_hat, D_hat, pobj, ii):
             break
 
-    return pobj, times, D_hat, z_encoder.get_z_hat()
+    return pobj, times, z_encoder.D_hat, z_encoder.get_z_hat()
 
 
 def get_iteration_func(eps, stopping_pobj, callback, lmbd_max, name, verbose,

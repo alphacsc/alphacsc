@@ -1,7 +1,7 @@
 import numpy as np
 from .loss_and_gradient import compute_X_and_objective_multi
 from .update_z_multi import update_z_multi
-from .utils import check_dimension, lil
+from .utils import lil
 
 DEFAULT_TOL_Z = 1e-3
 
@@ -148,13 +148,43 @@ def get_z_encoder_for(
             n_jobs,
             solver_kwargs,
             algorithm,
-            reg
+            reg,
+            loss
         )
     else:
         raise ValueError(f'unrecognized solver type: {solver}.')
 
 
 class BaseZEncoder:
+
+    def __init__(
+            self,
+            X,
+            D_hat,
+            n_atoms,
+            atom_support,
+            n_jobs,
+            solver_kwargs,
+            algorithm,
+            reg,
+            loss):
+
+        self.X = X
+        self.D_hat = D_hat
+        self.n_atoms = n_atoms
+        self.atom_support = atom_support
+        self.n_jobs = n_jobs
+
+        self.solver_kwargs = solver_kwargs
+        self.algorithm = algorithm
+        self.reg = reg
+        self.loss = loss
+
+        self.n_trials, self.n_channels, self.n_times = X.shape
+        self.n_times_valid = self.n_times - self.atom_support + 1
+
+        self.XtX = np.dot(X.ravel(), X.ravel())
+
     def compute_z(self):
         """
         Perform one incremental z update.
@@ -242,6 +272,15 @@ class BaseZEncoder:
         """
         raise NotImplementedError()
 
+    def get_constants(self):
+        """
+        """
+
+        return dict(n_channels=self.n_channels,
+                    XtX=self.XtX,
+                    ztz=self.ztz,
+                    ztX=self.ztX)
+
     def add_one_atom(self, new_atom):
         """
         Add one atom to the dictionary and extend z_hat
@@ -279,19 +318,20 @@ class AlphaCSCEncoder(BaseZEncoder):
             feasible_evaluation,
             use_sparse_z):
 
+        super().__init__(X,
+                         D_hat,
+                         n_atoms,
+                         atom_support,
+                         n_jobs,
+                         solver_kwargs,
+                         algorithm,
+                         reg,
+                         loss)
+
         if loss_params is None:
             loss_params = dict(gamma=.1, sakoe_chiba_band=10, ordar=10)
 
-        self.X = X
-        self.D_hat = D_hat
-        self.n_atoms = n_atoms
-        self.atom_support = atom_support
-        self.n_jobs = n_jobs
-        self.z_alg = solver
-        self.solver_kwargs = solver_kwargs
-        self.algorithm = algorithm
-        self.reg = reg
-        self.loss = loss
+        self.solver = solver
         self.loss_params = loss_params
         self.uv_constraint = uv_constraint
         self.feasible_evaluation = feasible_evaluation
@@ -300,11 +340,9 @@ class AlphaCSCEncoder(BaseZEncoder):
         self._init_z_hat()
 
     def _init_z_hat(self):
-        n_trials, _, n_times = check_dimension(self.X)
-        n_times_valid = n_times - self.atom_support + 1
 
         self.z_hat = lil.init_zeros(
-            self.use_sparse_z, n_trials, self.n_atoms, n_times_valid)
+            self.use_sparse_z, self.n_trials, self.n_atoms, self.n_times_valid)
 
         if self.algorithm == 'greedy':
             # remove all atoms
@@ -323,7 +361,7 @@ class AlphaCSCEncoder(BaseZEncoder):
             self.D_hat,
             reg=reg,
             z0=z0,
-            solver=self.z_alg,
+            solver=self.solver,
             solver_kwargs=self.solver_kwargs,
             freeze_support=unbiased_z_hat,
             loss=self.loss,
@@ -332,12 +370,23 @@ class AlphaCSCEncoder(BaseZEncoder):
             return_ztz=True)
 
     def compute_z(self, unbiased_z_hat=False):
-        self.z_hat, self.ztz, self.ztX = self._compute_z_aux(
-            self.X, self.z_hat, unbiased_z_hat)
+        self.z_hat, self.ztz, self.ztX = self._compute_z_aux(self.X,
+                                                             self.z_hat,
+                                                             unbiased_z_hat)
 
-    def compute_z_partial(self, i0):
+    def compute_z_partial(self, i0, alpha=.8):
+        if not hasattr(self, 'ztz'):
+            self.ztz = np.zeros(
+                (self.n_atoms, self.n_atoms, 2 * self.atom_support - 1))
+        if not hasattr(self, 'ztX'):
+            self.ztX = np.zeros(
+                (self.n_atoms, self.n_channels, self.atom_support))
+
         self.z_hat[i0], self.ztz_i0, self.ztX_i0 = self._compute_z_aux(
             self.X[i0], self.z_hat[i0], unbiased_z_hat=False)
+
+        self.ztz = alpha * self.ztz + self.ztz_i0
+        self.ztX = alpha * self.ztX + self.ztX_i0
 
     def get_cost(self):
         cost = compute_X_and_objective_multi(self.X,
@@ -388,13 +437,24 @@ class DicodileEncoder(BaseZEncoder):
             n_jobs,
             solver_kwargs,
             algorithm,
-            reg):
+            reg,
+            loss):
         try:
             import dicodile
         except ImportError as ie:
             raise ImportError(
                 'Please install DiCoDiLe by running '
                 '"pip install alphacsc[dicodile]"') from ie
+
+        super().__init__(X,
+                         D_hat,
+                         n_atoms,
+                         atom_support,
+                         n_jobs,
+                         solver_kwargs,
+                         algorithm,
+                         reg,
+                         loss)
 
         self._encoder = dicodile.update_z.distributed_sparse_encoder.DistributedSparseEncoder(  # noqa: E501
             n_workers=n_jobs)
@@ -408,14 +468,13 @@ class DicodileEncoder(BaseZEncoder):
         )
 
         n_times = X.shape[2]
-        self.X = X[0]
         self.D_hat = D_hat
         self.n_times_valid = n_times - atom_support + 1
         self.n_atoms = n_atoms
         self.atom_support = atom_support
         self.algorithm = algorithm
 
-        tol = DEFAULT_TOL_Z * np.std(self.X)
+        tol = DEFAULT_TOL_Z * np.std(self.X[0])
 
         params = dicodile._dicodile.DEFAULT_DICOD_KWARGS.copy()
         # DiCoDiLe defaults
@@ -426,7 +485,7 @@ class DicodileEncoder(BaseZEncoder):
                       freeze_support=False, random_state=None)
         params.update(solver_kwargs)
         self.params = params
-        self._encoder.init_workers(self.X, self.D_hat, reg, self.params)
+        self._encoder.init_workers(self.X[0], self.D_hat, reg, self.params)
 
     def compute_z(self):
         """
@@ -434,6 +493,7 @@ class DicodileEncoder(BaseZEncoder):
         This is the "main" function of the algorithm.
         """
         self.run_statistics = self._encoder.process_z_hat()
+        self.ztz, self.ztX = self._encoder.get_sufficient_statistics()
 
     def compute_z_partial(self, i0):
         """
@@ -460,7 +520,7 @@ class DicodileEncoder(BaseZEncoder):
 
         # If compute_z has not been run, return the value of cost function when
         # z_hat = 0
-        return 0.5 * np.linalg.norm(self.X) ** 2
+        return 0.5 * np.linalg.norm(self.X[0]) ** 2
 
     def get_sufficient_statistics(self):
         """
@@ -474,7 +534,7 @@ class DicodileEncoder(BaseZEncoder):
         assert hasattr(self, 'run_statistics'), (
             'compute_z should be called to access the statistics.'
         )
-        return self._encoder.get_sufficient_statistics()
+        return self.ztz, self.ztX
 
     def get_sufficient_statistics_partial(self):
         """
