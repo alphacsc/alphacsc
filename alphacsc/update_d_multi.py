@@ -37,8 +37,8 @@ def check_solver_and_constraints(rank1, solver_d, uv_constraint):
     else:
         assert solver_d in ['auto', 'fista'] and uv_constraint == 'auto', (
             "If rank1 is False, uv_constraint should be 'auto' "
-            "and solver_d should be auto or fista. "
-            f"Got {solver_d=} and {uv_constraint=}."
+            f"and solver_d should be auto or fista. Got solver_d='{solver_d}' "
+            f"and uv_constraint='{uv_constraint}'."
         )
         solver_d = 'fista'
     return solver_d, uv_constraint
