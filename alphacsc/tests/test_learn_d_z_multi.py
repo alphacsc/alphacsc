@@ -8,19 +8,12 @@ from alphacsc.convolutional_dictionary_learning import BatchCDL, GreedyCDL
 from alphacsc.online_dictionary_learning import OnlineCDL
 from alphacsc.init_dict import init_dictionary
 
+from alphacsc.tests.conftest import parametrize_solver_and_constraint
+
 
 @pytest.mark.parametrize('window', [False, True])
 @pytest.mark.parametrize('loss', ['l2', 'dtw', 'whitening'])
-@pytest.mark.parametrize(
-    'rank1, solver_d, uv_constraint',
-    [
-        (True, 'auto', 'auto'),
-        (False, 'auto', 'auto'),
-        (False, 'fista', 'auto'),
-        (True, 'joint', 'joint'),
-        (True, 'joint', 'separate'),
-        (True, 'alternate_adaptive', 'separate')
-    ])
+@parametrize_solver_and_constraint
 def test_learn_d_z_multi(loss, rank1, solver_d, uv_constraint, window):
     # smoke test for learn_d_z_multi
     n_trials, n_channels, n_times = 2, 3, 30
@@ -78,16 +71,7 @@ def test_learn_d_z_multi_dicodile(window):
         raise
 
 
-@pytest.mark.parametrize(
-    'rank1, solver_d, uv_constraint',
-    [
-        (True, 'auto', 'auto'),
-        (False, 'auto', 'auto'),
-        (False, 'fista', 'auto'),
-        (True, 'joint', 'joint'),
-        (True, 'joint', 'separate'),
-        (True, 'alternate_adaptive', 'separate')
-    ])
+@parametrize_solver_and_constraint
 def test_window(rank1, solver_d, uv_constraint):
     # Smoke test that the parameter window does something
     n_trials, n_channels, n_times = 2, 3, 100

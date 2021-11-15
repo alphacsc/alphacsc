@@ -10,17 +10,10 @@ from alphacsc.update_d_multi import check_solver_and_constraints
 from alphacsc.learn_d_z_multi import learn_d_z_multi
 from alphacsc.utils import check_random_state
 
+from alphacsc.tests.conftest import parametrize_solver_and_constraint
 
-@pytest.mark.parametrize(
-    'rank1, solver_d, uv_constraint',
-    [
-        (True, 'auto', 'auto'),
-        (False, 'auto', 'auto'),
-        (False, 'fista', 'auto'),
-        (True, 'joint', 'joint'),
-        (True, 'joint', 'separate'),
-        (True, 'alternate_adaptive', 'separate')
-    ])
+
+@parametrize_solver_and_constraint
 def test_init_array(rank1, solver_d, uv_constraint):
     n_trials, n_channels, n_times = 5, 3, 100
     n_times_atom, n_atoms = 10, 4
@@ -59,16 +52,7 @@ def test_init_array(rank1, solver_d, uv_constraint):
     assert_allclose(D_hat, D_init)
 
 
-@pytest.mark.parametrize(
-    'rank1, solver_d, uv_constraint',
-    [
-        (True, 'auto', 'auto'),
-        (False, 'auto', 'auto'),
-        (False, 'fista', 'auto'),
-        (True, 'joint', 'joint'),
-        (True, 'joint', 'separate'),
-        (True, 'alternate_adaptive', 'separate')
-    ])
+@parametrize_solver_and_constraint
 def test_init_random(rank1, solver_d, uv_constraint):
     """"""
     n_trials, n_channels, n_times = 5, 3, 100
