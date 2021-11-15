@@ -68,7 +68,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         If set to True, learn rank 1 dictionary atoms.
         If solver_z is 'dicodile', then rank1 must be False.
     uv_constraint : str in {'joint' | 'separate' | 'auto'}
-        The kind of norm constraint on the atoms if using rank=True.
+        The kind of norm constraint on the atoms if using rank1=True.
         If 'joint', the constraint is norm_2([u, v]) <= 1
         If 'separate', the constraint is norm_2(u) <= 1 and norm_2(v) <= 1
         If rank1 is False, then uv_constraint must be 'auto'.
@@ -121,7 +121,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         The verbosity level.
     callback : func
         A callback function called at the end of each loop of the
-        coordinate descent, with z_encoder and pob as its arguments.
+        coordinate descent, with z_encoder and pobj as its arguments.
     random_state : int | None
         The random state.
     raise_on_increase : boolean
