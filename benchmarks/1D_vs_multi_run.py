@@ -122,7 +122,7 @@ def run_one(reg, sigma, n_atoms, n_times_atom, max_n_channels, n_times_valid,
 
     pobj, times, uv_hat, z_hat, reg = learn_d_z_multi(
         X[:, :run_n_channels, :], n_atoms, n_times_atom,
-        random_state=random_state,
+        random_state=random_state, rank1=True,
         # callback=cb,
         n_iter=n_iter, n_jobs=1, reg=reg_, uv_constraint='separate',
         solver_d='alternate_adaptive', solver_d_kwargs={'max_iter': 50},

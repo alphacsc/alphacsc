@@ -35,11 +35,13 @@ DOC_FMT = """{short_desc}
         If set to True, learn rank 1 dictionary atoms.
     window : boolean
         If set to True, re-parametrizes the atoms with a temporal Tukey window.
-    uv_constraint : {{'joint' | 'separate'}}
-        The kind of norm constraint on the atoms:
+    uv_constraint : {{'joint' | 'separate' | 'auto'}}
+        The kind of norm constraint on the atoms if :code:`rank1=True`. If
+        :code:`rank1=False`, it must be 'auto', else it can be:
 
         - :code:`'joint'`: the constraint is ||[u, v]||_2 <= 1
-        - :code:`'separate'`: the constraint is ||u||_2 <= 1 and ||v||_2 <= 1
+        - :code:`'separate'`: the constraint is ||u||_2 <= 1 and ||v||_2 <= 1.
+        This is the default for rank1 with if 'auto'.
     sort_atoms : boolean
         If True, the atoms are sorted by explained variances.
 
@@ -81,9 +83,11 @@ DOC_FMT = """{short_desc}
 
     D-step parameters
 
-    solver_d : str
-        The solver to use for the d update. Options are
-        'alternate' | 'alternate_adaptive' (default) | 'joint'
+    solver_d : str (default: 'auto')
+        The solver to use for the d update. Options are:
+        {{'alternate', 'alternate_adaptive', 'joint', 'fista', 'auto'}}
+        'auto' amounts to 'fista' when :code:`rank1=False` and
+        'alternate_adaptive' for :code:`rank1=True`.
     solver_d_kwargs : dict
         Additional keyword arguments to provide to update_d
     D_init : str or array
@@ -134,9 +138,9 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
 
     def __init__(self, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
                  loss='l2', loss_params=None,
-                 rank1=True, window=False, uv_constraint='separate',
+                 rank1=True, window=False, uv_constraint='auto',
                  solver_z='l_bfgs', solver_z_kwargs={},
-                 solver_d='alternate_adaptive', solver_d_kwargs={},
+                 solver_d='auto', solver_d_kwargs={},
                  reg=0.1, lmbd_max='fixed', eps=1e-10,
                  D_init=None, D_init_params={},
                  algorithm='batch', algorithm_params={},
@@ -343,8 +347,8 @@ class BatchCDL(ConvolutionalDictionaryLearning):
 
     def __init__(self, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
                  solver_z='lgcd', solver_z_kwargs={}, unbiased_z_hat=False,
-                 solver_d='alternate_adaptive', solver_d_kwargs={},
-                 rank1=True, window=False, uv_constraint='separate',
+                 solver_d='auto', solver_d_kwargs={},
+                 rank1=True, window=False, uv_constraint='auto',
                  lmbd_max='scaled', eps=1e-10, D_init=None, D_init_params={},
                  verbose=10, random_state=None, sort_atoms=False):
         super().__init__(
@@ -370,8 +374,8 @@ class GreedyCDL(ConvolutionalDictionaryLearning):
 
     def __init__(self, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
                  solver_z='lgcd', solver_z_kwargs={}, unbiased_z_hat=False,
-                 solver_d='alternate_adaptive', solver_d_kwargs={},
-                 rank1=True, window=False, uv_constraint='separate',
+                 solver_d='auto', solver_d_kwargs={},
+                 rank1=True, window=False, uv_constraint='auto',
                  lmbd_max='scaled', eps=1e-10, D_init=None, D_init_params={},
                  verbose=10, random_state=None, sort_atoms=False):
         super().__init__(
