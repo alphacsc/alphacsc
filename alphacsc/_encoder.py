@@ -577,7 +577,30 @@ class DicodileEncoder(BaseZEncoder):
             selected in the last call of ``compute_z_partial``
         """
         raise NotImplementedError(
-            "Partial sufficient statistics are not available in DiCoDiLe")
+            "Partial sufficient statistics are not available in DiCoDiLe"
+        )
+
+    def get_max_error_patch(self):
+        """
+        Returns the patch of the signal with the largest reconstuction error.
+
+        Returns
+        -------
+        D_k : ndarray, shape (n_channels, n_times_atom) or
+                (n_channels + n_times_atom,)
+            Patch of the residual with the largest error.
+        """
+        # XXX - this step should be implemented in dicodile
+        # See issue tommoral/dicodile#49
+        patch_rec_error = _patch_reconstruction_error(
+            self.X, self.get_z_hat(), self.D_hat
+        )
+        i0 = patch_rec_error.argmax()
+        n0, t0 = np.unravel_index(i0, patch_rec_error.shape)
+
+        n_channels = self.X.shape[1]
+        *_, n_times_atom = get_D_shape(self.D_hat, n_channels)
+        return self.X[n0, :, t0:t0 + n_times_atom][None]
 
     def get_z_hat(self):
         """
