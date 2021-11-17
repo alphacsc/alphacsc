@@ -3,13 +3,15 @@ import numpy as np
 from .loss_and_gradient import compute_objective, compute_X_and_objective_multi
 from .loss_and_gradient import gradient_uv, gradient_d
 
-from .update_d_multi import prox_uv, prox_d, compute_lipschitz
+from .update_d_multi import prox_uv, prox_d
+from .utils.convolution import numpy_convolve_uv
 from .utils.dictionary import tukey_window
-from .utils.optim import fista
+from .utils.optim import fista, power_iteration
 
 
 def get_solver_d(solver_d='alternate_adaptive',
                  rank1=False,
+                 uv_constraint='auto',
                  window=False,
                  b_hat_0=None,
                  eps=1e-8,
@@ -18,17 +20,17 @@ def get_solver_d(solver_d='alternate_adaptive',
 
     if rank1:
         if solver_d in ['alternate', 'alternate_adaptive']:
-            return AlternateDSolver(solver_d, rank1, window, b_hat_0, eps,
-                                    max_iter, momentum)
+            return AlternateDSolver(solver_d, rank1, uv_constraint, window,
+                                    b_hat_0, eps, max_iter, momentum)
         elif solver_d in ['fista', 'joint']:
-            return JointDSolver(solver_d, rank1, window, b_hat_0, eps,
-                                max_iter, momentum)
+            return JointDSolver(solver_d, rank1, uv_constraint, window,
+                                b_hat_0, eps, max_iter, momentum)
         else:
             raise ValueError('Unknown solver_d: %s' % (solver_d, ))
     else:
         if solver_d in ['fista', 'auto']:
-            return DSolver(solver_d, rank1, window, b_hat_0, eps, max_iter,
-                           momentum)
+            return DSolver(solver_d, rank1, uv_constraint, window,
+                           b_hat_0, eps, max_iter, momentum)
         else:
             raise ValueError('Unknown solver_d: %s' % (solver_d, ))
 
@@ -38,6 +40,7 @@ class BaseDSolver:
     def __init__(self,
                  solver_d,
                  rank1,
+                 uv_constraint,
                  window,
                  b_hat_0,
                  eps,
@@ -46,6 +49,7 @@ class BaseDSolver:
 
         self.solver_d = solver_d
         self.rank1 = rank1
+        self.uv_constraint = uv_constraint
         self.window = window
         self.b_hat_0 = b_hat_0
         self.eps = eps
@@ -61,6 +65,7 @@ class Rank1DSolver(BaseDSolver):
     def __init__(self,
                  solver_d,
                  rank1,
+                 uv_constraint,
                  window,
                  b_hat_0,
                  eps,
@@ -69,6 +74,7 @@ class Rank1DSolver(BaseDSolver):
 
         super().__init__(solver_d,
                          rank1,
+                         uv_constraint,
                          window,
                          b_hat_0,
                          eps,
@@ -105,7 +111,7 @@ class Rank1DSolver(BaseDSolver):
                 loss=z_encoder.loss,
                 loss_params=z_encoder.loss_params,
                 feasible_evaluation=z_encoder.feasible_evaluation,
-                uv_constraint=z_encoder.uv_constraint)
+                uv_constraint=self.uv_constraint)
 
         return objective
 
@@ -115,6 +121,7 @@ class JointDSolver(Rank1DSolver):
     def __init__(self,
                  solver_d,
                  rank1,
+                 uv_constraint,
                  window,
                  b_hat_0,
                  eps,
@@ -123,6 +130,7 @@ class JointDSolver(Rank1DSolver):
 
         super().__init__(solver_d,
                          rank1,
+                         uv_constraint,
                          window,
                          b_hat_0,
                          eps,
@@ -159,7 +167,7 @@ class JointDSolver(Rank1DSolver):
                 uv[:, n_channels:] *= tukey_window_
 
             uv = prox_uv(uv,
-                         uv_constraint=z_encoder.uv_constraint,
+                         uv_constraint=self.uv_constraint,
                          n_channels=n_channels)
 
             if self.window:
@@ -188,6 +196,7 @@ class AlternateDSolver(Rank1DSolver):
     def __init__(self,
                  solver_d,
                  rank1,
+                 uv_constraint,
                  window,
                  b_hat_0,
                  eps,
@@ -196,16 +205,54 @@ class AlternateDSolver(Rank1DSolver):
 
         super().__init__(solver_d,
                          rank1,
+                         uv_constraint,
                          window,
                          b_hat_0,
                          eps,
                          max_iter,
                          momentum)
 
-    def update_D(self, z_encoder, verbose=0, debug=False):
-        assert z_encoder.uv_constraint == 'separate', (
+        assert self.uv_constraint == 'separate', (
             "alternate solver should be used with separate constraints"
         )
+
+    def compute_lipschitz(uv0, constants, variable, b_hat_0=None,
+                          random_state=None):
+
+        n_channels = constants['n_channels']
+        u0, v0 = uv0[:, :n_channels], uv0[:, n_channels:]
+        n_atoms = uv0.shape[0]
+        n_times_atom = uv0.shape[1] - n_channels
+        if b_hat_0 is None:
+            b_hat_0 = np.random.randn(uv0.size)
+
+        def op_Hu(u):
+            u = np.reshape(u, (n_atoms, n_channels))
+            uv = np.c_[u, v0]
+            H_d = numpy_convolve_uv(constants['ztz'], uv)
+            H_u = (H_d * uv[:, None, n_channels:]).sum(axis=2)
+            return H_u.ravel()
+
+        def op_Hv(v):
+            v = np.reshape(v, (n_atoms, n_times_atom))
+            uv = np.c_[u0, v]
+            H_d = numpy_convolve_uv(constants['ztz'], uv)
+            H_v = (H_d * uv[:, :n_channels, None]).sum(axis=1)
+            return H_v.ravel()
+
+        if variable == 'u':
+            b_hat_u0 = b_hat_0.reshape(n_atoms, -1)[:, :n_channels].ravel()
+            n_points = n_atoms * n_channels
+            L = power_iteration(op_Hu, n_points, b_hat_0=b_hat_u0)
+        elif variable == 'v':
+            b_hat_v0 = b_hat_0.reshape(n_atoms, -1)[:, n_channels:].ravel()
+            n_points = n_atoms * n_times_atom
+            L = power_iteration(op_Hv, n_points, b_hat_0=b_hat_v0)
+        else:
+            raise ValueError("variable should be either 'u' or 'v'")
+        return L
+
+    def update_D(self, z_encoder, verbose=0, debug=False):
 
         n_channels = z_encoder.n_channels
 
@@ -262,10 +309,10 @@ class AlternateDSolver(Rank1DSolver):
             if adaptive_step_size:
                 Lu = 1
             else:
-                Lu = compute_lipschitz(uv_hat,
-                                       z_encoder.get_constants(),
-                                       'u',
-                                       self.b_hat_0)
+                Lu = self.compute_lipschitz(uv_hat,
+                                            z_encoder.get_constants(),
+                                            'u',
+                                            self.b_hat_0)
             assert Lu > 0
 
             u_hat, pobj_u = fista(obj, grad_u, prox_u, 0.99 / Lu, u_hat,
@@ -303,10 +350,10 @@ class AlternateDSolver(Rank1DSolver):
             if adaptive_step_size:
                 Lv = 1
             else:
-                Lv = compute_lipschitz(uv_hat,
-                                       z_encoder.get_constants(),
-                                       'v',
-                                       self.b_hat_0)
+                Lv = self.compute_lipschitz(uv_hat,
+                                            z_encoder.get_constants(),
+                                            'v',
+                                            self.b_hat_0)
             assert Lv > 0
 
             v_hat, pobj_v = fista(obj, grad_v, prox_v, 0.99 / Lv, v_hat,
@@ -332,6 +379,7 @@ class DSolver(BaseDSolver):
     def __init__(self,
                  solver_d,
                  rank1,
+                 uv_constraint,
                  window,
                  b_hat_0,
                  eps,
@@ -340,6 +388,7 @@ class DSolver(BaseDSolver):
 
         super().__init__(solver_d,
                          rank1,
+                         uv_constraint,
                          window,
                          b_hat_0,
                          eps,

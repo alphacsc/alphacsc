@@ -198,6 +198,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
 
     d_solver = get_solver_d(solver_d=solver_d,
                             rank1=rank1,
+                            uv_constraint=uv_constraint,
                             window=window,
                             b_hat_0=b_hat_0,
                             **solver_d_kwargs)
