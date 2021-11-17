@@ -3,7 +3,7 @@ import numpy as np
 from .loss_and_gradient import compute_objective, compute_X_and_objective_multi
 from .loss_and_gradient import gradient_uv, gradient_d
 
-from .update_d_multi import update_d, prox_uv, compute_lipschitz
+from .update_d_multi import prox_uv, prox_d, compute_lipschitz
 from .utils.dictionary import tukey_window
 from .utils.optim import fista
 
@@ -26,8 +26,11 @@ def get_solver_d(solver_d='alternate_adaptive',
         else:
             raise ValueError('Unknown solver_d: %s' % (solver_d, ))
     else:
-        return DSolver(solver_d, rank1, window, b_hat_0, eps, max_iter,
-                       momentum)
+        if solver_d in ['fista', 'auto']:
+            return DSolver(solver_d, rank1, window, b_hat_0, eps, max_iter,
+                           momentum)
+        else:
+            raise ValueError('Unknown solver_d: %s' % (solver_d, ))
 
 
 class BaseDSolver:
@@ -83,13 +86,13 @@ class Rank1DSolver(BaseDSolver):
 
         return uv_hat0, tukey_window_
 
-    def _objective(self, n_channels, z_encoder, tukey_window_):
+    def _objective(self, z_encoder, tukey_window_):
 
         def objective(uv):
 
             if self.window:
                 uv = uv.copy()
-                uv[:, n_channels:] *= tukey_window_
+                uv[:, z_encoder.n_channels:] *= tukey_window_
 
             if z_encoder.loss == 'l2':
                 return compute_objective(D=uv,
@@ -164,7 +167,7 @@ class JointDSolver(Rank1DSolver):
 
             return uv
 
-        objective = self._objective(n_channels, z_encoder, tukey_window_)
+        objective = self._objective(z_encoder, tukey_window_)
 
         uv_hat, pobj = fista(objective, grad, prox, None, uv_hat0,
                              self.max_iter,
@@ -210,7 +213,7 @@ class AlternateDSolver(Rank1DSolver):
                                               n_channels,
                                               z_encoder.n_times_atom)
 
-        objective = self._objective(n_channels, z_encoder, tukey_window_)
+        objective = self._objective(z_encoder, tukey_window_)
 
         # use FISTA on alternate u and v
         adaptive_step_size = (self.solver_d == 'alternate_adaptive')
@@ -343,15 +346,71 @@ class DSolver(BaseDSolver):
                          max_iter,
                          momentum)
 
-    def update_D(self, z_encoder, verbose=0, debug=False):
-        z_hat = z_encoder.get_z_hat()
-        D_hat = z_encoder.D_hat
-        constants = z_encoder.get_constants()
+    def _window(self, D_hat0, n_times_atom):
+        tukey_window_ = None
 
-        return update_d(z_encoder.X, z_hat, D_hat0=D_hat, constants=constants,
-                        b_hat_0=self.b_hat_0, solver_d=self.solver_d,
-                        max_iter=self.max_iter, eps=self.eps,
-                        verbose=verbose, debug=debug,
-                        loss=z_encoder.loss,
-                        loss_params=z_encoder.loss_params,
-                        window=self.window)
+        if self.window:
+            tukey_window_ = tukey_window(n_times_atom)[None, None, :]
+            D_hat0 = D_hat0 / tukey_window_
+
+        return D_hat0, tukey_window_
+
+    def _objective(self, D, z_encoder, tukey_window_, full=False):
+
+        def objective(D, full=False):
+            if self.window:
+                D = D * tukey_window_
+
+            if z_encoder.loss == 'l2':
+                return compute_objective(D=D,
+                                         constants=z_encoder.get_constants())
+
+            return compute_X_and_objective_multi(z_encoder.X,
+                                                 z_encoder.get_z_hat(),
+                                                 D_hat=D,
+                                                 loss=z_encoder.loss,
+                                                 loss_params=z_encoder.loss_params)  # noqa
+
+        return objective
+
+    def update_D(self, z_encoder, verbose=0, debug=False):
+
+        D_hat0, tukey_window_ = self._window(
+            z_encoder.D_hat, z_encoder.n_times_atom)
+
+        objective = self._objective(D_hat0, z_encoder, tukey_window_)
+
+        def grad(D):
+            if self.window:
+                D = D * tukey_window_
+
+            grad = gradient_d(D=D,
+                              X=z_encoder.X,
+                              z=z_encoder.get_z_hat(),
+                              constants=z_encoder.get_constants(),
+                              loss=z_encoder.loss,
+                              loss_params=z_encoder.loss_params)
+            if self.window:
+                grad *= tukey_window_
+
+            return grad
+
+        def prox(D, step_size=None):
+            if self.window:
+                D *= tukey_window_
+            D = prox_d(D)
+            if self.window:
+                D /= tukey_window_
+            return D
+
+        D_hat, pobj = fista(objective, grad, prox, None, D_hat0, self.max_iter,
+                            verbose=verbose, momentum=self.momentum,
+                            eps=self.eps, adaptive_step_size=True, debug=debug,
+                            name="Update D")
+
+        if self.window:
+            D_hat = D_hat * tukey_window_
+
+        if debug:
+            return D_hat, pobj
+        return D_hat
