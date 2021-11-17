@@ -116,6 +116,7 @@ def get_z_encoder_for(
             loss_params,
             uv_constraint,
             feasible_evaluation)
+
     elif solver == 'dicodile':
         assert loss == 'l2', f"DiCoDiLe requires a l2 loss ('{loss}' passed)."
         assert loss_params is None, "DiCoDiLe requires loss_params=None."
@@ -484,6 +485,9 @@ class DicodileEncoder(BaseZEncoder):
                          solver_kwargs,
                          reg,
                          loss)
+
+        self.uv_constraint = 'auto'
+        self.loss_params = None
 
         self._encoder = dicodile.update_z.distributed_sparse_encoder.DistributedSparseEncoder(  # noqa: E501
             n_workers=n_jobs)

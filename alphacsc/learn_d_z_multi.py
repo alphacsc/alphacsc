@@ -17,6 +17,7 @@ from .utils.dictionary import get_lambda_max
 from .utils.whitening import whitening
 from .init_dict import init_dictionary, get_max_error_dict
 from ._encoder import get_z_encoder_for
+from ._solver_d import get_solver_d
 from .update_d_multi import update_uv, update_d
 from .update_d_multi import check_solver_and_constraints
 
@@ -168,6 +169,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
                             rank1=rank1, uv_constraint=uv_constraint,
                             D_init_params=D_init_params, random_state=rng,
                             window=window)
+
     b_hat_0 = rng.randn(n_atoms * (n_channels + n_times_atom))
     init_duration = time.time() - start
 
@@ -183,8 +185,6 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
     if lmbd_max == "scaled":
         reg = reg * _lmbd_max
 
-    d_kwargs = dict(verbose=verbose, eps=1e-8)
-    d_kwargs.update(solver_d_kwargs)
     if algorithm == "stochastic":
         # The typical stochastic algorithm samples one signal, compute the
         # associated value z and then perform one step of gradient descent
@@ -192,28 +192,16 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         assert 'max_iter' not in solver_d_kwargs, (
             "with algorithm='stochastic', max_iter is forced to 1."
         )
-        d_kwargs["max_iter"] = 1
+        solver_d_kwargs["max_iter"] = 1
     elif algorithm == 'greedy':
         # Initialize D with no atoms as they will be added sequentially.
         D_hat = D_hat[:0]
 
-    def compute_d_func(z_encoder):
-        X = z_encoder.X
-        z_hat = z_encoder.get_z_hat()
-        D_hat = z_encoder.D_hat
-        constants = z_encoder.get_constants()
-        if rank1:
-            return update_uv(
-                X, z_hat, uv_hat0=D_hat, constants=constants, b_hat_0=b_hat_0,
-                solver_d=solver_d, uv_constraint=uv_constraint, window=window,
-                loss=loss, loss_params=loss_params, **d_kwargs
-            )
-        else:
-            return update_d(
-                X, z_hat, D_hat0=D_hat, constants=constants,
-                b_hat_0=b_hat_0, solver_d=solver_d, window=window,
-                loss=loss, loss_params=loss_params, **d_kwargs
-            )
+    d_solver = get_solver_d(solver_d=solver_d,
+                            rank1=rank1,
+                            window=window,
+                            b_hat_0=b_hat_0,
+                            **solver_d_kwargs)
 
     with get_z_encoder_for(X, D_hat, n_atoms, n_times_atom, n_jobs, solver_z,
                            z_kwargs, reg, loss, loss_params, uv_constraint,
@@ -234,7 +222,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         # common parameters
         kwargs = dict(
             z_encoder=z_encoder,
-            compute_d_func=compute_d_func,
+            d_solver=d_solver,
             end_iter_func=end_iter_func,
             n_iter=n_iter,
             verbose=verbose,
@@ -294,7 +282,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
     return pobj, times, D_hat, z_hat, reg
 
 
-def _batch_learn(z_encoder, compute_d_func, end_iter_func, n_iter=100,
+def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
                  lmbd_max='fixed', reg=None, verbose=0, greedy=False,
                  random_state=None, name="batch", uv_constraint='separate',
                  window=False):
@@ -369,7 +357,7 @@ def _batch_learn(z_encoder, compute_d_func, end_iter_func, n_iter=100,
 
         # Compute D update
         start = time.time()
-        D_hat = compute_d_func(z_encoder)
+        D_hat = d_solver.update_D(z_encoder, verbose=verbose)
         z_encoder.set_D(D_hat)
 
         # monitor cost function
@@ -395,7 +383,7 @@ def _batch_learn(z_encoder, compute_d_func, end_iter_func, n_iter=100,
     return pobj, times, z_encoder.D_hat, z_encoder.get_z_hat()
 
 
-def _online_learn(z_encoder, compute_d_func, end_iter_func, n_iter=100,
+def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
                   verbose=0, random_state=None, lmbd_max='fixed', reg=None,
                   alpha=.8, batch_selection='random', batch_size=1,
                   name="online", uv_constraint='separate', window=False):
@@ -468,7 +456,7 @@ def _online_learn(z_encoder, compute_d_func, end_iter_func, n_iter=100,
 
         # Compute D update
         start = time.time()
-        D_hat = compute_d_func(z_encoder)
+        D_hat = d_solver.update_D(z_encoder, verbose=verbose)
         z_encoder.set_D(D_hat)
 
         # monitor cost function
