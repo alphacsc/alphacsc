@@ -1,8 +1,6 @@
 import pytest
 import numpy as np
-from scipy import sparse
 
-from alphacsc import cython_code
 from alphacsc.update_z_multi import update_z_multi
 from alphacsc.update_z_multi import compute_DtD, _coordinate_descent_idx
 from alphacsc.loss_and_gradient import compute_X_and_objective_multi
@@ -89,8 +87,7 @@ def test_support_least_square(solver_z):
     assert loss_3 <= loss_2 or np.isclose(loss_3, loss_2)
 
 
-@pytest.mark.parametrize('use_sparse_lil', [True, False])
-def test_cd(use_sparse_lil):
+def test_cd():
     n_trials, n_channels, n_times = 5, 3, 100
     n_times_atom, n_atoms = 10, 4
     n_times_valid = n_times - n_times_atom + 1
@@ -98,21 +95,11 @@ def test_cd(use_sparse_lil):
 
     rng = np.random.RandomState(0)
     uv = rng.randn(n_atoms, n_channels + n_times_atom)
-    if use_sparse_lil:
-        density = .1
-        z = [sparse.random(n_atoms, n_times_valid, format='lil',
-                           density=density, random_state=0)
-             for _ in range(n_trials)]
-        z_gen = [sparse.random(n_atoms, n_times_valid, format='lil',
-                               density=density, random_state=0)
-                 for _ in range(n_trials)]
-        z0 = z[0]
-    else:
-        z = abs(rng.randn(n_trials, n_atoms, n_times_valid))
-        z_gen = abs(rng.randn(n_trials, n_atoms, n_times_valid))
-        z[z < 1] = 0
-        z_gen[z_gen < 1] = 0
-        z0 = z[0]
+    z = abs(rng.randn(n_trials, n_atoms, n_times_valid))
+    z_gen = abs(rng.randn(n_trials, n_atoms, n_times_valid))
+    z[z < 1] = 0
+    z_gen[z_gen < 1] = 0
+    z0 = z[0]
 
     X = construct_X_multi(z_gen, D=uv, n_channels=n_channels)
 
@@ -131,14 +118,8 @@ def test_cd(use_sparse_lil):
                                          'max_iter': 5, 'tol': 1e-5
                                      },
                                      return_ztz=True)
-    if use_sparse_lil and cython_code._CYTHON_AVAILABLE:
-        from alphacsc.cython_code import _fast_compute_ztz, _fast_compute_ztX
-        assert np.allclose(ztz, _fast_compute_ztz(z_hat, n_times_atom))
-        assert np.allclose(ztX, _fast_compute_ztX(z_hat, X))
-
-    else:
-        assert np.allclose(ztz, compute_ztz(z_hat, n_times_atom))
-        assert np.allclose(ztX, compute_ztX(z_hat, X))
+    assert np.allclose(ztz, compute_ztz(z_hat, n_times_atom))
+    assert np.allclose(ztX, compute_ztX(z_hat, X))
 
     loss_1 = compute_X_and_objective_multi(X=X, z_hat=z_hat, D_hat=uv,
                                            reg=reg, loss='l2',

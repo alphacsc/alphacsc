@@ -3,11 +3,8 @@
 #          Umut Simsekli <umut.simsekli@telecom-paristech.fr>
 #          Alexandre Gramfort <alexandre.gramfort@inria.fr>
 #          Thomas Moreau <thomas.moreau@inria.fr>
-
 import numpy as np
 
-from . import cython_code
-from .utils.lil import get_z_shape, is_list_of_lil
 from .utils.optim import fista, power_iteration
 from .utils.convolution import numpy_convolve_uv
 from .utils.compute_constants import compute_ztz, compute_ztX
@@ -20,6 +17,31 @@ from .loss_and_gradient import gradient_uv, gradient_d
 def squeeze_all_except_one(X, axis=0):
     squeeze_axis = tuple(set(range(X.ndim)) - set([axis]))
     return X.squeeze(axis=squeeze_axis)
+
+
+def check_solver_and_constraints(rank1, solver_d, uv_constraint):
+
+    if rank1:
+        if solver_d == 'auto':
+            solver_d = 'alternate_adaptive'
+        if 'alternate' in solver_d:
+            if uv_constraint == 'auto':
+                uv_constraint = 'separate'
+            else:
+                assert uv_constraint == 'separate', (
+                    "solver_d='alternate*' should be used with "
+                    f"uv_constraint='separate'. Got '{uv_constraint}'."
+                )
+        elif uv_constraint == 'auto' and solver_d in ['joint', 'fista']:
+            uv_constraint = 'joint'
+    else:
+        assert solver_d in ['auto', 'fista'] and uv_constraint == 'auto', (
+            "If rank1 is False, uv_constraint should be 'auto' "
+            f"and solver_d should be auto or fista. Got solver_d='{solver_d}' "
+            f"and uv_constraint='{uv_constraint}'."
+        )
+        solver_d = 'fista'
+    return solver_d, uv_constraint
 
 
 def prox_uv(uv, uv_constraint='joint', n_channels=None, return_norm=False):
@@ -103,7 +125,7 @@ def update_uv(X, z, uv_hat0, constants=None, b_hat_0=None, debug=False,
     uv_hat : array, shape (n_atoms, n_channels + n_times_atom)
         The atoms to learn from the data.
     """
-    n_trials, n_atoms, n_times_valid = get_z_shape(z)
+    n_trials, n_atoms, n_times_valid = z.shape
     _, n_channels, n_times = X.shape
     n_times_atom = uv_hat0.shape[1] - n_channels
 
@@ -111,10 +133,6 @@ def update_uv(X, z, uv_hat0, constants=None, b_hat_0=None, debug=False,
         tukey_window_ = tukey_window(n_times_atom)[None, :]
         uv_hat0 = uv_hat0.copy()
         uv_hat0[:, n_channels:] /= tukey_window_
-
-    if solver_d == 'alternate':
-        msg = "alternate solver should be used with separate constraints"
-        assert uv_constraint == 'separate', msg
 
     if loss == 'l2' and constants is None:
         constants = _get_d_update_constants(X, z)
@@ -130,7 +148,7 @@ def update_uv(X, z, uv_hat0, constants=None, b_hat_0=None, debug=False,
                                              feasible_evaluation=True,
                                              uv_constraint=uv_constraint)
 
-    if solver_d in ['joint', 'fista']:
+    if solver_d in ['fista', 'joint']:
         # use FISTA on joint [u, v], with an adaptive step size
 
         def grad(uv):
@@ -253,8 +271,7 @@ def update_uv(X, z, uv_hat0, constants=None, b_hat_0=None, debug=False,
 
 def update_d(X, z, D_hat0, constants=None, b_hat_0=None, debug=False,
              max_iter=300, eps=None, solver_d='fista', momentum=False,
-             uv_constraint='joint', loss='l2', loss_params=dict(), verbose=0,
-             window=False):
+             loss='l2', loss_params=dict(), verbose=0, window=False):
     """Learn d's in time domain.
 
     Parameters
@@ -293,9 +310,7 @@ def update_d(X, z, D_hat0, constants=None, b_hat_0=None, debug=False,
     D_hat : array, shape (n_atoms, n_channels, n_times_atom)
         The atoms to learn from the data.
     """
-    n_trials, n_atoms, n_times_valid = get_z_shape(z)
-    _, n_channels, n_times = X.shape
-    n_atoms, n_channels, n_times_atom = D_hat0.shape
+    *_, n_times_atom = D_hat0.shape
 
     if window:
         tukey_window_ = tukey_window(n_times_atom)[None, None, :]
@@ -312,8 +327,8 @@ def update_d(X, z, D_hat0, constants=None, b_hat_0=None, debug=False,
         return compute_X_and_objective_multi(X, z, D_hat=D, loss=loss,
                                              loss_params=loss_params)
 
-    if True:  # only solver available here
-        # use FISTA on joint [u, v], with an adaptive step size
+    if solver_d in ['fista', 'auto']:  # only solver available here
+        # use FISTA on D, with an adaptive step size
 
         def grad(D):
             if window:
@@ -349,17 +364,12 @@ def update_d(X, z, D_hat0, constants=None, b_hat_0=None, debug=False,
 
 
 def _get_d_update_constants(X, z):
-    n_trials, n_atoms, n_times_valid = get_z_shape(z)
+    n_trials, n_atoms, n_times_valid = z.shape
     n_trials, n_channels, n_times = X.shape
     n_times_atom = n_times - n_times_valid + 1
 
-    if is_list_of_lil(z):
-        cython_code._assert_cython()
-        ztX = cython_code._fast_compute_ztX(z, X)
-        ztz = cython_code._fast_compute_ztz(z, n_times_atom)
-    else:
-        ztX = compute_ztX(z, X)
-        ztz = compute_ztz(z, n_times_atom)
+    ztX = compute_ztX(z, X)
+    ztz = compute_ztz(z, n_times_atom)
 
     constants = {}
     constants['ztX'] = ztX
@@ -401,4 +411,6 @@ def compute_lipschitz(uv0, constants, variable, b_hat_0=None,
         b_hat_v0 = b_hat_0.reshape(n_atoms, -1)[:, n_channels:].ravel()
         n_points = n_atoms * n_times_atom
         L = power_iteration(op_Hv, n_points, b_hat_0=b_hat_v0)
+    else:
+        raise ValueError("variable should be either 'u' or 'v'")
     return L

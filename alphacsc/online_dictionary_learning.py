@@ -37,11 +37,10 @@ class OnlineCDL(ConvolutionalDictionaryLearning):
 
     def __init__(self, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
                  solver_z='lgcd', solver_z_kwargs={}, unbiased_z_hat=False,
-                 solver_d='alternate_adaptive', solver_d_kwargs={},
-                 rank1=True, window=False, uv_constraint='separate',
-                 lmbd_max='scaled', eps=1e-10, D_init=None, D_init_params={},
-                 alpha=.8, batch_size=1, batch_selection='random',
-                 verbose=10, random_state=None):
+                 solver_d='auto', solver_d_kwargs={}, rank1=True, window=False,
+                 uv_constraint='auto', lmbd_max='scaled', eps=1e-10,
+                 D_init=None, D_init_params={}, alpha=.8, batch_size=1,
+                 batch_selection='random', verbose=10, random_state=None):
         super().__init__(
             n_atoms, n_times_atom, reg=reg, n_iter=n_iter,
             solver_z=solver_z, solver_z_kwargs=solver_z_kwargs,
@@ -53,8 +52,8 @@ class OnlineCDL(ConvolutionalDictionaryLearning):
                                   batch_selection=batch_selection),
             n_jobs=n_jobs, random_state=random_state, algorithm='online',
             lmbd_max=lmbd_max, raise_on_increase=False, loss='l2',
-            callback=None, use_sparse_z=False, verbose=verbose,
-            name="OnlineCDL")
+            callback=None, verbose=verbose, name="OnlineCDL"
+        )
 
     def partial_fit(self, X, y=None):
         # Successive partial_fit are equivalent to OnlineCDL only if
@@ -99,13 +98,14 @@ class OnlineCDL(ConvolutionalDictionaryLearning):
                 X, z_hat, uv_hat0=self._D_hat, constants=self.constants,
                 solver_d=self.solver_d, uv_constraint=self.uv_constraint,
                 loss=self.loss, loss_params=self.loss_params,
-                window=self.window, **d_kwargs)
+                window=self.window, **d_kwargs
+            )
         else:
             self._D_hat = update_d(
                 X, z_hat, D_hat0=self._D_hat, constants=self.constants,
-                solver_d=self.solver_d, uv_constraint=self.uv_constraint,
-                loss=self.loss, loss_params=self.loss_params,
-                window=self.window, **d_kwargs)
+                solver_d=self.solver_d, window=self.window,
+                loss=self.loss, loss_params=self.loss_params, **d_kwargs
+            )
 
         return z_hat
 

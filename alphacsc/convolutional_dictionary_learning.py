@@ -11,6 +11,7 @@ from .update_z_multi import update_z_multi
 from .utils.dictionary import get_D, get_uv
 from .learn_d_z_multi import learn_d_z_multi
 from .loss_and_gradient import construct_X_multi
+from .update_d_multi import check_solver_and_constraints
 
 
 DOC_FMT = """{short_desc}
@@ -34,11 +35,13 @@ DOC_FMT = """{short_desc}
         If set to True, learn rank 1 dictionary atoms.
     window : boolean
         If set to True, re-parametrizes the atoms with a temporal Tukey window.
-    uv_constraint : {{'joint' | 'separate'}}
-        The kind of norm constraint on the atoms:
+    uv_constraint : {{'joint' | 'separate' | 'auto'}}
+        The kind of norm constraint on the atoms if :code:`rank1=True`. If
+        :code:`rank1=False`, it must be 'auto', else it can be:
 
         - :code:`'joint'`: the constraint is ||[u, v]||_2 <= 1
-        - :code:`'separate'`: the constraint is ||u||_2 <= 1 and ||v||_2 <= 1
+        - :code:`'separate'`: the constraint is ||u||_2 <= 1 and ||v||_2 <= 1.
+        This is the default for rank1 with if 'auto'.
     sort_atoms : boolean
         If True, the atoms are sorted by explained variances.
 
@@ -73,8 +76,6 @@ DOC_FMT = """{short_desc}
         {{'l_bfgs' (default) | 'lgcd'}}.
     solver_z_kwargs : dict
         Additional keyword arguments to pass to update_z_multi.
-    use_sparse_z : boolean
-        Use sparse lil_matrices to store the activations.
     unbiased_z_hat : boolean
         If set to True, the value of the non-zero coefficients in the returned
         z_hat are recomputed with reg=0 on the frozen support.
@@ -82,9 +83,11 @@ DOC_FMT = """{short_desc}
 
     D-step parameters
 
-    solver_d : str
-        The solver to use for the d update. Options are
-        'alternate' | 'alternate_adaptive' (default) | 'joint'
+    solver_d : str (default: 'auto')
+        The solver to use for the d update. Options are:
+        {{'alternate', 'alternate_adaptive', 'joint', 'fista', 'auto'}}
+        'auto' amounts to 'fista' when :code:`rank1=False` and
+        'alternate_adaptive' for :code:`rank1=True`.
     solver_d_kwargs : dict
         Additional keyword arguments to provide to update_d
     D_init : str or array
@@ -135,16 +138,20 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
 
     def __init__(self, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
                  loss='l2', loss_params=None,
-                 rank1=True, window=False, uv_constraint='separate',
+                 rank1=True, window=False, uv_constraint='auto',
                  solver_z='l_bfgs', solver_z_kwargs={},
-                 solver_d='alternate_adaptive', solver_d_kwargs={},
+                 solver_d='auto', solver_d_kwargs={},
                  reg=0.1, lmbd_max='fixed', eps=1e-10,
                  D_init=None, D_init_params={},
                  algorithm='batch', algorithm_params={},
                  alpha=.8, batch_size=1, batch_selection='random',
-                 use_sparse_z=False, unbiased_z_hat=False,
-                 verbose=10, callback=None, random_state=None, name="_CDL",
-                 raise_on_increase=True, sort_atoms=False):
+                 unbiased_z_hat=False, verbose=10, callback=None,
+                 random_state=None, name="_CDL", raise_on_increase=True,
+                 sort_atoms=False):
+
+        solver_d, uv_constraint = check_solver_and_constraints(
+            rank1, solver_d, uv_constraint
+        )
 
         # Problem Specs
         self.n_atoms = n_atoms
@@ -167,7 +174,6 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
         # Z-step parameters
         self.solver_z = solver_z
         self.solver_z_kwargs = solver_z_kwargs
-        self.use_sparse_z = use_sparse_z
         self.unbiased_z_hat = unbiased_z_hat
 
         # D-step parameters
@@ -201,11 +207,11 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
             solver_z=self.solver_z, solver_z_kwargs=self.solver_z_kwargs,
             solver_d=self.solver_d, solver_d_kwargs=self.solver_d_kwargs,
             D_init=self.D_init, D_init_params=self.D_init_params,
-            use_sparse_z=self.use_sparse_z, unbiased_z_hat=False,
-            verbose=self.verbose, callback=self.callback,
+            unbiased_z_hat=False, verbose=self.verbose, callback=self.callback,
             random_state=self.random_state, n_jobs=self.n_jobs,
             name=self.name, raise_on_increase=self.raise_on_increase,
-            sort_atoms=self.sort_atoms)
+            sort_atoms=self.sort_atoms
+        )
 
         self._pobj, self._times, self._D_hat, self._z_hat, self.reg_ = res
         self.n_channels_ = X.shape[1]
@@ -341,8 +347,8 @@ class BatchCDL(ConvolutionalDictionaryLearning):
 
     def __init__(self, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
                  solver_z='lgcd', solver_z_kwargs={}, unbiased_z_hat=False,
-                 solver_d='alternate_adaptive', solver_d_kwargs={},
-                 rank1=True, window=False, uv_constraint='separate',
+                 solver_d='auto', solver_d_kwargs={},
+                 rank1=True, window=False, uv_constraint='auto',
                  lmbd_max='scaled', eps=1e-10, D_init=None, D_init_params={},
                  verbose=10, random_state=None, sort_atoms=False):
         super().__init__(
@@ -353,8 +359,9 @@ class BatchCDL(ConvolutionalDictionaryLearning):
             solver_d=solver_d, solver_d_kwargs=solver_d_kwargs,
             eps=eps, D_init=D_init, D_init_params=D_init_params,
             algorithm='batch', lmbd_max=lmbd_max, raise_on_increase=True,
-            loss='l2', use_sparse_z=False, n_jobs=n_jobs, verbose=verbose,
-            callback=None, random_state=random_state, name="BatchCDL")
+            loss='l2', n_jobs=n_jobs, verbose=verbose, callback=None,
+            random_state=random_state, name="BatchCDL"
+        )
 
 
 class GreedyCDL(ConvolutionalDictionaryLearning):
@@ -367,8 +374,8 @@ class GreedyCDL(ConvolutionalDictionaryLearning):
 
     def __init__(self, n_atoms, n_times_atom, reg=0.1, n_iter=60, n_jobs=1,
                  solver_z='lgcd', solver_z_kwargs={}, unbiased_z_hat=False,
-                 solver_d='alternate_adaptive', solver_d_kwargs={},
-                 rank1=True, window=False, uv_constraint='separate',
+                 solver_d='auto', solver_d_kwargs={},
+                 rank1=True, window=False, uv_constraint='auto',
                  lmbd_max='scaled', eps=1e-10, D_init=None, D_init_params={},
                  verbose=10, random_state=None, sort_atoms=False):
         super().__init__(
@@ -379,5 +386,6 @@ class GreedyCDL(ConvolutionalDictionaryLearning):
             solver_d=solver_d, solver_d_kwargs=solver_d_kwargs,
             eps=eps, D_init=D_init, D_init_params=D_init_params,
             algorithm='greedy', lmbd_max=lmbd_max, raise_on_increase=True,
-            loss='l2', use_sparse_z=False, n_jobs=n_jobs, verbose=verbose,
-            callback=None, random_state=random_state, name="GreedyCDL")
+            loss='l2', n_jobs=n_jobs, verbose=verbose, callback=None,
+            random_state=random_state, name="GreedyCDL"
+        )

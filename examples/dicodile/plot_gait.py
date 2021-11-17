@@ -3,7 +3,9 @@
 ====================
 Gait (steps) example
 ====================
-In this example, we use DiCoDiLe on an open dataset of gait (steps) IMU time-series to discover patterns in the data. We will then use those to attempt to detect steps and compare our findings with the ground truth.
+In this example, we use DiCoDiLe on an open dataset of gait (steps) IMU
+time-series to discover patterns in the data. We will then use those to attempt
+to detect steps and compare our findings with the ground truth.
 """
 
 import matplotlib.pyplot as plt
@@ -52,8 +54,8 @@ ax.legend()
 # # Convolutional Dictionary Learning
 
 ###############################################################################
-# Now, let’s use "dicodile" as solver_z to learn patterns from the data and reconstruct the
-# signal from a sparse representation.
+# Now, let’s use "dicodile" as solver_z to learn patterns from the data and
+# reconstruct the signal from a sparse representation.
 #
 # First, we initialize a dictionary from parts of the signal:
 
@@ -77,8 +79,8 @@ n_atoms = 8
 # set individual atom (patch) size.
 n_times_atom = 200
 
-D_init = init_dictionary(X, 
-                         n_atoms=8, 
+D_init = init_dictionary(X,
+                         n_atoms=8,
                          n_times_atom=200,
                          rank1=False,
                          window=True,
@@ -91,20 +93,20 @@ print(D_init.shape)
 from alphacsc import BatchCDL
 
 cdl = BatchCDL(
-     # Shape of the dictionary
-    n_atoms, 
-    n_times_atom, 
+    # Shape of the dictionary
+    n_atoms,
+    n_times_atom,
     rank1=False,
     uv_constraint='auto',
     # Number of iteration for the alternate minimization and cvg threshold
-    n_iter=3, 
+    n_iter=3,
     # number of workers to be used for dicodile
     n_jobs=4,
     # solver for the z-step
-    solver_z='dicodile', 
-    solver_z_kwargs={'max_iter': 10000}, 
+    solver_z='dicodile',
+    solver_z_kwargs={'max_iter': 10000},
     window=True,
-    D_init= D_init,
+    D_init=D_init,
     random_state=60)
 
 res = cdl.fit(X)
@@ -147,16 +149,20 @@ ax_hat.legend()
 np.count_nonzero(z_hat)
 
 ###############################################################################
-# Besides our visual check, a measure of how closely we’re reconstructing the original signal is the (normalized) cross-correlation. Let’s compute this:
+# Besides our visual check, a measure of how closely we’re reconstructing the
+# original signal is the (normalized) cross-correlation. Let’s compute this:
 
-np.correlate(X[0][0], X_hat[0][0]) / (
-    np.sqrt(np.correlate(X[0][0], X[0][0]) * np.correlate(X_hat[0][0], X_hat[0][0])))
+np.correlate(X[0][0], X_hat[0][0]) / np.sqrt(
+    np.correlate(X[0][0], X[0][0]) * np.correlate(X_hat[0][0], X_hat[0][0])
+)
 
 ###############################################################################
 # # Multichannel signals
 
 ###############################################################################
-# DiCoDiLe works just as well with multi-channel signals. The gait dataset contains 16 signals (8 for each foot), in the rest of this tutorial, we’ll use three of those.
+# DiCoDiLe works just as well with multi-channel signals. The gait dataset
+# contains 16 signals (8 for each foot), in the rest of this tutorial, we’ll
+# use three of those.
 
 # Left foot Vertical acceleration, Y rotation and X acceleration
 channels = ['LAV', 'LRY', 'LAX']
@@ -182,38 +188,37 @@ X_mc_subset = X_mc_subset.reshape(1, *X_mc_subset.shape)
 print(X_mc_subset.shape)
 
 ###############################################################################
-# Initialize the dictionary (note that the call is identical to the single-channel version)
+# Initialize the dictionary (note that the call is identical to the
+# single-channel version)
 
-D_init_mc = init_dictionary(X_mc_subset, 
-                         n_atoms=8, 
-                         n_times_atom=200,
-                         rank1=False,
-                         window=True,
-                         D_init='chunk',
-                         random_state=60)
+D_init_mc = init_dictionary(
+    X_mc_subset, n_atoms=8, n_times_atom=200, rank1=False,
+    window=True, D_init='chunk', random_state=60
+)
 
 print(D_init_mc.shape)
 
 ###############################################################################
-# And run DiCoDiLe (note that the call is identical to the single-channel version here as well)
+# And run DiCoDiLe (note that the call is identical to the single-channel
+# version here as well)
 
 from alphacsc import BatchCDL
 
 cdl = BatchCDL(
-     # Shape of the dictionary
-    n_atoms, 
-    n_times_atom, 
+    # Shape of the dictionary
+    n_atoms,
+    n_times_atom,
     rank1=False,
     uv_constraint='auto',
     # Number of iteration for the alternate minimization and cvg threshold
-    n_iter=3, 
+    n_iter=3,
     # number of workers to be used for dicodile
     n_jobs=4,
     # solver for the z-step
-    solver_z='dicodile', 
-    solver_z_kwargs={'max_iter': 10000}, 
+    solver_z='dicodile',
+    solver_z_kwargs={'max_iter': 10000},
     window=True,
-    D_init= D_init_mc,
+    D_init=D_init_mc,
     random_state=60)
 
 res = cdl.fit(X_mc_subset)
@@ -233,7 +238,8 @@ D_hat_mc = res._D_hat
 X_hat_mc = construct_X_multi(z_hat_mc, D_hat_mc)
 
 ###############################################################################
-# Let’s visually compare a small part of the original and reconstructed signals along with the activations.
+# Let’s visually compare a small part of the original and reconstructed signal
+# along with the activations.
 
 z_hat_mc.shape
 
@@ -262,4 +268,3 @@ for idx in range(z_hat_normalized.shape[1]):
     ax_hat_mc[1].stem(z_hat_normalized[0][idx][viz_start_idx:viz_end_idx],
                       linefmt=f"C{idx}-",
                       markerfmt=f"C{idx}o")
-

@@ -38,13 +38,25 @@ def get_uv(D):
     return uv
 
 
-def _patch_reconstruction_error(X, z, D):
-    """Return the reconstruction error for each patches of size (P, L)."""
-    n_trials, n_channels, n_times = X.shape
+def get_D_shape(D, n_channels):
     if D.ndim == 2:
         n_times_atom = D.shape[1] - n_channels
     else:
+        if n_channels is None:
+            n_channels = D.shape[1]
+        else:
+            assert n_channels == D.shape[1], (
+                f"n_channels does not match D.shape: {D.shape}"
+            )
         n_times_atom = D.shape[2]
+
+    return (D.shape[0], n_channels, n_times_atom)
+
+
+def _patch_reconstruction_error(X, z, D):
+    """Return the reconstruction error for each patches of size (P, L)."""
+    _, n_channels, _ = X.shape
+    *_, n_times_atom = get_D_shape(D, n_channels)
 
     from .convolution import construct_X_multi
     X_hat = construct_X_multi(z, D, n_channels=n_channels)

@@ -112,21 +112,22 @@ def run_one(reg, sigma, n_atoms, n_times_atom, max_n_channels, n_times_valid,
     uv_ = prox_uv(np.c_[uv[:, :run_n_channels], uv[:, max_n_channels:]],
                   uv_constraint='separate', n_channels=max_n_channels)
 
-    def cb(X, uv_hat, z_hat, pobj):
+    def cb(z_encoder, pobj):
         it = len(pobj) // 2
         if it % 10 == 0:
+            uv_hat = z_encoder.D_hat
             print("[channels{}] iter{} score sig={:.2e}: {:.3e}".format(
                 run_n_channels, it, sigma,
                 score_uv(uv_, uv_hat, run_n_channels)))
 
     pobj, times, uv_hat, z_hat, reg = learn_d_z_multi(
         X[:, :run_n_channels, :], n_atoms, n_times_atom,
-        random_state=random_state,
+        random_state=random_state, rank1=True,
         # callback=cb,
         n_iter=n_iter, n_jobs=1, reg=reg_, uv_constraint='separate',
         solver_d='alternate_adaptive', solver_d_kwargs={'max_iter': 50},
         solver_z="lgcd", solver_z_kwargs=dict(tol=1e-3, maxiter=500),
-        use_sparse_z=True, D_init=uv_init_, verbose=VERBOSE,
+        D_init=uv_init_, verbose=VERBOSE,
     )
 
     score = score_uv(uv_, uv_hat, run_n_channels)

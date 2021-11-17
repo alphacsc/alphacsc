@@ -4,9 +4,8 @@ import time
 import numpy as np
 from scipy import sparse
 
-from .lil import is_lil
-from .. import cython_code
 from . import check_random_state
+from .dictionary import get_D_shape
 from ..loss_and_gradient import gradient_zi
 from .convolution import _choose_convolve_multi
 
@@ -47,11 +46,7 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
     if timing:
         t_start = time.time()
     n_channels, n_times = Xi.shape
-    if D.ndim == 2:
-        n_atoms, n_times_atom = D.shape
-        n_times_atom -= n_channels
-    else:
-        n_atoms, n_channels, n_times_atom = D.shape
+    n_atoms, n_channels, n_times_atom = get_D_shape(D, n_channels)
     n_times_valid = n_times - n_times_atom + 1
     t0 = n_times_atom - 1
 
@@ -92,12 +87,7 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
 
     # If we freeze the support, we put dz_opt to zero outside the support of z0
     if freeze_support:
-        if is_lil(z0):
-            mask = z0 != 0
-            mask = mask.toarray()
-            mask = ~mask
-        else:
-            mask = z0 == 0
+        mask = z0 == 0
         dz_opt[mask] = 0
 
     accumulator = n_seg
@@ -108,7 +98,7 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
     for ii in range(int(max_iter)):
         k0, t0, dz = _select_coordinate(strategy, dz_opt, active_segs[i_seg],
                                         n_atoms, n_times_valid, n_times_seg,
-                                        seg_bounds, rng=rng)
+                                        seg_bounds, (t0, k0), rng=rng)
         if strategy in ['random', 'cyclic']:
             # accumulate on all coordinates from the stopping criterion
             if ii % n_coordinates == 0:
@@ -173,21 +163,11 @@ def _init_beta(Xi, z_hat, D, constants, reg, norm_Dk, tol,
     # Init beta with -DtX
     beta = gradient_zi(Xi, z_hat, D=D, reg=None, loss='l2',
                        return_func=False, constants=constants)
-    if is_lil(z_hat):
-        cython_code._assert_cython()
-        beta = cython_code.subtract_zhat_to_beta(beta, z_hat, norm_Dk[:, 0])
-    else:
-        for k, t in zip(*z_hat.nonzero()):
-            beta[k, t] -= z_hat[k, t] * norm_Dk[k]  # np.sum(DtD[k, k, t0])
 
-    if is_lil(z_hat):
-        n_times_valid = beta.shape[1]
-        dz_opt = np.zeros(beta.shape)
-        cython_code._assert_cython()
-        cython_code.update_dz_opt(z_hat, beta, dz_opt, norm_Dk[:, 0], reg,
-                                  t_start=0, t_end=n_times_valid)
-    else:
-        dz_opt = np.maximum(-beta - reg, 0) / norm_Dk - z_hat
+    for k, t in zip(*z_hat.nonzero()):
+        beta[k, t] -= z_hat[k, t] * norm_Dk[k]  # np.sum(DtD[k, k, t0])
+
+    dz_opt = np.maximum(-beta - reg, 0) / norm_Dk - z_hat
 
     tol = tol * np.std(Xi)
     if use_sparse_dz:
@@ -214,13 +194,8 @@ def _update_beta(beta, dz_opt, accumulator, active_segs, z_hat, DtD, norm_Dk,
     beta[k0, t0] = beta_i0
 
     # update dz_opt
-    if is_lil(z_hat):
-        cython_code._assert_cython()
-        cython_code.update_dz_opt(
-            z_hat, beta, dz_opt, norm_Dk[:, 0], reg, t_start_up, t_end_up)
-    else:
-        tmp = np.maximum(-beta[:, t_start_up:t_end_up] - reg, 0) / norm_Dk
-        dz_opt[:, t_start_up:t_end_up] = tmp - z_hat[:, t_start_up:t_end_up]
+    tmp = np.maximum(-beta[:, t_start_up:t_end_up] - reg, 0) / norm_Dk
+    dz_opt[:, t_start_up:t_end_up] = tmp - z_hat[:, t_start_up:t_end_up]
     dz_opt[k0, t0] = 0
 
     # reunable greedy updates in the segments immediately before or after
@@ -235,12 +210,7 @@ def _update_beta(beta, dz_opt, accumulator, active_segs, z_hat, DtD, norm_Dk,
 
     # If we freeze the support, we put dz_opt to zero outside the support of z0
     if freeze_support:
-        if is_lil(z0):
-            mask = z0[:, t_start_up:t_end_up] != 0
-            mask = mask.toarray()
-            mask = ~mask
-        else:
-            mask = z0[:, t_start_up:t_end_up] == 0
+        mask = z0[:, t_start_up:t_end_up] == 0
         dz_opt[:, t_start_up:t_end_up][mask] = 0
 
         if debug:
@@ -253,7 +223,7 @@ def _update_beta(beta, dz_opt, accumulator, active_segs, z_hat, DtD, norm_Dk,
 
 
 def _select_coordinate(strategy, dz_opt, active_seg, n_atoms, n_times_valid,
-                       n_times_seg, seg_bounds, rng):
+                       n_times_seg, seg_bounds, prev_idx, rng):
     # Pick a coordinate to update
     if strategy == 'random':
         k0 = rng.randint(n_atoms)
@@ -261,6 +231,7 @@ def _select_coordinate(strategy, dz_opt, active_seg, n_atoms, n_times_valid,
         dz = dz_opt[k0, t0]
 
     elif strategy == 'cyclic':
+        t0, k0 = prev_idx
         t0 += 1
         if t0 >= n_times_valid:
             t0 = 0
