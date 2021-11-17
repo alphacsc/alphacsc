@@ -18,7 +18,6 @@ from .utils.whitening import whitening
 from .init_dict import init_dictionary, get_max_error_dict
 from ._encoder import get_z_encoder_for
 from ._solver_d import get_solver_d
-from .update_d_multi import update_uv, update_d
 from .update_d_multi import check_solver_and_constraints
 
 
