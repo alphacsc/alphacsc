@@ -246,9 +246,8 @@ class AlternateDSolver(Rank1DSolver):
             "alternate solver should be used with separate constraints"
         )
 
-    def compute_lipschitz(self, uv0, constants, variable):
+    def compute_lipschitz(self, uv0, n_channels, ztz, variable):
 
-        n_channels = constants['n_channels']
         u0, v0 = uv0[:, :n_channels], uv0[:, n_channels:]
         n_atoms = uv0.shape[0]
         n_times_atom = uv0.shape[1] - n_channels
@@ -258,14 +257,14 @@ class AlternateDSolver(Rank1DSolver):
         def op_Hu(u):
             u = np.reshape(u, (n_atoms, n_channels))
             uv = np.c_[u, v0]
-            H_d = numpy_convolve_uv(constants['ztz'], uv)
+            H_d = numpy_convolve_uv(ztz, uv)
             H_u = (H_d * uv[:, None, n_channels:]).sum(axis=2)
             return H_u.ravel()
 
         def op_Hv(v):
             v = np.reshape(v, (n_atoms, n_times_atom))
             uv = np.c_[u0, v]
-            H_d = numpy_convolve_uv(constants['ztz'], uv)
+            H_d = numpy_convolve_uv(ztz, uv)
             H_v = (H_d * uv[:, :n_channels, None]).sum(axis=1)
             return H_v.ravel()
 
@@ -341,9 +340,9 @@ class AlternateDSolver(Rank1DSolver):
                 Lu = 1
             else:
                 Lu = self.compute_lipschitz(uv_hat,
-                                            z_encoder.get_constants(),
-                                            'u',
-                                            self.b_hat_0)
+                                            z_encoder.n_channels,
+                                            z_encoder.ztz,
+                                            'u')
             assert Lu > 0
 
             u_hat, pobj_u = fista(obj, grad_u, prox_u, 0.99 / Lu, u_hat,
@@ -382,9 +381,9 @@ class AlternateDSolver(Rank1DSolver):
                 Lv = 1
             else:
                 Lv = self.compute_lipschitz(uv_hat,
-                                            z_encoder.get_constants(),
-                                            'v',
-                                            self.b_hat_0)
+                                            z_encoder.n_channels,
+                                            z_encoder.ztz,
+                                            'v')
             assert Lv > 0
 
             v_hat, pobj_v = fista(obj, grad_v, prox_v, 0.99 / Lv, v_hat,
