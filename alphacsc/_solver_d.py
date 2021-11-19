@@ -59,7 +59,7 @@ def get_solver_d(solver_d='alternate_adaptive',
                  random_state=None):
 
     if rank1:
-        if solver_d in ['alternate', 'alternate_adaptive']:
+        if solver_d in ['alternate', 'alternate_adaptive', 'auto']:
             return AlternateDSolver(solver_d, rank1, uv_constraint, window,
                                     eps, max_iter, momentum, random_state)
         elif solver_d in ['fista', 'joint']:
@@ -68,7 +68,7 @@ def get_solver_d(solver_d='alternate_adaptive',
         else:
             raise ValueError('Unknown solver_d: %s' % (solver_d, ))
     else:
-        if solver_d in ['fista', 'auto']:
+        if solver_d in ['fista']:
             return DSolver(solver_d, rank1, uv_constraint, window,
                            eps, max_iter, momentum, random_state)
         else:
