@@ -17,8 +17,7 @@ from .utils.dictionary import get_lambda_max
 from .utils.whitening import whitening
 from .init_dict import init_dictionary, get_max_error_dict
 from ._encoder import get_z_encoder_for
-from ._solver_d import get_solver_d
-from .update_d_multi import check_solver_and_constraints
+from ._solver_d import get_solver_d, check_solver_and_constraints
 
 
 def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,

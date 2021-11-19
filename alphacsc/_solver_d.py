@@ -9,6 +9,46 @@ from .utils.dictionary import tukey_window
 from .utils.optim import fista, power_iteration
 
 
+def squeeze_all_except_one(X, axis=0):
+    squeeze_axis = tuple(set(range(X.ndim)) - set([axis]))
+    return X.squeeze(axis=squeeze_axis)
+
+
+def prox_d(D, return_norm=False):
+    norm_d = np.maximum(1, np.linalg.norm(D, axis=(1, 2), keepdims=True))
+    D /= norm_d
+
+    if return_norm:
+        return D, squeeze_all_except_one(norm_d, axis=0)
+    else:
+        return D
+
+
+def check_solver_and_constraints(rank1, solver_d, uv_constraint):
+
+    if rank1:
+        if solver_d == 'auto':
+            solver_d = 'alternate_adaptive'
+        if 'alternate' in solver_d:
+            if uv_constraint == 'auto':
+                uv_constraint = 'separate'
+            else:
+                assert uv_constraint == 'separate', (
+                    "solver_d='alternate*' should be used with "
+                    f"uv_constraint='separate'. Got '{uv_constraint}'."
+                )
+        elif uv_constraint == 'auto' and solver_d in ['joint', 'fista']:
+            uv_constraint = 'joint'
+    else:
+        assert solver_d in ['auto', 'fista'] and uv_constraint == 'auto', (
+            "If rank1 is False, uv_constraint should be 'auto' "
+            f"and solver_d should be auto or fista. Got solver_d='{solver_d}' "
+            f"and uv_constraint='{uv_constraint}'."
+        )
+        solver_d = 'fista'
+    return solver_d, uv_constraint
+
+
 def get_solver_d(solver_d='alternate_adaptive',
                  rank1=False,
                  uv_constraint='auto',
@@ -55,10 +95,6 @@ class BaseDSolver:
         self.max_iter = max_iter
         self.momentum = momentum
         self.rng = check_random_state(random_state)
-
-    def squeeze_all_except_one(self, X, axis=0):
-        squeeze_axis = tuple(set(range(X.ndim)) - set([axis]))
-        return X.squeeze(axis=squeeze_axis)
 
     def update_D(self, z_encoder, verbose=0, debug=False):
         raise NotImplementedError()
@@ -165,7 +201,7 @@ class JointDSolver(Rank1DSolver):
                              (self.uv_constraint, ))
 
         if return_norm:
-            return uv, self.squeeze_all_except_one(norm_uv, axis=0)
+            return uv, squeeze_all_except_one(norm_uv, axis=0)
         else:
             return uv
 
@@ -452,15 +488,6 @@ class DSolver(BaseDSolver):
 
         return objective
 
-    def prox_d(self, D, return_norm=False):
-        norm_d = np.maximum(1, np.linalg.norm(D, axis=(1, 2), keepdims=True))
-        D /= norm_d
-
-        if return_norm:
-            return D, self.squeeze_all_except_one(norm_d, axis=0)
-        else:
-            return D
-
     def update_D(self, z_encoder, verbose=0, debug=False):
 
         D_hat0, tukey_window_ = self._window(
@@ -486,7 +513,7 @@ class DSolver(BaseDSolver):
         def prox(D, step_size=None):
             if self.window:
                 D *= tukey_window_
-            D = self.prox_d(D)
+            D = prox_d(D)
             if self.window:
                 D /= tukey_window_
             return D
