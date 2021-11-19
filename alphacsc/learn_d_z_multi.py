@@ -17,7 +17,7 @@ from .utils.dictionary import get_lambda_max
 from .utils.whitening import whitening
 from .init_dict import init_dictionary, get_max_error_dict
 from ._encoder import get_z_encoder_for
-from ._solver_d import get_solver_d, check_solver_and_constraints
+from ._solver_d import get_solver_d
 
 
 def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
@@ -149,15 +149,29 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         f"got '{lmbd_max}'"
     )
 
-    solver_d, uv_constraint = check_solver_and_constraints(
-        rank1, solver_d, uv_constraint
-    )
-
     _, n_channels, _ = check_dimension(X)
 
     # Rescale the problem to avoid underflow issues
     std_X = X.std()
     X = X / std_X
+
+    if algorithm == "stochastic":
+        # The typical stochastic algorithm samples one signal, compute the
+        # associated value z and then perform one step of gradient descent
+        # for D.
+        assert 'max_iter' not in solver_d_kwargs, (
+            "with algorithm='stochastic', max_iter is forced to 1."
+        )
+        solver_d_kwargs["max_iter"] = 1
+
+    d_solver = get_solver_d(solver_d=solver_d,
+                            rank1=rank1,
+                            uv_constraint=uv_constraint,
+                            window=window,
+                            random_state=random_state,
+                            **solver_d_kwargs)
+
+    solver_d, uv_constraint = d_solver.solver_d, d_solver.uv_constraint
 
     # initialization
     start = time.time()
@@ -183,24 +197,9 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
     if lmbd_max == "scaled":
         reg = reg * _lmbd_max
 
-    if algorithm == "stochastic":
-        # The typical stochastic algorithm samples one signal, compute the
-        # associated value z and then perform one step of gradient descent
-        # for D.
-        assert 'max_iter' not in solver_d_kwargs, (
-            "with algorithm='stochastic', max_iter is forced to 1."
-        )
-        solver_d_kwargs["max_iter"] = 1
-    elif algorithm == 'greedy':
+    if algorithm == 'greedy':
         # Initialize D with no atoms as they will be added sequentially.
         D_hat = D_hat[:0]
-
-    d_solver = get_solver_d(solver_d=solver_d,
-                            rank1=rank1,
-                            uv_constraint=uv_constraint,
-                            window=window,
-                            random_state=random_state,
-                            **solver_d_kwargs)
 
     with get_z_encoder_for(X, D_hat, n_atoms, n_times_atom, n_jobs, solver_z,
                            z_kwargs, reg, loss, loss_params, uv_constraint,

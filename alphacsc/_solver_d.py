@@ -58,6 +58,10 @@ def get_solver_d(solver_d='alternate_adaptive',
                  momentum=False,
                  random_state=None):
 
+    solver_d, uv_constraint = check_solver_and_constraints(rank1,
+                                                           solver_d,
+                                                           uv_constraint)
+
     if rank1:
         if solver_d in ['alternate', 'alternate_adaptive', 'auto']:
             return AlternateDSolver(solver_d, rank1, uv_constraint, window,
