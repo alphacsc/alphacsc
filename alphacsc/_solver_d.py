@@ -3,7 +3,6 @@ import numpy as np
 from .loss_and_gradient import compute_objective, compute_X_and_objective_multi
 from .loss_and_gradient import gradient_uv, gradient_d
 
-from .update_d_multi import prox_uv, prox_d
 from .utils import check_random_state
 from .utils.convolution import numpy_convolve_uv
 from .utils.dictionary import tukey_window
@@ -56,6 +55,10 @@ class BaseDSolver:
         self.max_iter = max_iter
         self.momentum = momentum
         self.rng = check_random_state(random_state)
+
+    def squeeze_all_except_one(self, X, axis=0):
+        squeeze_axis = tuple(set(range(X.ndim)) - set([axis]))
+        return X.squeeze(axis=squeeze_axis)
 
     def update_D(self, z_encoder, verbose=0, debug=False):
         raise NotImplementedError()
@@ -140,6 +143,32 @@ class JointDSolver(Rank1DSolver):
                          momentum,
                          random_state)
 
+    def prox_uv(self, uv, n_channels=None,
+                return_norm=False):
+
+        if self.uv_constraint == 'joint':
+            norm_uv = np.maximum(1, np.linalg.norm(uv, axis=1, keepdims=True))
+            uv /= norm_uv
+
+        elif self.uv_constraint == 'separate':
+            assert n_channels is not None
+            norm_u = np.maximum(1, np.linalg.norm(uv[:, :n_channels],
+                                                  axis=1, keepdims=True))
+            norm_v = np.maximum(1, np.linalg.norm(uv[:, n_channels:],
+                                                  axis=1, keepdims=True))
+
+            uv[:, :n_channels] /= norm_u
+            uv[:, n_channels:] /= norm_v
+            norm_uv = norm_u * norm_v
+        else:
+            raise ValueError('Unknown uv_constraint: %s.' %
+                             (self.uv_constraint, ))
+
+        if return_norm:
+            return uv, self.squeeze_all_except_one(norm_uv, axis=0)
+        else:
+            return uv
+
     def update_D(self, z_encoder, verbose=0, debug=False):
 
         uv_hat0, tukey_window_ = self._window(z_encoder.D_hat,
@@ -170,9 +199,7 @@ class JointDSolver(Rank1DSolver):
             if self.window:
                 uv[:, n_channels:] *= tukey_window_
 
-            uv = prox_uv(uv,
-                         uv_constraint=self.uv_constraint,
-                         n_channels=n_channels)
+            uv = self.prox_uv(uv, n_channels=n_channels)
 
             if self.window:
                 uv[:, n_channels:] /= tukey_window_
@@ -426,6 +453,15 @@ class DSolver(BaseDSolver):
 
         return objective
 
+    def prox_d(self, D, return_norm=False):
+        norm_d = np.maximum(1, np.linalg.norm(D, axis=(1, 2), keepdims=True))
+        D /= norm_d
+
+        if return_norm:
+            return D, self.squeeze_all_except_one(norm_d, axis=0)
+        else:
+            return D
+
     def update_D(self, z_encoder, verbose=0, debug=False):
 
         D_hat0, tukey_window_ = self._window(
@@ -451,7 +487,7 @@ class DSolver(BaseDSolver):
         def prox(D, step_size=None):
             if self.window:
                 D *= tukey_window_
-            D = prox_d(D)
+            D = self.prox_d(D)
             if self.window:
                 D /= tukey_window_
             return D
