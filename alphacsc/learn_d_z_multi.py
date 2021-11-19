@@ -15,7 +15,7 @@ from .utils import check_random_state
 from .utils.convolution import sort_atoms_by_explained_variances
 from .utils.dictionary import get_lambda_max
 from .utils.whitening import whitening
-from .init_dict import init_dictionary, get_max_error_dict
+from .init_dict import get_max_error_dict
 from ._encoder import get_z_encoder_for
 from ._solver_d import get_solver_d
 
@@ -171,19 +171,13 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
                             random_state=random_state,
                             **solver_d_kwargs)
 
-    solver_d, uv_constraint = d_solver.solver_d, d_solver.uv_constraint
-
     # initialization
     start = time.time()
 
-    D_hat = init_dictionary(X, n_atoms, n_times_atom, D_init=D_init,
-                            rank1=rank1, uv_constraint=uv_constraint,
-                            D_init_params=D_init_params,
-                            random_state=random_state, window=window)
+    D_hat = d_solver.init_dictionary(X, n_atoms, n_times_atom, D_init=D_init,
+                                     D_init_params=D_init_params)
 
     init_duration = time.time() - start
-
-    z_kwargs = dict(verbose=verbose, **solver_z_kwargs)
 
     # Compute the coefficients to whiten X. TODO: add timing
     if loss == 'whitening':
@@ -201,8 +195,11 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         # Initialize D with no atoms as they will be added sequentially.
         D_hat = D_hat[:0]
 
+    z_kwargs = dict(verbose=verbose, **solver_z_kwargs)
+
     with get_z_encoder_for(X, D_hat, n_atoms, n_times_atom, n_jobs, solver_z,
-                           z_kwargs, reg, loss, loss_params, uv_constraint,
+                           z_kwargs, reg, loss, loss_params,
+                           d_solver.uv_constraint,
                            feasible_evaluation=False) as z_encoder:
         if callable(callback):
             callback(z_encoder, [])
@@ -225,11 +222,9 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
             n_iter=n_iter,
             verbose=verbose,
             random_state=random_state,
-            window=window,
             reg=reg,
             lmbd_max=lmbd_max,
             name=name,
-            uv_constraint=uv_constraint
         )
         kwargs.update(algorithm_params)
 
@@ -282,8 +277,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
 
 def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
                  lmbd_max='fixed', reg=None, verbose=0, greedy=False,
-                 random_state=None, name="batch", uv_constraint='separate',
-                 window=False):
+                 random_state=None, name="batch"):
 
     X = z_encoder.X
     n_atoms = z_encoder.n_atoms
@@ -314,8 +308,8 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
                 z_encoder.D_hat.shape[0] < n_atoms:
             # add a new atom every n_iter_by_atom iterations
             new_atom = get_max_error_dict(
-                z_encoder, uv_constraint=uv_constraint,
-                window=window)[0]
+                z_encoder, uv_constraint=d_solver.uv_constraint,
+                window=d_solver.window)[0]
             # XXX what should happen here when using DiCoDiLe?
             z_encoder.add_one_atom(new_atom)
 
@@ -365,8 +359,8 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
         null_atom_indices = np.where(z_nnz == 0)[0]
         if len(null_atom_indices) > 0:
             k0 = null_atom_indices[0]
-            D_hat[k0] = get_max_error_dict(z_encoder, uv_constraint,
-                                           window=window)[0]
+            D_hat[k0] = get_max_error_dict(z_encoder, d_solver.uv_constraint,
+                                           window=d_solver.window)[0]
             z_encoder.set_D(D_hat)
             if verbose > 5:
                 print('[{}] Resampled atom {}'.format(name, k0))
@@ -384,7 +378,7 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
 def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
                   verbose=0, random_state=None, lmbd_max='fixed', reg=None,
                   alpha=.8, batch_selection='random', batch_size=1,
-                  name="online", uv_constraint='separate', window=False):
+                  name="online"):
 
     X = z_encoder.X
     D_hat = z_encoder.D_hat
@@ -464,8 +458,8 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
         null_atom_indices = np.where(z_nnz == 0)[0]
         if len(null_atom_indices) > 0:
             k0 = null_atom_indices[0]
-            D_hat[k0] = get_max_error_dict(z_encoder, uv_constraint,
-                                           window=window)[0]
+            D_hat[k0] = get_max_error_dict(z_encoder, d_solver.uv_constraint,
+                                           window=d_solver.window)[0]
             z_encoder.set_D(D_hat)
             if verbose > 5:
                 print('[{}] Resampled atom {}'.format(name, k0))

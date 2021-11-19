@@ -1,8 +1,8 @@
 import numpy as np
 
+from .init_dict import init_dictionary
 from .loss_and_gradient import compute_objective, compute_X_and_objective_multi
 from .loss_and_gradient import gradient_uv, gradient_d
-
 from .utils import check_random_state
 from .utils.convolution import numpy_convolve_uv
 from .utils.dictionary import tukey_window
@@ -99,6 +99,17 @@ class BaseDSolver:
         self.max_iter = max_iter
         self.momentum = momentum
         self.rng = check_random_state(random_state)
+
+    def init_dictionary(self, X, n_atoms, n_times_atom, D_init=None,
+                        D_init_params=dict()):
+
+        return init_dictionary(X, n_atoms, n_times_atom,
+                               D_init=D_init,
+                               rank1=self.rank1,
+                               uv_constraint=self.uv_constraint,
+                               D_init_params=D_init_params,
+                               random_state=self.rng,
+                               window=self.window)
 
     def update_D(self, z_encoder, verbose=0, debug=False):
         raise NotImplementedError()
