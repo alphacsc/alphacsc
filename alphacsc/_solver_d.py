@@ -25,6 +25,33 @@ def prox_d(D, return_norm=False):
 
 
 def check_solver_and_constraints(rank1, solver_d, uv_constraint):
+    """Checks if solver_d and uv_constraint are compatible depending on
+    rank1 value.
+
+    - If rank1 is False, solver_d should be 'fista' and uv_constraint should be
+    'auto'.
+    - If rank1 is True;
+       - If solver_d is either 'alternate' or 'alternate_adaptive',
+         uv_constraint should be 'separate'.
+       - If solver_d is either 'joint' or 'fista', uv_constraint should be
+         'joint'.
+
+    Parameters
+    ----------
+    rank1: boolean
+        If set to True, learn rank 1 dictionary atoms.
+    solver_d : str in {'alternate' | 'alternate_adaptive' | 'fista' | 'joint' |
+    'auto'}
+        The solver to use for the d update.
+        - If rank1 is False, only option is 'fista'
+        - If rank1 is True, options are 'alternate', 'alternate_adaptive'
+          (default) or 'joint'
+    uv_constraint : str in {'joint' | 'separate' | 'auto'}
+        The kind of norm constraint on the atoms if using rank1=True.
+        If 'joint', the constraint is norm_2([u, v]) <= 1
+        If 'separate', the constraint is norm_2(u) <= 1 and norm_2(v) <= 1
+        If rank1 is False, then uv_constraint must be 'auto'.
+    """
 
     if rank1:
         if solver_d == 'auto':
@@ -57,13 +84,42 @@ def get_solver_d(solver_d='alternate_adaptive',
                  max_iter=300,
                  momentum=False,
                  random_state=None):
+    """Returns solver depending on solver_d type and rank1 value.
+
+    Parameters
+    ----------
+    solver_d : str in {'alternate' | 'alternate_adaptive' | 'fista' | 'joint' |
+    'auto'}
+        The solver to use for the d update.
+        - If rank1 is False, only option is 'fista'
+        - If rank1 is True, options are 'alternate', 'alternate_adaptive'
+          (default) or 'joint'
+    rank1: boolean
+        If set to True, learn rank 1 dictionary atoms.
+    uv_constraint : str in {'joint' | 'separate' | 'auto'}
+        The kind of norm constraint on the atoms if using rank1=True.
+        If 'joint', the constraint is norm_2([u, v]) <= 1
+        If 'separate', the constraint is norm_2(u) <= 1 and norm_2(v) <= 1
+        If rank1 is False, then uv_constraint must be 'auto'.
+    window : boolean
+        If True, re-parametrizes the atoms with a temporal Tukey window
+    eps : float
+        Stopping criterion. If the cost descent after a uv and a z update is
+        smaller than eps, return.
+    max_iter: int
+        Number of iterations of gradient descent.
+    momentum : bool
+        If True, use an accelerated version of the proximal gradient descent.
+    random_state : int | None
+        The random state.
+    """
 
     solver_d, uv_constraint = check_solver_and_constraints(rank1,
                                                            solver_d,
                                                            uv_constraint)
 
     if rank1:
-        if solver_d in ['alternate', 'alternate_adaptive', 'auto']:
+        if solver_d in ['alternate', 'alternate_adaptive']:
             return AlternateDSolver(solver_d, rank1, uv_constraint, window,
                                     eps, max_iter, momentum, random_state)
         elif solver_d in ['fista', 'joint']:
@@ -80,6 +136,7 @@ def get_solver_d(solver_d='alternate_adaptive',
 
 
 class BaseDSolver:
+    """Base class for a d solver."""
 
     def __init__(self,
                  solver_d,
@@ -102,6 +159,30 @@ class BaseDSolver:
 
     def init_dictionary(self, X, n_atoms, n_times_atom, D_init=None,
                         D_init_params=dict()):
+        """Returns an initial dictionary for the signals X.
+
+        Parameter
+        ---------
+        X: array, shape (n_trials, n_channels, n_times)
+            The data on which to perform CSC.
+        n_atoms : int
+            The number of atoms to learn.
+        n_times_atom : int
+            The support of the atom.
+        D_init : array or {'kmeans' | 'ssa' | 'chunk' | 'random'}
+            The initialization scheme for the dictionary or the initial
+            atoms. The shape should match the required dictionary shape, ie if
+            rank1 is True, (n_atoms, n_channels + n_times_atom) and else
+            (n_atoms, n_channels, n_times_atom)
+        D_init_params : dict
+            Dictionnary of parameters for the kmeans init method.
+
+        Return
+        ------
+        D : array shape (n_atoms, n_channels + n_times_atom) or
+                  shape (n_atoms, n_channels, n_times_atom)
+            The initial atoms to learn from the data.
+        """
 
         return init_dictionary(X, n_atoms, n_times_atom,
                                D_init=D_init,
@@ -112,10 +193,19 @@ class BaseDSolver:
                                window=self.window)
 
     def update_D(self, z_encoder, verbose=0, debug=False):
+        """Learn d's in time domain.
+
+        Parameters
+        ----------
+        z_encoder:
+        verbose:
+        debug:
+        """
         raise NotImplementedError()
 
 
 class Rank1DSolver(BaseDSolver):
+    """Base class for a rank1 solver d."""
 
     def __init__(self,
                  solver_d,
@@ -174,6 +264,7 @@ class Rank1DSolver(BaseDSolver):
 
 
 class JointDSolver(Rank1DSolver):
+    """A class for 'fista' or 'joint' solver_d when rank1 is True. """
 
     def __init__(self,
                  solver_d,
@@ -273,6 +364,9 @@ class JointDSolver(Rank1DSolver):
 
 
 class AlternateDSolver(Rank1DSolver):
+    """A class for 'alternate' or 'alternate_adaptive' solver_d when rank1 is
+       True.
+    """
 
     def __init__(self,
                  solver_d,
@@ -456,6 +550,7 @@ class AlternateDSolver(Rank1DSolver):
 
 
 class DSolver(BaseDSolver):
+    """A class for 'fista' solver_d when rank1 is False. """
 
     def __init__(self,
                  solver_d,
