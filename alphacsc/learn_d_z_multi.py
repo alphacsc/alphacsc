@@ -162,14 +162,12 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
 
     # initialization
     start = time.time()
-    rng = check_random_state(random_state)
 
     D_hat = init_dictionary(X, n_atoms, n_times_atom, D_init=D_init,
                             rank1=rank1, uv_constraint=uv_constraint,
-                            D_init_params=D_init_params, random_state=rng,
-                            window=window)
+                            D_init_params=D_init_params,
+                            random_state=random_state, window=window)
 
-    b_hat_0 = rng.randn(n_atoms * (n_channels + n_times_atom))
     init_duration = time.time() - start
 
     z_kwargs = dict(verbose=verbose, **solver_z_kwargs)
@@ -200,7 +198,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
                             rank1=rank1,
                             uv_constraint=uv_constraint,
                             window=window,
-                            b_hat_0=b_hat_0,
+                            random_state=random_state,
                             **solver_d_kwargs)
 
     with get_z_encoder_for(X, D_hat, n_atoms, n_times_atom, n_jobs, solver_z,

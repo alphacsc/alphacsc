@@ -4,6 +4,7 @@ from .loss_and_gradient import compute_objective, compute_X_and_objective_multi
 from .loss_and_gradient import gradient_uv, gradient_d
 
 from .update_d_multi import prox_uv, prox_d
+from .utils import check_random_state
 from .utils.convolution import numpy_convolve_uv
 from .utils.dictionary import tukey_window
 from .utils.optim import fista, power_iteration
@@ -13,24 +14,24 @@ def get_solver_d(solver_d='alternate_adaptive',
                  rank1=False,
                  uv_constraint='auto',
                  window=False,
-                 b_hat_0=None,
                  eps=1e-8,
                  max_iter=300,
-                 momentum=False):
+                 momentum=False,
+                 random_state=None):
 
     if rank1:
         if solver_d in ['alternate', 'alternate_adaptive']:
             return AlternateDSolver(solver_d, rank1, uv_constraint, window,
-                                    b_hat_0, eps, max_iter, momentum)
+                                    eps, max_iter, momentum, random_state)
         elif solver_d in ['fista', 'joint']:
             return JointDSolver(solver_d, rank1, uv_constraint, window,
-                                b_hat_0, eps, max_iter, momentum)
+                                eps, max_iter, momentum, random_state)
         else:
             raise ValueError('Unknown solver_d: %s' % (solver_d, ))
     else:
         if solver_d in ['fista', 'auto']:
             return DSolver(solver_d, rank1, uv_constraint, window,
-                           b_hat_0, eps, max_iter, momentum)
+                           eps, max_iter, momentum, random_state)
         else:
             raise ValueError('Unknown solver_d: %s' % (solver_d, ))
 
@@ -42,19 +43,19 @@ class BaseDSolver:
                  rank1,
                  uv_constraint,
                  window,
-                 b_hat_0,
                  eps,
                  max_iter,
-                 momentum):
+                 momentum,
+                 random_state):
 
         self.solver_d = solver_d
         self.rank1 = rank1
         self.uv_constraint = uv_constraint
         self.window = window
-        self.b_hat_0 = b_hat_0
         self.eps = eps
         self.max_iter = max_iter
         self.momentum = momentum
+        self.rng = check_random_state(random_state)
 
     def update_D(self, z_encoder, verbose=0, debug=False):
         raise NotImplementedError()
@@ -67,19 +68,19 @@ class Rank1DSolver(BaseDSolver):
                  rank1,
                  uv_constraint,
                  window,
-                 b_hat_0,
                  eps,
                  max_iter,
-                 momentum):
+                 momentum,
+                 random_state):
 
         super().__init__(solver_d,
                          rank1,
                          uv_constraint,
                          window,
-                         b_hat_0,
                          eps,
                          max_iter,
-                         momentum)
+                         momentum,
+                         random_state)
 
     def _window(self, uv_hat0, n_channels, n_times_atom):
 
@@ -96,9 +97,11 @@ class Rank1DSolver(BaseDSolver):
 
         def objective(uv):
 
+            n_channels = z_encoder.n_channels
+
             if self.window:
                 uv = uv.copy()
-                uv[:, z_encoder.n_channels:] *= tukey_window_
+                uv[:, n_channels:] *= tukey_window_
 
             if z_encoder.loss == 'l2':
                 return compute_objective(D=uv,
@@ -123,26 +126,27 @@ class JointDSolver(Rank1DSolver):
                  rank1,
                  uv_constraint,
                  window,
-                 b_hat_0,
                  eps,
                  max_iter,
-                 momentum):
+                 momentum,
+                 random_state):
 
         super().__init__(solver_d,
                          rank1,
                          uv_constraint,
                          window,
-                         b_hat_0,
                          eps,
                          max_iter,
-                         momentum)
+                         momentum,
+                         random_state)
 
     def update_D(self, z_encoder, verbose=0, debug=False):
-        n_channels = z_encoder.n_channels
 
         uv_hat0, tukey_window_ = self._window(z_encoder.D_hat,
-                                              n_channels,
+                                              z_encoder.n_channels,
                                               z_encoder.n_times_atom)
+
+        n_channels = z_encoder.n_channels
 
         # use FISTA on joint [u, v], with an adaptive step size
 
@@ -178,10 +182,9 @@ class JointDSolver(Rank1DSolver):
         objective = self._objective(z_encoder, tukey_window_)
 
         uv_hat, pobj = fista(objective, grad, prox, None, uv_hat0,
-                             self.max_iter,
-                             momentum=self.momentum, eps=self.eps,
-                             adaptive_step_size=True, debug=debug,
-                             verbose=verbose, name="Update uv")
+                             self.max_iter, momentum=self.momentum,
+                             eps=self.eps, adaptive_step_size=True,
+                             debug=debug, verbose=verbose, name="Update uv")
 
         if self.window:
             uv_hat[:, n_channels:] *= tukey_window_
@@ -198,33 +201,32 @@ class AlternateDSolver(Rank1DSolver):
                  rank1,
                  uv_constraint,
                  window,
-                 b_hat_0,
                  eps,
                  max_iter,
-                 momentum):
+                 momentum,
+                 random_state):
 
         super().__init__(solver_d,
                          rank1,
                          uv_constraint,
                          window,
-                         b_hat_0,
                          eps,
                          max_iter,
-                         momentum)
+                         momentum,
+                         random_state)
 
         assert self.uv_constraint == 'separate', (
             "alternate solver should be used with separate constraints"
         )
 
-    def compute_lipschitz(uv0, constants, variable, b_hat_0=None,
-                          random_state=None):
+    def compute_lipschitz(self, uv0, constants, variable):
 
         n_channels = constants['n_channels']
         u0, v0 = uv0[:, :n_channels], uv0[:, n_channels:]
         n_atoms = uv0.shape[0]
         n_times_atom = uv0.shape[1] - n_channels
-        if b_hat_0 is None:
-            b_hat_0 = np.random.randn(uv0.size)
+        if self.b_hat_0 is None:
+            self.b_hat_0 = np.random.randn(uv0.size)
 
         def op_Hu(u):
             u = np.reshape(u, (n_atoms, n_channels))
@@ -241,11 +243,13 @@ class AlternateDSolver(Rank1DSolver):
             return H_v.ravel()
 
         if variable == 'u':
-            b_hat_u0 = b_hat_0.reshape(n_atoms, -1)[:, :n_channels].ravel()
+            b_hat_u0 = self.b_hat_0.reshape(
+                n_atoms, -1)[:, :n_channels].ravel()
             n_points = n_atoms * n_channels
             L = power_iteration(op_Hu, n_points, b_hat_0=b_hat_u0)
         elif variable == 'v':
-            b_hat_v0 = b_hat_0.reshape(n_atoms, -1)[:, n_channels:].ravel()
+            b_hat_v0 = self.b_hat_0.reshape(
+                n_atoms, -1)[:, n_channels:].ravel()
             n_points = n_atoms * n_times_atom
             L = power_iteration(op_Hv, n_points, b_hat_0=b_hat_v0)
         else:
@@ -381,19 +385,19 @@ class DSolver(BaseDSolver):
                  rank1,
                  uv_constraint,
                  window,
-                 b_hat_0,
                  eps,
                  max_iter,
-                 momentum):
+                 momentum,
+                 random_state):
 
         super().__init__(solver_d,
                          rank1,
                          uv_constraint,
                          window,
-                         b_hat_0,
                          eps,
                          max_iter,
-                         momentum)
+                         momentum,
+                         random_state)
 
     def _window(self, D_hat0, n_times_atom):
         tukey_window_ = None
