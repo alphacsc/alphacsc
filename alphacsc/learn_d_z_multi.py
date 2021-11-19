@@ -175,6 +175,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
     if loss == 'whitening':
         loss_params['ar_model'], X = whitening(X, ordar=loss_params['ordar'])
 
+    # XXX - lambda_max does not correspond to the one for the dicitonary with
+    # one atom.
     _lmbd_max = get_lambda_max(X, D_hat).max()
     if verbose > 1:
         print("[{}] Max value for lambda: {}".format(name, _lmbd_max))
