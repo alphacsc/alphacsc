@@ -382,7 +382,7 @@ class AlternateDSolver(Rank1DSolver):
         u0, v0 = uv0[:, :n_channels], uv0[:, n_channels:]
         n_atoms = uv0.shape[0]
         n_times_atom = uv0.shape[1] - n_channels
-        if self.b_hat_0 is None:
+        if not hasattr(self, 'b_hat_0'):
             self.b_hat_0 = np.random.randn(uv0.size)
 
         def op_Hu(u):
