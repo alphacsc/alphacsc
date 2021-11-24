@@ -7,21 +7,7 @@ from .utils import check_random_state
 from .utils.convolution import numpy_convolve_uv
 from .utils.dictionary import tukey_window
 from .utils.optim import fista, power_iteration
-
-
-def squeeze_all_except_one(X, axis=0):
-    squeeze_axis = tuple(set(range(X.ndim)) - set([axis]))
-    return X.squeeze(axis=squeeze_axis)
-
-
-def prox_d(D, return_norm=False):
-    norm_d = np.maximum(1, np.linalg.norm(D, axis=(1, 2), keepdims=True))
-    D /= norm_d
-
-    if return_norm:
-        return D, squeeze_all_except_one(norm_d, axis=0)
-    else:
-        return D
+from .update_d_multi import squeeze_all_except_one, prox_d
 
 
 def check_solver_and_constraints(rank1, solver_d, uv_constraint):
