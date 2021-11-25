@@ -255,21 +255,15 @@ def test_init_shape(X, rank1, solver_d, uv_constraint, expected_shape, window):
     assert D_hat.shape == expected_shape
 
 
-@pytest.mark.parametrize('solver_d', ['auto', 'fista'])
-@pytest.mark.parametrize('uv_constraint', ['auto'])
-def test_update_D(solver_d, uv_constraint):
-    """Tests for the case rank1 is False."""
-    pass
-
-
-@pytest.mark.parametrize('solver_d, uv_constraint', [
-    ('alternate', 'separate'),
-    ('alternate_adaptive', 'separate'),
-    ('joint', 'joint'),
-    ('fista', 'joint')
+@pytest.mark.parametrize('rank1, solver_d, uv_constraint, shape', [
+    (True, 'alternate', 'separate', (N_ATOMS, N_CHANNELS + N_TIMES_ATOM)),
+    (True, 'alternate_adaptive', 'separate',
+     (N_ATOMS, N_CHANNELS + N_TIMES_ATOM)),
+    (True, 'joint', 'joint', (N_ATOMS, N_CHANNELS + N_TIMES_ATOM)),
+    (True, 'fista', 'joint', (N_ATOMS, N_CHANNELS + N_TIMES_ATOM)),
+    (False, 'fista', 'auto', (N_ATOMS, N_CHANNELS, N_TIMES_ATOM))
 ])
-def test_update_D_rank1(solver_d, uv_constraint, z_encoder_rank1, rng):
-    """Tests for the case rank1 is True."""
+def test_update_D(rank1, solver_d, uv_constraint, shape, z_encoder_rank1, rng):
 
     X = z_encoder_rank1.X
     z = z_encoder_rank1.z_hat
@@ -279,7 +273,7 @@ def test_update_D_rank1(solver_d, uv_constraint, z_encoder_rank1, rng):
         return compute_objective(X, X_hat, z_encoder_rank1.loss)
 
     d_solver = get_solver_d(solver_d=solver_d,
-                            rank1=True,
+                            rank1=rank1,
                             uv_constraint=uv_constraint,
                             max_iter=1000)
 
@@ -292,7 +286,7 @@ def test_update_D_rank1(solver_d, uv_constraint, z_encoder_rank1, rng):
     assert np.isclose(cost, 0), "optimal point not stable"
     assert np.allclose(uv, uv0), "optimal point not stable"
 
-    uv1 = rng.normal(size=(N_ATOMS, N_CHANNELS + N_TIMES_ATOM))
+    uv1 = rng.normal(size=(shape))
     uv1 = prox_uv(uv1)
 
     cost0 = objective(uv1)
