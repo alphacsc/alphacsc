@@ -95,14 +95,6 @@ jobs:
       with:
         name: artifact
         path: dist
-    - name: Publish distribution to Test PyPI
-      uses: pypa/gh-action-pypi-publish@v1.4.2
-      with:
-        password: ${{ secrets.TEST_PYPI_API_TOKEN }}
-        repository_url: https://test.pypi.org/legacy/
-        # do not fail if the TestPyPi release already
-        # exists
-        skip_existing: true
     - name: Publish distribution to PyPI
       uses: pypa/gh-action-pypi-publish@v1.4.2
       with:
