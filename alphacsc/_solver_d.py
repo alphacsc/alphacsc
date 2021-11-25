@@ -3,63 +3,11 @@ import numpy as np
 from .init_dict import init_dictionary
 from .loss_and_gradient import compute_objective, compute_X_and_objective_multi
 from .loss_and_gradient import gradient_uv, gradient_d
+from .update_d_multi import prox_d, prox_uv, check_solver_and_constraints
 from .utils import check_random_state
 from .utils.convolution import numpy_convolve_uv
 from .utils.dictionary import tukey_window, get_uv
 from .utils.optim import fista, power_iteration
-from .update_d_multi import prox_d, prox_uv
-
-
-def check_solver_and_constraints(rank1, solver_d, uv_constraint):
-    """Checks if solver_d and uv_constraint are compatible depending on
-    rank1 value.
-
-    - If rank1 is False, solver_d should be 'fista' and uv_constraint should be
-    'auto'.
-    - If rank1 is True;
-       - If solver_d is either 'alternate' or 'alternate_adaptive',
-         uv_constraint should be 'separate'.
-       - If solver_d is either 'joint' or 'fista', uv_constraint should be
-         'joint'.
-
-    Parameters
-    ----------
-    rank1: boolean
-        If set to True, learn rank 1 dictionary atoms.
-    solver_d : str in {'alternate' | 'alternate_adaptive' | 'fista' | 'joint' |
-    'auto'}
-        The solver to use for the d update.
-        - If rank1 is False, only option is 'fista'
-        - If rank1 is True, options are 'alternate', 'alternate_adaptive'
-          (default) or 'joint'
-    uv_constraint : str in {'joint' | 'separate' | 'auto'}
-        The kind of norm constraint on the atoms if using rank1=True.
-        If 'joint', the constraint is norm_2([u, v]) <= 1
-        If 'separate', the constraint is norm_2(u) <= 1 and norm_2(v) <= 1
-        If rank1 is False, then uv_constraint must be 'auto'.
-    """
-
-    if rank1:
-        if solver_d == 'auto':
-            solver_d = 'alternate_adaptive'
-        if 'alternate' in solver_d:
-            if uv_constraint == 'auto':
-                uv_constraint = 'separate'
-            else:
-                assert uv_constraint == 'separate', (
-                    "solver_d='alternate*' should be used with "
-                    f"uv_constraint='separate'. Got '{uv_constraint}'."
-                )
-        elif uv_constraint == 'auto' and solver_d in ['joint', 'fista']:
-            uv_constraint = 'joint'
-    else:
-        assert solver_d in ['auto', 'fista'] and uv_constraint == 'auto', (
-            "If rank1 is False, uv_constraint should be 'auto' "
-            f"and solver_d should be auto or fista. Got solver_d='{solver_d}' "
-            f"and uv_constraint='{uv_constraint}'."
-        )
-        solver_d = 'fista'
-    return solver_d, uv_constraint
 
 
 def get_solver_d(solver_d='alternate_adaptive',
