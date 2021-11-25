@@ -15,7 +15,6 @@ from .utils import check_random_state
 from .utils.convolution import sort_atoms_by_explained_variances
 from .utils.dictionary import get_lambda_max
 from .utils.whitening import whitening
-from .init_dict import get_max_error_dict
 from ._encoder import get_z_encoder_for
 from ._solver_d import get_solver_d
 
@@ -307,9 +306,7 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
         if greedy and ii % n_iter_by_atom == 0 and \
                 z_encoder.D_hat.shape[0] < n_atoms:
             # add a new atom every n_iter_by_atom iterations
-            new_atom = get_max_error_dict(
-                z_encoder, uv_constraint=d_solver.uv_constraint,
-                window=d_solver.window)[0]
+            new_atom = d_solver.get_max_error_dict(z_encoder)[0]
             # XXX what should happen here when using DiCoDiLe?
             z_encoder.add_one_atom(new_atom)
 
@@ -359,8 +356,7 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
         null_atom_indices = np.where(z_nnz == 0)[0]
         if len(null_atom_indices) > 0:
             k0 = null_atom_indices[0]
-            D_hat[k0] = get_max_error_dict(z_encoder, d_solver.uv_constraint,
-                                           window=d_solver.window)[0]
+            D_hat[k0] = d_solver.get_max_error_dict(z_encoder)[0]
             z_encoder.set_D(D_hat)
             if verbose > 5:
                 print('[{}] Resampled atom {}'.format(name, k0))
@@ -458,8 +454,7 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
         null_atom_indices = np.where(z_nnz == 0)[0]
         if len(null_atom_indices) > 0:
             k0 = null_atom_indices[0]
-            D_hat[k0] = get_max_error_dict(z_encoder, d_solver.uv_constraint,
-                                           window=d_solver.window)[0]
+            D_hat[k0] = d_solver.get_max_error_dict(z_encoder)[0]
             z_encoder.set_D(D_hat)
             if verbose > 5:
                 print('[{}] Resampled atom {}'.format(name, k0))

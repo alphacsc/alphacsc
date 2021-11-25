@@ -5,9 +5,9 @@ from .loss_and_gradient import compute_objective, compute_X_and_objective_multi
 from .loss_and_gradient import gradient_uv, gradient_d
 from .utils import check_random_state
 from .utils.convolution import numpy_convolve_uv
-from .utils.dictionary import tukey_window
+from .utils.dictionary import tukey_window, get_uv
 from .utils.optim import fista, power_iteration
-from .update_d_multi import squeeze_all_except_one, prox_d
+from .update_d_multi import prox_d, prox_uv
 
 
 def check_solver_and_constraints(rank1, solver_d, uv_constraint):
@@ -257,6 +257,38 @@ class Rank1DSolver(BaseDSolver):
 
         return objective
 
+    def get_max_error_dict(self, z_encoder):
+        """Get the maximal reconstruction error patch from the data as a new atom
+
+        This idea is used for instance in [Yellin2017]
+
+        Parameters
+        ----------
+        z_encoder : BaseZEncoder
+            ZEncoder object to be able to compute the largest error patch.
+
+        Return
+        ------
+        uvk: array, shape (n_channels + n_times_atom,)
+            New atom for the dictionary, chosen as the chunk of data with the
+            maximal reconstruction error.
+
+        [Yellin2017] BLOOD CELL DETECTION AND COUNTING IN HOLOGRAPHIC LENS-FREE
+        IMAGING BY CONVOLUTIONAL SPARSE DICTIONARY LEARNING AND CODING.
+        """
+
+        n_channels = z_encoder.n_channels
+        n_times_atom = z_encoder.n_times_atom
+        d0 = z_encoder.get_max_error_patch()
+
+        if self.window:
+            d0 = d0 * tukey_window(n_times_atom)[None, :]
+
+        d0 = prox_uv(get_uv(d0), uv_constraint=self.uv_constraint,
+                     n_channels=n_channels)
+
+        return d0
+
 
 class JointDSolver(Rank1DSolver):
     """A class for 'fista' or 'joint' solver_d when rank1 is True. """
@@ -279,32 +311,6 @@ class JointDSolver(Rank1DSolver):
                          max_iter,
                          momentum,
                          random_state)
-
-    def prox_uv(self, uv, n_channels=None,
-                return_norm=False):
-
-        if self.uv_constraint == 'joint':
-            norm_uv = np.maximum(1, np.linalg.norm(uv, axis=1, keepdims=True))
-            uv /= norm_uv
-
-        elif self.uv_constraint == 'separate':
-            assert n_channels is not None
-            norm_u = np.maximum(1, np.linalg.norm(uv[:, :n_channels],
-                                                  axis=1, keepdims=True))
-            norm_v = np.maximum(1, np.linalg.norm(uv[:, n_channels:],
-                                                  axis=1, keepdims=True))
-
-            uv[:, :n_channels] /= norm_u
-            uv[:, n_channels:] /= norm_v
-            norm_uv = norm_u * norm_v
-        else:
-            raise ValueError('Unknown uv_constraint: %s.' %
-                             (self.uv_constraint, ))
-
-        if return_norm:
-            return uv, squeeze_all_except_one(norm_uv, axis=0)
-        else:
-            return uv
 
     def update_D(self, z_encoder, verbose=0, debug=False):
         """Learn d's in time domain.
@@ -352,7 +358,8 @@ class JointDSolver(Rank1DSolver):
             if self.window:
                 uv[:, n_channels:] *= tukey_window_
 
-            uv = self.prox_uv(uv, n_channels=n_channels)
+            uv = prox_uv(uv, uv_constraint=self.uv_constraint,
+                         n_channels=n_channels)
 
             if self.window:
                 uv[:, n_channels:] /= tukey_window_
@@ -624,6 +631,33 @@ class DSolver(BaseDSolver):
                                                  loss_params=z_encoder.loss_params)  # noqa
 
         return objective
+
+    def get_max_error_dict(self, z_encoder):
+        """Get the maximal reconstruction error patch from the data as a new atom
+
+        This idea is used for instance in [Yellin2017]
+
+        Parameters
+        ----------
+        z_encoder : BaseZEncoder
+            ZEncoder object to be able to compute the largest error patch.
+
+        Return
+        ------
+        dk: array, shape (n_channels, n_times_atom,)
+            New atom for the dictionary, chosen as the chunk of data with the
+            maximal reconstruction error.
+
+        [Yellin2017] BLOOD CELL DETECTION AND COUNTING IN HOLOGRAPHIC LENS-FREE
+        IMAGING BY CONVOLUTIONAL SPARSE DICTIONARY LEARNING AND CODING.
+        """
+        n_times_atom = z_encoder.n_times_atom
+        d0 = z_encoder.get_max_error_patch()
+
+        if self.window:
+            d0 = d0 * tukey_window(n_times_atom)[None, :]
+
+        return prox_d(d0)
 
     def update_D(self, z_encoder, verbose=0, debug=False):
         """Learn d's in time domain.
