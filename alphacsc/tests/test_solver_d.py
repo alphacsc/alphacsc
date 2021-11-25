@@ -1,24 +1,14 @@
 import pytest
 from numpy.testing import assert_allclose
-from alphacsc.tests.conftest import parametrize_solver_and_constraint
 
+from alphacsc.tests.conftest import parametrize_solver_and_constraint
+from alphacsc.tests.conftest import N_TRIALS, N_CHANNELS
+
+from alphacsc.utils import check_random_state
+from alphacsc.update_d_multi import prox_d, prox_uv
 from alphacsc._solver_d import check_solver_and_constraints, get_solver_d
 
-from alphacsc.update_d_multi import prox_d, prox_uv
-from alphacsc.utils import check_random_state
-
-N_TRIALS, N_CHANNELS, N_TIMES = 5, 3, 100
 N_TIMES_ATOM, N_ATOMS = 10, 4
-
-
-@pytest.fixture
-def rng():
-    return check_random_state(42)
-
-
-@pytest.fixture
-def X(rng, n_trials):
-    return rng.randn(n_trials, N_CHANNELS, N_TIMES)
 
 
 @pytest.fixture

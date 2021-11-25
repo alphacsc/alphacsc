@@ -5,21 +5,11 @@ import pytest
 from alphacsc._encoder import get_z_encoder_for
 from alphacsc.init_dict import init_dictionary
 from alphacsc.loss_and_gradient import compute_objective
-from alphacsc.utils import check_random_state, construct_X_multi
+from alphacsc.utils import construct_X_multi
 from alphacsc.utils.compute_constants import compute_ztz, compute_ztX
 
 N_CHANNELS, N_TIMES = 3, 30
 N_TIMES_ATOM, N_ATOMS = 6, 4
-
-
-@pytest.fixture
-def rng():
-    return check_random_state(42)
-
-
-@pytest.fixture
-def X(rng, n_trials):
-    return rng.randn(n_trials, N_CHANNELS, N_TIMES)
 
 
 @pytest.fixture
