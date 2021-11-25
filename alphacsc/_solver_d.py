@@ -466,6 +466,8 @@ class AlternateDSolver(Rank1DSolver):
             if adaptive_step_size:
                 Lu = 1
             else:
+                if z_encoder.loss != 'l2':
+                    raise NotImplementedError()
                 Lu = self.compute_lipschitz(uv_hat,
                                             z_encoder.n_channels,
                                             z_encoder.ztz,
@@ -507,6 +509,8 @@ class AlternateDSolver(Rank1DSolver):
             if adaptive_step_size:
                 Lv = 1
             else:
+                if z_encoder.loss != 'l2':
+                    raise NotImplementedError()
                 Lv = self.compute_lipschitz(uv_hat,
                                             z_encoder.n_channels,
                                             z_encoder.ztz,

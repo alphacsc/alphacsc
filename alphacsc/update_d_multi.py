@@ -242,6 +242,8 @@ def update_uv(X, z, uv_hat0, constants=None, b_hat_0=None, debug=False,
             if adaptive_step_size:
                 Lu = 1
             else:
+                if loss != 'l2':
+                    raise NotImplementedError()
                 Lu = compute_lipschitz(uv_hat, constants, 'u', b_hat_0)
             assert Lu > 0
 
@@ -273,6 +275,8 @@ def update_uv(X, z, uv_hat0, constants=None, b_hat_0=None, debug=False,
             if adaptive_step_size:
                 Lv = 1
             else:
+                if loss != 'l2':
+                    raise NotImplementedError()
                 Lv = compute_lipschitz(uv_hat, constants, 'v', b_hat_0)
             assert Lv > 0
 

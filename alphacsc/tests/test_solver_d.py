@@ -196,6 +196,7 @@ def test_init_shape(X, rank1, solver_d, uv_constraint, expected_shape, window):
     (True, 'fista', 'joint', (N_ATOMS, N_CHANNELS + N_TIMES_ATOM)),
     (False, 'fista', 'auto', (N_ATOMS, N_CHANNELS, N_TIMES_ATOM))
 ])
+@pytest.mark.parametrize('loss', ['l2'])
 def test_update_D(rank1, solver_d, uv_constraint, shape, z_encoder_rank1, rng):
 
     X = z_encoder_rank1.X
@@ -230,3 +231,19 @@ def test_update_D(rank1, solver_d, uv_constraint, shape, z_encoder_rank1, rng):
     cost1 = objective(uv)
 
     assert cost1 < cost0, "Learning is not going down"
+
+
+@pytest.mark.parametrize('rank1, solver_d, uv_constraint, shape', [
+    (True, 'alternate', 'separate', (N_ATOMS, N_CHANNELS + N_TIMES_ATOM)),
+])
+@pytest.mark.parametrize('loss', ['dtw', 'whitening'])
+def test_update_D_error(rank1, solver_d, uv_constraint, shape,
+                        z_encoder_rank1, rng):
+
+    d_solver = get_solver_d(solver_d=solver_d,
+                            rank1=rank1,
+                            uv_constraint=uv_constraint,
+                            max_iter=1000)
+
+    with pytest.raises(NotImplementedError):
+        d_solver.update_D(z_encoder_rank1)

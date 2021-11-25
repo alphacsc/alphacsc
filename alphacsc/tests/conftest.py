@@ -61,7 +61,7 @@ class MockZEncoder:
 
 
 @pytest.fixture
-def z_encoder_rank1(monkeypatch, rng, shape):
+def z_encoder_rank1(monkeypatch, rng, shape, loss):
 
     from alphacsc.utils import construct_X_multi
     from alphacsc.update_d_multi import prox_uv
@@ -71,4 +71,4 @@ def z_encoder_rank1(monkeypatch, rng, shape):
 
     X = construct_X_multi(z_hat, D=uv0, n_channels=N_CHANNELS)
 
-    return MockZEncoder(X, uv0, z_hat, N_CHANNELS, N_TIMES_ATOM, 'l2', None)
+    return MockZEncoder(X, uv0, z_hat, N_CHANNELS, N_TIMES_ATOM, loss, dict())
