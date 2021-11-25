@@ -20,6 +20,33 @@ def squeeze_all_except_one(X, axis=0):
 
 
 def check_solver_and_constraints(rank1, solver_d, uv_constraint):
+    """Checks if solver_d and uv_constraint are compatible depending on
+    rank1 value.
+
+    - If rank1 is False, solver_d should be 'fista' and uv_constraint should be
+    'auto'.
+    - If rank1 is True;
+       - If solver_d is either 'alternate' or 'alternate_adaptive',
+         uv_constraint should be 'separate'.
+       - If solver_d is either 'joint' or 'fista', uv_constraint should be
+         'joint'.
+
+    Parameters
+    ----------
+    rank1: boolean
+        If set to True, learn rank 1 dictionary atoms.
+    solver_d : str in {'alternate' | 'alternate_adaptive' | 'fista' | 'joint' |
+    'auto'}
+        The solver to use for the d update.
+        - If rank1 is False, only option is 'fista'
+        - If rank1 is True, options are 'alternate', 'alternate_adaptive'
+          (default) or 'joint'
+    uv_constraint : str in {'joint' | 'separate' | 'auto'}
+        The kind of norm constraint on the atoms if using rank1=True.
+        If 'joint', the constraint is norm_2([u, v]) <= 1
+        If 'separate', the constraint is norm_2(u) <= 1 and norm_2(v) <= 1
+        If rank1 is False, then uv_constraint must be 'auto'.
+    """
 
     if rank1:
         if solver_d == 'auto':
