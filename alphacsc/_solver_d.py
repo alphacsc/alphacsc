@@ -183,9 +183,18 @@ class BaseDSolver:
 
         Parameters
         ----------
-        z_encoder:
-        verbose:
-        debug:
+        z_encoder: BaseZEncoder
+            ZEncoder object.
+        verbose: int
+            Verbosity level.
+        debug : bool
+            If True, return the cost at each iteration.
+
+        Returns
+        -------
+        D_hat : array, shape (n_atoms, n_channels + n_times_atom) or
+                             (n_atoms, n_channels, n_times_atom)
+            The atoms to learn from the data.
         """
         raise NotImplementedError()
 
@@ -298,6 +307,22 @@ class JointDSolver(Rank1DSolver):
             return uv
 
     def update_D(self, z_encoder, verbose=0, debug=False):
+        """Learn d's in time domain.
+
+        Parameters
+        ----------
+        z_encoder: BaseZEncoder
+            ZEncoder object.
+        verbose: int
+            Verbosity level.
+        debug : bool
+            If True, return the cost at each iteration.
+
+        Returns
+        -------
+        uv_hat : array, shape (n_atoms, n_channels + n_times_atom)
+            The atoms to learn from the data.
+        """
 
         uv_hat0, tukey_window_ = self._window(z_encoder.D_hat,
                                               z_encoder.n_channels,
@@ -414,6 +439,22 @@ class AlternateDSolver(Rank1DSolver):
         return L
 
     def update_D(self, z_encoder, verbose=0, debug=False):
+        """Learn d's in time domain.
+
+        Parameters
+        ----------
+        z_encoder: BaseZEncoder
+            ZEncoder object.
+        verbose: int
+            Verbosity level.
+        debug : bool
+            If True, return the cost at each iteration.
+
+        Returns
+        -------
+        uv_hat : array, shape (n_atoms, n_channels + n_times_atom)
+            The atoms to learn from the data.
+        """
 
         n_channels = z_encoder.n_channels
 
@@ -585,6 +626,22 @@ class DSolver(BaseDSolver):
         return objective
 
     def update_D(self, z_encoder, verbose=0, debug=False):
+        """Learn d's in time domain.
+
+        Parameters
+        ----------
+        z_encoder: BaseZEncoder
+            ZEncoder object.
+        verbose: int
+            Verbosity level.
+        debug : bool
+            If True, return the cost at each iteration.
+
+        Returns
+        -------
+        D_hat : array, shape (n_atoms, n_channels, n_times_atom)
+            The atoms to learn from the data.
+        """
 
         D_hat0, tukey_window_ = self._window(
             z_encoder.D_hat, z_encoder.n_times_atom)
