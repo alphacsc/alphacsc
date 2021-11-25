@@ -1,14 +1,15 @@
 import pytest
 from numpy.testing import assert_allclose
 
-from alphacsc.tests.conftest import parametrize_solver_and_constraint
-from alphacsc.tests.conftest import N_TRIALS, N_CHANNELS
+import numpy as np
 
-from alphacsc.utils import check_random_state
+from alphacsc.tests.conftest import parametrize_solver_and_constraint
+from alphacsc.tests.conftest import N_TRIALS, N_CHANNELS, N_TIMES_ATOM, N_ATOMS
+
+from alphacsc.loss_and_gradient import compute_objective
+from alphacsc.utils import check_random_state, construct_X_multi
 from alphacsc.update_d_multi import prox_d, prox_uv
 from alphacsc._solver_d import check_solver_and_constraints, get_solver_d
-
-N_TIMES_ATOM, N_ATOMS = 10, 4
 
 
 @pytest.fixture
@@ -252,3 +253,53 @@ def test_init_shape(X, rank1, solver_d, uv_constraint, expected_shape, window):
 
     D_hat = d_solver.init_dictionary(X, N_ATOMS, N_TIMES_ATOM)
     assert D_hat.shape == expected_shape
+
+
+@pytest.mark.parametrize('solver_d', ['auto', 'fista'])
+@pytest.mark.parametrize('uv_constraint', ['auto'])
+def test_update_D(solver_d, uv_constraint):
+    """Tests for the case rank1 is False."""
+    pass
+
+
+@pytest.mark.parametrize('solver_d, uv_constraint', [
+    ('alternate', 'separate'),
+    ('alternate_adaptive', 'separate'),
+    ('joint', 'joint'),
+    ('fista', 'joint')
+])
+def test_update_D_rank1(solver_d, uv_constraint, z_encoder_rank1, rng):
+    """Tests for the case rank1 is True."""
+
+    X = z_encoder_rank1.X
+    z = z_encoder_rank1.z_hat
+
+    def objective(uv):
+        X_hat = construct_X_multi(z, D=uv, n_channels=N_CHANNELS)
+        return compute_objective(X, X_hat, z_encoder_rank1.loss)
+
+    d_solver = get_solver_d(solver_d=solver_d,
+                            rank1=True,
+                            uv_constraint=uv_constraint,
+                            max_iter=1000)
+
+    uv0 = z_encoder_rank1.D_hat
+
+    # Ensure that the known optimal point is stable
+    uv = d_solver.update_D(z_encoder_rank1)
+    cost = objective(uv)
+
+    assert np.isclose(cost, 0), "optimal point not stable"
+    assert np.allclose(uv, uv0), "optimal point not stable"
+
+    uv1 = rng.normal(size=(N_ATOMS, N_CHANNELS + N_TIMES_ATOM))
+    uv1 = prox_uv(uv1)
+
+    cost0 = objective(uv1)
+
+    z_encoder_rank1.D_hat = uv1
+
+    uv = d_solver.update_D(z_encoder_rank1)
+    cost1 = objective(uv)
+
+    assert cost1 < cost0, "Learning is not going down"
