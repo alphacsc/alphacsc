@@ -27,7 +27,7 @@ def get_solver_d(solver_d='alternate_adaptive',
         The solver to use for the d update.
         - If rank1 is False, only option is 'fista'
         - If rank1 is True, options are 'alternate', 'alternate_adaptive'
-          (default) or 'joint'
+          (default), 'joint' or 'fista'
     rank1: boolean
         If set to True, learn rank 1 dictionary atoms.
     uv_constraint : str in {'joint' | 'separate' | 'auto'}
@@ -93,7 +93,7 @@ class BaseDSolver:
 
     def init_dictionary(self, X, n_atoms, n_times_atom, D_init=None,
                         D_init_params=dict()):
-        """Returns an initial dictionary for the signals X.
+        """Returns an initial dictionary for the signal X.
 
         Parameter
         ---------
