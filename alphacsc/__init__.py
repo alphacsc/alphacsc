@@ -20,4 +20,4 @@ __all__ = [
     "update_d_block",
 ]
 
-__version__ = "0.4.dev0"
+from ._version import version as __version__  # noqa

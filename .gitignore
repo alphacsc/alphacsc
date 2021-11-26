@@ -22,3 +22,4 @@ joblib
 __pycache__
 .pytest_cache
 .ipynb_checkpoints
+alphacsc/_version.py
