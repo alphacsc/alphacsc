@@ -4,6 +4,7 @@
 #          Alexandre Gramfort <alexandre.gramfort@inria.fr>
 #          Thomas Moreau <thomas.moreau@inria.fr>
 
+import numpy as np
 from sklearn.base import TransformerMixin
 from sklearn.exceptions import NotFittedError
 
@@ -311,7 +312,16 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
 
         shape (n_atoms, n_times_atom)
         """
-        return self.uv_hat_[:, self.n_channels_:]
+        v_hat_ = self.uv_hat_[:, self.n_channels_:]
+        # Ensure that peaks in v_hat_ are positive
+        index_array = np.argmax(np.absolute(v_hat_), axis=1)
+        val_index = np.take_along_axis(v_hat_, np.expand_dims(
+            index_array, axis=-1), axis=-1).squeeze(axis=-1)
+        # Get atoms indices that need to have their v_hat_ flipped
+        index_to_flip = np.where(val_index < 0)[0]
+        v_hat_[index_to_flip] *= -1
+
+        return v_hat_
 
     @property
     def z_hat_(self):
