@@ -146,6 +146,28 @@ class BaseDSolver:
         """
         raise NotImplementedError()
 
+    def get_max_error_dict(self, z_encoder):
+        """Get the maximal reconstruction error patch from the data as a new atom
+
+        This idea is used for instance in [Yellin2017]
+
+        Parameters
+        ----------
+        z_encoder : BaseZEncoder
+            ZEncoder object to be able to compute the largest error patch.
+
+        Return
+        ------
+        dk: array, shape (n_channels + n_times_atom,) or
+                         (n_channels, n_times_atom,)
+            New atom for the dictionary, chosen as the chunk of data with the
+            maximal reconstruction error.
+
+        [Yellin2017] BLOOD CELL DETECTION AND COUNTING IN HOLOGRAPHIC LENS-FREE
+        IMAGING BY CONVOLUTIONAL SPARSE DICTIONARY LEARNING AND CODING.
+        """
+        raise NotImplementedError()
+
 
 class Rank1DSolver(BaseDSolver):
     """Base class for a rank1 solver d."""
