@@ -66,7 +66,7 @@ def z_encoder_rank1(monkeypatch, rng, shape, loss):
     from alphacsc.utils import construct_X_multi
     from alphacsc.update_d_multi import prox_uv
     z_hat = rng.normal(size=(N_TRIALS, N_ATOMS, N_TIMES - N_TIMES_ATOM + 1))
-    uv0 = rng.normal(size=(shape))
+    uv0 = rng.normal(size=shape)
     uv0 = prox_uv(uv0)
 
     X = construct_X_multi(z_hat, D=uv0, n_channels=N_CHANNELS)
