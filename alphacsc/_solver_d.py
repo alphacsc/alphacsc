@@ -54,17 +54,17 @@ def get_solver_d(solver_d='alternate_adaptive',
 
     if rank1:
         if solver_d in ['alternate', 'alternate_adaptive']:
-            return AlternateDSolver(solver_d, rank1, uv_constraint, window,
-                                    eps, max_iter, momentum, random_state)
+            return AlternateDSolver(solver_d, uv_constraint, window, eps,
+                                    max_iter, momentum, random_state)
         elif solver_d in ['fista', 'joint']:
-            return JointDSolver(solver_d, rank1, uv_constraint, window,
-                                eps, max_iter, momentum, random_state)
+            return JointDSolver(solver_d, uv_constraint, window, eps, max_iter,
+                                momentum, random_state)
         else:
             raise ValueError('Unknown solver_d: %s' % (solver_d, ))
     else:
         if solver_d in ['fista']:
-            return DSolver(solver_d, rank1, uv_constraint, window,
-                           eps, max_iter, momentum, random_state)
+            return DSolver(solver_d, uv_constraint, window, eps, max_iter,
+                           momentum, random_state)
         else:
             raise ValueError('Unknown solver_d: %s' % (solver_d, ))
 
@@ -74,7 +74,6 @@ class BaseDSolver:
 
     def __init__(self,
                  solver_d,
-                 rank1,
                  uv_constraint,
                  window,
                  eps,
@@ -83,7 +82,6 @@ class BaseDSolver:
                  random_state):
 
         self.solver_d = solver_d
-        self.rank1 = rank1
         self.uv_constraint = uv_constraint
         self.window = window
         self.eps = eps
@@ -174,7 +172,6 @@ class Rank1DSolver(BaseDSolver):
 
     def __init__(self,
                  solver_d,
-                 rank1,
                  uv_constraint,
                  window,
                  eps,
@@ -183,13 +180,13 @@ class Rank1DSolver(BaseDSolver):
                  random_state):
 
         super().__init__(solver_d,
-                         rank1,
                          uv_constraint,
                          window,
                          eps,
                          max_iter,
                          momentum,
                          random_state)
+        self.rank1 = True
 
     def _window(self, uv_hat0, n_channels, n_times_atom):
 
@@ -266,7 +263,6 @@ class JointDSolver(Rank1DSolver):
 
     def __init__(self,
                  solver_d,
-                 rank1,
                  uv_constraint,
                  window,
                  eps,
@@ -275,7 +271,6 @@ class JointDSolver(Rank1DSolver):
                  random_state):
 
         super().__init__(solver_d,
-                         rank1,
                          uv_constraint,
                          window,
                          eps,
@@ -359,7 +354,6 @@ class AlternateDSolver(Rank1DSolver):
 
     def __init__(self,
                  solver_d,
-                 rank1,
                  uv_constraint,
                  window,
                  eps,
@@ -368,7 +362,6 @@ class AlternateDSolver(Rank1DSolver):
                  random_state):
 
         super().__init__(solver_d,
-                         rank1,
                          uv_constraint,
                          window,
                          eps,
@@ -563,7 +556,6 @@ class DSolver(BaseDSolver):
 
     def __init__(self,
                  solver_d,
-                 rank1,
                  uv_constraint,
                  window,
                  eps,
@@ -572,13 +564,14 @@ class DSolver(BaseDSolver):
                  random_state):
 
         super().__init__(solver_d,
-                         rank1,
                          uv_constraint,
                          window,
                          eps,
                          max_iter,
                          momentum,
                          random_state)
+
+        self.rank1 = False
 
     def _window(self, D_hat0, n_times_atom):
         tukey_window_ = None
