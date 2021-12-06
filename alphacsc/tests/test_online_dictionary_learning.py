@@ -30,7 +30,7 @@ def test_online_partial_fit(rank1, alpha):
     cdl_partial = OnlineCDL(**params)
 
     cdl_fit.fit(X)
-    for x in X:
-        cdl_partial.partial_fit(x[None])
+    for i in range(X.shape[0]):
+        cdl_partial.partial_fit(X, i)
 
     assert np.allclose(cdl_fit._D_hat, cdl_partial._D_hat)
