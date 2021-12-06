@@ -16,7 +16,9 @@ def get_solver_d(solver_d='alternate_adaptive',
                  eps=1e-8,
                  max_iter=300,
                  momentum=False,
-                 random_state=None):
+                 random_state=None,
+                 verbose=0,
+                 debug=False):
     """Returns solver depending on solver_d type and rank1 value.
 
     Parameters
@@ -40,21 +42,26 @@ def get_solver_d(solver_d='alternate_adaptive',
         If True, use an accelerated version of the proximal gradient descent.
     random_state : int | None
         The random state.
+    verbose: int
+        Verbosity level.
+    debug : bool
+        If True, return the cost at each iteration.
+
     """
 
     if rank1:
         if solver_d in ['auto', 'alternate', 'alternate_adaptive']:
             return AlternateDSolver(solver_d, window, eps, max_iter, momentum,
-                                    random_state)
+                                    random_state, verbose, debug)
         elif solver_d in ['fista', 'joint']:
             return JointDSolver(solver_d, window, eps, max_iter, momentum,
-                                random_state)
+                                random_state, verbose, debug)
         else:
             raise ValueError('Unknown solver_d: %s' % (solver_d, ))
     else:
         if solver_d in ['auto', 'fista']:
             return DSolver(solver_d, window, eps, max_iter, momentum,
-                           random_state)
+                           random_state, verbose, debug)
         else:
             raise ValueError('Unknown solver_d: %s' % (solver_d, ))
 
@@ -68,7 +75,9 @@ class BaseDSolver:
                  eps,
                  max_iter,
                  momentum,
-                 random_state):
+                 random_state,
+                 verbose,
+                 debug):
 
         self.solver_d = solver_d
         self.window = window
@@ -76,6 +85,8 @@ class BaseDSolver:
         self.max_iter = max_iter
         self.momentum = momentum
         self.rng = check_random_state(random_state)
+        self.verbose = verbose
+        self.debug = debug
 
     def init_dictionary(self, X, n_atoms, n_times_atom, uv_constraint='auto',
                         D_init=None, D_init_params=dict()):
@@ -117,17 +128,13 @@ class BaseDSolver:
                                random_state=self.rng,
                                window=self.window)
 
-    def update_D(self, z_encoder, verbose=0, debug=False):
+    def update_D(self, z_encoder):
         """Learn d's in time domain.
 
         Parameters
         ----------
         z_encoder: BaseZEncoder
             ZEncoder object.
-        verbose: int
-            Verbosity level.
-        debug : bool
-            If True, return the cost at each iteration.
 
         Returns
         -------
@@ -169,14 +176,18 @@ class Rank1DSolver(BaseDSolver):
                  eps,
                  max_iter,
                  momentum,
-                 random_state):
+                 random_state,
+                 verbose,
+                 debug):
 
         super().__init__(solver_d,
                          window,
                          eps,
                          max_iter,
                          momentum,
-                         random_state)
+                         random_state,
+                         verbose,
+                         debug)
         self.rank1 = True
 
     def _window(self, uv_hat0, n_channels, n_times_atom):
@@ -258,16 +269,20 @@ class JointDSolver(Rank1DSolver):
                  eps,
                  max_iter,
                  momentum,
-                 random_state):
+                 random_state,
+                 verbose,
+                 debug):
 
         super().__init__(solver_d,
                          window,
                          eps,
                          max_iter,
                          momentum,
-                         random_state)
+                         random_state,
+                         verbose,
+                         debug)
 
-    def update_D(self, z_encoder, verbose=0, debug=False):
+    def update_D(self, z_encoder):
         """Learn d's in time domain.
 
         Parameters
@@ -326,12 +341,12 @@ class JointDSolver(Rank1DSolver):
         uv_hat, pobj = fista(objective, grad, prox, None, uv_hat0,
                              self.max_iter, momentum=self.momentum,
                              eps=self.eps, adaptive_step_size=True,
-                             debug=debug, verbose=verbose, name="Update uv")
+                             debug=self.debug, verbose=self.verbose, name="Update uv")
 
         if self.window:
             uv_hat[:, n_channels:] *= tukey_window_
 
-        if debug:
+        if self.debug:
             return uv_hat, pobj
         return uv_hat
 
@@ -347,14 +362,18 @@ class AlternateDSolver(Rank1DSolver):
                  eps,
                  max_iter,
                  momentum,
-                 random_state):
+                 random_state,
+                 verbose,
+                 debug):
 
         super().__init__(solver_d,
                          window,
                          eps,
                          max_iter,
                          momentum,
-                         random_state)
+                         random_state,
+                         verbose,
+                         debug)
 
     def compute_lipschitz(self, uv0, n_channels, ztz, variable):
 
@@ -392,17 +411,13 @@ class AlternateDSolver(Rank1DSolver):
             raise ValueError("variable should be either 'u' or 'v'")
         return L
 
-    def update_D(self, z_encoder, verbose=0, debug=False):
+    def update_D(self, z_encoder):
         """Learn d's in time domain.
 
         Parameters
         ----------
         z_encoder: BaseZEncoder
             ZEncoder object.
-        verbose: int
-            Verbosity level.
-        debug : bool
-            If True, return the cost at each iteration.
 
         Returns
         -------
@@ -477,10 +492,10 @@ class AlternateDSolver(Rank1DSolver):
                                   self.max_iter, momentum=self.momentum,
                                   eps=self.eps,
                                   adaptive_step_size=adaptive_step_size,
-                                  debug=debug, verbose=verbose,
+                                  debug=self.debug, verbose=self.verbose,
                                   name="Update u")
             uv_hat = np.c_[u_hat, v_hat]
-            if debug:
+            if self.debug:
                 pobj.extend(pobj_u)
 
             # ---------------- update v
@@ -520,16 +535,16 @@ class AlternateDSolver(Rank1DSolver):
                                   self.max_iter, momentum=self.momentum,
                                   eps=self.eps,
                                   adaptive_step_size=adaptive_step_size,
-                                  verbose=verbose, debug=debug,
+                                  verbose=self.verbose, debug=self.debug,
                                   name="Update v")
             uv_hat = np.c_[u_hat, v_hat]
-            if debug:
+            if self.debug:
                 pobj.extend(pobj_v)
 
         if self.window:
             uv_hat[:, n_channels:] *= tukey_window_
 
-        if debug:
+        if self.debug:
             return uv_hat, pobj
         return uv_hat
 
@@ -543,14 +558,18 @@ class DSolver(BaseDSolver):
                  eps,
                  max_iter,
                  momentum,
-                 random_state):
+                 random_state,
+                 verbose,
+                 debug):
 
         super().__init__(solver_d,
                          window,
                          eps,
                          max_iter,
                          momentum,
-                         random_state)
+                         random_state,
+                         verbose,
+                         debug)
 
         self.rank1 = False
 
@@ -608,17 +627,13 @@ class DSolver(BaseDSolver):
 
         return prox_d(d0)
 
-    def update_D(self, z_encoder, verbose=0, debug=False):
+    def update_D(self, z_encoder):
         """Learn d's in time domain.
 
         Parameters
         ----------
         z_encoder: BaseZEncoder
             ZEncoder object.
-        verbose: int
-            Verbosity level.
-        debug : bool
-            If True, return the cost at each iteration.
 
         Returns
         -------
@@ -655,13 +670,13 @@ class DSolver(BaseDSolver):
             return D
 
         D_hat, pobj = fista(objective, grad, prox, None, D_hat0, self.max_iter,
-                            verbose=verbose, momentum=self.momentum,
-                            eps=self.eps, adaptive_step_size=True, debug=debug,
-                            name="Update D")
+                            verbose=self.verbose, momentum=self.momentum,
+                            eps=self.eps, adaptive_step_size=True,
+                            debug=self.debug, name="Update D")
 
         if self.window:
             D_hat = D_hat * tukey_window_
 
-        if debug:
+        if self.debug:
             return D_hat, pobj
         return D_hat

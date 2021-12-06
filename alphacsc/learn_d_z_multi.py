@@ -351,7 +351,7 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
 
         # Compute D update
         start = time.time()
-        D_hat = d_solver.update_D(z_encoder, verbose=verbose)
+        D_hat = d_solver.update_D(z_encoder)
         z_encoder.set_D(D_hat)
 
         # monitor cost function
@@ -449,7 +449,7 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
 
         # Compute D update
         start = time.time()
-        D_hat = d_solver.update_D(z_encoder, verbose=verbose)
+        D_hat = d_solver.update_D(z_encoder)
         z_encoder.set_D(D_hat)
 
         # monitor cost function

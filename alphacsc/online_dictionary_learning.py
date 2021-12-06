@@ -102,7 +102,7 @@ class OnlineCDL(ConvolutionalDictionaryLearning):
                                     random_state=self.random_state,
                                     **self.solver_d_kwargs)
 
-            self._D_hat = d_solver.update_D(z_encoder, self.verbose)
+            self._D_hat = d_solver.update_D(z_encoder)
             self.z_hat = z_encoder.get_z_hat()
 
             return self.z_hat
