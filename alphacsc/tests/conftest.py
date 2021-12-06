@@ -37,13 +37,14 @@ def X(rng, n_trials):
 
 class MockZEncoder:
 
-    def __init__(self, X, D_hat, z_hat, n_channels, n_times_atom, loss,
-                 loss_params):
+    def __init__(self, X, D_hat, z_hat, n_channels, n_times_atom,
+                 uv_constraint, loss, loss_params):
         self.X = X
         self.D_hat = D_hat
         self.z_hat = z_hat
         self.n_channels = n_channels
         self.n_times_atom = n_times_atom
+        self.uv_constraint = uv_constraint
         self.loss = loss
         self.loss_params = loss_params
 
@@ -61,7 +62,7 @@ class MockZEncoder:
 
 
 @pytest.fixture
-def z_encoder_rank1(monkeypatch, rng, shape, loss):
+def z_encoder_rank1(monkeypatch, uv_constraint, rng, shape, loss):
 
     from alphacsc.utils import construct_X_multi
     from alphacsc.update_d_multi import prox_uv
@@ -71,4 +72,5 @@ def z_encoder_rank1(monkeypatch, rng, shape, loss):
 
     X = construct_X_multi(z_hat, D=uv0, n_channels=N_CHANNELS)
 
-    return MockZEncoder(X, uv0, z_hat, N_CHANNELS, N_TIMES_ATOM, loss, dict())
+    return MockZEncoder(X, uv0, z_hat, N_CHANNELS, N_TIMES_ATOM,
+                        uv_constraint, loss, dict())

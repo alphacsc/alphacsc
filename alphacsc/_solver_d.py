@@ -3,7 +3,7 @@ import numpy as np
 from .init_dict import init_dictionary
 from .loss_and_gradient import compute_objective, compute_X_and_objective_multi
 from .loss_and_gradient import gradient_uv, gradient_d
-from .update_d_multi import prox_d, prox_uv, check_solver_and_constraints
+from .update_d_multi import prox_d, prox_uv
 from .utils import check_random_state
 from .utils.convolution import numpy_convolve_uv
 from .utils.dictionary import tukey_window, get_uv
@@ -12,7 +12,6 @@ from .utils.optim import fista, power_iteration
 
 def get_solver_d(solver_d='alternate_adaptive',
                  rank1=False,
-                 uv_constraint='auto',
                  window=False,
                  eps=1e-8,
                  max_iter=300,
@@ -30,11 +29,6 @@ def get_solver_d(solver_d='alternate_adaptive',
           (default), 'joint' or 'fista'
     rank1: boolean
         If set to True, learn rank 1 dictionary atoms.
-    uv_constraint : str in {'joint' | 'separate' | 'auto'}
-        The kind of norm constraint on the atoms if using rank1=True.
-        If 'joint', the constraint is norm_2([u, v]) <= 1
-        If 'separate', the constraint is norm_2(u) <= 1 and norm_2(v) <= 1
-        If rank1 is False, then uv_constraint must be 'auto'.
     window : boolean
         If True, re-parametrizes the atoms with a temporal Tukey window
     eps : float
@@ -48,23 +42,19 @@ def get_solver_d(solver_d='alternate_adaptive',
         The random state.
     """
 
-    solver_d, uv_constraint = check_solver_and_constraints(
-        rank1, solver_d, uv_constraint
-    )
-
     if rank1:
-        if solver_d in ['alternate', 'alternate_adaptive']:
-            return AlternateDSolver(solver_d, uv_constraint, window, eps,
-                                    max_iter, momentum, random_state)
+        if solver_d in ['auto', 'alternate', 'alternate_adaptive']:
+            return AlternateDSolver(solver_d, window, eps, max_iter, momentum,
+                                    random_state)
         elif solver_d in ['fista', 'joint']:
-            return JointDSolver(solver_d, uv_constraint, window, eps, max_iter,
-                                momentum, random_state)
+            return JointDSolver(solver_d, window, eps, max_iter, momentum,
+                                random_state)
         else:
             raise ValueError('Unknown solver_d: %s' % (solver_d, ))
     else:
-        if solver_d in ['fista']:
-            return DSolver(solver_d, uv_constraint, window, eps, max_iter,
-                           momentum, random_state)
+        if solver_d in ['auto', 'fista']:
+            return DSolver(solver_d, window, eps, max_iter, momentum,
+                           random_state)
         else:
             raise ValueError('Unknown solver_d: %s' % (solver_d, ))
 
@@ -74,7 +64,6 @@ class BaseDSolver:
 
     def __init__(self,
                  solver_d,
-                 uv_constraint,
                  window,
                  eps,
                  max_iter,
@@ -82,15 +71,14 @@ class BaseDSolver:
                  random_state):
 
         self.solver_d = solver_d
-        self.uv_constraint = uv_constraint
         self.window = window
         self.eps = eps
         self.max_iter = max_iter
         self.momentum = momentum
         self.rng = check_random_state(random_state)
 
-    def init_dictionary(self, X, n_atoms, n_times_atom, D_init=None,
-                        D_init_params=dict()):
+    def init_dictionary(self, X, n_atoms, n_times_atom, uv_constraint='auto',
+                        D_init=None, D_init_params=dict()):
         """Returns an initial dictionary for the signal X.
 
         Parameter
@@ -101,6 +89,11 @@ class BaseDSolver:
             The number of atoms to learn.
         n_times_atom : int
             The support of the atom.
+        uv_constraint : str in {'joint' | 'separate' | 'auto'}
+            The kind of norm constraint on the atoms if using rank1=True.
+            If 'joint', the constraint is norm_2([u, v]) <= 1
+            If 'separate', the constraint is norm_2(u) <= 1 and norm_2(v) <= 1
+            If rank1 is False, then uv_constraint must be 'auto'.
         D_init : array or {'kmeans' | 'ssa' | 'chunk' | 'random'}
             The initialization scheme for the dictionary or the initial
             atoms. The shape should match the required dictionary shape, ie if
@@ -119,7 +112,7 @@ class BaseDSolver:
         return init_dictionary(X, n_atoms, n_times_atom,
                                D_init=D_init,
                                rank1=self.rank1,
-                               uv_constraint=self.uv_constraint,
+                               uv_constraint=uv_constraint,
                                D_init_params=D_init_params,
                                random_state=self.rng,
                                window=self.window)
@@ -172,7 +165,6 @@ class Rank1DSolver(BaseDSolver):
 
     def __init__(self,
                  solver_d,
-                 uv_constraint,
                  window,
                  eps,
                  max_iter,
@@ -180,7 +172,6 @@ class Rank1DSolver(BaseDSolver):
                  random_state):
 
         super().__init__(solver_d,
-                         uv_constraint,
                          window,
                          eps,
                          max_iter,
@@ -220,7 +211,7 @@ class Rank1DSolver(BaseDSolver):
                 loss=z_encoder.loss,
                 loss_params=z_encoder.loss_params,
                 feasible_evaluation=z_encoder.feasible_evaluation,
-                uv_constraint=self.uv_constraint
+                uv_constraint=z_encoder.uv_constraint
             )
 
         return objective
@@ -252,7 +243,7 @@ class Rank1DSolver(BaseDSolver):
         if self.window:
             d0 = d0 * tukey_window(n_times_atom)[None, :]
 
-        d0 = prox_uv(get_uv(d0), uv_constraint=self.uv_constraint,
+        d0 = prox_uv(get_uv(d0), uv_constraint=z_encoder.uv_constraint,
                      n_channels=n_channels)
 
         return d0
@@ -263,7 +254,6 @@ class JointDSolver(Rank1DSolver):
 
     def __init__(self,
                  solver_d,
-                 uv_constraint,
                  window,
                  eps,
                  max_iter,
@@ -271,7 +261,6 @@ class JointDSolver(Rank1DSolver):
                  random_state):
 
         super().__init__(solver_d,
-                         uv_constraint,
                          window,
                          eps,
                          max_iter,
@@ -324,7 +313,7 @@ class JointDSolver(Rank1DSolver):
             if self.window:
                 uv[:, n_channels:] *= tukey_window_
 
-            uv = prox_uv(uv, uv_constraint=self.uv_constraint,
+            uv = prox_uv(uv, uv_constraint=z_encoder.uv_constraint,
                          n_channels=n_channels)
 
             if self.window:
@@ -354,7 +343,6 @@ class AlternateDSolver(Rank1DSolver):
 
     def __init__(self,
                  solver_d,
-                 uv_constraint,
                  window,
                  eps,
                  max_iter,
@@ -362,16 +350,11 @@ class AlternateDSolver(Rank1DSolver):
                  random_state):
 
         super().__init__(solver_d,
-                         uv_constraint,
                          window,
                          eps,
                          max_iter,
                          momentum,
                          random_state)
-
-        assert self.uv_constraint == 'separate', (
-            "alternate solver should be used with separate constraints"
-        )
 
     def compute_lipschitz(self, uv0, n_channels, ztz, variable):
 
@@ -556,7 +539,6 @@ class DSolver(BaseDSolver):
 
     def __init__(self,
                  solver_d,
-                 uv_constraint,
                  window,
                  eps,
                  max_iter,
@@ -564,7 +546,6 @@ class DSolver(BaseDSolver):
                  random_state):
 
         super().__init__(solver_d,
-                         uv_constraint,
                          window,
                          eps,
                          max_iter,
