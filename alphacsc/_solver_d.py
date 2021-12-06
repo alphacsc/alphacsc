@@ -48,9 +48,9 @@ def get_solver_d(solver_d='alternate_adaptive',
         The random state.
     """
 
-    solver_d, uv_constraint = check_solver_and_constraints(rank1,
-                                                           solver_d,
-                                                           uv_constraint)
+    solver_d, uv_constraint = check_solver_and_constraints(
+        rank1, solver_d, uv_constraint
+    )
 
     if rank1:
         if solver_d in ['alternate', 'alternate_adaptive']:
@@ -223,7 +223,8 @@ class Rank1DSolver(BaseDSolver):
                 loss=z_encoder.loss,
                 loss_params=z_encoder.loss_params,
                 feasible_evaluation=z_encoder.feasible_evaluation,
-                uv_constraint=self.uv_constraint)
+                uv_constraint=self.uv_constraint
+            )
 
         return objective
 

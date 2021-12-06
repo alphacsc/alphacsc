@@ -61,7 +61,8 @@ def test_learn_d_z_multi_error(loss, rank1, solver_d, uv_constraint, window):
             X, n_atoms, n_times_atom, uv_constraint=uv_constraint, rank1=rank1,
             solver_d=solver_d, random_state=0,
             n_iter=30, eps=-np.inf, solver_z='l-bfgs', window=window,
-            verbose=0, loss=loss, loss_params=loss_params)
+            verbose=0, loss=loss, loss_params=loss_params
+        )
 
 
 @pytest.mark.parametrize('window', [False, True])
