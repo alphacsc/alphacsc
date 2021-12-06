@@ -85,6 +85,7 @@ class BaseDSolver:
         self.max_iter = max_iter
         self.momentum = momentum
         self.rng = check_random_state(random_state)
+        self.tukey_window = None
         self.verbose = verbose
         self.debug = debug
 
@@ -128,6 +129,9 @@ class BaseDSolver:
                                random_state=self.rng,
                                window=self.window)
 
+    def _set_tukey_window(self, n_times_atom):
+        raise NotImplementedError()
+
     def update_D(self, z_encoder):
         """Learn d's in time domain.
 
@@ -142,7 +146,7 @@ class BaseDSolver:
                              (n_atoms, n_channels, n_times_atom)
             The atoms to learn from the data.
         """
-        raise NotImplementedError()
+        self._set_tukey_window(z_encoder.n_times_atom)
 
     def get_max_error_dict(self, z_encoder):
         """Get the maximal reconstruction error patch from the data as a new atom
@@ -190,18 +194,12 @@ class Rank1DSolver(BaseDSolver):
                          debug)
         self.rank1 = True
 
-    def _window(self, uv_hat0, n_channels, n_times_atom):
-
-        tukey_window_ = None
+    def _set_tukey_window(self, n_times_atom):
 
         if self.window:
-            tukey_window_ = tukey_window(n_times_atom)[None, :]
-            uv_hat0 = uv_hat0.copy()
-            uv_hat0[:, n_channels:] /= tukey_window_
+            self.tukey_window = tukey_window(n_times_atom)[None, :]
 
-        return uv_hat0, tukey_window_
-
-    def _objective(self, z_encoder, tukey_window_):
+    def _objective(self, z_encoder):
 
         def objective(uv):
 
@@ -209,7 +207,7 @@ class Rank1DSolver(BaseDSolver):
 
             if self.window:
                 uv = uv.copy()
-                uv[:, n_channels:] *= tukey_window_
+                uv[:, n_channels:] *= self.tukey_window
 
             if z_encoder.loss == 'l2':
                 return compute_objective(D=uv,
@@ -300,18 +298,20 @@ class JointDSolver(Rank1DSolver):
             The atoms to learn from the data.
         """
 
-        uv_hat0, tukey_window_ = self._window(z_encoder.D_hat,
-                                              z_encoder.n_channels,
-                                              z_encoder.n_times_atom)
+        super().update_D(z_encoder)
 
         n_channels = z_encoder.n_channels
+        uv_hat0 = z_encoder.D_hat.copy()
+
+        if self.window:
+            uv_hat0[:, n_channels:] /= self.tukey_window
 
         # use FISTA on joint [u, v], with an adaptive step size
 
         def grad(uv):
             if self.window:
                 uv = uv.copy()
-                uv[:, n_channels:] *= tukey_window_
+                uv[:, n_channels:] *= self.tukey_window
 
             grad = gradient_uv(uv=uv,
                                X=z_encoder.X,
@@ -320,31 +320,32 @@ class JointDSolver(Rank1DSolver):
                                loss=z_encoder.loss,
                                loss_params=z_encoder.loss_params)
             if self.window:
-                grad[:, n_channels:] *= tukey_window_
+                grad[:, n_channels:] *= self.tukey_window
 
             return grad
 
         def prox(uv, step_size=None):
             if self.window:
-                uv[:, n_channels:] *= tukey_window_
+                uv[:, n_channels:] *= self.tukey_window
 
             uv = prox_uv(uv, uv_constraint=z_encoder.uv_constraint,
                          n_channels=n_channels)
 
             if self.window:
-                uv[:, n_channels:] /= tukey_window_
+                uv[:, n_channels:] /= self.tukey_window
 
             return uv
 
-        objective = self._objective(z_encoder, tukey_window_)
+        objective = self._objective(z_encoder)
 
         uv_hat, pobj = fista(objective, grad, prox, None, uv_hat0,
                              self.max_iter, momentum=self.momentum,
                              eps=self.eps, adaptive_step_size=True,
-                             debug=self.debug, verbose=self.verbose, name="Update uv")
+                             debug=self.debug, verbose=self.verbose,
+                             name="Update uv")
 
         if self.window:
-            uv_hat[:, n_channels:] *= tukey_window_
+            uv_hat[:, n_channels:] *= self.tukey_window
 
         if self.debug:
             return uv_hat, pobj
@@ -425,13 +426,15 @@ class AlternateDSolver(Rank1DSolver):
             The atoms to learn from the data.
         """
 
+        super().update_D(z_encoder)
+
         n_channels = z_encoder.n_channels
+        uv_hat0 = z_encoder.D_hat.copy()
 
-        uv_hat0, tukey_window_ = self._window(z_encoder.D_hat,
-                                              n_channels,
-                                              z_encoder.n_times_atom)
+        if self.window:
+            uv_hat0[:, n_channels:] /= self.tukey_window
 
-        objective = self._objective(z_encoder, tukey_window_)
+        objective = self._objective(z_encoder)
 
         # use FISTA on alternate u and v
         adaptive_step_size = (self.solver_d == 'alternate_adaptive')
@@ -445,12 +448,12 @@ class AlternateDSolver(Rank1DSolver):
 
         def prox_v(v, step_size=None):
             if self.window:
-                v *= tukey_window_
+                v *= self.tukey_window
 
             v /= np.maximum(1., np.linalg.norm(v, axis=1, keepdims=True))
 
             if self.window:
-                v /= tukey_window_
+                v /= self.tukey_window
 
             return v
 
@@ -464,7 +467,7 @@ class AlternateDSolver(Rank1DSolver):
 
             def grad_u(u):
                 if self.window:
-                    uv = np.c_[u, v_hat * tukey_window_]
+                    uv = np.c_[u, v_hat * self.tukey_window]
                 else:
                     uv = np.c_[u, v_hat]
 
@@ -505,7 +508,7 @@ class AlternateDSolver(Rank1DSolver):
 
             def grad_v(v):
                 if self.window:
-                    v = v * tukey_window_
+                    v = v * self.tukey_window
 
                 uv = np.c_[u_hat, v]
                 grad_d = gradient_d(uv,
@@ -517,7 +520,7 @@ class AlternateDSolver(Rank1DSolver):
                 grad_v = (grad_d * uv[:, :n_channels, None]).sum(axis=1)
 
                 if self.window:
-                    grad_v *= tukey_window_
+                    grad_v *= self.tukey_window
                 return grad_v
 
             if adaptive_step_size:
@@ -542,7 +545,7 @@ class AlternateDSolver(Rank1DSolver):
                 pobj.extend(pobj_v)
 
         if self.window:
-            uv_hat[:, n_channels:] *= tukey_window_
+            uv_hat[:, n_channels:] *= self.tukey_window
 
         if self.debug:
             return uv_hat, pobj
@@ -573,20 +576,16 @@ class DSolver(BaseDSolver):
 
         self.rank1 = False
 
-    def _window(self, D_hat0, n_times_atom):
-        tukey_window_ = None
+    def _set_tukey_window(self, n_times_atom):
 
         if self.window:
-            tukey_window_ = tukey_window(n_times_atom)[None, None, :]
-            D_hat0 = D_hat0 / tukey_window_
+            self.tukey_window = tukey_window(n_times_atom)[None, None, :]
 
-        return D_hat0, tukey_window_
-
-    def _objective(self, D, z_encoder, tukey_window_, full=False):
+    def _objective(self, D, z_encoder, full=False):
 
         def objective(D, full=False):
             if self.window:
-                D = D * tukey_window_
+                D = D * self.tukey_window
 
             if z_encoder.loss == 'l2':
                 return compute_objective(D=D,
@@ -641,14 +640,17 @@ class DSolver(BaseDSolver):
             The atoms to learn from the data.
         """
 
-        D_hat0, tukey_window_ = self._window(
-            z_encoder.D_hat, z_encoder.n_times_atom)
+        super().update_D(z_encoder)
 
-        objective = self._objective(D_hat0, z_encoder, tukey_window_)
+        D_hat0 = z_encoder.D_hat
+        if self.window:
+            D_hat0 = D_hat0 / self.tukey_window
+
+        objective = self._objective(D_hat0, z_encoder)
 
         def grad(D):
             if self.window:
-                D = D * tukey_window_
+                D = D * self.tukey_window
 
             grad = gradient_d(D=D,
                               X=z_encoder.X,
@@ -657,16 +659,16 @@ class DSolver(BaseDSolver):
                               loss=z_encoder.loss,
                               loss_params=z_encoder.loss_params)
             if self.window:
-                grad *= tukey_window_
+                grad *= self.tukey_window
 
             return grad
 
         def prox(D, step_size=None):
             if self.window:
-                D *= tukey_window_
+                D *= self.tukey_window
             D = prox_d(D)
             if self.window:
-                D /= tukey_window_
+                D /= self.tukey_window
             return D
 
         D_hat, pobj = fista(objective, grad, prox, None, D_hat0, self.max_iter,
@@ -675,7 +677,7 @@ class DSolver(BaseDSolver):
                             debug=self.debug, name="Update D")
 
         if self.window:
-            D_hat = D_hat * tukey_window_
+            D_hat = D_hat * self.tukey_window
 
         if self.debug:
             return D_hat, pobj
