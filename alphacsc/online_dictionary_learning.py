@@ -91,9 +91,9 @@ class OnlineCDL(ConvolutionalDictionaryLearning):
                 # No need to update the dictionary as this batch has all its
                 # activation to 0.
                 import warnings
-                warnings.warn("Regularization parameter `reg` is too large and all"
-                              " the activations are zero. The atoms has not been "
-                              "updated.", UserWarning)
+                warnings.warn("Regularization parameter `reg` is too large and"
+                              " all the activations are zero. The atoms has"
+                              " not been updated.", UserWarning)
                 return z_encoder.get_z_hat()
 
             d_solver = get_solver_d(solver_d=self.solver_d,
