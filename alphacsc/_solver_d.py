@@ -218,14 +218,22 @@ class Rank1DSolver(BaseDSolver):
         if self.window:
             self.tukey_window = tukey_window(self.n_times_atom)[None, :]
 
+    def _window_uv(self, d, n_channels):
+
+        if self.window:
+            d[:, n_channels:] *= self.tukey_window
+        return d
+
+    def _dewindow_uv(self, d, n_channels):
+        if self.window:
+            d[:, n_channels:] /= self.tukey_window
+        return d
+
     def _objective(self, z_encoder):
 
         def objective(uv):
 
-            n_channels = z_encoder.n_channels
-
-            uv = uv.copy()
-            uv[:, n_channels:] = self._window(uv[:, n_channels:])
+            uv = self._window_uv(uv.copy(),  z_encoder.n_channels)
 
             return z_encoder.compute_objective(uv)
 
@@ -302,17 +310,14 @@ class JointDSolver(Rank1DSolver):
         """
 
         n_channels = z_encoder.n_channels
-        uv_hat0 = z_encoder.D_hat.copy()
 
-        uv_hat0[:, n_channels:] = self._dewindow(uv_hat0[:, n_channels:])
+        uv_hat0 = self._dewindow_uv(z_encoder.D_hat.copy(), n_channels)
 
         # use FISTA on joint [u, v], with an adaptive step size
 
         def grad(uv):
 
-            uv = uv.copy()
-
-            uv[:, n_channels:] = self._window(uv[:, n_channels:])
+            uv = self._window_uv(uv.copy(), n_channels)
 
             grad = gradient_uv(uv=uv,
                                X=z_encoder.X,
@@ -321,18 +326,18 @@ class JointDSolver(Rank1DSolver):
                                loss=z_encoder.loss,
                                loss_params=z_encoder.loss_params)
 
-            grad[:, n_channels:] = self._window(grad[:, n_channels:])
+            grad = self._window_uv(grad, n_channels)
 
             return grad
 
         def prox(uv, step_size=None):
 
-            uv[:, n_channels:] = self._window(uv[:, n_channels:])
+            uv = self._window_uv(uv, n_channels)
 
             uv = prox_uv(uv, uv_constraint=z_encoder.uv_constraint,
                          n_channels=n_channels)
 
-            uv[:, n_channels:] = self._dewindow(uv[:, n_channels:])
+            uv = self._dewindow_uv(uv, n_channels)
 
             return uv
 
@@ -344,7 +349,7 @@ class JointDSolver(Rank1DSolver):
                              debug=self.debug, verbose=self.verbose,
                              name="Update uv")
 
-        uv_hat[:, n_channels:] = self._window(uv_hat[:, n_channels:])
+        uv_hat = self._window_uv(uv_hat, n_channels)
 
         if self.debug:
             return uv_hat, pobj
@@ -428,9 +433,8 @@ class AlternateDSolver(Rank1DSolver):
         """
 
         n_channels = z_encoder.n_channels
-        uv_hat0 = z_encoder.D_hat.copy()
 
-        uv_hat0[:, n_channels:] = self._dewindow(uv_hat0[:, n_channels:])
+        uv_hat0 = self._dewindow_uv(z_encoder.D_hat.copy(), n_channels)
 
         objective = self._objective(z_encoder)
 
@@ -535,7 +539,7 @@ class AlternateDSolver(Rank1DSolver):
             if self.debug:
                 pobj.extend(pobj_v)
 
-        uv_hat[:, n_channels:] = self._window(uv_hat[:, n_channels:])
+        uv_hat = self._window_uv(uv_hat, n_channels)
 
         if self.debug:
             return uv_hat, pobj
@@ -573,7 +577,7 @@ class DSolver(BaseDSolver):
         if self.window:
             self.tukey_window = tukey_window(self.n_times_atom)[None, None, :]
 
-    def _objective(self, D, z_encoder, full=False):
+    def _objective(self, z_encoder):
 
         def objective(D, full=False):
 
@@ -623,7 +627,7 @@ class DSolver(BaseDSolver):
 
         D_hat0 = self._dewindow(z_encoder.D_hat)
 
-        objective = self._objective(D_hat0, z_encoder)
+        objective = self._objective(z_encoder)
 
         def grad(D):
 
