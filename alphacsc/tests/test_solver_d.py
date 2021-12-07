@@ -29,7 +29,8 @@ def D_init(rng, shape):
 def test_get_solver_d(rank1, solver_d, window, momentum):
     """Tests valid values."""
 
-    d_solver = get_solver_d(solver_d=solver_d,
+    d_solver = get_solver_d(N_TIMES_ATOM,
+                            solver_d=solver_d,
                             rank1=rank1,
                             window=window,
                             momentum=momentum)
@@ -45,7 +46,8 @@ def test_get_solver_d_error(solver_d):
     with pytest.raises(ValueError,
                        match="Unknown solver_d*"):
 
-        get_solver_d(solver_d=solver_d,
+        get_solver_d(N_TIMES_ATOM,
+                     solver_d=solver_d,
                      rank1=False,
                      window=True,
                      momentum=False)
@@ -58,14 +60,14 @@ def test_get_solver_d_error(solver_d):
 @pytest.mark.parametrize('n_trials', [N_TRIALS])
 def test_init_dictionary(X, D_init, solver_d, uv_constraint, window):
     """Tests for valid values when rank1 is False."""
-    d_solver = get_solver_d(solver_d=solver_d,
+    d_solver = get_solver_d(N_TIMES_ATOM,
+                            solver_d=solver_d,
                             rank1=False,
                             window=window)
 
     assert d_solver is not None
 
-    D_hat = d_solver.init_dictionary(X, N_ATOMS, N_TIMES_ATOM, uv_constraint,
-                                     D_init=D_init)
+    D_hat = d_solver.init_dictionary(X, N_ATOMS, uv_constraint, D_init=D_init)
 
     D_init = prox_d(D_init)
     assert_allclose(D_hat, D_init)
@@ -82,14 +84,14 @@ def test_init_dictionary_rank1_alternate(X, D_init, solver_d, uv_constraint,
                                          window):
     """Tests for valid values when solver_d is alternate and rank1 is True."""
 
-    d_solver = get_solver_d(solver_d=solver_d,
+    d_solver = get_solver_d(N_TIMES_ATOM,
+                            solver_d=solver_d,
                             rank1=True,
                             window=window)
 
     assert d_solver is not None
 
-    D_hat = d_solver.init_dictionary(X, N_ATOMS, N_TIMES_ATOM, uv_constraint,
-                                     D_init=D_init)
+    D_hat = d_solver.init_dictionary(X, N_ATOMS, uv_constraint, D_init=D_init)
 
     D_init = prox_uv(D_init, uv_constraint=uv_constraint,
                      n_channels=N_CHANNELS)
@@ -106,14 +108,14 @@ def test_init_dictionary_rank1(X, D_init, solver_d, uv_constraint, window):
     """Tests for valid values when solver_d is either in 'joint' or 'fista' and
     rank1 is True."""
 
-    d_solver = get_solver_d(solver_d=solver_d,
+    d_solver = get_solver_d(N_TIMES_ATOM,
+                            solver_d=solver_d,
                             rank1=True,
                             window=window)
 
     assert d_solver is not None
 
-    D_hat = d_solver.init_dictionary(X, N_ATOMS, N_TIMES_ATOM, uv_constraint,
-                                     D_init=D_init)
+    D_hat = d_solver.init_dictionary(X, N_ATOMS, uv_constraint, D_init=D_init)
 
     D_init = prox_uv(D_init, uv_constraint=uv_constraint,
                      n_channels=N_CHANNELS)
@@ -130,15 +132,16 @@ def test_init_dictionary_rank1_random(X, solver_d, uv_constraint,
     """Tests if init_dictionary is doing what is expected from D_init random
     rank1 is True."""
 
-    d_solver = get_solver_d(solver_d=solver_d,
+    d_solver = get_solver_d(N_TIMES_ATOM,
+                            solver_d=solver_d,
                             rank1=True,
                             window=False,
                             random_state=42)
 
     assert d_solver is not None
 
-    D_hat = d_solver.init_dictionary(X, N_ATOMS, N_TIMES_ATOM, uv_constraint,
-                                     D_init='random')
+    D_hat = d_solver.init_dictionary(
+        X, N_ATOMS, uv_constraint, D_init='random')
 
     rng = check_random_state(42)
 
@@ -161,13 +164,14 @@ def test_init_dictionary_rank1_random(X, solver_d, uv_constraint,
 @pytest.mark.parametrize('n_trials', [N_TRIALS])
 def test_init_shape(X, rank1, solver_d, uv_constraint, expected_shape, window):
     """Tests if the shape of dictionary complies with rank1 value."""
-    d_solver = get_solver_d(solver_d=solver_d,
+    d_solver = get_solver_d(N_TIMES_ATOM,
+                            solver_d=solver_d,
                             rank1=rank1,
                             window=window)
 
     assert d_solver is not None
 
-    D_hat = d_solver.init_dictionary(X, N_ATOMS, N_TIMES_ATOM, uv_constraint)
+    D_hat = d_solver.init_dictionary(X, N_ATOMS, uv_constraint)
     assert D_hat.shape == expected_shape
 
 
@@ -189,7 +193,8 @@ def test_update_D(rank1, solver_d, uv_constraint, shape, z_encoder_rank1, rng):
         X_hat = construct_X_multi(z, D=uv, n_channels=N_CHANNELS)
         return compute_objective(X, X_hat, z_encoder_rank1.loss)
 
-    d_solver = get_solver_d(solver_d=solver_d,
+    d_solver = get_solver_d(N_TIMES_ATOM,
+                            solver_d=solver_d,
                             rank1=rank1,
                             max_iter=1000)
 
@@ -222,7 +227,8 @@ def test_update_D(rank1, solver_d, uv_constraint, shape, z_encoder_rank1, rng):
 def test_update_D_error(rank1, solver_d, uv_constraint, shape,
                         z_encoder_rank1, rng):
 
-    d_solver = get_solver_d(solver_d=solver_d,
+    d_solver = get_solver_d(N_TIMES_ATOM,
+                            solver_d=solver_d,
                             rank1=rank1,
                             max_iter=1000)
 

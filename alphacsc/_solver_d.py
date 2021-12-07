@@ -10,7 +10,8 @@ from .utils.dictionary import tukey_window, get_uv
 from .utils.optim import fista, power_iteration
 
 
-def get_solver_d(solver_d='alternate_adaptive',
+def get_solver_d(n_times_atom,
+                 solver_d='alternate_adaptive',
                  rank1=False,
                  window=False,
                  eps=1e-8,
@@ -23,6 +24,8 @@ def get_solver_d(solver_d='alternate_adaptive',
 
     Parameters
     ----------
+    n_times_atom : int
+        The support of the atom.
     solver_d : str in {'alternate' | 'alternate_adaptive' | 'fista' | 'joint' |
     'auto'}
         The solver to use for the d update.
@@ -51,17 +54,18 @@ def get_solver_d(solver_d='alternate_adaptive',
 
     if rank1:
         if solver_d in ['auto', 'alternate', 'alternate_adaptive']:
-            return AlternateDSolver(solver_d, window, eps, max_iter, momentum,
-                                    random_state, verbose, debug)
+            return AlternateDSolver(n_times_atom, solver_d, window, eps,
+                                    max_iter, momentum, random_state, verbose,
+                                    debug)
         elif solver_d in ['fista', 'joint']:
-            return JointDSolver(solver_d, window, eps, max_iter, momentum,
-                                random_state, verbose, debug)
+            return JointDSolver(n_times_atom, solver_d, window, eps, max_iter,
+                                momentum, random_state, verbose, debug)
         else:
             raise ValueError('Unknown solver_d: %s' % (solver_d, ))
     else:
         if solver_d in ['auto', 'fista']:
-            return DSolver(solver_d, window, eps, max_iter, momentum,
-                           random_state, verbose, debug)
+            return DSolver(n_times_atom, solver_d, window, eps, max_iter,
+                           momentum, random_state, verbose, debug)
         else:
             raise ValueError('Unknown solver_d: %s' % (solver_d, ))
 
@@ -70,6 +74,7 @@ class BaseDSolver:
     """Base class for a d solver."""
 
     def __init__(self,
+                 n_times_atom,
                  solver_d,
                  window,
                  eps,
@@ -79,18 +84,20 @@ class BaseDSolver:
                  verbose,
                  debug):
 
+        self.n_times_atom = n_times_atom
         self.solver_d = solver_d
         self.window = window
         self.eps = eps
         self.max_iter = max_iter
         self.momentum = momentum
         self.rng = check_random_state(random_state)
-        self.tukey_window = None
         self.verbose = verbose
         self.debug = debug
 
-    def init_dictionary(self, X, n_atoms, n_times_atom, uv_constraint='auto',
-                        D_init=None, D_init_params=dict()):
+        self._set_tukey_window()
+
+    def init_dictionary(self, X, n_atoms, uv_constraint='auto', D_init=None,
+                        D_init_params=dict()):
         """Returns an initial dictionary for the signal X.
 
         Parameter
@@ -99,8 +106,6 @@ class BaseDSolver:
             The data on which to perform CSC.
         n_atoms : int
             The number of atoms to learn.
-        n_times_atom : int
-            The support of the atom.
         uv_constraint : str in {'joint' | 'separate' | 'auto'}
             The kind of norm constraint on the atoms if using rank1=True.
             If 'joint', the constraint is norm_2([u, v]) <= 1
@@ -121,7 +126,7 @@ class BaseDSolver:
             The initial atoms to learn from the data.
         """
 
-        return init_dictionary(X, n_atoms, n_times_atom,
+        return init_dictionary(X, n_atoms, self.n_times_atom,
                                D_init=D_init,
                                rank1=self.rank1,
                                uv_constraint=uv_constraint,
@@ -146,7 +151,7 @@ class BaseDSolver:
                              (n_atoms, n_channels, n_times_atom)
             The atoms to learn from the data.
         """
-        self._set_tukey_window(z_encoder.n_times_atom)
+        raise NotImplementedError()
 
     def get_max_error_dict(self, z_encoder):
         """Get the maximal reconstruction error patch from the data as a new atom
@@ -175,6 +180,7 @@ class Rank1DSolver(BaseDSolver):
     """Base class for a rank1 solver d."""
 
     def __init__(self,
+                 n_times_atom,
                  solver_d,
                  window,
                  eps,
@@ -184,7 +190,8 @@ class Rank1DSolver(BaseDSolver):
                  verbose,
                  debug):
 
-        super().__init__(solver_d,
+        super().__init__(n_times_atom,
+                         solver_d,
                          window,
                          eps,
                          max_iter,
@@ -194,10 +201,10 @@ class Rank1DSolver(BaseDSolver):
                          debug)
         self.rank1 = True
 
-    def _set_tukey_window(self, n_times_atom):
+    def _set_tukey_window(self):
 
         if self.window:
-            self.tukey_window = tukey_window(n_times_atom)[None, :]
+            self.tukey_window = tukey_window(self.n_times_atom)[None, :]
 
     def _objective(self, z_encoder):
 
@@ -262,6 +269,7 @@ class JointDSolver(Rank1DSolver):
     """A class for 'fista' or 'joint' solver_d when rank1 is True. """
 
     def __init__(self,
+                 n_times_atom,
                  solver_d,
                  window,
                  eps,
@@ -271,7 +279,8 @@ class JointDSolver(Rank1DSolver):
                  verbose,
                  debug):
 
-        super().__init__(solver_d,
+        super().__init__(n_times_atom,
+                         solver_d,
                          window,
                          eps,
                          max_iter,
@@ -297,8 +306,6 @@ class JointDSolver(Rank1DSolver):
         uv_hat : array, shape (n_atoms, n_channels + n_times_atom)
             The atoms to learn from the data.
         """
-
-        super().update_D(z_encoder)
 
         n_channels = z_encoder.n_channels
         uv_hat0 = z_encoder.D_hat.copy()
@@ -358,6 +365,7 @@ class AlternateDSolver(Rank1DSolver):
     """
 
     def __init__(self,
+                 n_times_atom,
                  solver_d,
                  window,
                  eps,
@@ -367,7 +375,8 @@ class AlternateDSolver(Rank1DSolver):
                  verbose,
                  debug):
 
-        super().__init__(solver_d,
+        super().__init__(n_times_atom,
+                         solver_d,
                          window,
                          eps,
                          max_iter,
@@ -425,8 +434,6 @@ class AlternateDSolver(Rank1DSolver):
         uv_hat : array, shape (n_atoms, n_channels + n_times_atom)
             The atoms to learn from the data.
         """
-
-        super().update_D(z_encoder)
 
         n_channels = z_encoder.n_channels
         uv_hat0 = z_encoder.D_hat.copy()
@@ -556,6 +563,7 @@ class DSolver(BaseDSolver):
     """A class for 'fista' solver_d when rank1 is False. """
 
     def __init__(self,
+                 n_times_atom,
                  solver_d,
                  window,
                  eps,
@@ -565,7 +573,8 @@ class DSolver(BaseDSolver):
                  verbose,
                  debug):
 
-        super().__init__(solver_d,
+        super().__init__(n_times_atom,
+                         solver_d,
                          window,
                          eps,
                          max_iter,
@@ -576,10 +585,10 @@ class DSolver(BaseDSolver):
 
         self.rank1 = False
 
-    def _set_tukey_window(self, n_times_atom):
+    def _set_tukey_window(self):
 
         if self.window:
-            self.tukey_window = tukey_window(n_times_atom)[None, None, :]
+            self.tukey_window = tukey_window(self.n_times_atom)[None, None, :]
 
     def _objective(self, D, z_encoder, full=False):
 
@@ -638,8 +647,6 @@ class DSolver(BaseDSolver):
         D_hat : array, shape (n_atoms, n_channels, n_times_atom)
             The atoms to learn from the data.
         """
-
-        super().update_D(z_encoder)
 
         D_hat0 = z_encoder.D_hat
         if self.window:
