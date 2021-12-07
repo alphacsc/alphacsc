@@ -618,11 +618,10 @@ class DSolver(BaseDSolver):
         [Yellin2017] BLOOD CELL DETECTION AND COUNTING IN HOLOGRAPHIC LENS-FREE
         IMAGING BY CONVOLUTIONAL SPARSE DICTIONARY LEARNING AND CODING.
         """
-        n_times_atom = z_encoder.n_times_atom
         d0 = z_encoder.get_max_error_patch()
 
         if self.window:
-            d0 = d0 * tukey_window(n_times_atom)[None, :]
+            d0 = d0 * self.tukey_window
 
         return prox_d(d0)
 
