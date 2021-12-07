@@ -183,7 +183,10 @@ class BaseDSolver:
         [Yellin2017] BLOOD CELL DETECTION AND COUNTING IN HOLOGRAPHIC LENS-FREE
         IMAGING BY CONVOLUTIONAL SPARSE DICTIONARY LEARNING AND CODING.
         """
-        raise NotImplementedError()
+
+        d0 = z_encoder.get_max_error_patch()
+
+        return self._window(d0)
 
 
 class Rank1DSolver(BaseDSolver):
@@ -261,9 +264,7 @@ class Rank1DSolver(BaseDSolver):
         IMAGING BY CONVOLUTIONAL SPARSE DICTIONARY LEARNING AND CODING.
         """
 
-        d0 = z_encoder.get_max_error_patch()
-
-        d0 = self._window(d0)
+        d0 = super().get_max_error_dict(z_encoder)
 
         d0 = prox_uv(get_uv(d0), uv_constraint=z_encoder.uv_constraint,
                      n_channels=z_encoder.n_channels)
@@ -622,9 +623,8 @@ class DSolver(BaseDSolver):
         [Yellin2017] BLOOD CELL DETECTION AND COUNTING IN HOLOGRAPHIC LENS-FREE
         IMAGING BY CONVOLUTIONAL SPARSE DICTIONARY LEARNING AND CODING.
         """
-        d0 = z_encoder.get_max_error_patch()
 
-        d0 = self._window(d0)
+        d0 = super().get_max_error_dict(z_encoder)
 
         return prox_d(d0)
 
