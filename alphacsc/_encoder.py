@@ -3,7 +3,7 @@ import numpy as np
 from .utils.dictionary import get_D_shape
 from .update_z_multi import update_z_multi
 from .utils.dictionary import _patch_reconstruction_error
-from .loss_and_gradient import compute_X_and_objective_multi
+from .loss_and_gradient import compute_objective, compute_X_and_objective_multi
 
 DEFAULT_TOL_Z = 1e-3
 
@@ -298,6 +298,21 @@ class BaseZEncoder:
             A new atom to add to the dictionary.
         """
         raise NotImplementedError()
+
+    def compute_objective(self, D):
+        if self.loss == 'l2':
+            return compute_objective(D=D,
+                                     constants=self.get_constants())
+
+        return compute_X_and_objective_multi(
+            self.X,
+            self.get_z_hat(),
+            D_hat=D,
+            loss=self.loss,
+            loss_params=self.loss_params,
+            feasible_evaluation=self.feasible_evaluation,
+            uv_constraint=self.uv_constraint
+        )
 
     def __enter__(self):
         return self

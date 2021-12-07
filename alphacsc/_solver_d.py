@@ -1,7 +1,6 @@
 import numpy as np
 
 from .init_dict import init_dictionary
-from .loss_and_gradient import compute_objective, compute_X_and_objective_multi
 from .loss_and_gradient import gradient_uv, gradient_d
 from .update_d_multi import prox_d, prox_uv
 from .utils import check_random_state
@@ -228,19 +227,7 @@ class Rank1DSolver(BaseDSolver):
             uv = uv.copy()
             uv[:, n_channels:] = self._window(uv[:, n_channels:])
 
-            if z_encoder.loss == 'l2':
-                return compute_objective(D=uv,
-                                         constants=z_encoder.get_constants())
-
-            return compute_X_and_objective_multi(
-                z_encoder.X,
-                z_encoder.get_z_hat(),
-                D_hat=uv,
-                loss=z_encoder.loss,
-                loss_params=z_encoder.loss_params,
-                feasible_evaluation=z_encoder.feasible_evaluation,
-                uv_constraint=z_encoder.uv_constraint
-            )
+            return z_encoder.compute_objective(uv)
 
         return objective
 
@@ -592,15 +579,7 @@ class DSolver(BaseDSolver):
 
             D = self._window(D)
 
-            if z_encoder.loss == 'l2':
-                return compute_objective(D=D,
-                                         constants=z_encoder.get_constants())
-
-            return compute_X_and_objective_multi(z_encoder.X,
-                                                 z_encoder.get_z_hat(),
-                                                 D_hat=D,
-                                                 loss=z_encoder.loss,
-                                                 loss_params=z_encoder.loss_params)  # noqa
+            return z_encoder.compute_objective(D)
 
         return objective
 

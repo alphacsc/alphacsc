@@ -4,6 +4,7 @@ import numpy as np
 
 from alphacsc.utils import check_random_state
 from alphacsc.utils.compute_constants import compute_ztz, compute_ztX
+from alphacsc.loss_and_gradient import compute_objective, compute_X_and_objective_multi
 
 N_TRIALS, N_CHANNELS, N_TIMES = 5, 3, 100
 N_TIMES_ATOM, N_ATOMS = 10, 4
@@ -59,6 +60,21 @@ class MockZEncoder:
 
         return dict(ztX=self.ztX, ztz=self.ztz, XtX=self.XtX,
                     n_channels=self.n_channels)
+
+    def compute_objective(self, D):
+        if self.loss == 'l2':
+            return compute_objective(D=D,
+                                     constants=self.get_constants())
+
+        return compute_X_and_objective_multi(
+            self.X,
+            self.get_z_hat(),
+            D_hat=D,
+            loss=self.loss,
+            loss_params=self.loss_params,
+            feasible_evaluation=self.feasible_evaluation,
+            uv_constraint=self.uv_constraint
+        )
 
 
 @pytest.fixture
