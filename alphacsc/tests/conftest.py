@@ -4,7 +4,9 @@ import numpy as np
 
 from alphacsc.utils import check_random_state
 from alphacsc.utils.compute_constants import compute_ztz, compute_ztX
-from alphacsc.loss_and_gradient import compute_objective, compute_X_and_objective_multi
+from alphacsc.loss_and_gradient import (
+    compute_objective, compute_X_and_objective_multi
+)
 
 N_TRIALS, N_CHANNELS, N_TIMES = 5, 3, 100
 N_TIMES_ATOM, N_ATOMS = 10, 4

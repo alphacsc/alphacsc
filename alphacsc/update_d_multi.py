@@ -5,12 +5,7 @@
 #          Thomas Moreau <thomas.moreau@inria.fr>
 import numpy as np
 
-from .utils.optim import fista
 from .utils.compute_constants import compute_ztz, compute_ztX
-from .utils.dictionary import tukey_window
-
-from .loss_and_gradient import compute_objective, compute_X_and_objective_multi
-from .loss_and_gradient import gradient_d
 
 
 def squeeze_all_except_one(X, axis=0):
