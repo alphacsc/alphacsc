@@ -478,6 +478,25 @@ class AlternateDSolver(Rank1DSolver):
             assert step_size > 0
             return 0.99 / step_size
 
+    def _run_fista(self, d_hat, uv_hat, obj, grad, prox, variable, z_encoder):
+
+        L = self._get_step_size(uv_hat, z_encoder.loss,
+                                z_encoder.n_channels,
+                                z_encoder.ztz, variable)
+
+        return fista(obj,
+                     grad,
+                     prox,
+                     L,
+                     d_hat,
+                     self.max_iter,
+                     momentum=self.momentum,
+                     eps=self.eps,
+                     adaptive_step_size=self.adaptive_step_size,
+                     debug=self.debug,
+                     verbose=self.verbose,
+                     name="Update " + variable)
+
     def _update_u(self, uv_hat, u_hat, v_hat, objective, z_encoder):
 
         def prox_u(u, step_size=None):
@@ -488,22 +507,9 @@ class AlternateDSolver(Rank1DSolver):
             uv = np.c_[u, v_hat]
             return objective(uv)
 
-        Lu = self._get_step_size(uv_hat, z_encoder.loss,
-                                 z_encoder.n_channels,
-                                 z_encoder.ztz, 'u')
-
-        u_hat, pobj_u = fista(obj,
-                              self._grad_u(v_hat, z_encoder),
-                              prox_u,
-                              Lu,
-                              u_hat,
-                              self.max_iter,
-                              momentum=self.momentum,
-                              eps=self.eps,
-                              adaptive_step_size=self.adaptive_step_size,
-                              debug=self.debug,
-                              verbose=self.verbose,
-                              name="Update u")
+        u_hat, pobj_u = self._run_fista(u_hat, uv_hat, obj,
+                                        self._grad_u(v_hat, z_encoder),
+                                        prox_u, 'u', z_encoder)
 
         uv_hat = np.c_[u_hat, v_hat]
 
@@ -523,22 +529,9 @@ class AlternateDSolver(Rank1DSolver):
             uv = np.c_[u_hat, v]
             return objective(uv)
 
-        Lv = self._get_step_size(uv_hat, z_encoder.loss,
-                                 z_encoder.n_channels,
-                                 z_encoder.ztz, 'v')
-
-        v_hat, pobj_v = fista(obj,
-                              self._grad_v(u_hat, z_encoder),
-                              prox_v,
-                              Lv,
-                              v_hat,
-                              self.max_iter,
-                              momentum=self.momentum,
-                              eps=self.eps,
-                              adaptive_step_size=self.adaptive_step_size,
-                              debug=self.debug,
-                              verbose=self.verbose,
-                              name="Update v")
+        v_hat, pobj_v = self._run_fista(v_hat, uv_hat, obj,
+                                        self._grad_v(u_hat, z_encoder),
+                                        prox_v, 'v', z_encoder)
 
         uv_hat = np.c_[u_hat, v_hat]
 
