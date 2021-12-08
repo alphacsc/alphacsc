@@ -79,7 +79,6 @@ class BaseDSolver:
                  verbose,
                  debug):
 
-        self.solver_d = solver_d
         self.window = window
         self.eps = eps
         self.max_iter = max_iter
@@ -342,7 +341,7 @@ class AlternateDSolver(Rank1DSolver):
                          random_state,
                          verbose,
                          debug)
-        self.adaptive_step_size = (self.solver_d == 'alternate_adaptive')
+        self.adaptive_step_size = (solver_d == 'alternate_adaptive')
 
     def update_D(self, z_encoder):
         """Learn d's in time domain.
