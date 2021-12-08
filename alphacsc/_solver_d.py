@@ -261,10 +261,8 @@ class Rank1DSolver(BaseDSolver):
 
         d0 = super().get_max_error_dict(z_encoder)
 
-        d0 = prox_uv(get_uv(d0), uv_constraint=z_encoder.uv_constraint,
-                     n_channels=z_encoder.n_channels)
-
-        return d0
+        return prox_uv(get_uv(d0), uv_constraint=z_encoder.uv_constraint,
+                       n_channels=z_encoder.n_channels)
 
 
 class JointDSolver(Rank1DSolver):
@@ -391,6 +389,7 @@ class AlternateDSolver(Rank1DSolver):
                          random_state,
                          verbose,
                          debug)
+        self.adaptive_step_size = (self.solver_d == 'alternate_adaptive')
 
     def compute_lipschitz(self, uv0, n_channels, ztz, variable):
 
@@ -428,6 +427,57 @@ class AlternateDSolver(Rank1DSolver):
             raise ValueError("variable should be either 'u' or 'v'")
         return L
 
+    def _grad_u(self, v_hat, z_encoder):
+
+        def grad_u(u):
+
+            uv = np.c_[u, self._window(v_hat)]
+
+            grad_d = gradient_d(uv,
+                                X=z_encoder.X,
+                                z=z_encoder.get_z_hat(),
+                                constants=z_encoder.get_constants(),
+                                loss=z_encoder.loss,
+                                loss_params=z_encoder.loss_params)
+
+            return (grad_d * uv[:, None, z_encoder.n_channels:]).sum(axis=2)
+
+        return grad_u
+
+    def _grad_v(self, u_hat, z_encoder):
+
+        def grad_v(v):
+
+            v = self._window(v)
+
+            uv = np.c_[u_hat, v]
+
+            grad_d = gradient_d(uv,
+                                X=z_encoder.X,
+                                z=z_encoder.get_z_hat(),
+                                constants=z_encoder.get_constants(),
+                                loss=z_encoder.loss,
+                                loss_params=z_encoder.loss_params)
+
+            grad_v = (grad_d * uv[:, :z_encoder.n_channels, None]).sum(axis=1)
+
+            return self._window(grad_v)
+
+        return grad_v
+
+    def _get_step_size(self, uv_hat, loss, n_channels, ztz, variable):
+
+        if self.adaptive_step_size:
+            return None
+        else:
+            if loss != 'l2':
+                raise NotImplementedError()
+            step_size = self.compute_lipschitz(uv_hat, n_channels, ztz,
+                                               variable)
+
+            assert step_size > 0
+            return 0.99 / step_size
+
     def update_D(self, z_encoder):
         """Learn d's in time domain.
 
@@ -449,7 +499,6 @@ class AlternateDSolver(Rank1DSolver):
         objective = self._objective(z_encoder)
 
         # use FISTA on alternate u and v
-        adaptive_step_size = (self.solver_d == 'alternate_adaptive')
 
         uv_hat = uv_hat0.copy()
         u_hat, v_hat = uv_hat[:, :n_channels], uv_hat[:, n_channels:]
@@ -474,36 +523,23 @@ class AlternateDSolver(Rank1DSolver):
                 uv = np.c_[u, v_hat]
                 return objective(uv)
 
-            def grad_u(u):
+            Lu = self._get_step_size(uv_hat, z_encoder.loss,
+                                     z_encoder.n_channels,
+                                     z_encoder.ztz, 'u')
 
-                uv = np.c_[u, self._window(v_hat)]
-
-                grad_d = gradient_d(uv,
-                                    X=z_encoder.X,
-                                    z=z_encoder.get_z_hat(),
-                                    constants=z_encoder.get_constants(),
-                                    loss=z_encoder.loss,
-                                    loss_params=z_encoder.loss_params)
-
-                return (grad_d * uv[:, None, n_channels:]).sum(axis=2)
-
-            if adaptive_step_size:
-                Lu = 1
-            else:
-                if z_encoder.loss != 'l2':
-                    raise NotImplementedError()
-                Lu = self.compute_lipschitz(uv_hat,
-                                            z_encoder.n_channels,
-                                            z_encoder.ztz,
-                                            'u')
-            assert Lu > 0
-
-            u_hat, pobj_u = fista(obj, grad_u, prox_u, 0.99 / Lu, u_hat,
-                                  self.max_iter, momentum=self.momentum,
+            u_hat, pobj_u = fista(obj,
+                                  self._grad_u(v_hat, z_encoder),
+                                  prox_u,
+                                  Lu,
+                                  u_hat,
+                                  self.max_iter,
+                                  momentum=self.momentum,
                                   eps=self.eps,
-                                  adaptive_step_size=adaptive_step_size,
-                                  debug=self.debug, verbose=self.verbose,
+                                  adaptive_step_size=self.adaptive_step_size,
+                                  debug=self.debug,
+                                  verbose=self.verbose,
                                   name="Update u")
+
             uv_hat = np.c_[u_hat, v_hat]
             if self.debug:
                 pobj.extend(pobj_u)
@@ -513,38 +549,23 @@ class AlternateDSolver(Rank1DSolver):
                 uv = np.c_[u_hat, v]
                 return objective(uv)
 
-            def grad_v(v):
+            Lv = self._get_step_size(uv_hat, z_encoder.loss,
+                                     z_encoder.n_channels,
+                                     z_encoder.ztz, 'v')
 
-                v = self._window(v)
-
-                uv = np.c_[u_hat, v]
-                grad_d = gradient_d(uv,
-                                    X=z_encoder.X,
-                                    z=z_encoder.get_z_hat(),
-                                    constants=z_encoder.get_constants(),
-                                    loss=z_encoder.loss,
-                                    loss_params=z_encoder.loss_params)
-                grad_v = (grad_d * uv[:, :n_channels, None]).sum(axis=1)
-
-                return self._window(grad_v)
-
-            if adaptive_step_size:
-                Lv = 1
-            else:
-                if z_encoder.loss != 'l2':
-                    raise NotImplementedError()
-                Lv = self.compute_lipschitz(uv_hat,
-                                            z_encoder.n_channels,
-                                            z_encoder.ztz,
-                                            'v')
-            assert Lv > 0
-
-            v_hat, pobj_v = fista(obj, grad_v, prox_v, 0.99 / Lv, v_hat,
-                                  self.max_iter, momentum=self.momentum,
+            v_hat, pobj_v = fista(obj,
+                                  self._grad_v(u_hat, z_encoder),
+                                  prox_v,
+                                  Lv,
+                                  v_hat,
+                                  self.max_iter,
+                                  momentum=self.momentum,
                                   eps=self.eps,
-                                  adaptive_step_size=adaptive_step_size,
-                                  verbose=self.verbose, debug=self.debug,
+                                  adaptive_step_size=self.adaptive_step_size,
+                                  debug=self.debug,
+                                  verbose=self.verbose,
                                   name="Update v")
+
             uv_hat = np.c_[u_hat, v_hat]
             if self.debug:
                 pobj.extend(pobj_v)
