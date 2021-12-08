@@ -69,6 +69,52 @@ def get_solver_d(n_times_atom,
             raise ValueError('Unknown solver_d: %s' % (solver_d, ))
 
 
+class NoWindow():
+
+    def __init__(self):
+        print("initialized")
+
+    def window(self, d):
+        return d
+
+    def dewindow(self, d):
+        return d
+
+
+class UVWindower(NoWindow):
+    def __init__(self, n_times_atom, n_channels):
+        self.n_channels = n_channels
+        self.tukey_window = tukey_window(n_times_atom)[None, :]
+
+    def window(self, d):
+        d = d.copy()
+        d[:, self.n_channels:] *= self.tukey_window
+        return d
+
+    def dewindow(self, d):
+        d = d.copy()
+        d[:, self.n_channels:] /= self.tukey_window
+        return d
+
+    def simple_window(self, d):
+        return d * self.tukey_window
+
+    def simple_dewindow(self, d):
+        return d / self.tukey_window
+
+
+class SimpleWindower(NoWindow):
+    def __init__(self, n_times_atom):
+        print(f"initialized {n_times_atom}")
+        self.tukey_window = tukey_window(n_times_atom)[None, None, :]
+
+    def window(self, d):
+        return d * self.tukey_window
+
+    def dewindow(self, d):
+        return d / self.tukey_window
+
+
 class BaseDSolver:
     """Base class for a d solver."""
 
@@ -93,7 +139,9 @@ class BaseDSolver:
         self.verbose = verbose
         self.debug = debug
 
-        self._set_tukey_window()
+        if not self.window:
+            self.windower = NoWindow()
+        self.windower = None
 
     def init_dictionary(self, X, n_atoms, uv_constraint='auto', D_init=None,
                         D_init_params=dict()):
@@ -170,22 +218,20 @@ class BaseDSolver:
         IMAGING BY CONVOLUTIONAL SPARSE DICTIONARY LEARNING AND CODING.
         """
 
-        d0 = z_encoder.get_max_error_patch()
-
-        return self._window(d0)
-
-    def _set_tukey_window(self, n_times_atom):
         raise NotImplementedError()
 
-    def _window(self, d):
-        if self.window:
-            return d * self.tukey_window
-        return d
+    def _init_windower(self, z_encoder):
+        raise NotImplementedError()
 
-    def _dewindow(self, d):
-        if self.window:
-            return d / self.tukey_window
-        return d
+    def _objective(self, z_encoder):
+
+        def objective(D, full=False):
+
+            D = self.windower.window(D)
+
+            return z_encoder.compute_objective(D)
+
+        return objective
 
 
 class Rank1DSolver(BaseDSolver):
@@ -232,37 +278,20 @@ class Rank1DSolver(BaseDSolver):
         [Yellin2017] BLOOD CELL DETECTION AND COUNTING IN HOLOGRAPHIC LENS-FREE
         IMAGING BY CONVOLUTIONAL SPARSE DICTIONARY LEARNING AND CODING.
         """
+        self._init_windower(z_encoder)
 
-        d0 = super().get_max_error_dict(z_encoder)
+        d0 = z_encoder.get_max_error_patch()
 
-        return prox_uv(get_uv(d0), uv_constraint=z_encoder.uv_constraint,
+        d0 = self.windower.simple_window(d0)
+
+        return prox_uv(get_uv(d0),
+                       uv_constraint=z_encoder.uv_constraint,
                        n_channels=z_encoder.n_channels)
 
-    def _set_tukey_window(self):
-
-        if self.window:
-            self.tukey_window = tukey_window(self.n_times_atom)[None, :]
-
-    def _window_uv(self, d, n_channels):
-
-        if self.window:
-            d[:, n_channels:] *= self.tukey_window
-        return d
-
-    def _dewindow_uv(self, d, n_channels):
-        if self.window:
-            d[:, n_channels:] /= self.tukey_window
-        return d
-
-    def _objective(self, z_encoder):
-
-        def objective(uv):
-
-            uv = self._window_uv(uv.copy(),  z_encoder.n_channels)
-
-            return z_encoder.compute_objective(uv)
-
-        return objective
+    def _init_windower(self, z_encoder):
+        if self.windower is None:
+            self.windower = UVWindower(z_encoder.n_times_atom,
+                                       z_encoder.n_channels)
 
 
 class JointDSolver(Rank1DSolver):
@@ -288,6 +317,7 @@ class JointDSolver(Rank1DSolver):
                          random_state,
                          verbose,
                          debug)
+        self.name = "Update uv"
 
     def update_D(self, z_encoder):
         """Learn d's in time domain.
@@ -307,8 +337,9 @@ class JointDSolver(Rank1DSolver):
             The atoms to learn from the data.
         """
 
-        uv_hat0 = self._dewindow_uv(z_encoder.D_hat.copy(),
-                                    z_encoder.n_channels)
+        self._init_windower(z_encoder)
+
+        uv_hat0 = self.windower.dewindow(z_encoder.D_hat)
 
         uv_hat, pobj = fista(self._objective(z_encoder),
                              self._grad(z_encoder),
@@ -321,9 +352,9 @@ class JointDSolver(Rank1DSolver):
                              adaptive_step_size=True,
                              debug=self.debug,
                              verbose=self.verbose,
-                             name="Update uv")
+                             name=self.name)
 
-        uv_hat = self._window_uv(uv_hat, z_encoder.n_channels)
+        uv_hat = self.windower.window(uv_hat)
 
         if self.debug:
             return uv_hat, pobj
@@ -333,7 +364,7 @@ class JointDSolver(Rank1DSolver):
 
         def grad(uv):
 
-            uv = self._window_uv(uv.copy(), z_encoder.n_channels)
+            uv = self.windower.window(uv)
 
             grad = gradient_uv(uv=uv,
                                X=z_encoder.X,
@@ -342,7 +373,7 @@ class JointDSolver(Rank1DSolver):
                                loss=z_encoder.loss,
                                loss_params=z_encoder.loss_params)
 
-            grad = self._window_uv(grad, z_encoder.n_channels)
+            grad = self.windower.window(grad)
 
             return grad
 
@@ -352,12 +383,12 @@ class JointDSolver(Rank1DSolver):
 
         def prox(uv, step_size=None):
 
-            uv = self._window_uv(uv, z_encoder.n_channels)
+            uv = self.windower.window(uv)
 
             uv = prox_uv(uv, uv_constraint=z_encoder.uv_constraint,
                          n_channels=z_encoder.n_channels)
 
-            uv = self._dewindow_uv(uv, z_encoder.n_channels)
+            uv = self.windower.dewindow(uv)
 
             return uv
 
@@ -405,9 +436,11 @@ class AlternateDSolver(Rank1DSolver):
             The atoms to learn from the data.
         """
 
+        self._init_windower(z_encoder)
+
         n_channels = z_encoder.n_channels
 
-        uv_hat0 = self._dewindow_uv(z_encoder.D_hat.copy(), n_channels)
+        uv_hat0 = self.windower.dewindow(z_encoder.D_hat)
 
         objective = self._objective(z_encoder)
 
@@ -431,7 +464,7 @@ class AlternateDSolver(Rank1DSolver):
                 pobj.extend(pobj_u)
                 pobj.extend(pobj_v)
 
-        uv_hat = self._window_uv(uv_hat, n_channels)
+        uv_hat = self.windower.window(uv_hat)
 
         if self.debug:
             return uv_hat, pobj
@@ -459,7 +492,7 @@ class AlternateDSolver(Rank1DSolver):
 
         def grad_u(u):
 
-            uv = np.c_[u, self._window(v_hat)]
+            uv = np.c_[u, self.windower.simple_window(v_hat)]
 
             grad_d = gradient_d(uv,
                                 X=z_encoder.X,
@@ -476,11 +509,11 @@ class AlternateDSolver(Rank1DSolver):
 
         def prox_v(v, step_size=None):
 
-            v = self._window(v)
+            v = self.windower.simple_window(v)
 
             v /= np.maximum(1., np.linalg.norm(v, axis=1, keepdims=True))
 
-            return self._dewindow(v)
+            return self.windower.simple_dewindow(v)
 
         def obj(v):
             uv = np.c_[u_hat, v]
@@ -498,7 +531,7 @@ class AlternateDSolver(Rank1DSolver):
 
         def grad_v(v):
 
-            v = self._window(v)
+            v = self.windower.simple_window(v)
 
             uv = np.c_[u_hat, v]
 
@@ -511,7 +544,7 @@ class AlternateDSolver(Rank1DSolver):
 
             grad_v = (grad_d * uv[:, :z_encoder.n_channels, None]).sum(axis=1)
 
-            return self._window(grad_v)
+            return self.windower.simple_window(grad_v)
 
         return grad_v
 
@@ -602,6 +635,7 @@ class DSolver(BaseDSolver):
                          debug)
 
         self.rank1 = False
+        self.name = "Update D"
 
     def update_D(self, z_encoder):
         """Learn d's in time domain.
@@ -617,7 +651,9 @@ class DSolver(BaseDSolver):
             The atoms to learn from the data.
         """
 
-        D_hat0 = self._dewindow(z_encoder.D_hat)
+        self._init_windower(z_encoder)
+
+        D_hat0 = self.windower.dewindow(z_encoder.D_hat)
 
         D_hat, pobj = fista(self._objective(z_encoder),
                             self._grad(z_encoder),
@@ -632,7 +668,7 @@ class DSolver(BaseDSolver):
                             debug=self.debug,
                             name="Update D")
 
-        D_hat = self._window(D_hat)
+        D_hat = self.windower.window(D_hat)
 
         if self.debug:
             return D_hat, pobj
@@ -642,7 +678,7 @@ class DSolver(BaseDSolver):
 
         def grad(D):
 
-            D = self._window(D)
+            D = self.windower.window(D)
 
             grad = gradient_d(D=D,
                               X=z_encoder.X,
@@ -650,8 +686,7 @@ class DSolver(BaseDSolver):
                               constants=z_encoder.get_constants(),
                               loss=z_encoder.loss,
                               loss_params=z_encoder.loss_params)
-
-            return self._window(grad)
+            return self.windower.window(grad)
 
         return grad
 
@@ -659,11 +694,11 @@ class DSolver(BaseDSolver):
 
         def prox(D, step_size=None):
 
-            D = self._window(D)
+            D = self.windower.window(D)
 
             D = prox_d(D)
 
-            return self._dewindow(D)
+            return self.windower.dewindow(D)
 
         return prox
 
@@ -687,21 +722,14 @@ class DSolver(BaseDSolver):
         IMAGING BY CONVOLUTIONAL SPARSE DICTIONARY LEARNING AND CODING.
         """
 
-        d0 = super().get_max_error_dict(z_encoder)
+        self._init_windower(z_encoder)
+
+        d0 = z_encoder.get_max_error_patch()
+
+        d0 = self.windower.window(d0)
 
         return prox_d(d0)
 
-    def _set_tukey_window(self):
-
-        if self.window:
-            self.tukey_window = tukey_window(self.n_times_atom)[None, None, :]
-
-    def _objective(self, z_encoder):
-
-        def objective(D, full=False):
-
-            D = self._window(D)
-
-            return z_encoder.compute_objective(D)
-
-        return objective
+    def _init_windower(self, z_encoder):
+        if self.windower is None:
+            self.windower = SimpleWindower(z_encoder.n_times_atom)

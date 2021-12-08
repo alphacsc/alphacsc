@@ -108,12 +108,21 @@ def test_window(rank1, solver_d, uv_constraint):
     )
 
     D_init = init_dictionary(X, n_atoms, n_times_atom, rank1=rank1,
-                             uv_constraint=uv_constraint_, random_state=0)
+                             uv_constraint=uv_constraint_, random_state=0,
+                             window=False)
 
     kwargs = dict(X=X, n_atoms=n_atoms, n_times_atom=n_times_atom, verbose=0,
                   uv_constraint=uv_constraint, solver_d=solver_d, rank1=rank1,
                   random_state=0, n_iter=1, solver_z='l-bfgs', D_init=D_init)
     res_False = learn_d_z_multi(window=False, **kwargs)
+
+    D_init = init_dictionary(X, n_atoms, n_times_atom, rank1=rank1,
+                             uv_constraint=uv_constraint_, random_state=0,
+                             window=True)
+
+    kwargs = dict(X=X, n_atoms=n_atoms, n_times_atom=n_times_atom, verbose=0,
+                  uv_constraint=uv_constraint, solver_d=solver_d, rank1=rank1,
+                  random_state=0, n_iter=1, solver_z='l-bfgs', D_init=D_init)
     res_True = learn_d_z_multi(window=True, **kwargs)
 
     assert not np.allclose(res_False[2], res_True[2])
