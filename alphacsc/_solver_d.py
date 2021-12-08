@@ -5,7 +5,7 @@ from .loss_and_gradient import gradient_uv, gradient_d
 from .update_d_multi import prox_d, prox_uv
 from .utils import check_random_state
 from .utils.convolution import numpy_convolve_uv
-from .utils.dictionary import tukey_window, get_uv
+from .utils.dictionary import NoWindow, UVWindower, SimpleWindower, get_uv
 from .utils.optim import fista, power_iteration
 
 
@@ -67,52 +67,6 @@ def get_solver_d(n_times_atom,
                            momentum, random_state, verbose, debug)
         else:
             raise ValueError('Unknown solver_d: %s' % (solver_d, ))
-
-
-class NoWindow():
-
-    def __init__(self):
-        print("initialized")
-
-    def window(self, d):
-        return d
-
-    def dewindow(self, d):
-        return d
-
-
-class UVWindower(NoWindow):
-    def __init__(self, n_times_atom, n_channels):
-        self.n_channels = n_channels
-        self.tukey_window = tukey_window(n_times_atom)[None, :]
-
-    def window(self, d):
-        d = d.copy()
-        d[:, self.n_channels:] *= self.tukey_window
-        return d
-
-    def dewindow(self, d):
-        d = d.copy()
-        d[:, self.n_channels:] /= self.tukey_window
-        return d
-
-    def simple_window(self, d):
-        return d * self.tukey_window
-
-    def simple_dewindow(self, d):
-        return d / self.tukey_window
-
-
-class SimpleWindower(NoWindow):
-    def __init__(self, n_times_atom):
-        print(f"initialized {n_times_atom}")
-        self.tukey_window = tukey_window(n_times_atom)[None, None, :]
-
-    def window(self, d):
-        return d * self.tukey_window
-
-    def dewindow(self, d):
-        return d / self.tukey_window
 
 
 class BaseDSolver:
