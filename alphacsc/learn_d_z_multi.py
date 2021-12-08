@@ -168,8 +168,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         )
         solver_d_kwargs["max_iter"] = 1
 
-    d_solver = get_solver_d(n_times_atom,
-                            solver_d=solver_d,
+    d_solver = get_solver_d(solver_d=solver_d,
                             rank1=rank1,
                             window=window,
                             random_state=random_state,
@@ -179,6 +178,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
     start = time.time()
 
     D_hat = d_solver.init_dictionary(X, n_atoms,
+                                     n_times_atom,
                                      uv_constraint,
                                      D_init=D_init,
                                      D_init_params=D_init_params)

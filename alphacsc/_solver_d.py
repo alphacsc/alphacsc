@@ -9,8 +9,7 @@ from .utils.dictionary import NoWindow, UVWindower, SimpleWindower, get_uv
 from .utils.optim import fista, power_iteration
 
 
-def get_solver_d(n_times_atom,
-                 solver_d='alternate_adaptive',
+def get_solver_d(solver_d='alternate_adaptive',
                  rank1=False,
                  window=False,
                  eps=1e-8,
@@ -23,8 +22,6 @@ def get_solver_d(n_times_atom,
 
     Parameters
     ----------
-    n_times_atom : int
-        The support of the atom.
     solver_d : str in {'alternate' | 'alternate_adaptive' | 'fista' | 'joint' |
     'auto'}
         The solver to use for the d update.
@@ -53,17 +50,17 @@ def get_solver_d(n_times_atom,
 
     if rank1:
         if solver_d in ['auto', 'alternate', 'alternate_adaptive']:
-            return AlternateDSolver(n_times_atom, solver_d, window, eps,
+            return AlternateDSolver(solver_d, window, eps,
                                     max_iter, momentum, random_state, verbose,
                                     debug)
         elif solver_d in ['fista', 'joint']:
-            return JointDSolver(n_times_atom, solver_d, window, eps, max_iter,
+            return JointDSolver(solver_d, window, eps, max_iter,
                                 momentum, random_state, verbose, debug)
         else:
             raise ValueError('Unknown solver_d: %s' % (solver_d, ))
     else:
         if solver_d in ['auto', 'fista']:
-            return DSolver(n_times_atom, solver_d, window, eps, max_iter,
+            return DSolver(solver_d, window, eps, max_iter,
                            momentum, random_state, verbose, debug)
         else:
             raise ValueError('Unknown solver_d: %s' % (solver_d, ))
@@ -73,7 +70,6 @@ class BaseDSolver:
     """Base class for a d solver."""
 
     def __init__(self,
-                 n_times_atom,
                  solver_d,
                  window,
                  eps,
@@ -83,7 +79,6 @@ class BaseDSolver:
                  verbose,
                  debug):
 
-        self.n_times_atom = n_times_atom
         self.solver_d = solver_d
         self.window = window
         self.eps = eps
@@ -97,8 +92,8 @@ class BaseDSolver:
             self.windower = NoWindow()
         self.windower = None
 
-    def init_dictionary(self, X, n_atoms, uv_constraint='auto', D_init=None,
-                        D_init_params=dict()):
+    def init_dictionary(self, X, n_atoms, n_times_atom, uv_constraint='auto',
+                        D_init=None, D_init_params=dict()):
         """Returns an initial dictionary for the signal X.
 
         Parameter
@@ -107,6 +102,8 @@ class BaseDSolver:
             The data on which to perform CSC.
         n_atoms : int
             The number of atoms to learn.
+        n_times_atom : int
+            The support of the atom.
         uv_constraint : str in {'joint' | 'separate' | 'auto'}
             The kind of norm constraint on the atoms if using rank1=True.
             If 'joint', the constraint is norm_2([u, v]) <= 1
@@ -127,7 +124,7 @@ class BaseDSolver:
             The initial atoms to learn from the data.
         """
 
-        return init_dictionary(X, n_atoms, self.n_times_atom,
+        return init_dictionary(X, n_atoms, n_times_atom,
                                D_init=D_init,
                                rank1=self.rank1,
                                uv_constraint=uv_constraint,
@@ -213,7 +210,6 @@ class Rank1DSolver(BaseDSolver):
     """Base class for a rank1 solver d."""
 
     def __init__(self,
-                 n_times_atom,
                  solver_d,
                  window,
                  eps,
@@ -223,8 +219,7 @@ class Rank1DSolver(BaseDSolver):
                  verbose,
                  debug):
 
-        super().__init__(n_times_atom,
-                         solver_d,
+        super().__init__(solver_d,
                          window,
                          eps,
                          max_iter,
@@ -273,7 +268,6 @@ class JointDSolver(Rank1DSolver):
     """A class for 'fista' or 'joint' solver_d when rank1 is True. """
 
     def __init__(self,
-                 n_times_atom,
                  solver_d,
                  window,
                  eps,
@@ -283,8 +277,7 @@ class JointDSolver(Rank1DSolver):
                  verbose,
                  debug):
 
-        super().__init__(n_times_atom,
-                         solver_d,
+        super().__init__(solver_d,
                          window,
                          eps,
                          max_iter,
@@ -332,7 +325,6 @@ class AlternateDSolver(Rank1DSolver):
     """
 
     def __init__(self,
-                 n_times_atom,
                  solver_d,
                  window,
                  eps,
@@ -342,8 +334,7 @@ class AlternateDSolver(Rank1DSolver):
                  verbose,
                  debug):
 
-        super().__init__(n_times_atom,
-                         solver_d,
+        super().__init__(solver_d,
                          window,
                          eps,
                          max_iter,
@@ -535,7 +526,6 @@ class DSolver(BaseDSolver):
     """A class for 'fista' solver_d when rank1 is False. """
 
     def __init__(self,
-                 n_times_atom,
                  solver_d,
                  window,
                  eps,
@@ -545,8 +535,7 @@ class DSolver(BaseDSolver):
                  verbose,
                  debug):
 
-        super().__init__(n_times_atom,
-                         solver_d,
+        super().__init__(solver_d,
                          window,
                          eps,
                          max_iter,
