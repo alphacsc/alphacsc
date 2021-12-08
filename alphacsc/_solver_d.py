@@ -478,6 +478,72 @@ class AlternateDSolver(Rank1DSolver):
             assert step_size > 0
             return 0.99 / step_size
 
+    def _update_u(self, uv_hat, u_hat, v_hat, objective, z_encoder):
+
+        def prox_u(u, step_size=None):
+            u /= np.maximum(1., np.linalg.norm(u, axis=1, keepdims=True))
+            return u
+
+        def obj(u):
+            uv = np.c_[u, v_hat]
+            return objective(uv)
+
+        Lu = self._get_step_size(uv_hat, z_encoder.loss,
+                                 z_encoder.n_channels,
+                                 z_encoder.ztz, 'u')
+
+        u_hat, pobj_u = fista(obj,
+                              self._grad_u(v_hat, z_encoder),
+                              prox_u,
+                              Lu,
+                              u_hat,
+                              self.max_iter,
+                              momentum=self.momentum,
+                              eps=self.eps,
+                              adaptive_step_size=self.adaptive_step_size,
+                              debug=self.debug,
+                              verbose=self.verbose,
+                              name="Update u")
+
+        uv_hat = np.c_[u_hat, v_hat]
+
+        return u_hat, uv_hat, pobj_u
+
+    def _update_v(self, uv_hat, u_hat, v_hat, objective, z_encoder):
+
+        def prox_v(v, step_size=None):
+
+            v = self._window(v)
+
+            v /= np.maximum(1., np.linalg.norm(v, axis=1, keepdims=True))
+
+            return self._dewindow(v)
+
+        def obj(v):
+            uv = np.c_[u_hat, v]
+            return objective(uv)
+
+        Lv = self._get_step_size(uv_hat, z_encoder.loss,
+                                 z_encoder.n_channels,
+                                 z_encoder.ztz, 'v')
+
+        v_hat, pobj_v = fista(obj,
+                              self._grad_v(u_hat, z_encoder),
+                              prox_v,
+                              Lv,
+                              v_hat,
+                              self.max_iter,
+                              momentum=self.momentum,
+                              eps=self.eps,
+                              adaptive_step_size=self.adaptive_step_size,
+                              debug=self.debug,
+                              verbose=self.verbose,
+                              name="Update v")
+
+        uv_hat = np.c_[u_hat, v_hat]
+
+        return v_hat, uv_hat, pobj_v
+
     def update_D(self, z_encoder):
         """Learn d's in time domain.
 
@@ -503,71 +569,19 @@ class AlternateDSolver(Rank1DSolver):
         uv_hat = uv_hat0.copy()
         u_hat, v_hat = uv_hat[:, :n_channels], uv_hat[:, n_channels:]
 
-        def prox_u(u, step_size=None):
-            u /= np.maximum(1., np.linalg.norm(u, axis=1, keepdims=True))
-            return u
-
-        def prox_v(v, step_size=None):
-
-            v = self._window(v)
-
-            v /= np.maximum(1., np.linalg.norm(v, axis=1, keepdims=True))
-
-            return self._dewindow(v)
-
         pobj = []
         for jj in range(1):
-            # ---------------- update u
 
-            def obj(u):
-                uv = np.c_[u, v_hat]
-                return objective(uv)
+            # update u
+            u_hat, uv_hat, pobj_u = self._update_u(uv_hat, u_hat, v_hat,
+                                                   objective, z_encoder)
 
-            Lu = self._get_step_size(uv_hat, z_encoder.loss,
-                                     z_encoder.n_channels,
-                                     z_encoder.ztz, 'u')
+            # update v
+            v_hat, uv_hat, pobj_v = self._update_v(uv_hat, u_hat, v_hat,
+                                                   objective, z_encoder)
 
-            u_hat, pobj_u = fista(obj,
-                                  self._grad_u(v_hat, z_encoder),
-                                  prox_u,
-                                  Lu,
-                                  u_hat,
-                                  self.max_iter,
-                                  momentum=self.momentum,
-                                  eps=self.eps,
-                                  adaptive_step_size=self.adaptive_step_size,
-                                  debug=self.debug,
-                                  verbose=self.verbose,
-                                  name="Update u")
-
-            uv_hat = np.c_[u_hat, v_hat]
             if self.debug:
                 pobj.extend(pobj_u)
-
-            # ---------------- update v
-            def obj(v):
-                uv = np.c_[u_hat, v]
-                return objective(uv)
-
-            Lv = self._get_step_size(uv_hat, z_encoder.loss,
-                                     z_encoder.n_channels,
-                                     z_encoder.ztz, 'v')
-
-            v_hat, pobj_v = fista(obj,
-                                  self._grad_v(u_hat, z_encoder),
-                                  prox_v,
-                                  Lv,
-                                  v_hat,
-                                  self.max_iter,
-                                  momentum=self.momentum,
-                                  eps=self.eps,
-                                  adaptive_step_size=self.adaptive_step_size,
-                                  debug=self.debug,
-                                  verbose=self.verbose,
-                                  name="Update v")
-
-            uv_hat = np.c_[u_hat, v_hat]
-            if self.debug:
                 pobj.extend(pobj_v)
 
         uv_hat = self._window_uv(uv_hat, n_channels)
