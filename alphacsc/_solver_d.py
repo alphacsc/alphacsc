@@ -291,6 +291,40 @@ class JointDSolver(Rank1DSolver):
                          verbose,
                          debug)
 
+    def _grad(self, z_encoder):
+
+        def grad(uv):
+
+            uv = self._window_uv(uv.copy(), z_encoder.n_channels)
+
+            grad = gradient_uv(uv=uv,
+                               X=z_encoder.X,
+                               z=z_encoder.get_z_hat(),
+                               constants=z_encoder.get_constants(),
+                               loss=z_encoder.loss,
+                               loss_params=z_encoder.loss_params)
+
+            grad = self._window_uv(grad, z_encoder.n_channels)
+
+            return grad
+
+        return grad
+
+    def _prox(self, z_encoder):
+
+        def prox(uv, step_size=None):
+
+            uv = self._window_uv(uv, z_encoder.n_channels)
+
+            uv = prox_uv(uv, uv_constraint=z_encoder.uv_constraint,
+                         n_channels=z_encoder.n_channels)
+
+            uv = self._dewindow_uv(uv, z_encoder.n_channels)
+
+            return uv
+
+        return prox
+
     def update_D(self, z_encoder):
         """Learn d's in time domain.
 
@@ -309,47 +343,23 @@ class JointDSolver(Rank1DSolver):
             The atoms to learn from the data.
         """
 
-        n_channels = z_encoder.n_channels
+        uv_hat0 = self._dewindow_uv(z_encoder.D_hat.copy(),
+                                    z_encoder.n_channels)
 
-        uv_hat0 = self._dewindow_uv(z_encoder.D_hat.copy(), n_channels)
-
-        # use FISTA on joint [u, v], with an adaptive step size
-
-        def grad(uv):
-
-            uv = self._window_uv(uv.copy(), n_channels)
-
-            grad = gradient_uv(uv=uv,
-                               X=z_encoder.X,
-                               z=z_encoder.get_z_hat(),
-                               constants=z_encoder.get_constants(),
-                               loss=z_encoder.loss,
-                               loss_params=z_encoder.loss_params)
-
-            grad = self._window_uv(grad, n_channels)
-
-            return grad
-
-        def prox(uv, step_size=None):
-
-            uv = self._window_uv(uv, n_channels)
-
-            uv = prox_uv(uv, uv_constraint=z_encoder.uv_constraint,
-                         n_channels=n_channels)
-
-            uv = self._dewindow_uv(uv, n_channels)
-
-            return uv
-
-        objective = self._objective(z_encoder)
-
-        uv_hat, pobj = fista(objective, grad, prox, None, uv_hat0,
-                             self.max_iter, momentum=self.momentum,
-                             eps=self.eps, adaptive_step_size=True,
-                             debug=self.debug, verbose=self.verbose,
+        uv_hat, pobj = fista(self._objective(z_encoder),
+                             self._grad(z_encoder),
+                             self._prox(z_encoder),
+                             None,
+                             uv_hat0,
+                             self.max_iter,
+                             momentum=self.momentum,
+                             eps=self.eps,
+                             adaptive_step_size=True,
+                             debug=self.debug,
+                             verbose=self.verbose,
                              name="Update uv")
 
-        uv_hat = self._window_uv(uv_hat, n_channels)
+        uv_hat = self._window_uv(uv_hat, z_encoder.n_channels)
 
         if self.debug:
             return uv_hat, pobj
@@ -611,6 +621,35 @@ class DSolver(BaseDSolver):
 
         return prox_d(d0)
 
+    def _grad(self, z_encoder):
+
+        def grad(D):
+
+            D = self._window(D)
+
+            grad = gradient_d(D=D,
+                              X=z_encoder.X,
+                              z=z_encoder.get_z_hat(),
+                              constants=z_encoder.get_constants(),
+                              loss=z_encoder.loss,
+                              loss_params=z_encoder.loss_params)
+
+            return self._window(grad)
+
+        return grad
+
+    def _prox(self, z_encoder):
+
+        def prox(D, step_size=None):
+
+            D = self._window(D)
+
+            D = prox_d(D)
+
+            return self._dewindow(D)
+
+        return prox
+
     def update_D(self, z_encoder):
         """Learn d's in time domain.
 
@@ -627,33 +666,18 @@ class DSolver(BaseDSolver):
 
         D_hat0 = self._dewindow(z_encoder.D_hat)
 
-        objective = self._objective(z_encoder)
-
-        def grad(D):
-
-            D = self._window(D)
-
-            grad = gradient_d(D=D,
-                              X=z_encoder.X,
-                              z=z_encoder.get_z_hat(),
-                              constants=z_encoder.get_constants(),
-                              loss=z_encoder.loss,
-                              loss_params=z_encoder.loss_params)
-
-            return self._window(grad)
-
-        def prox(D, step_size=None):
-
-            D = self._window(D)
-
-            D = prox_d(D)
-
-            return self._dewindow(D)
-
-        D_hat, pobj = fista(objective, grad, prox, None, D_hat0, self.max_iter,
-                            verbose=self.verbose, momentum=self.momentum,
-                            eps=self.eps, adaptive_step_size=True,
-                            debug=self.debug, name="Update D")
+        D_hat, pobj = fista(self._objective(z_encoder),
+                            self._grad(z_encoder),
+                            self._prox(z_encoder),
+                            None,
+                            D_hat0,
+                            self.max_iter,
+                            verbose=self.verbose,
+                            momentum=self.momentum,
+                            eps=self.eps,
+                            adaptive_step_size=True,
+                            debug=self.debug,
+                            name="Update D")
 
         D_hat = self._window(D_hat)
 
