@@ -141,7 +141,8 @@ class BaseDSolver:
 
         Returns
         -------
-        D_hat : array, shape (n_atoms, n_channels, n_times_atom)
+        D_hat : array, shape (n_atoms, n_channels + n_times_atom) or
+                             (n_atoms, n_channels, n_times_atom)
             The atoms to learn from the data.
         """
 
