@@ -300,6 +300,18 @@ class BaseZEncoder:
         raise NotImplementedError()
 
     def compute_objective(self, D):
+        '''Compute the value of the objective function.
+
+        Parameters
+        ----------
+        D : array, shape (n_atoms, n_channels + n_times_atom)
+            The atoms to learn from the data.
+
+        Returns
+        -------
+        obj :
+            The value of objective function.
+        '''
         if self.loss == 'l2':
             return compute_objective(D=D,
                                      constants=self.get_constants())
