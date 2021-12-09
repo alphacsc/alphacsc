@@ -150,9 +150,9 @@ class BaseDSolver:
 
         D_hat0 = self.windower.dewindow(z_encoder.D_hat)
 
-        D_hat, pobj = fista(self._objective(z_encoder),
-                            self._grad(z_encoder),
-                            self._prox(z_encoder),
+        D_hat, pobj = fista(self._get_objective(z_encoder),
+                            self._get_grad(z_encoder),
+                            self._get_prox(z_encoder),
                             None,
                             D_hat0,
                             self.max_iter,
@@ -195,7 +195,7 @@ class BaseDSolver:
     def _init_windower(self, z_encoder):
         raise NotImplementedError()
 
-    def _objective(self, z_encoder):
+    def _get_objective(self, z_encoder):
 
         def objective(D, full=False):
 
@@ -287,7 +287,7 @@ class JointDSolver(Rank1DSolver):
                          debug)
         self.name = "Update uv"
 
-    def _grad(self, z_encoder):
+    def _get_grad(self, z_encoder):
 
         def grad(uv):
 
@@ -304,7 +304,7 @@ class JointDSolver(Rank1DSolver):
 
         return grad
 
-    def _prox(self, z_encoder):
+    def _get_prox(self, z_encoder):
 
         def prox(uv, step_size=None):
 
@@ -364,7 +364,7 @@ class AlternateDSolver(Rank1DSolver):
 
         uv_hat0 = self.windower.dewindow(z_encoder.D_hat)
 
-        objective = self._objective(z_encoder)
+        objective = self._get_objective(z_encoder)
 
         # use FISTA on alternate u and v
 
@@ -579,7 +579,7 @@ class DSolver(BaseDSolver):
         if self.windower is None:
             self.windower = SimpleWindower(z_encoder.n_times_atom)
 
-    def _grad(self, z_encoder):
+    def _get_grad(self, z_encoder):
 
         def grad(D):
 
@@ -595,7 +595,7 @@ class DSolver(BaseDSolver):
 
         return grad
 
-    def _prox(self, z_encoder):
+    def _get_prox(self, z_encoder):
 
         def prox(D, step_size=None):
 
