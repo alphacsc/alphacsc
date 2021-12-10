@@ -238,6 +238,7 @@ class Rank1DSolver(BaseDSolver):
                          verbose,
                          debug)
         self.rank1 = True
+        self.name = "Update uv"
 
     def get_max_error_dict(self, z_encoder):
         """Get the maximal reconstruction error patch from the data as a new atom
@@ -297,7 +298,6 @@ class JointDSolver(Rank1DSolver):
                          random_state,
                          verbose,
                          debug)
-        self.name = "Update uv"
 
     def _get_grad(self, z_encoder):
 
