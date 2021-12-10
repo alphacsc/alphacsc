@@ -66,8 +66,7 @@ class OnlineCDL(ConvolutionalDictionaryLearning):
         with get_z_encoder_for(X, self._D_hat, self.n_atoms, self.n_times_atom,
                                self.n_jobs, self.solver_z,
                                self.solver_z_kwargs, self.reg_, self.loss,
-                               self.loss_params, self.uv_constraint,
-                               feasible_evaluation=False) as z_encoder:
+                               self.loss_params) as z_encoder:
 
             if hasattr(self, 'constants'):
                 z_encoder.ztz = self.constants['ztz']

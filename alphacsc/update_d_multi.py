@@ -56,6 +56,9 @@ def check_solver_and_constraints(rank1, solver_d, uv_constraint):
         elif uv_constraint == 'auto' and solver_d in ['joint', 'fista']:
             uv_constraint = 'joint'
     else:
+        assert solver_d in ['auto', 'fista'], (
+            f"solver_d should be auto or fista. Got solver_d='{solver_d}'."
+        )
         assert solver_d in ['auto', 'fista'] and uv_constraint == 'auto', (
             "If rank1 is False, uv_constraint should be 'auto' "
             f"and solver_d should be auto or fista. Got solver_d='{solver_d}' "

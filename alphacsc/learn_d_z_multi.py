@@ -10,7 +10,6 @@ import sys
 
 import numpy as np
 
-from .update_d_multi import check_solver_and_constraints
 from .utils import check_dimension
 from .utils import check_random_state
 from .utils.convolution import sort_atoms_by_explained_variances
@@ -155,10 +154,6 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
     std_X = X.std()
     X = X / std_X
 
-    solver_d, uv_constraint = check_solver_and_constraints(
-        rank1, solver_d, uv_constraint
-    )
-
     if algorithm == "stochastic":
         # The typical stochastic algorithm samples one signal, compute the
         # associated value z and then perform one step of gradient descent
@@ -170,6 +165,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
 
     d_solver = get_solver_d(solver_d=solver_d,
                             rank1=rank1,
+                            uv_constraint=uv_constraint,
                             window=window,
                             random_state=random_state,
                             **solver_d_kwargs)
@@ -179,7 +175,6 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
 
     D_hat = d_solver.init_dictionary(X, n_atoms,
                                      n_times_atom,
-                                     uv_constraint,
                                      D_init=D_init,
                                      D_init_params=D_init_params)
 
@@ -204,8 +199,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
     z_kwargs = dict(verbose=verbose, **solver_z_kwargs)
 
     with get_z_encoder_for(X, D_hat, n_atoms, n_times_atom, n_jobs, solver_z,
-                           z_kwargs, reg, loss, loss_params, uv_constraint,
-                           feasible_evaluation=False) as z_encoder:
+                           z_kwargs, reg, loss, loss_params) as z_encoder:
         if callable(callback):
             callback(z_encoder, [])
 
@@ -299,7 +293,7 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
 
     # monitor cost function
     times = [0]
-    pobj = [z_encoder.get_cost()]
+    pobj = [z_encoder.get_cost(d_solver.uv_constraint)]
 
     for ii in range(n_iter):  # outer loop of coordinate descent
         if verbose == 1:
@@ -331,7 +325,7 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
 
         # monitor cost function
         times.append(time.time() - start)
-        pobj.append(z_encoder.get_cost())
+        pobj.append(z_encoder.get_cost(d_solver.uv_constraint))
 
         # XXX to adapt to Encoder class, we must fetch z_hat at each iteration.
         # XXX is that acceptable or not? (seems that DiCoDiLe does not require
@@ -357,7 +351,7 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
 
         # monitor cost function
         times.append(time.time() - start)
-        pobj.append(z_encoder.get_cost())
+        pobj.append(z_encoder.get_cost(d_solver.uv_constraint))
 
         null_atom_indices = np.where(z_nnz == 0)[0]
         if len(null_atom_indices) > 0:
@@ -397,7 +391,7 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
 
     # monitor cost function
     times = [0]
-    pobj = [z_encoder.get_cost()]
+    pobj = [z_encoder.get_cost(d_solver.uv_constraint)]
 
     rng = check_random_state(random_state)
     for ii in range(n_iter):  # outer loop of coordinate descent
@@ -432,7 +426,7 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
 
         # monitor cost function
         times.append(time.time() - start)
-        pobj.append(z_encoder.get_cost())
+        pobj.append(z_encoder.get_cost(d_solver.uv_constraint))
 
         z_nnz = z_encoder.get_z_nnz()
         if verbose > 5:
@@ -455,7 +449,7 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
 
         # monitor cost function
         times.append(time.time() - start)
-        pobj.append(z_encoder.get_cost())
+        pobj.append(z_encoder.get_cost(d_solver.uv_constraint))
 
         null_atom_indices = np.where(z_nnz == 0)[0]
         if len(null_atom_indices) > 0:

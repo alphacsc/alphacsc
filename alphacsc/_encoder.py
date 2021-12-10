@@ -10,19 +10,16 @@ DEFAULT_TOL_Z = 1e-3
 # XXX check consistency / proper use!
 
 
-def get_z_encoder_for(
-        X,
-        D_hat,
-        n_atoms,
-        n_times_atom,
-        n_jobs,
-        solver='l-bfgs',
-        solver_kwargs=dict(),
-        reg=0.1,
-        loss='l2',
-        loss_params=None,
-        uv_constraint='auto',
-        feasible_evaluation=False):
+def get_z_encoder_for(X,
+                      D_hat,
+                      n_atoms,
+                      n_times_atom,
+                      n_jobs,
+                      solver='l-bfgs',
+                      solver_kwargs=dict(),
+                      reg=0.1,
+                      loss='l2',
+                      loss_params=None):
     """
     Returns a z encoder for the required solver.
 
@@ -54,17 +51,6 @@ def get_z_encoder_for(
     loss_params : dict | None
         Parameters of the loss.
         If solver_z is 'dicodile', then loss_params should be None.
-    uv_constraint : {{'auto' | 'joint' | 'separate'}}
-        The kind of norm constraint on the atoms:
-
-        - :code:`'joint'`: the constraint is ||[u, v]||_2 <= 1
-        - :code:`'separate'`: the constraint is ||u||_2 <= 1 and ||v||_2 <= 1
-
-        If solver_z is 'dicodile', then uv_constraint must be auto.
-    feasible_evaluation : boolean, default False
-        If feasible_evaluation is True, it first projects on the feasible set,
-        i.e. norm(uv_hat) <= 1.
-        If solver_z is 'dicodile', then feasible_evaluation must be False.
 
     Returns
     -------
@@ -95,64 +81,46 @@ def get_z_encoder_for(
         'loss_params should be a valid dict or None.'
     )
 
-    assert uv_constraint in ['joint', 'separate', 'auto'], (
-        f'unrecognized uv_constraint type: {uv_constraint}.'
-    )
-
     if solver in ['l-bfgs', 'lgcd']:
-        if uv_constraint == 'auto':
-            uv_constraint = 'separate'
 
-        return AlphaCSCEncoder(
-            X,
-            D_hat,
-            n_atoms,
-            n_times_atom,
-            n_jobs,
-            solver,
-            solver_kwargs,
-            reg,
-            loss,
-            loss_params,
-            uv_constraint,
-            feasible_evaluation)
+        return AlphaCSCEncoder(X,
+                               D_hat,
+                               n_atoms,
+                               n_times_atom,
+                               n_jobs,
+                               solver,
+                               solver_kwargs,
+                               reg,
+                               loss,
+                               loss_params)
 
     elif solver == 'dicodile':
         assert loss == 'l2', f"DiCoDiLe requires a l2 loss ('{loss}' passed)."
         assert loss_params is None, "DiCoDiLe requires loss_params=None."
-        assert feasible_evaluation is False, (
-            "DiCoDiLe requires feasible_evaluation=False."
-        )
-        assert uv_constraint == 'auto',  (
-            "DiCoDiLe requires uv_constraint=auto."
-        )
 
-        return DicodileEncoder(
-            X,
-            D_hat,
-            n_atoms,
-            n_times_atom,
-            n_jobs,
-            solver_kwargs,
-            reg,
-            loss
-        )
+        return DicodileEncoder(X,
+                               D_hat,
+                               n_atoms,
+                               n_times_atom,
+                               n_jobs,
+                               solver_kwargs,
+                               reg,
+                               loss)
     else:
         raise ValueError(f'unrecognized solver type: {solver}.')
 
 
 class BaseZEncoder:
 
-    def __init__(
-            self,
-            X,
-            D_hat,
-            n_atoms,
-            n_times_atom,
-            n_jobs,
-            solver_kwargs,
-            reg,
-            loss):
+    def __init__(self,
+                 X,
+                 D_hat,
+                 n_atoms,
+                 n_times_atom,
+                 n_jobs,
+                 solver_kwargs,
+                 reg,
+                 loss):
 
         self.X = X
         self.D_hat = D_hat
@@ -187,9 +155,17 @@ class BaseZEncoder:
         """
         raise NotImplementedError()
 
-    def get_cost(self):
+    def get_cost(self, uv_constraint='auto'):
         """
         Computes the cost of the current sparse representation (z_hat)
+
+        Parameters
+        ----------
+        uv_constraint : {{'auto' | 'joint' | 'separate'}}
+            The kind of norm constraint on the atoms:
+
+        - :code:`'joint'`: the constraint is ||[u, v]||_2 <= 1
+        - :code:`'separate'`: the constraint is ||u||_2 <= 1 and ||v||_2 <= 1
 
         Returns
         -------
@@ -299,13 +275,19 @@ class BaseZEncoder:
         """
         raise NotImplementedError()
 
-    def compute_objective(self, D):
+    def compute_objective(self, D, uv_constraint):
         '''Compute the value of the objective function.
 
         Parameters
         ----------
-        D : array, shape (n_atoms, n_channels + n_times_atom)
+        D : array, shape (n_atoms, n_channels + n_times_atom) or
+                         (n_atoms, n_channels, n_times_atom)
             The atoms to learn from the data.
+        uv_constraint : {{'auto' | 'joint' | 'separate'}}
+            The kind of norm constraint on the atoms:
+
+        - :code:`'joint'`: the constraint is ||[u, v]||_2 <= 1
+        - :code:`'separate'`: the constraint is ||u||_2 <= 1 and ||v||_2 <= 1
 
         Returns
         -------
@@ -313,18 +295,14 @@ class BaseZEncoder:
             The value of objective function.
         '''
         if self.loss == 'l2':
-            return compute_objective(D=D,
-                                     constants=self.get_constants())
+            return compute_objective(D=D, constants=self.get_constants())
 
-        return compute_X_and_objective_multi(
-            self.X,
-            self.get_z_hat(),
-            D_hat=D,
-            loss=self.loss,
-            loss_params=self.loss_params,
-            feasible_evaluation=self.feasible_evaluation,
-            uv_constraint=self.uv_constraint
-        )
+        return compute_X_and_objective_multi(self.X,
+                                             self.get_z_hat(),
+                                             D_hat=D,
+                                             loss=self.loss,
+                                             loss_params=self.loss_params,
+                                             uv_constraint=uv_constraint)
 
     def __enter__(self):
         return self
@@ -334,20 +312,17 @@ class BaseZEncoder:
 
 
 class AlphaCSCEncoder(BaseZEncoder):
-    def __init__(
-            self,
-            X,
-            D_hat,
-            n_atoms,
-            n_times_atom,
-            n_jobs,
-            solver,
-            solver_kwargs,
-            reg,
-            loss,
-            loss_params,
-            uv_constraint,
-            feasible_evaluation):
+    def __init__(self,
+                 X,
+                 D_hat,
+                 n_atoms,
+                 n_times_atom,
+                 n_jobs,
+                 solver,
+                 solver_kwargs,
+                 reg,
+                 loss,
+                 loss_params):
 
         super().__init__(X,
                          D_hat,
@@ -363,8 +338,6 @@ class AlphaCSCEncoder(BaseZEncoder):
 
         self.solver = solver
         self.loss_params = loss_params
-        self.uv_constraint = uv_constraint
-        self.feasible_evaluation = feasible_evaluation
 
         effective_n_atoms = self.D_hat.shape[0]
         self.z_hat = self._get_new_z_hat(effective_n_atoms)
@@ -412,16 +385,14 @@ class AlphaCSCEncoder(BaseZEncoder):
         self.ztz = alpha * self.ztz + self.ztz_i0
         self.ztX = alpha * self.ztX + self.ztX_i0
 
-    def get_cost(self):
+    def get_cost(self, uv_constraint):
         cost = compute_X_and_objective_multi(self.X,
                                              self.z_hat,
                                              self.D_hat,
                                              reg=self.reg,
                                              loss=self.loss,
                                              loss_params=self.loss_params,
-                                             uv_constraint=self.uv_constraint,
-                                             feasible_evaluation=True,
-                                             return_X_hat=False)
+                                             uv_constraint=uv_constraint)
         return cost
 
     def get_sufficient_statistics(self):
@@ -513,7 +484,6 @@ class DicodileEncoder(BaseZEncoder):
                          reg,
                          loss)
 
-        self.uv_constraint = 'auto'
         self.loss_params = None
 
         self._encoder = dicodile.update_z.distributed_sparse_encoder.DistributedSparseEncoder(  # noqa: E501
@@ -566,7 +536,7 @@ class DicodileEncoder(BaseZEncoder):
         raise NotImplementedError(
             "compute_z_partial is not available in DiCoDiLe")
 
-    def get_cost(self):
+    def get_cost(self, uv_constraint='auto'):
         """
         Computes the cost of the current sparse representation (z_hat)
 
