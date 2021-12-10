@@ -40,11 +40,12 @@ def X(rng, n_trials):
 
 class MockZEncoder:
 
-    def __init__(self, X, D_hat, z_hat, n_channels, n_times_atom,
+    def __init__(self, X, D_hat, z_hat, n_atoms, n_channels, n_times_atom,
                  loss, loss_params):
         self.X = X
         self.D_hat = D_hat
         self.z_hat = z_hat
+        self.n_atoms = n_atoms
         self.n_channels = n_channels
         self.n_times_atom = n_times_atom
         self.loss = loss
@@ -88,5 +89,5 @@ def z_encoder_rank1(monkeypatch, uv_constraint, rng, shape, loss):
 
     X = construct_X_multi(z_hat, D=uv0, n_channels=N_CHANNELS)
 
-    return MockZEncoder(X, uv0, z_hat, N_CHANNELS, N_TIMES_ATOM,
+    return MockZEncoder(X, uv0, z_hat, N_ATOMS, N_CHANNELS, N_TIMES_ATOM,
                         loss, dict())

@@ -410,6 +410,11 @@ class AlternateDSolver(Rank1DSolver):
 
     def _update_u(self, uv_hat0, objective, z_encoder):
 
+        n_channels = z_encoder.n_channels
+
+        uv_hat = uv_hat0.copy()
+        u_hat, v_hat = uv_hat[:, :n_channels], uv_hat[:, n_channels:]
+
         def grad_u(u):
 
             uv = np.c_[u, self.windower.simple_window(v_hat)]
@@ -431,19 +436,26 @@ class AlternateDSolver(Rank1DSolver):
             uv = np.c_[u, v_hat]
             return objective(uv)
 
-        n_channels = z_encoder.n_channels
-
-        uv_hat = uv_hat0.copy()
-        u_hat, v_hat = uv_hat[:, :n_channels], uv_hat[:, n_channels:]
+        def op_Hu(u):
+            u = np.reshape(u, (z_encoder.n_atoms, n_channels))
+            uv = np.c_[u, v_hat]
+            H_d = numpy_convolve_uv(z_encoder.ztz, uv)
+            H_u = (H_d * uv[:, None, n_channels:]).sum(axis=2)
+            return H_u.ravel()
 
         u_hat, pobj_u = self._run_fista(u_hat, uv_hat, obj, grad_u, prox_u,
-                                        'u', z_encoder)
+                                        op_Hu, 'u', z_encoder)
 
         uv_hat = np.c_[u_hat, v_hat]
 
         return uv_hat, pobj_u
 
     def _update_v(self, uv_hat0, objective, z_encoder):
+
+        n_channels = z_encoder.n_channels
+
+        uv_hat = uv_hat0.copy()
+        u_hat, v_hat = uv_hat[:, :n_channels], uv_hat[:, n_channels:]
 
         def grad_v(v):
 
@@ -474,29 +486,24 @@ class AlternateDSolver(Rank1DSolver):
             uv = np.c_[u_hat, v]
             return objective(uv)
 
-        n_channels = z_encoder.n_channels
-
-        uv_hat = uv_hat0.copy()
-        u_hat, v_hat = uv_hat[:, :n_channels], uv_hat[:, n_channels:]
+        def op_Hv(v):
+            v = np.reshape(v, (z_encoder.n_atoms, z_encoder.n_times_atom))
+            uv = np.c_[u_hat, v]
+            H_d = numpy_convolve_uv(z_encoder.ztz, uv)
+            H_v = (H_d * uv[:, :n_channels, None]).sum(axis=1)
+            return H_v.ravel()
 
         v_hat, pobj_v = self._run_fista(v_hat, uv_hat, obj, grad_v, prox_v,
-                                        'v', z_encoder)
+                                        op_Hv, 'v', z_encoder)
 
         uv_hat = np.c_[u_hat, v_hat]
 
         return uv_hat, pobj_v
 
-    def _run_fista(self, d_hat, uv_hat, obj, grad, prox, variable, z_encoder):
+    def _run_fista(self, d_hat, uv_hat, obj, grad, prox, op, variable,
+                   z_encoder):
 
-        if self.adaptive_step_size:
-            L = 1
-        else:
-            if z_encoder.loss != 'l2':
-                raise NotImplementedError()
-            L = self.compute_lipschitz(uv_hat, z_encoder.n_channels,
-                                       z_encoder.ztz, variable)
-
-        assert L > 0
+        L = self._get_step_size(uv_hat, op, variable, z_encoder)
 
         return fista(obj,
                      grad,
@@ -511,40 +518,30 @@ class AlternateDSolver(Rank1DSolver):
                      verbose=self.verbose,
                      name="Update " + variable)
 
-    def compute_lipschitz(self, uv0, n_channels, ztz, variable):
-
-        u0, v0 = uv0[:, :n_channels], uv0[:, n_channels:]
-        n_atoms = uv0.shape[0]
-        n_times_atom = uv0.shape[1] - n_channels
-        if not hasattr(self, 'b_hat_0'):
-            self.b_hat_0 = np.random.randn(uv0.size)
-
-        def op_Hu(u):
-            u = np.reshape(u, (n_atoms, n_channels))
-            uv = np.c_[u, v0]
-            H_d = numpy_convolve_uv(ztz, uv)
-            H_u = (H_d * uv[:, None, n_channels:]).sum(axis=2)
-            return H_u.ravel()
-
-        def op_Hv(v):
-            v = np.reshape(v, (n_atoms, n_times_atom))
-            uv = np.c_[u0, v]
-            H_d = numpy_convolve_uv(ztz, uv)
-            H_v = (H_d * uv[:, :n_channels, None]).sum(axis=1)
-            return H_v.ravel()
-
-        if variable == 'u':
-            b_hat_u0 = self.b_hat_0.reshape(
-                n_atoms, -1)[:, :n_channels].ravel()
-            n_points = n_atoms * n_channels
-            L = power_iteration(op_Hu, n_points, b_hat_0=b_hat_u0)
-        elif variable == 'v':
-            b_hat_v0 = self.b_hat_0.reshape(
-                n_atoms, -1)[:, n_channels:].ravel()
-            n_points = n_atoms * n_times_atom
-            L = power_iteration(op_Hv, n_points, b_hat_0=b_hat_v0)
+    def _get_step_size(self, uv_hat, op, variable, z_encoder):
+        if self.adaptive_step_size:
+            L = 1
         else:
-            raise ValueError("variable should be either 'u' or 'v'")
+            if z_encoder.loss != 'l2':
+                raise NotImplementedError()
+
+            # compute lipschitz
+            b_hat_0 = np.random.randn(uv_hat.size)
+
+            if variable == 'u':
+                b_hat_0 = b_hat_0.reshape(
+                    z_encoder.n_atoms, -1)[:, :z_encoder.n_channels].ravel()
+                n_points = z_encoder.n_atoms * z_encoder.n_channels
+                L = power_iteration(op, n_points, b_hat_0=b_hat_0)
+            elif variable == 'v':
+                b_hat_0 = b_hat_0.reshape(
+                    z_encoder.n_atoms, -1)[:, z_encoder.n_channels:].ravel()
+                n_points = z_encoder.n_atoms * z_encoder.n_times_atom
+
+            L = power_iteration(op, n_points, b_hat_0=b_hat_0)
+
+        assert L > 0
+
         return L
 
 
