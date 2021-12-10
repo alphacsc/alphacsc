@@ -56,7 +56,7 @@ class OnlineCDL(ConvolutionalDictionaryLearning):
         )
         self.index = 0
 
-    def partial_fit(self, X, i0, y=None):
+    def partial_fit(self, X, y=None):
         # Successive partial_fit are equivalent to OnlineCDL only if
         # the X passed to this method are taken from a normalized
         # X_full ( X_full / X_full.std())
@@ -68,17 +68,15 @@ class OnlineCDL(ConvolutionalDictionaryLearning):
                                self.solver_z_kwargs, self.reg_, self.loss,
                                self.loss_params) as z_encoder:
 
-            if hasattr(self, 'constants'):
-                z_encoder.ztz = self.constants['ztz']
-                z_encoder.ztX = self.constants['ztX']
-                if hasattr(self, 'z_hat'):
-                    z_encoder.z_hat = self.z_hat
+            z_encoder.compute_z()
 
-            z_encoder.compute_z_partial(
-                [i0], alpha=self.algorithm_params['alpha'])
-
-            self.constants['ztz'] = z_encoder.ztz
-            self.constants['ztX'] = z_encoder.ztX
+            alpha = self.algorithm_params['alpha']
+            self.constants['ztz'] = alpha * \
+                self.constants['ztz'] + z_encoder.ztz
+            z_encoder.ztz = self.constants['ztz']
+            self.constants['ztX'] = alpha * \
+                self.constants['ztX'] + z_encoder.ztX
+            z_encoder.ztX = self.constants['ztX']
 
             z_nnz = z_encoder.get_z_nnz()
 
@@ -91,7 +89,7 @@ class OnlineCDL(ConvolutionalDictionaryLearning):
                 # activation to 0.
                 import warnings
                 warnings.warn("Regularization parameter `reg` is too large and"
-                              " all the activations are zero. The atoms has"
+                              " all the activations are zero. The atoms have"
                               " not been updated.", UserWarning)
                 return z_encoder.get_z_hat()
 
@@ -118,6 +116,8 @@ class OnlineCDL(ConvolutionalDictionaryLearning):
         self.n_channels_ = n_channels = X.shape[1]
 
         self.constants['n_channels'] = n_channels
+        self.constants['XtX'] = X.ravel().dot(X.ravel())
+
         self.constants['ztz'] = np.zeros((self.n_atoms, self.n_atoms,
                                           2 * self.n_times_atom - 1))
         self.constants['ztX'] = np.zeros((self.n_atoms, n_channels,
