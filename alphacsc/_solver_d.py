@@ -381,27 +381,22 @@ class AlternateDSolver(Rank1DSolver):
 
         self._init_windower(z_encoder)
 
-        n_channels = z_encoder.n_channels
-
-        uv_hat0 = self.windower.dewindow(z_encoder.D_hat)
+        uv_hat = self.windower.dewindow(z_encoder.D_hat)
 
         objective = self._get_objective(z_encoder)
 
         # use FISTA on alternate u and v
 
-        uv_hat = uv_hat0.copy()
-        u_hat, v_hat = uv_hat[:, :n_channels], uv_hat[:, n_channels:]
-
         pobj = []
         for jj in range(1):
 
             # update u
-            u_hat, uv_hat, pobj_u = self._update_u(uv_hat, u_hat, v_hat,
-                                                   objective, z_encoder)
+            uv_hat, pobj_u = self._update_u(uv_hat, objective,
+                                            z_encoder)
 
             # update v
-            v_hat, uv_hat, pobj_v = self._update_v(uv_hat, u_hat, v_hat,
-                                                   objective, z_encoder)
+            uv_hat, pobj_v = self._update_v(uv_hat, objective,
+                                            z_encoder)
 
             if self.debug:
                 pobj.extend(pobj_u)
@@ -413,7 +408,7 @@ class AlternateDSolver(Rank1DSolver):
             return uv_hat, pobj
         return uv_hat
 
-    def _update_u(self, uv_hat, u_hat, v_hat, objective, z_encoder):
+    def _update_u(self, uv_hat0, objective, z_encoder):
 
         def grad_u(u):
 
@@ -436,14 +431,19 @@ class AlternateDSolver(Rank1DSolver):
             uv = np.c_[u, v_hat]
             return objective(uv)
 
+        n_channels = z_encoder.n_channels
+
+        uv_hat = uv_hat0.copy()
+        u_hat, v_hat = uv_hat[:, :n_channels], uv_hat[:, n_channels:]
+
         u_hat, pobj_u = self._run_fista(u_hat, uv_hat, obj, grad_u, prox_u,
                                         'u', z_encoder)
 
         uv_hat = np.c_[u_hat, v_hat]
 
-        return u_hat, uv_hat, pobj_u
+        return uv_hat, pobj_u
 
-    def _update_v(self, uv_hat, u_hat, v_hat, objective, z_encoder):
+    def _update_v(self, uv_hat0, objective, z_encoder):
 
         def grad_v(v):
 
@@ -474,12 +474,17 @@ class AlternateDSolver(Rank1DSolver):
             uv = np.c_[u_hat, v]
             return objective(uv)
 
+        n_channels = z_encoder.n_channels
+
+        uv_hat = uv_hat0.copy()
+        u_hat, v_hat = uv_hat[:, :n_channels], uv_hat[:, n_channels:]
+
         v_hat, pobj_v = self._run_fista(v_hat, uv_hat, obj, grad_v, prox_v,
                                         'v', z_encoder)
 
         uv_hat = np.c_[u_hat, v_hat]
 
-        return v_hat, uv_hat, pobj_v
+        return uv_hat, pobj_v
 
     def _run_fista(self, d_hat, uv_hat, obj, grad, prox, variable, z_encoder):
 
