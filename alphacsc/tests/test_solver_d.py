@@ -54,7 +54,7 @@ def test_get_solver_d_error_solver(solver_d):
 
 @pytest.mark.parametrize('uv_constraint', ['separate', 'joint'])
 def test_get_solver_d_error_uv_constraint(uv_constraint):
-    """Tests for the case rank1 is False and uv_constraint is not 
+    """Tests for the case rank1 is False and uv_constraint is not
     compatible."""
 
     with pytest.raises(AssertionError,
@@ -70,7 +70,7 @@ def test_get_solver_d_error_uv_constraint(uv_constraint):
 @pytest.mark.parametrize('solver_d', ['alternate', 'alternate_adaptive',
                                       'joint'])
 def test_get_solver_d_error_rank1_uv_constraint(solver_d):
-    """Tests for the case rank1 is True and uv_constraint is not 
+    """Tests for the case rank1 is True and uv_constraint is not
     compatible."""
 
     with pytest.raises(AssertionError,
@@ -191,7 +191,8 @@ def test_init_dictionary_rank1_random(X, solver_d, uv_constraint,
                           ])
 @pytest.mark.parametrize('window', [True, False])
 @pytest.mark.parametrize('n_trials', [N_TRIALS])
-def test_init_dictionary_shape(X, rank1, solver_d, uv_constraint, expected_shape, window):
+def test_init_dictionary_shape(X, rank1, solver_d, uv_constraint,
+                               expected_shape, window):
     """Tests if the shape of dictionary complies with rank1 value."""
     d_solver = get_solver_d(solver_d=solver_d,
                             uv_constraint=uv_constraint,

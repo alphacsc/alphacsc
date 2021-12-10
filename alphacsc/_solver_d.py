@@ -65,7 +65,8 @@ def get_solver_d(solver_d='alternate_adaptive',
                                     verbose, debug)
         elif solver_d in ['fista', 'joint']:
             return JointDSolver(solver_d, rank1, uv_constraint, window, eps,
-                                max_iter, momentum, random_state, verbose, debug)
+                                max_iter, momentum, random_state, verbose,
+                                debug)
         else:
             raise ValueError('Unknown solver_d: %s' % (solver_d, ))
     else:

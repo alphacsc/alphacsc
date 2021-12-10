@@ -109,7 +109,8 @@ def test_get_encoder_for_dicodile_error_loss_params(solver, X, D_hat,
 
 @pytest.mark.parametrize('solver, n_trials, rank1', [('dicodile', 1, True)])
 def test_get_encoder_for_dicodile_error_rank1(X, D_hat, requires_dicodile):
-    """Test for dictionary generated with invalid rank1 value for dicodile backend."""
+    """Test for dictionary generated with invalid rank1 value for dicodile
+    backend."""
 
     with pytest.raises(AssertionError):
         get_z_encoder_for(solver='dicodile',
