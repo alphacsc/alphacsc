@@ -113,6 +113,12 @@ class NoWindow():
     def dewindow(self, d):
         return d
 
+    def simple_window(self, d):
+        return d
+
+    def simple_dewindow(self, d):
+        return d
+
 
 class UVWindower(NoWindow):
     def __init__(self, n_times_atom, n_channels):

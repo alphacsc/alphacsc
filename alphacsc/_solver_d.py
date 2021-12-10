@@ -99,9 +99,10 @@ class BaseDSolver:
         self.debug = debug
         self.uv_constraint = uv_constraint
 
+        self.windower = None
+
         if not self.window:
             self.windower = NoWindow()
-        self.windower = None
 
     def init_dictionary(self, X, n_atoms, n_times_atom, D_init=None,
                         D_init_params=dict()):
@@ -591,7 +592,7 @@ class DSolver(BaseDSolver):
         return prox_d(d0)
 
     def _init_windower(self, z_encoder):
-        if self.windower is None:
+        if self.windower is None and self.window:
             self.windower = SimpleWindower(z_encoder.n_times_atom)
 
     def _get_grad(self, z_encoder):

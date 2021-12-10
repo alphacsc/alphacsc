@@ -213,7 +213,9 @@ def test_init_dictionary_shape(X, rank1, solver_d, uv_constraint, expected_shape
     (False, 'fista', 'auto', (N_ATOMS, N_CHANNELS, N_TIMES_ATOM))
 ])
 @pytest.mark.parametrize('loss', ['l2'])
-def test_update_D(rank1, solver_d, uv_constraint, shape, z_encoder_rank1, rng):
+@pytest.mark.parametrize('window', ['True', 'False'])
+def test_update_D(rank1, solver_d, uv_constraint, window, shape,
+                  z_encoder_rank1, rng):
 
     X = z_encoder_rank1.X
     z = z_encoder_rank1.z_hat
@@ -225,6 +227,7 @@ def test_update_D(rank1, solver_d, uv_constraint, shape, z_encoder_rank1, rng):
     d_solver = get_solver_d(solver_d=solver_d,
                             uv_constraint=uv_constraint,
                             rank1=rank1,
+                            window=window,
                             max_iter=1000)
 
     uv0 = z_encoder_rank1.D_hat
