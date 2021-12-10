@@ -105,7 +105,8 @@ def get_z_encoder_for(X,
                                n_jobs,
                                solver_kwargs,
                                reg,
-                               loss)
+                               loss,
+                               loss_params)
     else:
         raise ValueError(f'unrecognized solver type: {solver}.')
 
@@ -120,7 +121,8 @@ class BaseZEncoder:
                  n_jobs,
                  solver_kwargs,
                  reg,
-                 loss):
+                 loss,
+                 loss_params):
 
         self.X = X
         self.D_hat = D_hat
@@ -131,6 +133,7 @@ class BaseZEncoder:
         self.solver_kwargs = solver_kwargs
         self.reg = reg
         self.loss = loss
+        self.loss_params = loss_params
 
         self.n_trials, self.n_channels, self.n_times = X.shape
         self.n_times_valid = self.n_times - self.n_times_atom + 1
@@ -331,13 +334,14 @@ class AlphaCSCEncoder(BaseZEncoder):
                          n_jobs,
                          solver_kwargs,
                          reg,
-                         loss)
-
-        if loss_params is None:
-            loss_params = dict(gamma=.1, sakoe_chiba_band=10, ordar=10)
+                         loss,
+                         loss_params)
 
         self.solver = solver
         self.loss_params = loss_params
+
+        if loss_params is None:
+            loss_params = dict(gamma=.1, sakoe_chiba_band=10, ordar=10)
 
         effective_n_atoms = self.D_hat.shape[0]
         self.z_hat = self._get_new_z_hat(effective_n_atoms)
@@ -467,7 +471,8 @@ class DicodileEncoder(BaseZEncoder):
             n_jobs,
             solver_kwargs,
             reg,
-            loss):
+            loss,
+            loss_params):
         try:
             import dicodile
         except ImportError as ie:
@@ -482,9 +487,8 @@ class DicodileEncoder(BaseZEncoder):
                          n_jobs,
                          solver_kwargs,
                          reg,
-                         loss)
-
-        self.loss_params = None
+                         loss,
+                         loss_params)
 
         self._encoder = dicodile.update_z.distributed_sparse_encoder.DistributedSparseEncoder(  # noqa: E501
             n_workers=n_jobs)
