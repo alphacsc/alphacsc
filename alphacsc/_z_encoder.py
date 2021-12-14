@@ -87,6 +87,9 @@ def get_z_encoder_for(X, D_hat, n_atoms, n_times_atom, n_jobs,
     elif solver == 'dicodile':
         assert loss == 'l2', f"DiCoDiLe requires a l2 loss ('{loss}' passed)."
         assert loss_params is None, "DiCoDiLe requires loss_params=None."
+        assert feasible_evaluation is False, (
+            "DiCoDiLe requires feasible_evaluation=False."
+        )
 
         return DicodileEncoder(
             X, D_hat, n_atoms, n_times_atom, n_jobs,
@@ -444,7 +447,17 @@ class DicodileEncoder(BaseZEncoder):
                       freeze_support=False, random_state=None)
         params.update(solver_kwargs)
         self.params = params
-        self._encoder.init_workers(self.X[0], self.D_hat, reg, self.params)
+        self._encoder.init_workers(self.X[0], self._as_dicodile_dict(),
+                                   reg, self.params)
+
+    def _as_dicodile_dict(self):
+        n_channels = self.X.shape[1]
+        if self.D_hat.ndim == 2:  # AlphaCSC convention for rank-1 matrices
+            # Dicodile convention: rank-1 dicts are tuples
+            return (self.D_hat[:, :n_channels],  # XXX ?
+                    self.D_hat[:, n_channels:])
+        else:
+            return self.D_hat
 
     def compute_z(self):
         """
@@ -562,7 +575,13 @@ class DicodileEncoder(BaseZEncoder):
         z_nnz : ndarray, shape (n_atoms,)
             Ratio of non-zero activations for each atom.
         """
-        effective_n_atoms = self.D_hat.shape[0]
+        from dicodile.utils.csc import _is_rank1
+        from dicodile.utils.dictionary import D_shape
+
+        if _is_rank1(self.D_hat):
+            effective_n_atoms = D_shape(self.D_hat)[0]
+        else:
+            effective_n_atoms = self.D_hat.shape[0]
         if not hasattr(self, 'run_statistics'):
             return np.zeros(effective_n_atoms)
 
@@ -576,11 +595,12 @@ class DicodileEncoder(BaseZEncoder):
         Parameters
         ----------
         D : ndarray, shape (n_atoms, n_channels, n_time_atoms)
+            or (n_atoms, n_channels + n_time_atoms)
             An updated dictionary, to be used for the next
             computation of z_hat.
         """
         self.D_hat = D
-        self._encoder.set_worker_D(D)
+        self._encoder.set_worker_D(self._as_dicodile_dict())
 
     def update_reg(self, is_per_atom):
         """
