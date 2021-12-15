@@ -19,6 +19,33 @@ def get_D(uv_hat, n_channels):
     return uv_hat[:, :n_channels, None] * uv_hat[:, None, n_channels:]
 
 
+def flip_uv(uv, n_channels):
+    """Modify uv to ensure that, for each atom, the corresponding temporal
+    pattern v peaks in the positive. If not the case, v is flip by multiplying
+    by -1.
+
+    Parameter
+    ---------
+    uv: array (n_atoms, n_channels + n_times_atom)
+    n_channels: int
+        number of channels in the original multivariate series
+
+    Return
+    ------
+    uv: array (n_atoms, n_channels + n_times_atom)
+    """
+    v = uv[:, n_channels:]
+    index_array = np.argmax(np.absolute(v), axis=1)
+    val_index = np.take_along_axis(v, np.expand_dims(
+        index_array, axis=-1), axis=-1).squeeze(axis=-1)
+    # Get atoms indices that need to have their v flipped
+    index_to_flip = np.where(val_index < 0)[0]
+    v[index_to_flip] *= -1
+    # Update uv
+    uv[:, n_channels:] = v
+    return uv
+
+
 def get_uv(D):
     """Project D on the space of rank 1 dictionaries
 
@@ -35,7 +62,7 @@ def get_uv(D):
     for k, d in enumerate(D):
         U, s, V = np.linalg.svd(d)
         uv[k] = np.r_[U[:, 0], V[0]]
-    return uv
+    return flip_uv(uv, n_channels)
 
 
 def get_D_shape(D, n_channels):

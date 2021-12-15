@@ -8,7 +8,7 @@ from sklearn.base import TransformerMixin
 from sklearn.exceptions import NotFittedError
 
 from .update_z_multi import update_z_multi
-from .utils.dictionary import get_D, get_uv
+from .utils.dictionary import get_D, get_uv, flip_uv
 from .learn_d_z_multi import learn_d_z_multi
 from .loss_and_gradient import construct_X_multi
 from .update_d_multi import check_solver_and_constraints
@@ -293,7 +293,7 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
         if self._D_hat.ndim == 3:
             return get_uv(self._D_hat)
 
-        return self._D_hat
+        return flip_uv(self._D_hat, self.n_channels_)
 
     @property
     def u_hat_(self):
