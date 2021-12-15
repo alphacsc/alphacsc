@@ -40,9 +40,7 @@ def flip_uv(uv, n_channels):
         index_array, axis=-1), axis=-1).squeeze(axis=-1)
     # Get atoms indices that need to have their v flipped
     index_to_flip = np.where(val_index < 0)[0]
-    v[index_to_flip] *= -1
-    # Update uv
-    uv[:, n_channels:] = v
+    uv[index_to_flip] *= -1
     return uv
 
 
