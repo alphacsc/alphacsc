@@ -21,7 +21,7 @@ def get_D(uv_hat, n_channels):
 
 def flip_uv(uv, n_channels):
     """Ensure the temporal pattern v peak is positive for each atom.
-    
+
       If necessary, multiply both u and v by -1.
 
     Parameter
@@ -39,9 +39,7 @@ def flip_uv(uv, n_channels):
     index_array = np.argmax(np.absolute(v), axis=1)
     val_index = np.take_along_axis(v, np.expand_dims(
         index_array, axis=-1), axis=-1).squeeze(axis=-1)
-    # Get atoms indices that need to have their v flipped
-    index_to_flip = np.where(val_index < 0)[0]
-    uv[index_to_flip] *= -1
+    uv[val_index < 0] *= -1
     return uv
 
 

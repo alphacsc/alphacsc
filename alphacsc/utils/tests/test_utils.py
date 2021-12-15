@@ -6,7 +6,7 @@ from alphacsc.utils.convolution import _sparse_convolve, _dense_convolve
 from alphacsc.utils.convolution import _choose_convolve
 from alphacsc.utils import check_random_state
 from alphacsc.utils import construct_X_multi
-from alphacsc.utils.dictionary import get_D, get_uv
+from alphacsc.utils.dictionary import get_D, get_uv, flip_uv
 
 from alphacsc.update_d_multi import prox_uv
 
@@ -60,6 +60,27 @@ def test_uv_D():
     uv_hat = get_uv(ds)
 
     assert_allclose(abs(uv / uv_hat), 1)
+
+
+def test_flip_uv():
+    rng = check_random_state(42)
+    n_times_atoms = 21
+    n_atoms = 15
+    n_channels = 30
+
+    uv = rng.randn(n_atoms, n_channels + n_times_atoms)
+    uv = prox_uv(uv, uv_constraint='separate', n_channels=n_channels)
+    D = get_D(uv, n_channels)
+    uv_flip = flip_uv(uv, n_channels)
+    D_flip = get_D(uv_flip, n_channels)
+    v_flip = uv_flip[:, n_channels:]
+
+    index_array = np.argmax(np.absolute(v_flip), axis=1)
+    val_index = np.take_along_axis(v_flip, np.expand_dims(
+        index_array, axis=-1), axis=-1).squeeze(axis=-1)
+
+    assert (val_index < 0).sum() == 0
+    assert_allclose(D, D_flip)
 
 
 def test_patch_reconstruction_error():
