@@ -140,8 +140,7 @@ cdl.fit(X_split)
 # reflect the original data and not the windowed data.
 #
 
-# XXX There is an outstanding issue here, needs fixing
-#z_hat = cdl.transform(X[None, :])
+z_hat = cdl.transform(X[None, :])
 
 ###############################################################################
 # Display a selection of atoms
@@ -220,8 +219,6 @@ events[:, 0] -= raw.first_samp
 # take the average. For some atoms, the activations are correlated with the
 # events, leading to a large evoked envelope. The gray area corresponds to
 # not statistically significant values, computing with sampling.
-
-# this won't work due to the previous encoding issue above
 
 from alphacsc.utils.signal import fast_hilbert
 from alphacsc.viz.epoch import plot_evoked_surrogates
@@ -339,9 +336,6 @@ ax.set(xlabel='Time (sec)', title="Temporal pattern {}"
 
 fig.suptitle('')
 fig.tight_layout()
-
-""
-
 
 ""
 
