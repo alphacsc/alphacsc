@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-=====================================================================
-Extracting artifact and evoked response atoms from the sample dataset
-=====================================================================
+=========================================================================
+Extracting artifact and evoked response atoms from the MNE sample dataset
+=========================================================================
 
 This example illustrates how to learn rank-1 [1]_ atoms on the multivariate
 sample dataset from :code:`mne`. We display a selection of atoms, featuring
@@ -18,7 +18,8 @@ non-sinusoidal oscillation.
 # Authors: Thomas Moreau <thomas.moreau@inria.fr>
 #          Mainak Jas <mainak.jas@telecom-paristech.fr>
 #          Tom Dupre La Tour <tom.duprelatour@telecom-paristech.fr>
-#          Alexandre Gramfort <alexandre.gramfort@telecom-paristech.fr>
+#          Alexandre Gramfort <alexandre.gramfort@inria.fr>
+#          Romain Primet <romain.primet@inria.fr>
 #
 # License: BSD (3-clause)
 
@@ -31,22 +32,22 @@ sfreq = 150.
 
 # Define the shape of the dictionary
 n_atoms = 40
-n_times_atom = int(round(sfreq * 1.0))  # 1000. ms
+n_times_atom = int(round(sfreq * 1.0))  # 1 s
 
-# Regularization parameter which control sparsity
+# Regularization parameter which controls sparsity
 reg = 0.1
 
 # number of processors for parallel computing
 n_jobs = 5
 
-# We'll use the DiCoDiLe backend here, which does not allow splits.
-n_splits = 1  
-
-
 ###############################################################################
 # Next, we define the parameters for multivariate CSC
+#
+# We use below the BatchCDL and not GreedyCDL as dicodile does not yet support
+# greedy learning (i.e. add one atom at the time)
 
-from alphacsc import BatchCDL  # Used to be GreedyCDL but dicodile does not yet support greedy learning (add_one_atom...)
+from alphacsc import BatchCDL  # noqa: E402
+
 cdl = BatchCDL(
     # Shape of the dictionary
     n_atoms=n_atoms,
@@ -56,20 +57,22 @@ cdl = BatchCDL(
     uv_constraint='auto',
     # apply a temporal window reparametrization
     window=True,
-    # at the end, refit the activations with fixed support and no reg to unbias
+    # at the end, refit the activations with fixed support and no
+    # regularization to remove the amplitude bias
     unbiased_z_hat=True,
     # Initialize the dictionary with random chunk from the data
     D_init='chunk',
     # rescale the regularization parameter to be a percentage of lambda_max
     lmbd_max="scaled",
     reg=reg,
-    # Number of iteration for the alternate minimization and cvg threshold
+    # Number of iteration for the alternate minimization and convergence
+    # threshold
     n_iter=100,
     eps=1e-4,
     # solver for the z-step
     solver_z="dicodile",
     solver_z_kwargs={'tol': 1e-3,
-                     'max_iter': 100}, 
+                     'max_iter': 100},
     # solver for the d-step
     solver_d='alternate_adaptive',
     solver_d_kwargs={'max_iter': 300},
@@ -82,14 +85,14 @@ cdl = BatchCDL(
 
 
 ###############################################################################
-# Load the sample data from MNE-python and select the gradiometer channels.
+# Load the sample data from :code:`mne` and select the gradiometer channels.
 # The MNE sample data contains MEG recordings of a subject with visual and
-# auditory stimuli. We load the data using utilities from MNE-python as a Raw
+# auditory stimuli. We load the data using utilities from :code:`mne` as a Raw
 # object and select the gradiometers from the signal.
 
-import os
-import mne
-import numpy as np
+import os  # noqa: E402
+import mne  # noqa: E402
+import numpy as np  # noqa: E402
 
 print("Loading the data...", end='', flush=True)
 data_path = mne.datasets.sample.data_path()
@@ -103,44 +106,36 @@ print('done')
 
 ###############################################################################
 # Then, we remove the powerline artifacts and high-pass filter to remove the
-# drift which can impact the CSC technique. The signal is also resampled to
+# drift which can impact the CSC results. The signal is also resampled to
 # 150 Hz to reduce the computationnal burden.
 
 print("Preprocessing the data...", end='', flush=True)
 raw.notch_filter(np.arange(60, 181, 60), n_jobs=n_jobs, verbose=False)
-raw.filter(2, None, n_jobs=n_jobs, verbose=False)
+raw.filter(2, None, n_jobs=n_jobs, verbose=False)  # high-pass above 2 Hz
 raw = raw.resample(sfreq, npad='auto', n_jobs=n_jobs, verbose=False)
 print('done')
 
 
 ###############################################################################
-# Load the data as an array and split it in chunks to allow parallel processing
-# during the model fit. Each split is considered as independent.
-# To reduce the impact of border artifacts, we use `apply_window=True`
-# which scales down the border of each split with a tukey window.
+# Load the data as an array and reshape it to be 3d
 
-from alphacsc.utils import split_signal
 X = raw.get_data(picks=['meg'])
 info = raw.copy().pick_types(meg=True).info  # info of the loaded channels
 print(info)
-X_split = split_signal(X, n_splits=n_splits, apply_window=False)  # we do one split, let's not window it
+X_split = X[np.newaxis, :, :]
+print(X_split.shape)
 
 
 ###############################################################################
 # Fit the model and learn rank1 atoms
 
-print(X_split.shape)
 cdl.fit(X_split)
-
 
 ###############################################################################
 # Then we call the `transform` method, which returns the sparse codes
 # associated with X, without changing the dictionary learned during the `fit`.
-# Note that we transform on the *unsplit* data so that the sparse codes
-# reflect the original data and not the windowed data.
-#
 
-z_hat = cdl.transform(X[None, :])
+z_hat = cdl.transform(X[np.newaxis, :, :])
 
 ###############################################################################
 # Display a selection of atoms
@@ -149,7 +144,7 @@ z_hat = cdl.transform(X[None, :])
 # We recognize a heartbeat artifact, an eyeblink artifact, two atoms of evoked
 # responses, and a non-sinusoidal oscillation.
 
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt  # noqa: E402
 
 # preselected atoms of interest
 plotted_atoms = [0, 1, 2, 6, 4]
@@ -159,8 +154,8 @@ n_columns = min(6, len(plotted_atoms))
 split = int(np.ceil(len(plotted_atoms) / n_columns))
 figsize = (4 * n_columns, 3 * n_plots * split)
 fig, axes = plt.subplots(n_plots * split, n_columns, figsize=figsize)
-for ii, kk in enumerate(plotted_atoms):
 
+for ii, kk in enumerate(plotted_atoms):
     # Select the axes to display the current atom
     print("\rDisplaying {}-th atom".format(kk), end='', flush=True)
     i_row, i_col = ii // n_columns, ii % n_columns
@@ -192,6 +187,7 @@ for ii, kk in enumerate(plotted_atoms):
     ax.set_xlim(0, 30)
     ax.set_ylim(1e-4, 1e2)
     ax.legend()
+
 print("\rDisplayed {} atoms".format(len(plotted_atoms)).rjust(40))
 
 fig.tight_layout()
@@ -220,9 +216,9 @@ events[:, 0] -= raw.first_samp
 # events, leading to a large evoked envelope. The gray area corresponds to
 # not statistically significant values, computing with sampling.
 
-from alphacsc.utils.signal import fast_hilbert
-from alphacsc.viz.epoch import plot_evoked_surrogates
-from alphacsc.utils.convolution import construct_X_multi
+from alphacsc.utils.signal import fast_hilbert  # noqa: E402
+from alphacsc.viz.epoch import plot_evoked_surrogates  # noqa: E402
+from alphacsc.utils.convolution import construct_X_multi  # noqa: E402
 
 # time window around the events. Note that for the sample datasets, the time
 # inter-event is around 0.5s
@@ -235,7 +231,6 @@ figsize = (4 * n_columns, 3 * n_plots * split)
 fig, axes = plt.subplots(n_plots * split, n_columns, figsize=figsize)
 
 for ii, kk in enumerate(plotted_atoms):
-
     # Select the axes to display the current atom
     print("\rDisplaying {}-th atom envelope".format(kk), end='', flush=True)
     i_row, i_col = ii // n_columns, ii % n_columns
@@ -256,11 +251,12 @@ for ii, kk in enumerate(plotted_atoms):
         # plotting function
         ax = next(it_axes)
         this_info = info.copy()
-        event_info = dict(event_id = this_event_id, events=events)
+        event_info = dict(event_id=this_event_id, events=events)
         this_info['temp'] = event_info
         plot_evoked_surrogates(correlation, info=this_info, t_lim=t_lim, ax=ax,
                                n_jobs=n_jobs, label='event %d' % this_event_id)
         ax.set(xlabel='Time (sec)', title="Evoked envelope %d" % kk)
+
 print("\rDisplayed {} atoms".format(len(plotted_atoms)).rjust(40))
 fig.tight_layout()
 
@@ -272,16 +268,16 @@ fig.tight_layout()
 # we need the following:
 #
 # * BEM solution: Obtained by running the cortical reconstruction pipeline
-#   of Freesurfer and describes the conductivity of different tissues in
+#   of Freesurfer and specifies the conductivity of different tissues in
 #   the head.
 # * Trans: An affine transformation matrix needed to bring the data
-#   from sensor space to head space. This is usually done by coregistering
-#   the fiducials with the MRI.
+#   from sensor space to head space. This is usually done by coregistration
+#   of the fiducials with the MRI.
 # * Noise covariance matrix: To whiten the data so that the assumption
 #   of Gaussian noise model with identity covariance matrix is satisfied.
 #
 # We recommend users to consult the MNE documentation for further information.
-#
+
 subjects_dir = os.path.join(data_path, 'subjects')
 fname_bem = os.path.join(subjects_dir, 'sample', 'bem',
                          'sample-5120-bem-sol.fif')
@@ -293,25 +289,22 @@ fname_cov = os.path.join(data_path, 'MEG', 'sample', 'sample_audvis-cov.fif')
 ###############################################################################
 # Let us construct an evoked object for MNE with the spatial pattern of the
 # atoms.
-#
-evoked = mne.EvokedArray(cdl.u_hat_.T, info)
 
+evoked = mne.EvokedArray(cdl.u_hat_.T, info)
 
 ###############################################################################
 # Fit a dipole to each of the atoms.
-#
+
 dip = mne.fit_dipole(evoked, fname_cov, fname_bem, fname_trans,
                      n_jobs=n_jobs, verbose=False)[0]
 
-
 ###############################################################################
-# Plot the dipole fit from the 3rd atom, linked to mu-wave and display the
+# Plot the dipole fit from the 5th atom, linked to mu-wave and display the
 # goodness of fit.
-#
 
 atom_dipole_idx = 4
 
-from mpl_toolkits.mplot3d import Axes3D
+from mpl_toolkits.mplot3d import Axes3D  # noqa: E402, F401
 
 fig = plt.figure(figsize=(10, 4))
 
@@ -336,6 +329,3 @@ ax.set(xlabel='Time (sec)', title="Temporal pattern {}"
 
 fig.suptitle('')
 fig.tight_layout()
-
-""
-
