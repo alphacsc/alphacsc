@@ -338,7 +338,6 @@ class AlphaCSCEncoder(BaseZEncoder):
                          loss_params)
 
         self.solver = solver
-        self.loss_params = loss_params
 
         if loss_params is None:
             loss_params = dict(gamma=.1, sakoe_chiba_band=10, ordar=10)
