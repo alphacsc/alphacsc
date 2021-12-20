@@ -572,7 +572,6 @@ class DSolver(BaseDSolver):
                          verbose,
                          debug)
 
-        self.rank1 = False
         self.name = "Update D"
 
     def get_max_error_dict(self, z_encoder):
