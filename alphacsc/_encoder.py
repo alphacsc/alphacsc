@@ -167,6 +167,7 @@ class BaseZEncoder:
         D : array, shape (n_atoms, n_channels + n_times_atom) or
                          (n_atoms, n_channels, n_times_atom)
             The atoms to learn from the data.
+            D should be feasible.
 
         Returns
         -------
@@ -184,16 +185,9 @@ class BaseZEncoder:
                                      reg=self.reg, loss=self.loss,
                                      loss_params=self.loss_params)
 
-    def get_cost(self, D=None):
+    def get_cost(self):
         """
         Computes the cost of the current sparse representation (z_hat)
-
-        Parameters
-        ----------
-        D : array, shape (n_atoms, n_channels + n_times_atom) or
-                         (n_atoms, n_channels, n_times_atom)
-            The atoms to learn from the data.
-            It is assumed that D is feasible.
 
         Returns
         -------
