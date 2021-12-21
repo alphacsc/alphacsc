@@ -183,9 +183,16 @@ class BaseZEncoder:
                                              loss_params=self.loss_params,
                                              feasible_evaluation=False)
 
-    def get_cost(self):
+    def get_cost(self, D=None):
         """
         Computes the cost of the current sparse representation (z_hat)
+
+        Parameters
+        ----------
+        D : array, shape (n_atoms, n_channels + n_times_atom) or
+                         (n_atoms, n_channels, n_times_atom)
+            The atoms to learn from the data.
+            It is assumed that D is feasible.
 
         Returns
         -------
@@ -377,9 +384,12 @@ class AlphaCSCEncoder(BaseZEncoder):
         self.ztz = alpha * self.ztz + self.ztz_i0
         self.ztX = alpha * self.ztX + self.ztX_i0
 
-    def get_cost(self):
+    def get_cost(self, D=None):
 
-        X_hat = construct_X_multi(self.z_hat, D=self.D_hat,
+        if D is None:
+            D = self.D_hat
+
+        X_hat = construct_X_multi(self.z_hat, D=D,
                                   n_channels=self.n_channels)
 
         return compute_objective(X=self.X, X_hat=X_hat, z_hat=self.z_hat,
@@ -527,9 +537,16 @@ class DicodileEncoder(BaseZEncoder):
         raise NotImplementedError(
             "compute_z_partial is not available in DiCoDiLe")
 
-    def get_cost(self):
+    def get_cost(self, D=None):
         """
         Computes the cost of the current sparse representation (z_hat)
+
+        Parameters
+        ----------
+        D : array, shape (n_atoms, n_channels + n_times_atom) or
+                         (n_atoms, n_channels, n_times_atom)
+            The atoms to learn from the data.
+            It is assumed that D is feasible.
 
         Returns
         -------
