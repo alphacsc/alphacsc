@@ -71,11 +71,11 @@ class OnlineCDL(ConvolutionalDictionaryLearning):
             z_encoder.compute_z()
 
             alpha = self.algorithm_params['alpha']
-            self.constants['ztz'] = alpha * \
-                self.constants['ztz'] + z_encoder.ztz
+            self.constants['ztz'] *= alpha
+            self.constants['ztz'] += z_encoder.ztz
             z_encoder.ztz = self.constants['ztz']
-            self.constants['ztX'] = alpha * \
-                self.constants['ztX'] + z_encoder.ztX
+            self.constants['ztX'] *= alpha
+            self.constants['ztX'] += z_encoder.ztX
             z_encoder.ztX = self.constants['ztX']
 
             z_nnz = z_encoder.get_z_nnz()
