@@ -4,7 +4,7 @@ from .utils import construct_X_multi
 from .utils.dictionary import get_D_shape
 from .update_z_multi import update_z_multi
 from .utils.dictionary import _patch_reconstruction_error
-from .loss_and_gradient import compute_objective, compute_X_and_objective_multi
+from .loss_and_gradient import compute_objective
 
 DEFAULT_TOL_Z = 1e-3
 
@@ -176,12 +176,13 @@ class BaseZEncoder:
         if self.loss == 'l2':
             return compute_objective(D=D, constants=self.get_constants())
 
-        return compute_X_and_objective_multi(self.X,
-                                             self.get_z_hat(),
-                                             D_hat=D,
-                                             loss=self.loss,
-                                             loss_params=self.loss_params,
-                                             feasible_evaluation=False)
+        else:
+            X_hat = construct_X_multi(self.z_hat, D=D,
+                                      n_channels=self.n_channels)
+
+            return compute_objective(X=self.X, X_hat=X_hat, z_hat=self.z_hat,
+                                     reg=self.reg, loss=self.loss,
+                                     loss_params=self.loss_params)
 
     def get_cost(self, D=None):
         """
@@ -384,12 +385,9 @@ class AlphaCSCEncoder(BaseZEncoder):
         self.ztz = alpha * self.ztz + self.ztz_i0
         self.ztX = alpha * self.ztX + self.ztX_i0
 
-    def get_cost(self, D=None):
+    def get_cost(self):
 
-        if D is None:
-            D = self.D_hat
-
-        X_hat = construct_X_multi(self.z_hat, D=D,
+        X_hat = construct_X_multi(self.z_hat, D=self.D_hat,
                                   n_channels=self.n_channels)
 
         return compute_objective(X=self.X, X_hat=X_hat, z_hat=self.z_hat,
@@ -537,20 +535,14 @@ class DicodileEncoder(BaseZEncoder):
         raise NotImplementedError(
             "compute_z_partial is not available in DiCoDiLe")
 
-    def get_cost(self, D=None):
+    def get_cost(self):
         """
         Computes the cost of the current sparse representation (z_hat)
-
-        Parameters
-        ----------
-        D : array, shape (n_atoms, n_channels + n_times_atom) or
-                         (n_atoms, n_channels, n_times_atom)
-            The atoms to learn from the data.
-            It is assumed that D is feasible.
 
         Returns
         -------
         cost: float
+            The value of the objective function.
         """
         if hasattr(self, 'run_statistics'):
             return self._encoder.get_cost()
