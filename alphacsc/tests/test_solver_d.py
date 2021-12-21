@@ -52,15 +52,16 @@ def test_get_solver_d_error_solver(solver_d):
                      momentum=False)
 
 
+@pytest.mark.parametrize('solver_d', ['auto', 'fista'])
 @pytest.mark.parametrize('uv_constraint', ['separate', 'joint'])
-def test_get_solver_d_error_uv_constraint(uv_constraint):
+def test_get_solver_d_error_uv_constraint(solver_d, uv_constraint):
     """Tests for the case rank1 is False and uv_constraint is not
     compatible."""
 
     with pytest.raises(AssertionError,
                        match="solver_d should be auto or fista. Got*"):
 
-        get_solver_d(solver_d='auto',
+        get_solver_d(solver_d=solver_d,
                      uv_constraint=uv_constraint,
                      rank1=False,
                      window=True,
