@@ -7,6 +7,7 @@ from alphacsc.tests.conftest import N_TIMES_ATOM, N_ATOMS
 
 @pytest.mark.parametrize('solver, rank1, n_trials', [
     ('lgcd', True, 10),
+    ('lgcd', False, 10),
     #   ('dicodile', 'False', 1)
 ])
 @pytest.mark.parametrize('alpha', [.2, .8])
