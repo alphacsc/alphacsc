@@ -60,19 +60,18 @@ def get_solver_d(solver_d='alternate_adaptive',
 
     if rank1:
         if solver_d in ['auto', 'alternate', 'alternate_adaptive']:
-            return AlternateDSolver(solver_d, rank1, uv_constraint, window,
-                                    eps, max_iter, momentum, random_state,
-                                    verbose, debug)
+            return AlternateDSolver(solver_d, uv_constraint, window, eps,
+                                    max_iter, momentum, random_state, verbose,
+                                    debug)
         elif solver_d in ['fista', 'joint']:
-            return JointDSolver(solver_d, rank1, uv_constraint, window, eps,
-                                max_iter, momentum, random_state, verbose,
-                                debug)
+            return JointDSolver(solver_d, uv_constraint, window, eps, max_iter,
+                                momentum, random_state, verbose, debug)
         else:
             raise ValueError('Unknown solver_d: %s' % (solver_d, ))
     else:
         if solver_d in ['auto', 'fista']:
-            return DSolver(solver_d, rank1, uv_constraint, window, eps,
-                           max_iter, momentum, random_state, verbose, debug)
+            return DSolver(solver_d, uv_constraint, window, eps, max_iter,
+                           momentum, random_state, verbose, debug)
         else:
             raise ValueError('Unknown solver_d: %s' % (solver_d, ))
 
@@ -222,7 +221,6 @@ class Rank1DSolver(BaseDSolver):
 
     def __init__(self,
                  solver_d,
-                 rank1,
                  uv_constraint,
                  window,
                  eps,
@@ -233,7 +231,7 @@ class Rank1DSolver(BaseDSolver):
                  debug):
 
         super().__init__(solver_d,
-                         rank1,
+                         True,
                          uv_constraint,
                          window,
                          eps,
@@ -284,7 +282,6 @@ class JointDSolver(Rank1DSolver):
 
     def __init__(self,
                  solver_d,
-                 rank1,
                  uv_constraint,
                  window,
                  eps,
@@ -295,7 +292,6 @@ class JointDSolver(Rank1DSolver):
                  debug):
 
         super().__init__(solver_d,
-                         rank1,
                          uv_constraint,
                          window,
                          eps,
@@ -344,7 +340,6 @@ class AlternateDSolver(Rank1DSolver):
 
     def __init__(self,
                  solver_d,
-                 rank1,
                  uv_constraint,
                  window,
                  eps,
@@ -355,7 +350,6 @@ class AlternateDSolver(Rank1DSolver):
                  debug):
 
         super().__init__(solver_d,
-                         rank1,
                          uv_constraint,
                          window,
                          eps,
@@ -551,7 +545,6 @@ class DSolver(BaseDSolver):
 
     def __init__(self,
                  solver_d,
-                 rank1,
                  uv_constraint,
                  window,
                  eps,
@@ -562,7 +555,7 @@ class DSolver(BaseDSolver):
                  debug):
 
         super().__init__(solver_d,
-                         rank1,
+                         False,
                          uv_constraint,
                          window,
                          eps,
