@@ -68,7 +68,7 @@ def test_get_solver_d_error_uv_constraint(uv_constraint):
 
 
 @pytest.mark.parametrize('solver_d', ['alternate', 'alternate_adaptive',
-                                      'joint'])
+                                      'auto'])
 def test_get_solver_d_error_rank1_uv_constraint(solver_d):
     """Tests for the case rank1 is True and uv_constraint is not
     compatible."""
@@ -76,7 +76,7 @@ def test_get_solver_d_error_rank1_uv_constraint(solver_d):
     with pytest.raises(AssertionError,
                        match="solver_d='alternat*"):
 
-        get_solver_d(solver_d='auto',
+        get_solver_d(solver_d=solver_d,
                      uv_constraint='joint',
                      rank1=True,
                      window=True,
