@@ -1,5 +1,6 @@
 import numpy as np
 
+from .utils import construct_X_multi
 from .utils.dictionary import get_D_shape
 from .update_z_multi import update_z_multi
 from .utils.dictionary import _patch_reconstruction_error
@@ -158,6 +159,30 @@ class BaseZEncoder:
         """
         raise NotImplementedError()
 
+    def compute_objective(self, D):
+        '''Compute the value of the objective function.
+
+        Parameters
+        ----------
+        D : array, shape (n_atoms, n_channels + n_times_atom) or
+                         (n_atoms, n_channels, n_times_atom)
+            The atoms to learn from the data.
+
+        Returns
+        -------
+        obj :
+            The value of objective function.
+        '''
+        if self.loss == 'l2':
+            return compute_objective(D=D, constants=self.get_constants())
+
+        return compute_X_and_objective_multi(self.X,
+                                             self.get_z_hat(),
+                                             D_hat=D,
+                                             loss=self.loss,
+                                             loss_params=self.loss_params,
+                                             feasible_evaluation=False)
+
     def get_cost(self):
         """
         Computes the cost of the current sparse representation (z_hat)
@@ -165,6 +190,7 @@ class BaseZEncoder:
         Returns
         -------
         cost: float
+            The value of the objective function
         """
         raise NotImplementedError()
 
@@ -270,30 +296,6 @@ class BaseZEncoder:
         """
         raise NotImplementedError()
 
-    def compute_objective(self, D):
-        '''Compute the value of the objective function.
-
-        Parameters
-        ----------
-        D : array, shape (n_atoms, n_channels + n_times_atom) or
-                         (n_atoms, n_channels, n_times_atom)
-            The atoms to learn from the data.
-
-        Returns
-        -------
-        obj :
-            The value of objective function.
-        '''
-        if self.loss == 'l2':
-            return compute_objective(D=D, constants=self.get_constants())
-
-        return compute_X_and_objective_multi(self.X,
-                                             self.get_z_hat(),
-                                             D_hat=D,
-                                             loss=self.loss,
-                                             loss_params=self.loss_params,
-                                             feasible_evaluation=False)
-
     def __enter__(self):
         return self
 
@@ -376,14 +378,13 @@ class AlphaCSCEncoder(BaseZEncoder):
         self.ztX = alpha * self.ztX + self.ztX_i0
 
     def get_cost(self):
-        cost = compute_X_and_objective_multi(self.X,
-                                             self.z_hat,
-                                             self.D_hat,
-                                             reg=self.reg,
-                                             loss=self.loss,
-                                             loss_params=self.loss_params,
-                                             feasible_evaluation=False)
-        return cost
+
+        X_hat = construct_X_multi(self.z_hat, D=self.D_hat,
+                                  n_channels=self.n_channels)
+
+        return compute_objective(X=self.X, X_hat=X_hat, z_hat=self.z_hat,
+                                 reg=self.reg, loss=self.loss,
+                                 loss_params=self.loss_params)
 
     def get_sufficient_statistics(self):
         assert hasattr(self, 'ztz') and hasattr(self, 'ztX'), (
