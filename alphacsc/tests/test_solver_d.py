@@ -59,7 +59,7 @@ def test_get_solver_d_error_uv_constraint(solver_d, uv_constraint):
     compatible."""
 
     with pytest.raises(AssertionError,
-                       match="solver_d should be auto or fista. Got*"):
+                       match="If rank1 is False, uv_constraint should be*"):
 
         get_solver_d(solver_d=solver_d,
                      uv_constraint=uv_constraint,
