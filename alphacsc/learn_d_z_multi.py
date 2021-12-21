@@ -293,7 +293,7 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
 
     # monitor cost function
     times = [0]
-    pobj = [z_encoder.get_cost(d_solver.uv_constraint)]
+    pobj = [z_encoder.get_cost()]
 
     for ii in range(n_iter):  # outer loop of coordinate descent
         if verbose == 1:
@@ -325,7 +325,7 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
 
         # monitor cost function
         times.append(time.time() - start)
-        pobj.append(z_encoder.get_cost(d_solver.uv_constraint))
+        pobj.append(z_encoder.get_cost())
 
         # XXX to adapt to Encoder class, we must fetch z_hat at each iteration.
         # XXX is that acceptable or not? (seems that DiCoDiLe does not require
@@ -351,7 +351,7 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
 
         # monitor cost function
         times.append(time.time() - start)
-        pobj.append(z_encoder.get_cost(d_solver.uv_constraint))
+        pobj.append(z_encoder.get_cost())
 
         null_atom_indices = np.where(z_nnz == 0)[0]
         if len(null_atom_indices) > 0:
@@ -391,7 +391,7 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
 
     # monitor cost function
     times = [0]
-    pobj = [z_encoder.get_cost(d_solver.uv_constraint)]
+    pobj = [z_encoder.get_cost()]
 
     rng = check_random_state(random_state)
     for ii in range(n_iter):  # outer loop of coordinate descent
@@ -426,7 +426,7 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
 
         # monitor cost function
         times.append(time.time() - start)
-        pobj.append(z_encoder.get_cost(d_solver.uv_constraint))
+        pobj.append(z_encoder.get_cost())
 
         z_nnz = z_encoder.get_z_nnz()
         if verbose > 5:
@@ -449,7 +449,7 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
 
         # monitor cost function
         times.append(time.time() - start)
-        pobj.append(z_encoder.get_cost(d_solver.uv_constraint))
+        pobj.append(z_encoder.get_cost())
 
         null_atom_indices = np.where(z_nnz == 0)[0]
         if len(null_atom_indices) > 0:

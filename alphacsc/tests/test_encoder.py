@@ -247,10 +247,10 @@ def test_get_z_hat(solver, X, D_hat, requires_dicodile):
         assert z_encoder.get_z_hat().any()
 
 
-@pytest.mark.parametrize('solver, n_trials, rank1, uv_constraint',
-                         [('l-bfgs', 3, True, 'separate'),
-                          ('dicodile', 1, False, 'auto')])
-def test_get_cost(solver, X, D_hat, uv_constraint, requires_dicodile):
+@pytest.mark.parametrize('solver, n_trials, rank1',
+                         [('l-bfgs', 3, True),
+                          ('dicodile', 1, False)])
+def test_get_cost(solver, X, D_hat, requires_dicodile):
     """Test for valid values."""
 
     with get_z_encoder_for(solver=solver,
@@ -259,11 +259,11 @@ def test_get_cost(solver, X, D_hat, uv_constraint, requires_dicodile):
                            n_atoms=N_ATOMS,
                            n_times_atom=N_TIMES_ATOM,
                            n_jobs=2) as z_encoder:
-        initial_cost = z_encoder.get_cost(uv_constraint)
+        initial_cost = z_encoder.get_cost()
 
         z_encoder.compute_z()
         z_hat = z_encoder.get_z_hat()
-        final_cost = z_encoder.get_cost(uv_constraint)
+        final_cost = z_encoder.get_cost()
 
         assert final_cost < initial_cost
 

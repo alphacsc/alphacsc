@@ -63,7 +63,7 @@ class MockZEncoder:
         return dict(ztX=self.ztX, ztz=self.ztz, XtX=self.XtX,
                     n_channels=self.n_channels)
 
-    def compute_objective(self, D, uv_constraint):
+    def compute_objective(self, D):
         if self.loss == 'l2':
             return compute_objective(D=D,
                                      constants=self.get_constants())
@@ -74,12 +74,12 @@ class MockZEncoder:
             D_hat=D,
             loss=self.loss,
             loss_params=self.loss_params,
-            uv_constraint=uv_constraint
+            feasible_evaluation=False
         )
 
 
 @pytest.fixture
-def z_encoder_rank1(uv_constraint, rng, shape, loss):
+def z_encoder_rank1(rng, shape, loss):
 
     from alphacsc.utils import construct_X_multi
     from alphacsc.update_d_multi import prox_uv

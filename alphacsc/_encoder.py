@@ -158,17 +158,9 @@ class BaseZEncoder:
         """
         raise NotImplementedError()
 
-    def get_cost(self, uv_constraint='auto'):
+    def get_cost(self):
         """
         Computes the cost of the current sparse representation (z_hat)
-
-        Parameters
-        ----------
-        uv_constraint : {{'auto' | 'joint' | 'separate'}}
-            The kind of norm constraint on the atoms:
-
-        - :code:`'joint'`: the constraint is ||[u, v]||_2 <= 1
-        - :code:`'separate'`: the constraint is ||u||_2 <= 1 and ||v||_2 <= 1
 
         Returns
         -------
@@ -278,7 +270,7 @@ class BaseZEncoder:
         """
         raise NotImplementedError()
 
-    def compute_objective(self, D, uv_constraint):
+    def compute_objective(self, D):
         '''Compute the value of the objective function.
 
         Parameters
@@ -286,11 +278,6 @@ class BaseZEncoder:
         D : array, shape (n_atoms, n_channels + n_times_atom) or
                          (n_atoms, n_channels, n_times_atom)
             The atoms to learn from the data.
-        uv_constraint : {{'auto' | 'joint' | 'separate'}}
-            The kind of norm constraint on the atoms:
-
-        - :code:`'joint'`: the constraint is ||[u, v]||_2 <= 1
-        - :code:`'separate'`: the constraint is ||u||_2 <= 1 and ||v||_2 <= 1
 
         Returns
         -------
@@ -305,7 +292,7 @@ class BaseZEncoder:
                                              D_hat=D,
                                              loss=self.loss,
                                              loss_params=self.loss_params,
-                                             uv_constraint=uv_constraint)
+                                             feasible_evaluation=False)
 
     def __enter__(self):
         return self
@@ -388,14 +375,14 @@ class AlphaCSCEncoder(BaseZEncoder):
         self.ztz = alpha * self.ztz + self.ztz_i0
         self.ztX = alpha * self.ztX + self.ztX_i0
 
-    def get_cost(self, uv_constraint):
+    def get_cost(self):
         cost = compute_X_and_objective_multi(self.X,
                                              self.z_hat,
                                              self.D_hat,
                                              reg=self.reg,
                                              loss=self.loss,
                                              loss_params=self.loss_params,
-                                             uv_constraint=uv_constraint)
+                                             feasible_evaluation=False)
         return cost
 
     def get_sufficient_statistics(self):
@@ -539,7 +526,7 @@ class DicodileEncoder(BaseZEncoder):
         raise NotImplementedError(
             "compute_z_partial is not available in DiCoDiLe")
 
-    def get_cost(self, uv_constraint='auto'):
+    def get_cost(self):
         """
         Computes the cost of the current sparse representation (z_hat)
 

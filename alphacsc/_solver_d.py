@@ -212,7 +212,7 @@ class BaseDSolver:
 
             D = self.windower.window(D)
 
-            return z_encoder.compute_objective(D, self.uv_constraint)
+            return z_encoder.compute_objective(D)
 
         return objective
 
