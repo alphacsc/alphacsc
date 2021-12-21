@@ -495,14 +495,46 @@ class AlternateDSolver(Rank1DSolver):
 
         return uv_hat, pobj_v
 
-    def _run_fista(self, d_hat, uv_hat, obj, grad, prox, op, variable,
+    def _run_fista(self, d_hat, uv_hat, f_obj, f_grad, f_prox, op, variable,
                    z_encoder):
+        """Calculates step size of each update and returns final point after
+        optimization.
+
+        Parameters
+        ----------
+        d_hat : array
+            Initial point of the optimization (u_hat or v_hat depending on
+            variable value)
+        uv_hat : array, shape (n_atoms, n_channels + n_times_atom)
+           The atoms
+        f_obj : callable
+            Objective function. Used only if debug or adaptive_step_size.
+        f_grad : callable
+            Gradient of the objective function
+        f_prox : callable
+            Proximal operator
+        op : callable
+
+        variable : str
+            'u' or 'v'
+        z_encoder : BaseZEncoder
+            ZEncoder object.
+
+        Returns
+        -------
+        x_hat : array
+            The final point after optimization
+        pobj : list or None
+            If debug is True, pobj contains the value of the cost function at
+            each iteration.
+
+        """
 
         L = self._get_step_size(uv_hat, op, variable, z_encoder)
 
-        return fista(obj,
-                     grad,
-                     prox,
+        return fista(f_obj,
+                     f_grad,
+                     f_prox,
                      0.99 / L,
                      d_hat,
                      self.max_iter,
