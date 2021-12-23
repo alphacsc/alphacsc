@@ -103,6 +103,7 @@ class BaseDSolver:
 
         self.windower = None
 
+        # This guarantees that, if self.window=False, self.windower=NoWindow()
         if not self.window:
             self.windower = NoWindow()
 
@@ -628,7 +629,7 @@ class DSolver(BaseDSolver):
         return prox_d(d0)
 
     def _init_windower(self, z_encoder):
-        if self.windower is None and self.window:
+        if self.windower is None:
             self.windower = SimpleWindower(z_encoder.n_times_atom)
 
     def _get_grad(self, z_encoder):
