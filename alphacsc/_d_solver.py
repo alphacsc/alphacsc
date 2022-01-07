@@ -77,9 +77,9 @@ def get_solver_d(solver_d='alternate_adaptive', rank1=False,
 class BaseDSolver:
     """Base class for a d solver."""
 
-    def __init__(self, solver_d, rank1, uv_constraint, window,
+    def __init__(self, solver_d, uv_constraint, window,
                  eps, max_iter, momentum, random_state, verbose,
-                 debug):
+                 debug, rank1):
 
         self.rank1 = rank1
         self.uv_constraint = uv_constraint
@@ -207,8 +207,8 @@ class Rank1DSolver(BaseDSolver):
                  momentum, random_state, verbose, debug):
 
         super().__init__(
-            solver_d, True, uv_constraint, window, eps, max_iter,
-            momentum, random_state, verbose, debug
+            solver_d, uv_constraint, window, eps, max_iter, momentum,
+            random_state, verbose, debug, rank1=True
         )
 
         self.name = "Update uv"
@@ -512,8 +512,8 @@ class DSolver(BaseDSolver):
                  momentum, random_state, verbose, debug):
 
         super().__init__(
-            solver_d, False, uv_constraint, window, eps, max_iter,
-            momentum, random_state, verbose, debug
+            solver_d, uv_constraint, window, eps, max_iter, momentum,
+            random_state, verbose, debug, rank1=False
         )
 
         self.name = "Update D"
