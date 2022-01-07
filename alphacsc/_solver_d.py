@@ -554,6 +554,7 @@ class AlternateDSolver(Rank1DSolver):
                 raise NotImplementedError()
 
             # compute lipschitz
+            # XXX - maybe replace with scipy.sparse.linalg.svds
             b_hat_0 = np.random.randn(uv_hat.size)
 
             if variable == 'u':
