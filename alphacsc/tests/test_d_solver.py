@@ -8,7 +8,7 @@ from alphacsc.tests.conftest import N_TRIALS, N_CHANNELS, N_TIMES_ATOM, N_ATOMS
 from alphacsc.loss_and_gradient import compute_objective
 from alphacsc.utils import check_random_state, construct_X_multi
 from alphacsc.update_d_multi import prox_d, prox_uv
-from alphacsc._solver_d import get_solver_d
+from alphacsc._d_solver import get_solver_d
 
 
 @pytest.fixture

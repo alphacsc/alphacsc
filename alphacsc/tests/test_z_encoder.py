@@ -2,7 +2,7 @@ import numpy as np
 
 import pytest
 
-from alphacsc._encoder import get_z_encoder_for
+from alphacsc._z_encoder import get_z_encoder_for
 from alphacsc.init_dict import init_dictionary
 from alphacsc.loss_and_gradient import compute_objective
 from alphacsc.utils import construct_X_multi

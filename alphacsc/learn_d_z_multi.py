@@ -15,8 +15,8 @@ from .utils import check_random_state
 from .utils.convolution import sort_atoms_by_explained_variances
 from .utils.dictionary import get_lambda_max
 from .utils.whitening import whitening
-from ._encoder import get_z_encoder_for
-from ._solver_d import get_solver_d
+from ._z_encoder import get_z_encoder_for
+from ._d_solver import get_solver_d
 
 
 def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,

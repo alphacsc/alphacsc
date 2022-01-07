@@ -6,8 +6,8 @@ from .utils.dictionary import get_lambda_max
 from .convolutional_dictionary_learning import DOC_FMT, DEFAULT
 from .convolutional_dictionary_learning import ConvolutionalDictionaryLearning
 
-from ._encoder import get_z_encoder_for
-from ._solver_d import get_solver_d
+from ._z_encoder import get_z_encoder_for
+from ._d_solver import get_solver_d
 
 
 class OnlineCDL(ConvolutionalDictionaryLearning):
