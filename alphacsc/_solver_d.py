@@ -498,8 +498,7 @@ class AlternateDSolver(Rank1DSolver):
 
     def _run_fista(self, d_hat, uv_hat, f_obj, f_grad, f_prox, op, variable,
                    z_encoder):
-        """Calculates step size of each update and returns final point after
-        optimization.
+        """Run FISTA for given the objective with adaptive step size or 1/L.
 
         Parameters
         ----------
