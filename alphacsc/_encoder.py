@@ -313,6 +313,9 @@ class AlphaCSCEncoder(BaseZEncoder):
                  loss,
                  loss_params):
 
+        if loss_params is None:
+            loss_params = dict(gamma=.1, sakoe_chiba_band=10, ordar=10)
+
         super().__init__(X,
                          D_hat,
                          n_atoms,
@@ -324,9 +327,6 @@ class AlphaCSCEncoder(BaseZEncoder):
                          loss_params)
 
         self.solver = solver
-
-        if loss_params is None:
-            loss_params = dict(gamma=.1, sakoe_chiba_band=10, ordar=10)
 
         effective_n_atoms = self.D_hat.shape[0]
         self.z_hat = self._get_new_z_hat(effective_n_atoms)
