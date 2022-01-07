@@ -99,15 +99,10 @@ def get_z_encoder_for(X,
         assert loss == 'l2', f"DiCoDiLe requires a l2 loss ('{loss}' passed)."
         assert loss_params is None, "DiCoDiLe requires loss_params=None."
 
-        return DicodileEncoder(X,
-                               D_hat,
-                               n_atoms,
-                               n_times_atom,
-                               n_jobs,
-                               solver_kwargs,
-                               reg,
-                               loss,
-                               loss_params)
+        return DicodileEncoder(
+            X, D_hat, n_atoms, n_times_atom, n_jobs,
+            solver_kwargs, reg, loss, loss_params
+        )
     else:
         raise ValueError(f'unrecognized solver type: {solver}.')
 
