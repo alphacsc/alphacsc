@@ -77,6 +77,9 @@ class OnlineCDL(ConvolutionalDictionaryLearning):
             self.constants['ztX'] *= alpha
             self.constants['ztX'] += z_encoder.ztX
             z_encoder.ztX = self.constants['ztX']
+            self.constants['XtX'] *= alpha
+            self.constants['XtX'] += z_encoder.XtX
+            z_encoder.XtX = self.constants['XtX']
 
             z_nnz = z_encoder.get_z_nnz()
 
