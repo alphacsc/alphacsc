@@ -163,19 +163,15 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         )
         solver_d_kwargs["max_iter"] = 1
 
-    d_solver = get_solver_d(solver_d=solver_d,
-                            rank1=rank1,
-                            uv_constraint=uv_constraint,
-                            window=window,
-                            random_state=random_state,
-                            **solver_d_kwargs)
+    d_solver = get_solver_d(
+        solver_d=solver_d, rank1=rank1, uv_constraint=uv_constraint,
+        window=window, random_state=random_state, **solver_d_kwargs
+    )
 
     # initialization
     start = time.time()
 
-    D_hat = d_solver.init_dictionary(X, n_atoms,
-                                     n_times_atom,
-                                     D_init=D_init,
+    D_hat = d_solver.init_dictionary(X, n_atoms, n_times_atom, D_init=D_init,
                                      D_init_params=D_init_params)
 
     init_duration = time.time() - start
@@ -204,13 +200,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
             callback(z_encoder, [])
 
         end_iter_func = get_iteration_func(
-            eps,
-            stopping_pobj,
-            callback,
-            lmbd_max,
-            name,
-            verbose,
-            raise_on_increase
+            eps, stopping_pobj, callback, lmbd_max,
+            name, verbose, raise_on_increase
         )
 
         # common parameters

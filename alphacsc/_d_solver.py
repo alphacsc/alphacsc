@@ -9,16 +9,10 @@ from .utils.dictionary import NoWindow, UVWindower, SimpleWindower, get_uv
 from .utils.optim import fista, power_iteration
 
 
-def get_solver_d(solver_d='alternate_adaptive',
-                 rank1=False,
-                 uv_constraint='auto',
-                 window=False,
-                 eps=1e-8,
-                 max_iter=300,
-                 momentum=False,
-                 random_state=None,
-                 verbose=0,
-                 debug=False):
+def get_solver_d(solver_d='alternate_adaptive', rank1=False,
+                 uv_constraint='auto', window=False, eps=1e-8,
+                 max_iter=300, momentum=False, random_state=None,
+                 verbose=0, debug=False):
     """Returns solver depending on solver_d type and rank1 value.
 
     Parameters
@@ -54,24 +48,28 @@ def get_solver_d(solver_d='alternate_adaptive',
 
     """
 
-    solver_d, uv_constraint = check_solver_and_constraints(rank1,
-                                                           solver_d,
+    solver_d, uv_constraint = check_solver_and_constraints(rank1, solver_d,
                                                            uv_constraint)
 
     if rank1:
         if solver_d in ['auto', 'alternate', 'alternate_adaptive']:
-            return AlternateDSolver(solver_d, uv_constraint, window, eps,
-                                    max_iter, momentum, random_state, verbose,
-                                    debug)
+            return AlternateDSolver(
+                solver_d, uv_constraint, window, eps, max_iter, momentum,
+                random_state, verbose, debug
+            )
         elif solver_d in ['fista', 'joint']:
-            return JointDSolver(solver_d, uv_constraint, window, eps, max_iter,
-                                momentum, random_state, verbose, debug)
+            return JointDSolver(
+                solver_d, uv_constraint, window, eps, max_iter, momentum,
+                random_state, verbose, debug
+            )
         else:
             raise ValueError('Unknown solver_d: %s' % (solver_d, ))
     else:
         if solver_d in ['auto', 'fista']:
-            return DSolver(solver_d, uv_constraint, window, eps, max_iter,
-                           momentum, random_state, verbose, debug)
+            return DSolver(
+                solver_d, uv_constraint, window, eps, max_iter, momentum,
+                random_state, verbose, debug
+            )
         else:
             raise ValueError('Unknown solver_d: %s' % (solver_d, ))
 
@@ -79,16 +77,8 @@ def get_solver_d(solver_d='alternate_adaptive',
 class BaseDSolver:
     """Base class for a d solver."""
 
-    def __init__(self,
-                 solver_d,
-                 rank1,
-                 uv_constraint,
-                 window,
-                 eps,
-                 max_iter,
-                 momentum,
-                 random_state,
-                 verbose,
+    def __init__(self, solver_d, rank1, uv_constraint, window,
+                 eps, max_iter, momentum, random_state, verbose,
                  debug):
 
         self.rank1 = rank1
@@ -134,13 +124,12 @@ class BaseDSolver:
             The initial atoms to learn from the data.
         """
 
-        return init_dictionary(X, n_atoms, n_times_atom,
-                               D_init=D_init,
-                               rank1=self.rank1,
-                               uv_constraint=self.uv_constraint,
-                               D_init_params=D_init_params,
-                               random_state=self.rng,
-                               window=self.window)
+        return init_dictionary(
+            X, n_atoms, n_times_atom, D_init=D_init,
+            rank1=self.rank1, uv_constraint=self.uv_constraint,
+            D_init_params=D_init_params, random_state=self.rng,
+            window=self.window
+        )
 
     def update_D(self, z_encoder):
         """Learn d's in time domain.
@@ -161,18 +150,12 @@ class BaseDSolver:
 
         D_hat0 = self.windower.dewindow(z_encoder.D_hat)
 
-        D_hat, pobj = fista(self._get_objective(z_encoder),
-                            self._get_grad(z_encoder),
-                            self._get_prox(z_encoder),
-                            None,
-                            D_hat0,
-                            self.max_iter,
-                            momentum=self.momentum,
-                            eps=self.eps,
-                            adaptive_step_size=True,
-                            name=self.name,
-                            debug=self.debug,
-                            verbose=self.verbose)
+        D_hat, pobj = fista(
+            self._get_objective(z_encoder), self._get_grad(z_encoder),
+            self._get_prox(z_encoder), None, D_hat0, self.max_iter,
+            momentum=self.momentum, eps=self.eps, adaptive_step_size=True,
+            name=self.name, debug=self.debug, verbose=self.verbose
+        )
 
         D_hat = self.windower.window(D_hat)
 
@@ -220,27 +203,14 @@ class BaseDSolver:
 class Rank1DSolver(BaseDSolver):
     """Base class for a rank1 solver d."""
 
-    def __init__(self,
-                 solver_d,
-                 uv_constraint,
-                 window,
-                 eps,
-                 max_iter,
-                 momentum,
-                 random_state,
-                 verbose,
-                 debug):
+    def __init__(self, solver_d, uv_constraint, window, eps, max_iter,
+                 momentum, random_state, verbose, debug):
 
-        super().__init__(solver_d,
-                         True,
-                         uv_constraint,
-                         window,
-                         eps,
-                         max_iter,
-                         momentum,
-                         random_state,
-                         verbose,
-                         debug)
+        super().__init__(
+            solver_d, True, uv_constraint, window, eps, max_iter,
+            momentum, random_state, verbose, debug
+        )
+
         self.name = "Update uv"
 
     def get_max_error_dict(self, z_encoder):
@@ -268,8 +238,7 @@ class Rank1DSolver(BaseDSolver):
 
         d0 = self.windower.simple_window(d0)
 
-        return prox_uv(get_uv(d0),
-                       uv_constraint=self.uv_constraint,
+        return prox_uv(get_uv(d0), uv_constraint=self.uv_constraint,
                        n_channels=z_encoder.n_channels)
 
     def _init_windower(self, z_encoder):
@@ -281,26 +250,13 @@ class Rank1DSolver(BaseDSolver):
 class JointDSolver(Rank1DSolver):
     """A class for 'fista' or 'joint' solver_d when rank1 is True. """
 
-    def __init__(self,
-                 solver_d,
-                 uv_constraint,
-                 window,
-                 eps,
-                 max_iter,
-                 momentum,
-                 random_state,
-                 verbose,
-                 debug):
+    def __init__(self, solver_d, uv_constraint, window, eps, max_iter,
+                 momentum, random_state, verbose, debug):
 
-        super().__init__(solver_d,
-                         uv_constraint,
-                         window,
-                         eps,
-                         max_iter,
-                         momentum,
-                         random_state,
-                         verbose,
-                         debug)
+        super().__init__(
+            solver_d, uv_constraint, window, eps, max_iter,
+            momentum, random_state, verbose, debug
+        )
 
     def _get_grad(self, z_encoder):
 
@@ -308,12 +264,11 @@ class JointDSolver(Rank1DSolver):
 
             uv = self.windower.window(uv)
 
-            grad = gradient_uv(uv=uv,
-                               X=z_encoder.X,
-                               z=z_encoder.get_z_hat(),
-                               constants=z_encoder.get_constants(),
-                               loss=z_encoder.loss,
-                               loss_params=z_encoder.loss_params)
+            grad = gradient_uv(
+                uv=uv, X=z_encoder.X, z=z_encoder.get_z_hat(),
+                constants=z_encoder.get_constants(), loss=z_encoder.loss,
+                loss_params=z_encoder.loss_params
+            )
 
             return self.windower.window(grad)
 
@@ -325,8 +280,7 @@ class JointDSolver(Rank1DSolver):
 
             uv = self.windower.window(uv)
 
-            uv = prox_uv(uv,
-                         uv_constraint=self.uv_constraint,
+            uv = prox_uv(uv, uv_constraint=self.uv_constraint,
                          n_channels=z_encoder.n_channels)
 
             return self.windower.dewindow(uv)
@@ -339,26 +293,14 @@ class AlternateDSolver(Rank1DSolver):
        True.
     """
 
-    def __init__(self,
-                 solver_d,
-                 uv_constraint,
-                 window,
-                 eps,
-                 max_iter,
-                 momentum,
-                 random_state,
-                 verbose,
-                 debug):
+    def __init__(self, solver_d, uv_constraint, window, eps, max_iter,
+                 momentum, random_state, verbose, debug):
 
-        super().__init__(solver_d,
-                         uv_constraint,
-                         window,
-                         eps,
-                         max_iter,
-                         momentum,
-                         random_state,
-                         verbose,
-                         debug)
+        super().__init__(
+            solver_d, uv_constraint, window, eps, max_iter,
+            momentum, random_state, verbose, debug
+        )
+
         self.adaptive_step_size = (solver_d == 'alternate_adaptive')
 
     def update_D(self, z_encoder):
@@ -387,12 +329,10 @@ class AlternateDSolver(Rank1DSolver):
         for jj in range(1):
 
             # update u
-            uv_hat, pobj_u = self._update_u(uv_hat, objective,
-                                            z_encoder)
+            uv_hat, pobj_u = self._update_u(uv_hat, objective, z_encoder)
 
             # update v
-            uv_hat, pobj_v = self._update_v(uv_hat, objective,
-                                            z_encoder)
+            uv_hat, pobj_v = self._update_v(uv_hat, objective, z_encoder)
 
             if self.debug:
                 pobj.extend(pobj_u)
@@ -415,12 +355,11 @@ class AlternateDSolver(Rank1DSolver):
 
             uv = np.c_[u, self.windower.simple_window(v_hat)]
 
-            grad_d = gradient_d(uv,
-                                X=z_encoder.X,
-                                z=z_encoder.get_z_hat(),
-                                constants=z_encoder.get_constants(),
-                                loss=z_encoder.loss,
-                                loss_params=z_encoder.loss_params)
+            grad_d = gradient_d(
+                uv, X=z_encoder.X, z=z_encoder.get_z_hat(),
+                constants=z_encoder.get_constants(), loss=z_encoder.loss,
+                loss_params=z_encoder.loss_params
+            )
 
             return (grad_d * uv[:, None, z_encoder.n_channels:]).sum(axis=2)
 
@@ -439,8 +378,8 @@ class AlternateDSolver(Rank1DSolver):
             H_u = (H_d * uv[:, None, n_channels:]).sum(axis=2)
             return H_u.ravel()
 
-        u_hat, pobj_u = self._run_fista(u_hat, uv_hat, obj, grad_u, prox_u,
-                                        op_Hu, 'u', z_encoder)
+        u_hat, pobj_u = self._run_fista(u_hat, uv_hat, obj, grad_u,
+                                        prox_u, op_Hu, 'u', z_encoder)
 
         uv_hat = np.c_[u_hat, v_hat]
 
@@ -459,12 +398,11 @@ class AlternateDSolver(Rank1DSolver):
 
             uv = np.c_[u_hat, v]
 
-            grad_d = gradient_d(uv,
-                                X=z_encoder.X,
-                                z=z_encoder.get_z_hat(),
-                                constants=z_encoder.get_constants(),
-                                loss=z_encoder.loss,
-                                loss_params=z_encoder.loss_params)
+            grad_d = gradient_d(
+                uv, X=z_encoder.X, z=z_encoder.get_z_hat(),
+                constants=z_encoder.get_constants(), loss=z_encoder.loss,
+                loss_params=z_encoder.loss_params
+            )
 
             grad_v = (grad_d * uv[:, :z_encoder.n_channels, None]).sum(axis=1)
 
@@ -532,18 +470,12 @@ class AlternateDSolver(Rank1DSolver):
 
         L = self._get_step_size(uv_hat, op, variable, z_encoder)
 
-        return fista(f_obj,
-                     f_grad,
-                     f_prox,
-                     0.99 / L,
-                     d_hat,
-                     self.max_iter,
-                     momentum=self.momentum,
-                     eps=self.eps,
-                     adaptive_step_size=self.adaptive_step_size,
-                     debug=self.debug,
-                     verbose=self.verbose,
-                     name="Update " + variable)
+        return fista(
+            f_obj, f_grad, f_prox, 0.99 / L, d_hat, self.max_iter,
+            momentum=self.momentum, eps=self.eps,
+            adaptive_step_size=self.adaptive_step_size, debug=self.debug,
+            verbose=self.verbose, name="Update " + variable
+        )
 
     def _get_step_size(self, uv_hat, op, variable, z_encoder):
         if self.adaptive_step_size:
@@ -576,27 +508,13 @@ class AlternateDSolver(Rank1DSolver):
 class DSolver(BaseDSolver):
     """A class for 'fista' solver_d when rank1 is False. """
 
-    def __init__(self,
-                 solver_d,
-                 uv_constraint,
-                 window,
-                 eps,
-                 max_iter,
-                 momentum,
-                 random_state,
-                 verbose,
-                 debug):
+    def __init__(self, solver_d, uv_constraint, window, eps, max_iter,
+                 momentum, random_state, verbose, debug):
 
-        super().__init__(solver_d,
-                         False,
-                         uv_constraint,
-                         window,
-                         eps,
-                         max_iter,
-                         momentum,
-                         random_state,
-                         verbose,
-                         debug)
+        super().__init__(
+            solver_d, False, uv_constraint, window, eps, max_iter,
+            momentum, random_state, verbose, debug
+        )
 
         self.name = "Update D"
 
@@ -638,12 +556,12 @@ class DSolver(BaseDSolver):
 
             D = self.windower.window(D)
 
-            grad = gradient_d(D=D,
-                              X=z_encoder.X,
-                              z=z_encoder.get_z_hat(),
-                              constants=z_encoder.get_constants(),
-                              loss=z_encoder.loss,
-                              loss_params=z_encoder.loss_params)
+            grad = gradient_d(
+                D=D, X=z_encoder.X, z=z_encoder.get_z_hat(),
+                constants=z_encoder.get_constants(), loss=z_encoder.loss,
+                loss_params=z_encoder.loss_params
+            )
+
             return self.windower.window(grad)
 
         return grad
