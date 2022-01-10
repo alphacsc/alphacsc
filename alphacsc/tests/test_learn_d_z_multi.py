@@ -43,6 +43,29 @@ def test_learn_d_z_multi(loss, rank1, solver_d, uv_constraint, window):
 
 
 @pytest.mark.parametrize('window', [False, True])
+@pytest.mark.parametrize('loss', ['dtw', 'whitening'])
+@pytest.mark.parametrize('rank1, solver_d, uv_constraint', [
+    (True, 'alternate', 'separate')])
+def test_learn_d_z_multi_error(loss, rank1, solver_d, uv_constraint, window):
+    # smoke test for learn_d_z_multi
+    n_trials, n_channels, n_times = 2, 3, 30
+    n_times_atom, n_atoms = 6, 4
+
+    loss_params = dict(gamma=1, sakoe_chiba_band=10, ordar=10)
+
+    rng = check_random_state(42)
+    X = rng.randn(n_trials, n_channels, n_times)
+
+    with pytest.raises(NotImplementedError):
+        pobj, times, uv_hat, z_hat, reg = learn_d_z_multi(
+            X, n_atoms, n_times_atom, uv_constraint=uv_constraint, rank1=rank1,
+            solver_d=solver_d, random_state=0,
+            n_iter=30, eps=-np.inf, solver_z='l-bfgs', window=window,
+            verbose=0, loss=loss, loss_params=loss_params
+        )
+
+
+@pytest.mark.parametrize('window', [False, True])
 # TODO expand params when DiCoDiLe is rank-1-capable
 def test_learn_d_z_multi_dicodile(window):
     pytest.importorskip('dicodile')
@@ -85,12 +108,21 @@ def test_window(rank1, solver_d, uv_constraint):
     )
 
     D_init = init_dictionary(X, n_atoms, n_times_atom, rank1=rank1,
-                             uv_constraint=uv_constraint_, random_state=0)
+                             uv_constraint=uv_constraint_, random_state=0,
+                             window=False)
 
     kwargs = dict(X=X, n_atoms=n_atoms, n_times_atom=n_times_atom, verbose=0,
                   uv_constraint=uv_constraint, solver_d=solver_d, rank1=rank1,
                   random_state=0, n_iter=1, solver_z='l-bfgs', D_init=D_init)
     res_False = learn_d_z_multi(window=False, **kwargs)
+
+    D_init = init_dictionary(X, n_atoms, n_times_atom, rank1=rank1,
+                             uv_constraint=uv_constraint_, random_state=0,
+                             window=True)
+
+    kwargs = dict(X=X, n_atoms=n_atoms, n_times_atom=n_times_atom, verbose=0,
+                  uv_constraint=uv_constraint, solver_d=solver_d, rank1=rank1,
+                  random_state=0, n_iter=1, solver_z='l-bfgs', D_init=D_init)
     res_True = learn_d_z_multi(window=True, **kwargs)
 
     assert not np.allclose(res_False[2], res_True[2])

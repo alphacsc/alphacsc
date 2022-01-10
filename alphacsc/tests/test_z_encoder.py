@@ -2,24 +2,14 @@ import numpy as np
 
 import pytest
 
-from alphacsc._encoder import get_z_encoder_for
+from alphacsc._z_encoder import get_z_encoder_for
 from alphacsc.init_dict import init_dictionary
 from alphacsc.loss_and_gradient import compute_objective
-from alphacsc.utils import check_random_state, construct_X_multi
+from alphacsc.utils import construct_X_multi
 from alphacsc.utils.compute_constants import compute_ztz, compute_ztX
 
 N_CHANNELS, N_TIMES = 3, 30
 N_TIMES_ATOM, N_ATOMS = 6, 4
-
-
-@pytest.fixture
-def rng():
-    return check_random_state(42)
-
-
-@pytest.fixture
-def X(rng, n_trials):
-    return rng.randn(n_trials, N_CHANNELS, N_TIMES)
 
 
 @pytest.fixture
@@ -39,12 +29,9 @@ def requires_dicodile(solver):
 
 @pytest.mark.parametrize('solver', ['l-bfgs', 'lgcd'])
 @pytest.mark.parametrize('loss', ['l2', 'dtw', 'whitening'])
-@pytest.mark.parametrize('uv_constraint', ['joint', 'separate', 'auto'])
-@pytest.mark.parametrize('feasible_evaluation', [True, False])
 @pytest.mark.parametrize('n_trials', [1, 2, 5])
 @pytest.mark.parametrize('rank1', [True, False])
-def test_get_encoder_for_alphacsc(X, solver, D_hat, loss, uv_constraint,
-                                  feasible_evaluation):
+def test_get_encoder_for_alphacsc(X, solver, D_hat, loss):
     """Test for valid values for alphacsc backend."""
 
     with get_z_encoder_for(solver=solver,
@@ -53,8 +40,6 @@ def test_get_encoder_for_alphacsc(X, solver, D_hat, loss, uv_constraint,
                            n_atoms=N_ATOMS,
                            n_times_atom=N_TIMES_ATOM,
                            loss=loss,
-                           uv_constraint=uv_constraint,
-                           feasible_evaluation=feasible_evaluation,
                            n_jobs=2) as z_encoder:
 
         assert z_encoder is not None
@@ -122,41 +107,10 @@ def test_get_encoder_for_dicodile_error_loss_params(solver, X, D_hat,
                           n_jobs=2)
 
 
-@pytest.mark.parametrize('solver, n_trials, rank1', [('dicodile', 1, False)])
-def test_get_encoder_for_dicodile_error_feasible_ev(solver, X, D_hat,
-                                                    requires_dicodile):
-    """Test for invalid feasible_evaluation value for dicodile backend."""
-
-    with pytest.raises(AssertionError,
-                       match="DiCoDiLe requires feasible_evaluation=False."):
-        get_z_encoder_for(solver=solver,
-                          X=X,
-                          D_hat=D_hat,
-                          feasible_evaluation=True,
-                          n_atoms=N_ATOMS,
-                          n_times_atom=N_TIMES_ATOM,
-                          n_jobs=2)
-
-
-@pytest.mark.parametrize('solver, n_trials, rank1', [('dicodile', 1, False)])
-def test_get_encoder_for_dicodile_error_uv_constraint(solver, X, D_hat,
-                                                      requires_dicodile):
-    """Test for invalid uv_constraint value for dicodile backend."""
-
-    with pytest.raises(AssertionError,
-                       match="DiCoDiLe requires uv_constraint=auto."):
-        get_z_encoder_for(solver=solver,
-                          X=X,
-                          D_hat=D_hat,
-                          uv_constraint='separate',
-                          n_atoms=N_ATOMS,
-                          n_times_atom=N_TIMES_ATOM,
-                          n_jobs=2)
-
-
 @pytest.mark.parametrize('solver, n_trials, rank1', [('dicodile', 1, True)])
 def test_get_encoder_for_dicodile_error_rank1(X, D_hat, requires_dicodile):
-    """Test for invalid rank1 value for dicodile backend."""
+    """Test for dictionary generated with invalid rank1 value for dicodile
+    backend."""
 
     with pytest.raises(AssertionError):
         get_z_encoder_for(solver='dicodile',
@@ -272,23 +226,6 @@ def test_get_encoder_for_error_loss_params(X, D_hat):
                           n_jobs=2)
 
 
-@pytest.mark.parametrize('n_trials', [2])
-@pytest.mark.parametrize('rank1', [True])
-@pytest.mark.parametrize('uv_constraint', [None, 'other'])
-def test_get_encoder_for_error_uv_constraint(X, D_hat,
-                                             uv_constraint):
-    """Tests for invalid values of `uv_constraint`."""
-
-    with pytest.raises(AssertionError,
-                       match="unrecognized uv_constraint type.*"):
-        get_z_encoder_for(X=X,
-                          D_hat=D_hat,
-                          n_atoms=N_ATOMS,
-                          n_times_atom=N_TIMES_ATOM,
-                          uv_constraint=uv_constraint,
-                          n_jobs=2)
-
-
 @pytest.mark.parametrize('solver, n_trials, rank1',
                          [('l-bfgs', 3, True),
                           ('dicodile', 1, False)
@@ -310,8 +247,9 @@ def test_get_z_hat(solver, X, D_hat, requires_dicodile):
         assert z_encoder.get_z_hat().any()
 
 
-@pytest.mark.parametrize('solver, n_trials, rank1', [('l-bfgs', 3, True),
-                                                     ('dicodile', 1, False)])
+@pytest.mark.parametrize('solver, n_trials, rank1',
+                         [('l-bfgs', 3, True),
+                          ('dicodile', 1, False)])
 def test_get_cost(solver, X, D_hat, requires_dicodile):
     """Test for valid values."""
 

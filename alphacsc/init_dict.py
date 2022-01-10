@@ -15,7 +15,6 @@ from .utils import check_random_state
 from .other.kmc2 import custom_distances
 from .update_d_multi import prox_uv, prox_d
 
-from .utils.dictionary import get_D_shape
 from .utils.dictionary import tukey_window
 from .utils.dictionary import get_uv, get_D
 
@@ -317,47 +316,3 @@ def _embed(x, dim, lag=1):
     X = np.lib.stride_tricks.as_strided(x, (len(x) - dim * lag + lag, dim),
                                         (x.strides[0], x.strides[0] * lag))
     return X.T
-
-
-def get_max_error_dict(z_encoder, uv_constraint='separate', window=False):
-    """Get the maximal reconstruction error patch from the data as a new atom
-
-    This idea is used for instance in [Yellin2017]
-
-    Parameters
-    ----------
-    z_encoder : BaseZEncoder
-        ZEncoder object to be able to compute the largest error patch.
-    uv_constraint : str in {'joint' | 'separate'}
-        The kind of norm constraint on the atoms:
-        If 'joint', the constraint is norm_2([u, v]) <= 1
-        If 'separate', the constraint is norm_2(u) <= 1 and norm_2(v) <= 1
-    window : boolean
-        If True, multiply the atoms with a temporal Tukey window.
-
-    Return
-    ------
-    uvk: array, shape (n_channels + n_times_atom,)
-        New atom for the dictionary, chosen as the chunk of data with the
-        maximal reconstruction error.
-
-    [Yellin2017] BLOOD CELL DETECTION AND COUNTING IN HOLOGRAPHIC LENS-FREE
-    IMAGING BY CONVOLUTIONAL SPARSE DICTIONARY LEARNING AND CODING.
-    """
-    X, D = z_encoder.X, z_encoder.D_hat
-    _, n_channels, _ = X.shape
-    *_, n_times_atom = get_D_shape(D, n_channels)
-    d0 = z_encoder.get_max_error_patch()
-
-    if window:
-        d0 = d0 * tukey_window(n_times_atom)[None, :]
-
-    if D.ndim == 2:
-        return get_uv(d0)
-
-    if D.ndim == 2:
-        d0 = prox_uv(d0, uv_constraint=uv_constraint, n_channels=n_channels)
-    else:
-        d0 = prox_d(d0)
-
-    return d0

@@ -4,12 +4,80 @@ from scipy import optimize, signal
 
 from alphacsc.loss_and_gradient import compute_objective
 from alphacsc.loss_and_gradient import gradient_d, gradient_uv
-from alphacsc.update_d_multi import update_uv, prox_uv, _get_d_update_constants
+from alphacsc.update_d_multi import _get_d_update_constants
+from alphacsc.update_d_multi import check_solver_and_constraints
 from alphacsc.utils.whitening import whitening
 from alphacsc.utils import construct_X_multi
 
 
 DEBUG = True
+
+
+@pytest.mark.parametrize('solver_d', ['auto', 'fista'])
+@pytest.mark.parametrize('uv_constraint', ['auto'])
+def test_check_solver_and_constraints(solver_d, uv_constraint):
+    """Tests for valid values when rank1 is False."""
+
+    solver_d_, uv_constraint_ = check_solver_and_constraints(False, solver_d,
+                                                             uv_constraint)
+
+    assert solver_d_ == 'fista'
+    assert uv_constraint_ == 'auto'
+
+
+@pytest.mark.parametrize('solver_d', ['auto', 'fista'])
+@pytest.mark.parametrize('uv_constraint', ['joint', 'separate'])
+def test_check_solver_and_constraints_error(solver_d, uv_constraint):
+    """Tests for the case rank1 is False and params are not compatible."""
+
+    with pytest.raises(AssertionError,
+                       match="If rank1 is False, uv_constraint should be*"):
+
+        check_solver_and_constraints(False, solver_d, uv_constraint)
+
+
+@pytest.mark.parametrize('solver_d', ['auto', 'alternate',
+                                      'alternate_adaptive'])
+@pytest.mark.parametrize('uv_constraint', ['auto', 'separate'])
+def test_check_solver_and_constraints_rank1_alternate(solver_d, uv_constraint):
+    """Tests for valid values when solver is alternate and rank1 is True."""
+
+    solver_d_, uv_constraint_ = check_solver_and_constraints(True, solver_d,
+                                                             uv_constraint)
+
+    if solver_d == 'auto':
+        solver_d = 'alternate_adaptive'
+
+    assert solver_d_ == solver_d
+    assert uv_constraint_ == 'separate'
+
+
+@pytest.mark.parametrize('solver_d', ['joint', 'fista'])
+@pytest.mark.parametrize('uv_constraint', ['auto', 'joint', 'separate'])
+def test_check_solver_and_constraints_rank1(solver_d, uv_constraint):
+    """Tests for valid values when solver_d is either in 'joint' or 'fista' and
+    rank1 is True."""
+
+    solver_d_, uv_constraint_ = check_solver_and_constraints(True, solver_d,
+                                                             uv_constraint)
+
+    if uv_constraint == 'auto':
+        uv_constraint = 'joint'
+
+    assert solver_d_ == solver_d
+    assert uv_constraint_ == uv_constraint
+
+
+@pytest.mark.parametrize('solver_d', ['auto', 'alternate',
+                                      'alternate_adaptive'])
+@pytest.mark.parametrize('uv_constraint', ['joint'])
+def test_check_solver_and_constraints_rank1_error(solver_d, uv_constraint):
+    """Tests for the case when rank1 is True and params are not compatible.
+    """
+    with pytest.raises(AssertionError,
+                       match="solver_d=*"):
+
+        check_solver_and_constraints(True, solver_d, uv_constraint)
 
 
 def test_simple():
@@ -137,57 +205,6 @@ def test_gradient_uv(loss):
         assert np.allclose(
             gradient_uv(uv, X=X, z=z, flatten=True),
             gradient_uv(uv, constants=constants, flatten=True)), msg
-
-
-@pytest.mark.parametrize('solver_d, uv_constraint', [
-    ('joint', 'joint'), ('alternate', 'separate')
-])
-def test_update_uv(solver_d, uv_constraint):
-    # Generate synchronous D
-    n_times_atom, n_times = 10, 100
-    n_channels = 5
-    n_atoms = 2
-    n_trials = 3
-
-    rng = np.random.RandomState()
-    z = rng.normal(size=(n_trials, n_atoms, n_times - n_times_atom + 1))
-    uv0 = rng.normal(size=(n_atoms, n_channels + n_times_atom))
-    uv1 = rng.normal(size=(n_atoms, n_channels + n_times_atom))
-
-    uv0 = prox_uv(uv0)
-    uv1 = prox_uv(uv1)
-
-    X = construct_X_multi(z, D=uv0, n_channels=n_channels)
-
-    def objective(uv):
-        X_hat = construct_X_multi(z, D=uv, n_channels=n_channels)
-        return compute_objective(X, X_hat, loss='l2')
-
-    # Ensure that the known optimal point is stable
-    uv = update_uv(X, z, uv0, max_iter=1000, verbose=0)
-    cost = objective(uv)
-
-    assert np.isclose(cost, 0), "optimal point not stable"
-    assert np.allclose(uv, uv0), "optimal point not stable"
-
-    # Ensure that the update is going down from a random initialization
-    cost0 = objective(uv1)
-    uv, pobj = update_uv(X, z, uv1, debug=True, max_iter=5000, verbose=10,
-                         solver_d=solver_d, momentum=False, eps=1e-10,
-                         uv_constraint=uv_constraint)
-    cost1 = objective(uv)
-
-    msg = "Learning is not going down"
-    try:
-        assert cost1 < cost0, msg
-        # assert np.isclose(cost1, 0, atol=1e-7)
-    except AssertionError:
-        import matplotlib.pyplot as plt
-        pobj = np.array(pobj)
-        plt.semilogy(pobj)
-        plt.title(msg)
-        plt.show()
-        raise
 
 
 def test_fast_cost():
