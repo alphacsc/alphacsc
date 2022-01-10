@@ -22,6 +22,131 @@ ried = custom_distances.roll_invariant_euclidean_distances
 tied = custom_distances.translation_invariant_euclidean_distances
 
 
+def get_dictionary_generator(X, n_atoms, n_times_atom, random_state, rank1,
+                             D_init, D_init_params):
+    if isinstance(D_init, np.ndarray):
+        return IdentityDictGenerator(X, n_atoms, n_times_atom, random_state,
+                                     rank1, D_init)
+    elif D_init is None or D_init == 'random':
+        return RandomDictGenerator(X, n_atoms, n_times_atom, random_state,
+                                   rank1)
+    elif D_init == 'chunk':
+        return ChunkDictGenerator(X, n_atoms, n_times_atom, random_state,
+                                  rank1)
+    elif D_init == "kmeans":
+        return KMeansDictGenerator(X, n_atoms, n_times_atom, random_state,
+                                   rank1, D_init_params)
+    elif D_init == 'ssa':
+        return SSADictGenerator(X, n_atoms, n_times_atom, random_state,
+                                rank1)
+    elif D_init == 'greedy':
+        raise NotImplementedError()
+
+    else:
+        raise NotImplementedError('It is not possible to initialize uv'
+                                  ' with parameter {}.'.format(D_init))
+
+
+class DictGenerator():
+    def __init__(self, X, n_atoms, n_times_atom, random_state, rank1):
+        self.X = X
+        self.n_atoms = n_atoms
+        self.n_times_atom = n_times_atom
+        self.rng = check_random_state(random_state)
+        self.rank1 = rank1
+
+    def get_dict(self):
+        assert self.D_init.shape == self.get_D_shape()
+
+        return self.D_init.copy()
+
+    def get_D_shape(n_channels, n_atoms, n_times_atom, rank1):
+        if rank1:
+            return (n_atoms, n_channels + n_times_atom)
+        return (n_atoms, n_channels, n_times_atom)
+
+
+class IdentityDictGenerator(DictGenerator):
+
+    def __init__(self, X, n_atoms, n_times_atom, random_state, rank1, D_init):
+        super().__init__(X, n_atoms, n_times_atom, random_state, rank1)
+
+        self.D_init = D_init
+
+    def get_dict(self):
+        n_trials, n_channels, n_times = self.X.shape
+        assert self.D_init.shape == DictGenerator.get_D_shape(
+            n_channels, self.n_atoms, self.n_times_atom, self.rank1
+        )
+
+        return self.D_init.copy()
+
+
+class RandomDictGenerator(DictGenerator):
+
+    # def __init__(self, X, n_atoms, n_times_atom, random_state, rank1):
+    #     super().__init__(X, n_atoms, n_times_atom, random_state, rank1)
+
+    def get_dict(self):
+        n_trials, n_channels, n_times = self.X.shape
+
+        D_shape = DictGenerator.get_D_shape(n_channels, self.n_atoms,
+                                            self.n_times_atom, self.rank1)
+        return self.rng.randn(*D_shape)
+
+
+class ChunkDictGenerator(DictGenerator):
+
+    def get_dict(self):
+        n_trials, n_channels, n_times = self.X.shape
+
+        D_hat = np.zeros((self.n_atoms, n_channels, self.n_times_atom))
+
+        for i_atom in range(self.n_atoms):
+            i_trial = self.rng.randint(n_trials)
+            t0 = self.rng.randint(n_times - self. n_times_atom)
+            D_hat[i_atom] = self.X[i_trial, :, t0:t0 + self.n_times_atom]
+
+        if self.rank1:
+            D_hat = get_uv(D_hat)
+
+        return D_hat
+
+
+class KMeansDictGenerator(DictGenerator):
+
+    def __init__(self, X, n_atoms, n_times_atom, random_state, rank1,
+                 D_init_params):
+        super().__init__(X, n_atoms, n_times_atom, random_state, rank1)
+
+        self.D_init_params = D_init_params
+
+    def get_dict(self):
+        n_trials, n_channels, n_times = self.X.shape
+
+        D_hat = kmeans_init(self.X, self.n_atoms, self.n_times_atom,
+                            random_state=self.rng, **self.D_init_params)
+        if not self.rank1:
+            D_hat = get_D(D_hat, n_channels)
+
+        return D_hat
+
+
+class SSADictGenerator(DictGenerator):
+    def get_dict(self):
+        n_trials, n_channels, n_times = self.X.shape
+
+        u_hat = self.rng.randn(self.n_atoms, n_channels)
+        v_hat = ssa_init(self.X, self.n_atoms,
+                         self.n_times_atom, random_state=self.rng)
+        D_hat = np.c_[u_hat, v_hat]
+
+        if not self.rank1:
+            D_hat = get_D(D_hat, n_channels)
+
+        return D_hat
+
+
 def init_dictionary(X, n_atoms, n_times_atom, uv_constraint='separate',
                     rank1=True, window=False, D_init=None,
                     D_init_params=dict(), random_state=None):

@@ -1,15 +1,16 @@
 import numpy as np
 
-from .init_dict import kmeans_init, ssa_init
+from .init_dict import get_dictionary_generator
 from .loss_and_gradient import gradient_uv, gradient_d
 from .update_d_multi import prox_d, prox_uv, check_solver_and_constraints
 from .utils import check_random_state
 from .utils.convolution import numpy_convolve_uv
-from .utils.dictionary import NoWindow, UVWindower, SimpleWindower, get_uv, get_D
+from .utils.dictionary import NoWindow, UVWindower, SimpleWindower, get_uv
 from .utils.optim import fista, power_iteration
 
 
-def get_solver_d(solver_d='alternate_adaptive', rank1=False,
+def get_solver_d(n_channels, n_atoms, n_times_atom,
+                 solver_d='alternate_adaptive', rank1=False,
                  uv_constraint='auto', window=False, eps=1e-8,
                  max_iter=300, momentum=False, random_state=None,
                  verbose=0, debug=False):
@@ -17,6 +18,12 @@ def get_solver_d(solver_d='alternate_adaptive', rank1=False,
 
     Parameters
     ----------
+    n_channels : int
+        The number of channels.
+    n_atoms : int
+        The number of atoms to learn.
+    n_times_atom : int
+        The support of the atom.
     solver_d : str in {'alternate' | 'alternate_adaptive' | 'fista' | 'joint' |
     'auto'}
         The solver to use for the d update.
@@ -54,21 +61,21 @@ def get_solver_d(solver_d='alternate_adaptive', rank1=False,
     if rank1:
         if solver_d in ['auto', 'alternate', 'alternate_adaptive']:
             return AlternateDSolver(
-                solver_d, uv_constraint, window, eps, max_iter, momentum,
-                random_state, verbose, debug
+                n_channels, n_atoms, n_times_atom, solver_d, uv_constraint,
+                window, eps, max_iter, momentum, random_state, verbose, debug
             )
         elif solver_d in ['fista', 'joint']:
             return JointDSolver(
-                solver_d, uv_constraint, window, eps, max_iter, momentum,
-                random_state, verbose, debug
+                n_channels, n_atoms, n_times_atom, solver_d, uv_constraint,
+                window, eps, max_iter, momentum, random_state, verbose, debug
             )
         else:
             raise ValueError('Unknown solver_d: %s' % (solver_d, ))
     else:
         if solver_d in ['auto', 'fista']:
             return DSolver(
-                solver_d, uv_constraint, window, eps, max_iter, momentum,
-                random_state, verbose, debug
+                n_channels, n_atoms, n_times_atom, solver_d, uv_constraint,
+                window, eps, max_iter, momentum, random_state, verbose, debug
             )
         else:
             raise ValueError('Unknown solver_d: %s' % (solver_d, ))
@@ -77,10 +84,13 @@ def get_solver_d(solver_d='alternate_adaptive', rank1=False,
 class BaseDSolver:
     """Base class for a d solver."""
 
-    def __init__(self, solver_d, uv_constraint, window,
-                 eps, max_iter, momentum, random_state, verbose,
-                 debug, rank1):
+    def __init__(self, n_channels, n_atoms, n_times_atom, solver_d,
+                 uv_constraint, window, eps, max_iter, momentum, random_state,
+                 verbose, debug, rank1):
 
+        self.n_channels = n_channels
+        self.n_atoms = n_atoms
+        self.n_times_atom = n_times_atom
         self.rank1 = rank1
         self.uv_constraint = uv_constraint
         self.window = window
@@ -91,27 +101,21 @@ class BaseDSolver:
         self.verbose = verbose
         self.debug = debug
 
-        self.windower = None
-
-        # This guarantees that, if self.window=False, self.windower=NoWindow()
         if not self.window:
             self.windower = NoWindow()
+        else:
+            self._init_windower()
 
-    def _get_D_shape(self, n_channels, n_atoms, n_times_atom):
+    def get_D_shape(self):
         raise NotImplementedError
 
-    def init_dictionary(self, X, n_atoms, n_times_atom, D_init=None,
-                        D_init_params=dict()):
+    def init_dictionary(self, X, D_init=None, D_init_params=dict()):
         """Returns an initial dictionary for the signal X.
 
         Parameter
         ---------
         X: array, shape (n_trials, n_channels, n_times)
             The data on which to perform CSC.
-        n_atoms : int
-            The number of atoms to learn.
-        n_times_atom : int
-            The support of the atom.
         D_init : array or {'kmeans' | 'ssa' | 'chunk' | 'random'}
             The initialization scheme for the dictionary or the initial
             atoms. The shape should match the required dictionary shape, ie if
@@ -127,48 +131,14 @@ class BaseDSolver:
             The initial atoms to learn from the data.
         """
 
-        n_trials, n_channels, n_times = X.shape
+        dict_generator = get_dictionary_generator(
+            X, self.n_atoms, self.n_times_atom, self.rng, self.rank1,
+            D_init, D_init_params
+        )
 
-        D_shape = self._get_D_shape(n_channels, n_atoms, n_times_atom)
-
-        if isinstance(D_init, np.ndarray):
-            D_hat = D_init.copy()
-            assert D_hat.shape == D_shape
-
-        elif D_init is None or D_init == "random":
-            D_hat = self.rng.randn(*D_shape)
-
-        elif D_init == 'chunk':
-            D_hat = np.zeros((n_atoms, n_channels, n_times_atom))
-            for i_atom in range(n_atoms):
-                i_trial = self.rng.randint(n_trials)
-                t0 = self.rng.randint(n_times - n_times_atom)
-                D_hat[i_atom] = X[i_trial, :, t0:t0 + n_times_atom]
-            if self.rank1:
-                D_hat = get_uv(D_hat)
-
-        elif D_init == "kmeans":
-            D_hat = kmeans_init(X, n_atoms, n_times_atom,
-                                random_state=self.rng, **D_init_params)
-            if not self.rank1:
-                D_hat = get_D(D_hat, n_channels)
-
-        elif D_init == "ssa":
-            u_hat = self.rng.randn(n_atoms, n_channels)
-            v_hat = ssa_init(X, n_atoms, n_times_atom, random_state=self.rng)
-            D_hat = np.c_[u_hat, v_hat]
-            if not self.rank1:
-                D_hat = get_D(D_hat, n_channels)
-
-        elif D_init == 'greedy':
-            raise NotImplementedError()
-
-        else:
-            raise NotImplementedError('It is not possible to initialize uv'
-                                      ' with parameter {}.'.format(D_init))
+        D_hat = dict_generator.get_dict()
 
         if not isinstance(D_init, np.ndarray):
-            self._init_windower(n_channels, n_times_atom)
             D_hat = self.windower.window(D_hat)
 
         return D_hat
@@ -187,8 +157,6 @@ class BaseDSolver:
                              (n_atoms, n_channels, n_times_atom)
             The atoms to learn from the data.
         """
-
-        self._init_windower(z_encoder.n_channels, z_encoder.n_times_atom)
 
         D_hat0 = self.windower.dewindow(z_encoder.D_hat)
 
@@ -228,7 +196,7 @@ class BaseDSolver:
 
         raise NotImplementedError()
 
-    def _init_windower(self, n_channels, n_times_atom):
+    def _init_windower(self):
         raise NotImplementedError()
 
     def _get_objective(self, z_encoder):
@@ -245,20 +213,19 @@ class BaseDSolver:
 class Rank1DSolver(BaseDSolver):
     """Base class for a rank1 solver d."""
 
-    def __init__(self, solver_d, uv_constraint, window, eps, max_iter,
+    def __init__(self, n_channels, n_atoms, n_times_atom,
+                 solver_d, uv_constraint, window, eps, max_iter,
                  momentum, random_state, verbose, debug):
 
         super().__init__(
-            solver_d, uv_constraint, window, eps, max_iter, momentum,
-            random_state, verbose, debug, rank1=True
+            n_channels, n_atoms, n_times_atom, solver_d, uv_constraint, window,
+            eps, max_iter, momentum, random_state, verbose, debug, rank1=True
         )
 
         self.name = "Update uv"
 
-    def init_dictionary(self, X, n_atoms, n_times_atom, D_init=None,
-                        D_init_params=dict()):
-        D_hat = super().init_dictionary(X, n_atoms, n_times_atom, D_init,
-                                        D_init_params)
+    def init_dictionary(self, X, D_init=None, D_init_params=dict()):
+        D_hat = super().init_dictionary(X, D_init, D_init_params)
 
         n_trials, n_channels, n_times = X.shape
 
@@ -284,32 +251,32 @@ class Rank1DSolver(BaseDSolver):
         [Yellin2017] BLOOD CELL DETECTION AND COUNTING IN HOLOGRAPHIC LENS-FREE
         IMAGING BY CONVOLUTIONAL SPARSE DICTIONARY LEARNING AND CODING.
         """
-        self._init_windower(z_encoder.n_channels, z_encoder.n_times_atom)
+        assert z_encoder.n_channels == self.n_channels
 
         d0 = z_encoder.get_max_error_patch()
 
         d0 = self.windower.simple_window(d0)
 
         return prox_uv(get_uv(d0), uv_constraint=self.uv_constraint,
-                       n_channels=z_encoder.n_channels)
+                       n_channels=self.n_channels)
 
-    def _init_windower(self, n_channels, n_times_atom):
-        if self.windower is None:
-            self.windower = UVWindower(n_times_atom, n_channels)
+    def _init_windower(self):
+        self.windower = UVWindower(self.n_times_atom, self.n_channels)
 
-    def _get_D_shape(self, n_channels, n_atoms, n_times_atom):
-        return (n_atoms, n_channels + n_times_atom)
+    def get_D_shape(self):
+        return (self.n_atoms, self.n_channels + self.n_times_atom)
 
 
 class JointDSolver(Rank1DSolver):
     """A class for 'fista' or 'joint' solver_d when rank1 is True. """
 
-    def __init__(self, solver_d, uv_constraint, window, eps, max_iter,
+    def __init__(self, n_channels, n_atoms, n_times_atom,
+                 solver_d, uv_constraint, window, eps, max_iter,
                  momentum, random_state, verbose, debug):
 
         super().__init__(
-            solver_d, uv_constraint, window, eps, max_iter,
-            momentum, random_state, verbose, debug
+            n_channels, n_atoms, n_times_atom, solver_d, uv_constraint, window,
+            eps, max_iter, momentum, random_state, verbose, debug
         )
 
     def _get_grad(self, z_encoder):
@@ -347,12 +314,13 @@ class AlternateDSolver(Rank1DSolver):
        True.
     """
 
-    def __init__(self, solver_d, uv_constraint, window, eps, max_iter,
+    def __init__(self, n_channels, n_atoms, n_times_atom,
+                 solver_d, uv_constraint, window, eps, max_iter,
                  momentum, random_state, verbose, debug):
 
         super().__init__(
-            solver_d, uv_constraint, window, eps, max_iter,
-            momentum, random_state, verbose, debug
+            n_channels, n_atoms, n_times_atom, solver_d, uv_constraint, window,
+            eps, max_iter, momentum, random_state, verbose, debug
         )
 
         self.adaptive_step_size = (solver_d == 'alternate_adaptive')
@@ -370,8 +338,6 @@ class AlternateDSolver(Rank1DSolver):
         uv_hat : array, shape (n_atoms, n_channels + n_times_atom)
             The atoms to learn from the data.
         """
-
-        self._init_windower(z_encoder.n_channels, z_encoder.n_times_atom)
 
         uv_hat = self.windower.dewindow(z_encoder.D_hat)
 
@@ -400,7 +366,7 @@ class AlternateDSolver(Rank1DSolver):
 
     def _update_u(self, uv_hat0, objective, z_encoder):
 
-        n_channels = z_encoder.n_channels
+        n_channels = self.n_channels
 
         uv_hat = uv_hat0.copy()
         u_hat, v_hat = uv_hat[:, :n_channels], uv_hat[:, n_channels:]
@@ -441,7 +407,7 @@ class AlternateDSolver(Rank1DSolver):
 
     def _update_v(self, uv_hat0, objective, z_encoder):
 
-        n_channels = z_encoder.n_channels
+        n_channels = self.n_channels
 
         uv_hat = uv_hat0.copy()
         u_hat, v_hat = uv_hat[:, :n_channels], uv_hat[:, n_channels:]
@@ -562,20 +528,19 @@ class AlternateDSolver(Rank1DSolver):
 class DSolver(BaseDSolver):
     """A class for 'fista' solver_d when rank1 is False. """
 
-    def __init__(self, solver_d, uv_constraint, window, eps, max_iter,
+    def __init__(self, n_channels, n_atoms, n_times_atom,
+                 solver_d, uv_constraint, window, eps, max_iter,
                  momentum, random_state, verbose, debug):
 
         super().__init__(
-            solver_d, uv_constraint, window, eps, max_iter, momentum,
-            random_state, verbose, debug, rank1=False
+            n_channels, n_atoms, n_times_atom, solver_d, uv_constraint, window,
+            eps, max_iter, momentum, random_state, verbose, debug, rank1=False
         )
 
         self.name = "Update D"
 
-    def init_dictionary(self, X, n_atoms, n_times_atom, D_init=None,
-                        D_init_params=dict()):
-        D_hat = super().init_dictionary(X, n_atoms, n_times_atom, D_init,
-                                        D_init_params)
+    def init_dictionary(self, X, D_init=None, D_init_params=dict()):
+        D_hat = super().init_dictionary(X, D_init, D_init_params)
 
         return prox_d(D_hat)
 
@@ -599,7 +564,7 @@ class DSolver(BaseDSolver):
         IMAGING BY CONVOLUTIONAL SPARSE DICTIONARY LEARNING AND CODING.
         """
 
-        self._init_windower(z_encoder)
+        assert z_encoder.n_channels == self.n_channels
 
         d0 = z_encoder.get_max_error_patch()
 
@@ -607,12 +572,11 @@ class DSolver(BaseDSolver):
 
         return prox_d(d0)
 
-    def _init_windower(self, n_channels, n_times_atom):
-        if self.windower is None:
-            self.windower = SimpleWindower(n_times_atom)
+    def _init_windower(self):
+        self.windower = SimpleWindower(self.n_times_atom)
 
-    def _get_D_shape(self, n_channels, n_atoms, n_times_atom):
-        return (n_atoms, n_channels, n_times_atom)
+    def get_D_shape(self):
+        return (self.n_atoms, self.n_channels, self.n_times_atom)
 
     def _get_grad(self, z_encoder):
 

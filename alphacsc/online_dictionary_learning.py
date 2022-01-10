@@ -96,11 +96,10 @@ class OnlineCDL(ConvolutionalDictionaryLearning):
                               " not been updated.", UserWarning)
                 return z_encoder.get_z_hat()
 
-            d_solver = get_solver_d(solver_d=self.solver_d,
-                                    rank1=self.rank1,
-                                    window=self.window,
-                                    random_state=self.random_state,
-                                    **self.solver_d_kwargs)
+            d_solver = get_solver_d(
+                z_encoder.n_channels, self.n_atoms, self.n_times_atom,
+                solver_d=self.solver_d, rank1=self.rank1, window=self.window,
+                random_state=self.random_state, **self.solver_d_kwargs)
 
             self._D_hat = d_solver.update_D(z_encoder)
             self.z_hat = z_encoder.get_z_hat()
