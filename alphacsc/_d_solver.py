@@ -1,11 +1,11 @@
 import numpy as np
 
-from .init_dict import init_dictionary
+from .init_dict import kmeans_init, ssa_init
 from .loss_and_gradient import gradient_uv, gradient_d
 from .update_d_multi import prox_d, prox_uv, check_solver_and_constraints
 from .utils import check_random_state
 from .utils.convolution import numpy_convolve_uv
-from .utils.dictionary import NoWindow, UVWindower, SimpleWindower, get_uv
+from .utils.dictionary import NoWindow, UVWindower, SimpleWindower, get_uv, get_D
 from .utils.optim import fista, power_iteration
 
 
@@ -97,6 +97,9 @@ class BaseDSolver:
         if not self.window:
             self.windower = NoWindow()
 
+    def _get_D_shape(self, n_channels, n_atoms, n_times_atom):
+        raise NotImplementedError
+
     def init_dictionary(self, X, n_atoms, n_times_atom, D_init=None,
                         D_init_params=dict()):
         """Returns an initial dictionary for the signal X.
@@ -124,12 +127,51 @@ class BaseDSolver:
             The initial atoms to learn from the data.
         """
 
-        return init_dictionary(
-            X, n_atoms, n_times_atom, D_init=D_init,
-            rank1=self.rank1, uv_constraint=self.uv_constraint,
-            D_init_params=D_init_params, random_state=self.rng,
-            window=self.window
-        )
+        n_trials, n_channels, n_times = X.shape
+
+        D_shape = self._get_D_shape(n_channels, n_atoms, n_times_atom)
+
+        if isinstance(D_init, np.ndarray):
+            D_hat = D_init.copy()
+            assert D_hat.shape == D_shape
+
+        elif D_init is None or D_init == "random":
+            D_hat = self.rng.randn(*D_shape)
+
+        elif D_init == 'chunk':
+            D_hat = np.zeros((n_atoms, n_channels, n_times_atom))
+            for i_atom in range(n_atoms):
+                i_trial = self.rng.randint(n_trials)
+                t0 = self.rng.randint(n_times - n_times_atom)
+                D_hat[i_atom] = X[i_trial, :, t0:t0 + n_times_atom]
+            if self.rank1:
+                D_hat = get_uv(D_hat)
+
+        elif D_init == "kmeans":
+            D_hat = kmeans_init(X, n_atoms, n_times_atom,
+                                random_state=self.rng, **D_init_params)
+            if not self.rank1:
+                D_hat = get_D(D_hat, n_channels)
+
+        elif D_init == "ssa":
+            u_hat = self.rng.randn(n_atoms, n_channels)
+            v_hat = ssa_init(X, n_atoms, n_times_atom, random_state=self.rng)
+            D_hat = np.c_[u_hat, v_hat]
+            if not self.rank1:
+                D_hat = get_D(D_hat, n_channels)
+
+        elif D_init == 'greedy':
+            raise NotImplementedError()
+
+        else:
+            raise NotImplementedError('It is not possible to initialize uv'
+                                      ' with parameter {}.'.format(D_init))
+
+        if not isinstance(D_init, np.ndarray):
+            self._init_windower(n_channels, n_times_atom)
+            D_hat = self.windower.window(D_hat)
+
+        return D_hat
 
     def update_D(self, z_encoder):
         """Learn d's in time domain.
@@ -146,7 +188,7 @@ class BaseDSolver:
             The atoms to learn from the data.
         """
 
-        self._init_windower(z_encoder)
+        self._init_windower(z_encoder.n_channels, z_encoder.n_times_atom)
 
         D_hat0 = self.windower.dewindow(z_encoder.D_hat)
 
@@ -186,7 +228,7 @@ class BaseDSolver:
 
         raise NotImplementedError()
 
-    def _init_windower(self, z_encoder):
+    def _init_windower(self, n_channels, n_times_atom):
         raise NotImplementedError()
 
     def _get_objective(self, z_encoder):
@@ -213,6 +255,16 @@ class Rank1DSolver(BaseDSolver):
 
         self.name = "Update uv"
 
+    def init_dictionary(self, X, n_atoms, n_times_atom, D_init=None,
+                        D_init_params=dict()):
+        D_hat = super().init_dictionary(X, n_atoms, n_times_atom, D_init,
+                                        D_init_params)
+
+        n_trials, n_channels, n_times = X.shape
+
+        return prox_uv(D_hat, uv_constraint=self.uv_constraint,
+                       n_channels=n_channels)
+
     def get_max_error_dict(self, z_encoder):
         """Get the maximal reconstruction error patch from the data as a new atom
 
@@ -232,7 +284,7 @@ class Rank1DSolver(BaseDSolver):
         [Yellin2017] BLOOD CELL DETECTION AND COUNTING IN HOLOGRAPHIC LENS-FREE
         IMAGING BY CONVOLUTIONAL SPARSE DICTIONARY LEARNING AND CODING.
         """
-        self._init_windower(z_encoder)
+        self._init_windower(z_encoder.n_channels, z_encoder.n_times_atom)
 
         d0 = z_encoder.get_max_error_patch()
 
@@ -241,10 +293,12 @@ class Rank1DSolver(BaseDSolver):
         return prox_uv(get_uv(d0), uv_constraint=self.uv_constraint,
                        n_channels=z_encoder.n_channels)
 
-    def _init_windower(self, z_encoder):
+    def _init_windower(self, n_channels, n_times_atom):
         if self.windower is None:
-            self.windower = UVWindower(z_encoder.n_times_atom,
-                                       z_encoder.n_channels)
+            self.windower = UVWindower(n_times_atom, n_channels)
+
+    def _get_D_shape(self, n_channels, n_atoms, n_times_atom):
+        return (n_atoms, n_channels + n_times_atom)
 
 
 class JointDSolver(Rank1DSolver):
@@ -317,7 +371,7 @@ class AlternateDSolver(Rank1DSolver):
             The atoms to learn from the data.
         """
 
-        self._init_windower(z_encoder)
+        self._init_windower(z_encoder.n_channels, z_encoder.n_times_atom)
 
         uv_hat = self.windower.dewindow(z_encoder.D_hat)
 
@@ -518,6 +572,13 @@ class DSolver(BaseDSolver):
 
         self.name = "Update D"
 
+    def init_dictionary(self, X, n_atoms, n_times_atom, D_init=None,
+                        D_init_params=dict()):
+        D_hat = super().init_dictionary(X, n_atoms, n_times_atom, D_init,
+                                        D_init_params)
+
+        return prox_d(D_hat)
+
     def get_max_error_dict(self, z_encoder):
         """Get the maximal reconstruction error patch from the data as a new atom
 
@@ -546,9 +607,12 @@ class DSolver(BaseDSolver):
 
         return prox_d(d0)
 
-    def _init_windower(self, z_encoder):
+    def _init_windower(self, n_channels, n_times_atom):
         if self.windower is None:
-            self.windower = SimpleWindower(z_encoder.n_times_atom)
+            self.windower = SimpleWindower(n_times_atom)
+
+    def _get_D_shape(self, n_channels, n_atoms, n_times_atom):
+        return (n_atoms, n_channels, n_times_atom)
 
     def _get_grad(self, z_encoder):
 
