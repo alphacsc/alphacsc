@@ -22,17 +22,17 @@ ried = custom_distances.roll_invariant_euclidean_distances
 tied = custom_distances.translation_invariant_euclidean_distances
 
 
-def get_strategy(baseStrategy, D_init):
+def get_generator(baseStrategy, D_init):
     if isinstance(D_init, np.ndarray):
-        return IdentityStrategy(baseStrategy, D_init)
+        return IdentityGenerator(baseStrategy, D_init)
     elif D_init is None or D_init == 'random':
-        return RandomStrategy(baseStrategy)
+        return RandomGenerator(baseStrategy)
     elif D_init == 'chunk':
-        return ChunkStrategy(baseStrategy)
+        return ChunkGenerator(baseStrategy)
     elif D_init == "kmeans":
-        return KMeansStrategy(baseStrategy)
+        return KMeansGenerator(baseStrategy)
     elif D_init == 'ssa':
-        return SSAStrategy(baseStrategy)
+        return SSAGenerator(baseStrategy)
     elif D_init == 'greedy':
         raise NotImplementedError()
     else:
@@ -79,29 +79,29 @@ class Rank1InitStrategy(BaseInitStrategy):
         return get_uv(D_hat)
 
 
-class CommonStrategy(BaseInitStrategy):
+class BaseGenerator():
 
     def __init__(self, base_strategy):
-        self.base = base_strategy
-        self.n_channels = self.base.n_channels
-        self.n_atoms = self.base.n_atoms
-        self.n_times_atom = self.base.n_times_atom
-        self.rng = self.base.rng
+        self.strategy = base_strategy
+        self.n_channels = self.strategy.n_channels
+        self.n_atoms = self.strategy.n_atoms
+        self.n_times_atom = self.strategy.n_times_atom
+        self.rng = self.strategy.rng
 
     def get_D_shape(self):
-        return self.base.get_D_shape()
+        return self.strategy.get_D_shape()
 
     def get_dict(self, X, D_init_params):
         raise NotImplementedError()
 
     def wrap(self, D_hat):
-        return self.base.wrap(D_hat)
+        return self.strategy.wrap(D_hat)
 
     def wrap_rank1(self, D_hat):
-        return self.base.wrap_rank1(D_hat)
+        return self.strategy.wrap_rank1(D_hat)
 
 
-class IdentityStrategy(CommonStrategy):
+class IdentityGenerator(BaseGenerator):
 
     def __init__(self, base_strategy, D_init):
         super().__init__(base_strategy)
@@ -113,13 +113,13 @@ class IdentityStrategy(CommonStrategy):
         return self.D_init.copy()
 
 
-class RandomStrategy(CommonStrategy):
+class RandomGenerator(BaseGenerator):
 
     def get_dict(self, X, D_init_params):
         return self.rng.randn(*self.get_D_shape())
 
 
-class ChunkStrategy(CommonStrategy):
+class ChunkGenerator(BaseGenerator):
 
     def get_dict(self, X, D_init_params):
         n_trials, n_channels, n_times = X.shape
@@ -136,7 +136,7 @@ class ChunkStrategy(CommonStrategy):
         return D_hat
 
 
-class KMeansStrategy(CommonStrategy):
+class KMeansGenerator(BaseGenerator):
 
     def get_dict(self, X, D_init_params):
         D_hat = kmeans_init(X, self.n_atoms, self.n_times_atom,
@@ -146,7 +146,7 @@ class KMeansStrategy(CommonStrategy):
         return D_hat
 
 
-class SSAStrategy(CommonStrategy):
+class SSAGenerator(BaseGenerator):
 
     def get_dict(self, X, D_init_params):
         u_hat = self.rng.randn(self.n_atoms, self.n_channels)
