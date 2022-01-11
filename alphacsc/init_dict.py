@@ -22,23 +22,149 @@ ried = custom_distances.roll_invariant_euclidean_distances
 tied = custom_distances.translation_invariant_euclidean_distances
 
 
-def get_dictionary_generator(X, n_atoms, n_times_atom, random_state, rank1,
-                             D_init, D_init_params):
+class DictGenerator():
+    def __init__(self, n_channels, n_atoms, n_times_atom, random_state):
+        self.n_channels = n_channels
+        self.n_atoms = n_atoms
+        self.n_times_atom = n_times_atom
+        self.rng = check_random_state(random_state)
+
+    def get_dict(self, X, D_init, D_init_params):
+        strategy = get_strategy(
+            self.get_D_shape(), self.n_atoms, self.n_times_atom, self.rng,
+            D_init, D_init_params
+        )
+
+        return strategy.get_dict(X)
+
+    def get_D_shape(self):
+        return (self.n_atoms, self.n_channels, self.n_times_atom)
+
+
+class Rank1DictGenerator(DictGenerator):
+
+    def get_dict(self, X, D_init, D_init_params):
+        strategy = get_rank1_strategy(
+            self.get_D_shape(), self.n_atoms, self.n_times_atom, self.rng,
+            D_init, D_init_params
+        )
+
+        return strategy.get_dict(X)
+
+    def get_D_shape(self):
+        return (self.n_atoms, self.n_channels + self.n_times_atom)
+
+
+class IdentityStrategy():
+
+    def __init__(self, d_shape, D_init):
+        assert d_shape == D_init.shape
+        self.d_shape = d_shape
+        self.D_init = D_init
+
+    def get_dict(self, X):
+        return self.D_init.copy()
+
+
+class RandomStrategy():
+
+    def __init__(self, d_shape, rng):
+        self.d_shape = d_shape
+        self.rng = rng
+
+    def get_dict(self, X):
+        return self.rng.randn(*self.d_shape)
+
+
+class ChunkStrategy():
+
+    def __init__(self, n_atoms, n_times_atom, rng):
+        self.n_atoms = n_atoms
+        self.n_times_atom = n_times_atom
+        self.rng = rng
+
+    def get_dict(self, X):
+        n_trials, n_channels, n_times = X.shape
+
+        D_hat = np.zeros((self.n_atoms, n_channels, self.n_times_atom))
+
+        for i_atom in range(self.n_atoms):
+            i_trial = self.rng.randint(n_trials)
+            t0 = self.rng.randint(n_times - self.n_times_atom)
+            D_hat[i_atom] = X[i_trial, :, t0:t0 + self.n_times_atom]
+
+        return D_hat
+
+
+class KMeansStrategy():
+
+    def __init__(self, n_atoms, n_times_atom, rng, D_init_params):
+        self.n_atoms = n_atoms
+        self.n_times_atom = n_times_atom
+        self.rng = rng
+        self.D_init_params = D_init_params
+
+    def get_dict(self, X):
+        _, n_channels, _ = X.shape
+        D_hat = kmeans_init(X, self.n_atoms, self.n_times_atom,
+                            random_state=self.rng, **self.D_init_params)
+
+        return D_hat
+
+
+class SSAStrategy():
+
+    def __init__(self, n_atoms, n_times_atom, rng):
+        self.n_atoms = n_atoms
+        self.n_times_atom = n_times_atom
+        self.rng = rng
+
+    def get_dict(self, X):
+        _, n_channels, _ = X.shape
+        u_hat = self.rng.randn(self.n_atoms, n_channels)
+        v_hat = ssa_init(X, self.n_atoms,
+                         self.n_times_atom, random_state=self.rng)
+        D_hat = np.c_[u_hat, v_hat]
+
+        return D_hat
+
+
+class Rank1DictWrapper():
+
+    def __init__(self, parent):
+        self.parent = parent
+
+    def get_dict(self, X):
+        _, n_channels, _ = X.shape
+        D_hat = self.parent.get_dict(X)
+
+        return get_D(D_hat, n_channels)
+
+
+class ProjectWrapper():
+
+    def __init__(self, parent):
+        self.parent = parent
+
+    def get_dict(self, X):
+        D_hat = self.parent.get_dict(X)
+
+        return get_uv(D_hat)
+
+
+def get_strategy(d_shape, n_atoms, n_times_atom, rng, D_init, D_init_params):
     if isinstance(D_init, np.ndarray):
-        return IdentityDictGenerator(X, n_atoms, n_times_atom, random_state,
-                                     rank1, D_init)
+        return IdentityStrategy(d_shape, D_init)
     elif D_init is None or D_init == 'random':
-        return RandomDictGenerator(X, n_atoms, n_times_atom, random_state,
-                                   rank1)
+        return RandomStrategy(d_shape, rng)
     elif D_init == 'chunk':
-        return ChunkDictGenerator(X, n_atoms, n_times_atom, random_state,
-                                  rank1)
+        return ChunkStrategy(n_atoms, n_times_atom, rng)
     elif D_init == "kmeans":
-        return KMeansDictGenerator(X, n_atoms, n_times_atom, random_state,
-                                   rank1, D_init_params)
+        strategy = KMeansStrategy(n_atoms, n_times_atom, rng, D_init_params)
+        return Rank1DictWrapper(strategy)
     elif D_init == 'ssa':
-        return SSADictGenerator(X, n_atoms, n_times_atom, random_state,
-                                rank1)
+        strategy = SSAStrategy(n_atoms, n_times_atom, rng)
+        return Rank1DictWrapper(strategy)
     elif D_init == 'greedy':
         raise NotImplementedError()
 
@@ -47,104 +173,25 @@ def get_dictionary_generator(X, n_atoms, n_times_atom, random_state, rank1,
                                   ' with parameter {}.'.format(D_init))
 
 
-class DictGenerator():
-    def __init__(self, X, n_atoms, n_times_atom, random_state, rank1):
-        self.X = X
-        self.n_atoms = n_atoms
-        self.n_times_atom = n_times_atom
-        self.rng = check_random_state(random_state)
-        self.rank1 = rank1
+def get_rank1_strategy(d_shape, n_atoms, n_times_atom, rng, D_init,
+                       D_init_params):
+    if isinstance(D_init, np.ndarray):
+        return IdentityStrategy(d_shape, D_init)
+    elif D_init is None or D_init == 'random':
+        return RandomStrategy(d_shape, rng)
+    elif D_init == 'chunk':
+        strategy = ChunkStrategy(n_atoms, n_times_atom, rng)
+        return ProjectWrapper(strategy)
+    elif D_init == "kmeans":
+        return KMeansStrategy(n_atoms, n_times_atom, rng, D_init_params)
+    elif D_init == 'ssa':
+        return SSAStrategy(n_atoms, n_times_atom, rng)
+    elif D_init == 'greedy':
+        raise NotImplementedError()
 
-    def get_dict(self):
-        assert self.D_init.shape == self.get_D_shape()
-
-        return self.D_init.copy()
-
-    def get_D_shape(n_channels, n_atoms, n_times_atom, rank1):
-        if rank1:
-            return (n_atoms, n_channels + n_times_atom)
-        return (n_atoms, n_channels, n_times_atom)
-
-
-class IdentityDictGenerator(DictGenerator):
-
-    def __init__(self, X, n_atoms, n_times_atom, random_state, rank1, D_init):
-        super().__init__(X, n_atoms, n_times_atom, random_state, rank1)
-
-        self.D_init = D_init
-
-    def get_dict(self):
-        n_trials, n_channels, n_times = self.X.shape
-        assert self.D_init.shape == DictGenerator.get_D_shape(
-            n_channels, self.n_atoms, self.n_times_atom, self.rank1
-        )
-
-        return self.D_init.copy()
-
-
-class RandomDictGenerator(DictGenerator):
-
-    # def __init__(self, X, n_atoms, n_times_atom, random_state, rank1):
-    #     super().__init__(X, n_atoms, n_times_atom, random_state, rank1)
-
-    def get_dict(self):
-        n_trials, n_channels, n_times = self.X.shape
-
-        D_shape = DictGenerator.get_D_shape(n_channels, self.n_atoms,
-                                            self.n_times_atom, self.rank1)
-        return self.rng.randn(*D_shape)
-
-
-class ChunkDictGenerator(DictGenerator):
-
-    def get_dict(self):
-        n_trials, n_channels, n_times = self.X.shape
-
-        D_hat = np.zeros((self.n_atoms, n_channels, self.n_times_atom))
-
-        for i_atom in range(self.n_atoms):
-            i_trial = self.rng.randint(n_trials)
-            t0 = self.rng.randint(n_times - self. n_times_atom)
-            D_hat[i_atom] = self.X[i_trial, :, t0:t0 + self.n_times_atom]
-
-        if self.rank1:
-            D_hat = get_uv(D_hat)
-
-        return D_hat
-
-
-class KMeansDictGenerator(DictGenerator):
-
-    def __init__(self, X, n_atoms, n_times_atom, random_state, rank1,
-                 D_init_params):
-        super().__init__(X, n_atoms, n_times_atom, random_state, rank1)
-
-        self.D_init_params = D_init_params
-
-    def get_dict(self):
-        n_trials, n_channels, n_times = self.X.shape
-
-        D_hat = kmeans_init(self.X, self.n_atoms, self.n_times_atom,
-                            random_state=self.rng, **self.D_init_params)
-        if not self.rank1:
-            D_hat = get_D(D_hat, n_channels)
-
-        return D_hat
-
-
-class SSADictGenerator(DictGenerator):
-    def get_dict(self):
-        n_trials, n_channels, n_times = self.X.shape
-
-        u_hat = self.rng.randn(self.n_atoms, n_channels)
-        v_hat = ssa_init(self.X, self.n_atoms,
-                         self.n_times_atom, random_state=self.rng)
-        D_hat = np.c_[u_hat, v_hat]
-
-        if not self.rank1:
-            D_hat = get_D(D_hat, n_channels)
-
-        return D_hat
+    else:
+        raise NotImplementedError('It is not possible to initialize uv'
+                                  ' with parameter {}.'.format(D_init))
 
 
 def init_dictionary(X, n_atoms, n_times_atom, uv_constraint='separate',

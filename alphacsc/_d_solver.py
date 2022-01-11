@@ -1,6 +1,6 @@
 import numpy as np
 
-from .init_dict import get_dictionary_generator
+from .init_dict import DictGenerator, Rank1DictGenerator
 from .loss_and_gradient import gradient_uv, gradient_d
 from .update_d_multi import prox_d, prox_uv, check_solver_and_constraints
 from .utils import check_random_state
@@ -106,8 +106,44 @@ class BaseDSolver:
         else:
             self._init_windower()
 
-    def get_D_shape(self):
-        raise NotImplementedError
+    def _init_windower(self):
+        raise NotImplementedError()
+
+    def _get_objective(self, z_encoder):
+
+        def objective(D, full=False):
+
+            D = self.windower.window(D)
+
+            return z_encoder.compute_objective(D)
+
+        return objective
+
+    def prox(self, D_hat):
+        raise NotImplementedError()
+
+    def get_max_error_dict(self, z_encoder):
+        """Get the maximal reconstruction error patch from the data as a new atom
+
+        This idea is used for instance in [Yellin2017]
+
+        Parameters
+        ----------
+        z_encoder : BaseZEncoder
+            ZEncoder object to be able to compute the largest error patch.
+
+        Return
+        ------
+        dk: array, shape (n_channels + n_times_atom,) or
+                         (n_channels, n_times_atom,)
+            New atom for the dictionary, chosen as the chunk of data with the
+            maximal reconstruction error.
+
+        [Yellin2017] BLOOD CELL DETECTION AND COUNTING IN HOLOGRAPHIC LENS-FREE
+        IMAGING BY CONVOLUTIONAL SPARSE DICTIONARY LEARNING AND CODING.
+        """
+
+        raise NotImplementedError()
 
     def init_dictionary(self, X, D_init=None, D_init_params=dict()):
         """Returns an initial dictionary for the signal X.
@@ -131,15 +167,12 @@ class BaseDSolver:
             The initial atoms to learn from the data.
         """
 
-        dict_generator = get_dictionary_generator(
-            X, self.n_atoms, self.n_times_atom, self.rng, self.rank1,
-            D_init, D_init_params
-        )
-
-        D_hat = dict_generator.get_dict()
+        D_hat = self.dict_generator.get_dict(X, D_init, D_init_params)
 
         if not isinstance(D_init, np.ndarray):
             D_hat = self.windower.window(D_hat)
+
+        D_hat = self.prox(D_hat)
 
         return D_hat
 
@@ -173,42 +206,6 @@ class BaseDSolver:
             return D_hat, pobj
         return D_hat
 
-    def get_max_error_dict(self, z_encoder):
-        """Get the maximal reconstruction error patch from the data as a new atom
-
-        This idea is used for instance in [Yellin2017]
-
-        Parameters
-        ----------
-        z_encoder : BaseZEncoder
-            ZEncoder object to be able to compute the largest error patch.
-
-        Return
-        ------
-        dk: array, shape (n_channels + n_times_atom,) or
-                         (n_channels, n_times_atom,)
-            New atom for the dictionary, chosen as the chunk of data with the
-            maximal reconstruction error.
-
-        [Yellin2017] BLOOD CELL DETECTION AND COUNTING IN HOLOGRAPHIC LENS-FREE
-        IMAGING BY CONVOLUTIONAL SPARSE DICTIONARY LEARNING AND CODING.
-        """
-
-        raise NotImplementedError()
-
-    def _init_windower(self):
-        raise NotImplementedError()
-
-    def _get_objective(self, z_encoder):
-
-        def objective(D, full=False):
-
-            D = self.windower.window(D)
-
-            return z_encoder.compute_objective(D)
-
-        return objective
-
 
 class Rank1DSolver(BaseDSolver):
     """Base class for a rank1 solver d."""
@@ -222,15 +219,18 @@ class Rank1DSolver(BaseDSolver):
             eps, max_iter, momentum, random_state, verbose, debug, rank1=True
         )
 
+        self.dict_generator = Rank1DictGenerator(
+            self.n_channels, self.n_atoms, self.n_times_atom, self.rng
+        )
+
         self.name = "Update uv"
 
-    def init_dictionary(self, X, D_init=None, D_init_params=dict()):
-        D_hat = super().init_dictionary(X, D_init, D_init_params)
+    def _init_windower(self):
+        self.windower = UVWindower(self.n_times_atom, self.n_channels)
 
-        n_trials, n_channels, n_times = X.shape
-
+    def prox(self, D_hat):
         return prox_uv(D_hat, uv_constraint=self.uv_constraint,
-                       n_channels=n_channels)
+                       n_channels=self.n_channels)
 
     def get_max_error_dict(self, z_encoder):
         """Get the maximal reconstruction error patch from the data as a new atom
@@ -257,14 +257,7 @@ class Rank1DSolver(BaseDSolver):
 
         d0 = self.windower.simple_window(d0)
 
-        return prox_uv(get_uv(d0), uv_constraint=self.uv_constraint,
-                       n_channels=self.n_channels)
-
-    def _init_windower(self):
-        self.windower = UVWindower(self.n_times_atom, self.n_channels)
-
-    def get_D_shape(self):
-        return (self.n_atoms, self.n_channels + self.n_times_atom)
+        return self.prox(get_uv(d0))
 
 
 class JointDSolver(Rank1DSolver):
@@ -537,11 +530,44 @@ class DSolver(BaseDSolver):
             eps, max_iter, momentum, random_state, verbose, debug, rank1=False
         )
 
+        self.dict_generator = DictGenerator(
+            self.n_channels, self.n_atoms, self.n_times_atom, self.rng
+        )
+
         self.name = "Update D"
 
-    def init_dictionary(self, X, D_init=None, D_init_params=dict()):
-        D_hat = super().init_dictionary(X, D_init, D_init_params)
+    def _init_windower(self):
+        self.windower = SimpleWindower(self.n_times_atom)
 
+    def _get_grad(self, z_encoder):
+
+        def grad(D):
+
+            D = self.windower.window(D)
+
+            grad = gradient_d(
+                D=D, X=z_encoder.X, z=z_encoder.get_z_hat(),
+                constants=z_encoder.get_constants(), loss=z_encoder.loss,
+                loss_params=z_encoder.loss_params
+            )
+
+            return self.windower.window(grad)
+
+        return grad
+
+    def _get_prox(self, z_encoder):
+
+        def prox(D, step_size=None):
+
+            D = self.windower.window(D)
+
+            D = self.prox(D)
+
+            return self.windower.dewindow(D)
+
+        return prox
+
+    def prox(self, D_hat):
         return prox_d(D_hat)
 
     def get_max_error_dict(self, z_encoder):
@@ -570,38 +596,4 @@ class DSolver(BaseDSolver):
 
         d0 = self.windower.window(d0)
 
-        return prox_d(d0)
-
-    def _init_windower(self):
-        self.windower = SimpleWindower(self.n_times_atom)
-
-    def get_D_shape(self):
-        return (self.n_atoms, self.n_channels, self.n_times_atom)
-
-    def _get_grad(self, z_encoder):
-
-        def grad(D):
-
-            D = self.windower.window(D)
-
-            grad = gradient_d(
-                D=D, X=z_encoder.X, z=z_encoder.get_z_hat(),
-                constants=z_encoder.get_constants(), loss=z_encoder.loss,
-                loss_params=z_encoder.loss_params
-            )
-
-            return self.windower.window(grad)
-
-        return grad
-
-    def _get_prox(self, z_encoder):
-
-        def prox(D, step_size=None):
-
-            D = self.windower.window(D)
-
-            D = prox_d(D)
-
-            return self.windower.dewindow(D)
-
-        return prox
+        return self.prox(d0)
