@@ -1,6 +1,6 @@
 import numpy as np
 
-from .init_dict import DictStrategy, Rank1DictStrategy
+from .init_dict import DictGenerator, Rank1DictGenerator
 from .loss_and_gradient import gradient_uv, gradient_d
 from .update_d_multi import prox_d, prox_uv, check_solver_and_constraints
 from .utils import check_random_state
@@ -167,8 +167,8 @@ class BaseDSolver:
             The initial atoms to learn from the data.
         """
 
-        self.dict_strategy.set_dict_generator(D_init)
-        D_hat = self.dict_strategy.get_dict(X, D_init_params)
+        self.dict_generator.set_strategy(D_init)
+        D_hat = self.dict_generator.get_dict(X, D_init_params)
 
         if not isinstance(D_init, np.ndarray):
             D_hat = self.windower.window(D_hat)
@@ -220,7 +220,7 @@ class Rank1DSolver(BaseDSolver):
             eps, max_iter, momentum, random_state, verbose, debug, rank1=True
         )
 
-        self.dict_strategy = Rank1DictStrategy(
+        self.dict_generator = Rank1DictGenerator(
             self.n_channels, self.n_atoms, self.n_times_atom, self.rng
         )
 
@@ -531,7 +531,7 @@ class DSolver(BaseDSolver):
             eps, max_iter, momentum, random_state, verbose, debug, rank1=False
         )
 
-        self.dict_strategy = DictStrategy(
+        self.dict_generator = DictGenerator(
             self.n_channels, self.n_atoms, self.n_times_atom, self.rng
         )
 

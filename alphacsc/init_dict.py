@@ -22,7 +22,7 @@ ried = custom_distances.roll_invariant_euclidean_distances
 tied = custom_distances.translation_invariant_euclidean_distances
 
 
-class BaseDictStrategy():
+class BaseDictGenerator():
 
     def __init__(self, n_channels, n_atoms, n_times_atom, random_state):
         self.n_channels = n_channels
@@ -34,7 +34,7 @@ class BaseDictStrategy():
         raise NotImplementedError()
 
     def get_dict(self, X, D_init_params):
-        return self.generator.get_dict(X, D_init_params)
+        return self.strategy.get_dict(X, D_init_params)
 
     def wrap(self, D_hat):
         return D_hat
@@ -42,17 +42,17 @@ class BaseDictStrategy():
     def wrap_rank1(self, D_hat):
         return D_hat
 
-    def set_dict_generator(self, D_init):
+    def set_strategy(self, D_init):
         if isinstance(D_init, np.ndarray):
-            self.generator = IdentityGenerator(self, D_init)
+            self.strategy = IdentityStrategy(self, D_init)
         elif D_init is None or D_init == 'random':
-            self.generator = RandomGenerator(self)
+            self.strategy = RandomStrategy(self)
         elif D_init == 'chunk':
-            self.generator = ChunkGenerator(self)
+            self.strategy = ChunkStrategy(self)
         elif D_init == "kmeans":
-            self.generator = KMeansGenerator(self)
+            self.strategy = KMeansStrategy(self)
         elif D_init == 'ssa':
-            self.generator = SSAGenerator(self)
+            self.strategy = SSAStrategy(self)
         elif D_init == 'greedy':
             raise NotImplementedError()
         else:
@@ -60,7 +60,7 @@ class BaseDictStrategy():
                                       ' with parameter {}.'.format(D_init))
 
 
-class DictStrategy(BaseDictStrategy):
+class DictGenerator(BaseDictGenerator):
 
     def get_D_shape(self):
         return (self.n_atoms, self.n_channels, self.n_times_atom)
@@ -69,7 +69,7 @@ class DictStrategy(BaseDictStrategy):
         return get_D(D_hat, self.n_channels)
 
 
-class Rank1DictStrategy(BaseDictStrategy):
+class Rank1DictGenerator(BaseDictGenerator):
 
     def get_D_shape(self):
         return (self.n_atoms, self.n_channels + self.n_times_atom)
@@ -78,32 +78,32 @@ class Rank1DictStrategy(BaseDictStrategy):
         return get_uv(D_hat)
 
 
-class BaseGenerator(BaseDictStrategy):
+class BaseStrategy():
 
-    def __init__(self, base_strategy):
-        self.strategy = base_strategy
-        self.n_channels = base_strategy.n_channels
-        self.n_atoms = base_strategy.n_atoms
-        self.n_times_atom = base_strategy.n_times_atom
-        self.rng = base_strategy.rng
+    def __init__(self, generator):
+        self.generator = generator
+        self.n_channels = generator.n_channels
+        self.n_atoms = generator.n_atoms
+        self.n_times_atom = generator.n_times_atom
+        self.rng = generator.rng
 
     def get_D_shape(self):
-        return self.strategy.get_D_shape()
+        return self.generator.get_D_shape()
 
     def get_dict(self, X, D_init_params):
         raise NotImplementedError()
 
     def wrap(self, D_hat):
-        return self.strategy.wrap(D_hat)
+        return self.generator.wrap(D_hat)
 
     def wrap_rank1(self, D_hat):
-        return self.strategy.wrap_rank1(D_hat)
+        return self.generator.wrap_rank1(D_hat)
 
 
-class IdentityGenerator(BaseGenerator):
+class IdentityStrategy(BaseStrategy):
 
-    def __init__(self, base_strategy, D_init):
-        super().__init__(base_strategy)
+    def __init__(self, generator, D_init):
+        super().__init__(generator)
 
         assert self.get_D_shape() == D_init.shape
         self.D_init = D_init
@@ -112,13 +112,13 @@ class IdentityGenerator(BaseGenerator):
         return self.D_init.copy()
 
 
-class RandomGenerator(BaseGenerator):
+class RandomStrategy(BaseStrategy):
 
     def get_dict(self, X, D_init_params):
         return self.rng.randn(*self.get_D_shape())
 
 
-class ChunkGenerator(BaseGenerator):
+class ChunkStrategy(BaseStrategy):
 
     def get_dict(self, X, D_init_params):
         n_trials, n_channels, n_times = X.shape
@@ -135,7 +135,7 @@ class ChunkGenerator(BaseGenerator):
         return D_hat
 
 
-class KMeansGenerator(BaseGenerator):
+class KMeansStrategy(BaseStrategy):
 
     def get_dict(self, X, D_init_params):
         D_hat = kmeans_init(X, self.n_atoms, self.n_times_atom,
@@ -145,7 +145,7 @@ class KMeansGenerator(BaseGenerator):
         return D_hat
 
 
-class SSAGenerator(BaseGenerator):
+class SSAStrategy(BaseStrategy):
 
     def get_dict(self, X, D_init_params):
         u_hat = self.rng.randn(self.n_atoms, self.n_channels)
