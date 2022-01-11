@@ -1,11 +1,12 @@
 import numpy as np
 
-from .init_dict import InitStrategy, Rank1InitStrategy, get_generator
+from .init_dict import DictStrategy, Rank1DictStrategy
 from .loss_and_gradient import gradient_uv, gradient_d
 from .update_d_multi import prox_d, prox_uv, check_solver_and_constraints
 from .utils import check_random_state
 from .utils.convolution import numpy_convolve_uv
-from .utils.dictionary import NoWindow, UVWindower, SimpleWindower, get_uv
+from .utils.dictionary import get_uv, NoWindow, UVWindower, SimpleWindower
+
 from .utils.optim import fista, power_iteration
 
 
@@ -93,7 +94,6 @@ class BaseDSolver:
         self.n_times_atom = n_times_atom
         self.rank1 = rank1
         self.uv_constraint = uv_constraint
-        self.window = window
         self.eps = eps
         self.max_iter = max_iter
         self.momentum = momentum
@@ -101,7 +101,7 @@ class BaseDSolver:
         self.verbose = verbose
         self.debug = debug
 
-        if not self.window:
+        if not window:
             self.windower = NoWindow()
         else:
             self._init_windower()
@@ -167,8 +167,8 @@ class BaseDSolver:
             The initial atoms to learn from the data.
         """
 
-        dict_generator = get_generator(self.dict_strategy, D_init)
-        D_hat = dict_generator.get_dict(X, D_init_params)
+        self.dict_strategy.set_dict_generator(D_init)
+        D_hat = self.dict_strategy.get_dict(X, D_init_params)
 
         if not isinstance(D_init, np.ndarray):
             D_hat = self.windower.window(D_hat)
@@ -220,7 +220,7 @@ class Rank1DSolver(BaseDSolver):
             eps, max_iter, momentum, random_state, verbose, debug, rank1=True
         )
 
-        self.dict_strategy = Rank1InitStrategy(
+        self.dict_strategy = Rank1DictStrategy(
             self.n_channels, self.n_atoms, self.n_times_atom, self.rng
         )
 
@@ -531,7 +531,7 @@ class DSolver(BaseDSolver):
             eps, max_iter, momentum, random_state, verbose, debug, rank1=False
         )
 
-        self.dict_strategy = InitStrategy(
+        self.dict_strategy = DictStrategy(
             self.n_channels, self.n_atoms, self.n_times_atom, self.rng
         )
 

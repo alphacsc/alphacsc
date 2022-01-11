@@ -22,25 +22,7 @@ ried = custom_distances.roll_invariant_euclidean_distances
 tied = custom_distances.translation_invariant_euclidean_distances
 
 
-def get_generator(baseStrategy, D_init):
-    if isinstance(D_init, np.ndarray):
-        return IdentityGenerator(baseStrategy, D_init)
-    elif D_init is None or D_init == 'random':
-        return RandomGenerator(baseStrategy)
-    elif D_init == 'chunk':
-        return ChunkGenerator(baseStrategy)
-    elif D_init == "kmeans":
-        return KMeansGenerator(baseStrategy)
-    elif D_init == 'ssa':
-        return SSAGenerator(baseStrategy)
-    elif D_init == 'greedy':
-        raise NotImplementedError()
-    else:
-        raise NotImplementedError('It is not possible to initialize uv'
-                                  ' with parameter {}.'.format(D_init))
-
-
-class BaseInitStrategy():
+class BaseDictStrategy():
 
     def __init__(self, n_channels, n_atoms, n_times_atom, random_state):
         self.n_channels = n_channels
@@ -52,7 +34,7 @@ class BaseInitStrategy():
         raise NotImplementedError()
 
     def get_dict(self, X, D_init_params):
-        raise NotImplementedError()
+        return self.generator.get_dict(X, D_init_params)
 
     def wrap(self, D_hat):
         return D_hat
@@ -60,8 +42,25 @@ class BaseInitStrategy():
     def wrap_rank1(self, D_hat):
         return D_hat
 
+    def set_dict_generator(self, D_init):
+        if isinstance(D_init, np.ndarray):
+            self.generator = IdentityGenerator(self, D_init)
+        elif D_init is None or D_init == 'random':
+            self.generator = RandomGenerator(self)
+        elif D_init == 'chunk':
+            self.generator = ChunkGenerator(self)
+        elif D_init == "kmeans":
+            self.generator = KMeansGenerator(self)
+        elif D_init == 'ssa':
+            self.generator = SSAGenerator(self)
+        elif D_init == 'greedy':
+            raise NotImplementedError()
+        else:
+            raise NotImplementedError('It is not possible to initialize uv'
+                                      ' with parameter {}.'.format(D_init))
 
-class InitStrategy(BaseInitStrategy):
+
+class DictStrategy(BaseDictStrategy):
 
     def get_D_shape(self):
         return (self.n_atoms, self.n_channels, self.n_times_atom)
@@ -70,7 +69,7 @@ class InitStrategy(BaseInitStrategy):
         return get_D(D_hat, self.n_channels)
 
 
-class Rank1InitStrategy(BaseInitStrategy):
+class Rank1DictStrategy(BaseDictStrategy):
 
     def get_D_shape(self):
         return (self.n_atoms, self.n_channels + self.n_times_atom)
@@ -79,14 +78,14 @@ class Rank1InitStrategy(BaseInitStrategy):
         return get_uv(D_hat)
 
 
-class BaseGenerator():
+class BaseGenerator(BaseDictStrategy):
 
     def __init__(self, base_strategy):
         self.strategy = base_strategy
-        self.n_channels = self.strategy.n_channels
-        self.n_atoms = self.strategy.n_atoms
-        self.n_times_atom = self.strategy.n_times_atom
-        self.rng = self.strategy.rng
+        self.n_channels = base_strategy.n_channels
+        self.n_atoms = base_strategy.n_atoms
+        self.n_times_atom = base_strategy.n_times_atom
+        self.rng = base_strategy.rng
 
     def get_D_shape(self):
         return self.strategy.get_D_shape()
