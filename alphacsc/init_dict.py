@@ -61,8 +61,9 @@ class BaseDictGenerator():
 
     def get_dict(self, X, D_init_params):
         D_hat = self.strategy.get_dict(X, D_init_params)
-        # XXX this windows also isinstance(D_init, np.ndarray) case
-        D_hat = self.window(D_hat)
+
+        if not hasattr(self.strategy, 'D_init'):
+            D_hat = self.window(D_hat)
         D_hat = self.prox(D_hat)
         return D_hat
 

@@ -256,7 +256,7 @@ def test_init_dictionary_initial_D_init(X, D_init, solver_d, window,
                             solver_d=solver_d,
                             uv_constraint=uv_constraint,
                             rank1=False,
-                            window=False,
+                            window=window,
                             random_state=42)
 
     assert d_solver is not None
