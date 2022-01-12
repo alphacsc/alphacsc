@@ -17,6 +17,8 @@ from .update_d_multi import prox_uv, prox_d
 
 from .utils.dictionary import tukey_window
 from .utils.dictionary import get_uv, get_D
+from .utils.dictionary import NoWindow, UVWindower, SimpleWindower
+
 
 ried = custom_distances.roll_invariant_euclidean_distances
 tied = custom_distances.translation_invariant_euclidean_distances
@@ -24,17 +26,45 @@ tied = custom_distances.translation_invariant_euclidean_distances
 
 class BaseDictGenerator():
 
-    def __init__(self, n_channels, n_atoms, n_times_atom, random_state):
+    def __init__(self, n_channels, n_atoms, n_times_atom, random_state,
+                 window):
         self.n_channels = n_channels
         self.n_atoms = n_atoms
         self.n_times_atom = n_times_atom
         self.rng = check_random_state(random_state)
 
+        if not window:
+            self.windower = NoWindow()
+        else:
+            self._init_windower()
+
+    def _init_windower(self):
+        raise NotImplementedError()
+
+    def window(self, D_hat):
+        return self.windower.window(D_hat)
+
+    def dewindow(self, D_hat):
+        return self.windower.dewindow(D_hat)
+
+    def simple_window(self, D_hat):
+        return self.windower.simple_window(D_hat)
+
+    def simple_dewindow(self, D_hat):
+        return self.windower.simple_dewindow(D_hat)
+
+    def prox(self, D_hat):
+        raise NotImplementedError()
+
     def get_D_shape(self):
         raise NotImplementedError()
 
     def get_dict(self, X, D_init_params):
-        return self.strategy.get_dict(X, D_init_params)
+        D_hat = self.strategy.get_dict(X, D_init_params)
+        # XXX this windows also isinstance(D_init, np.ndarray) case
+        D_hat = self.window(D_hat)
+        D_hat = self.prox(D_hat)
+        return D_hat
 
     def wrap(self, D_hat):
         return D_hat
@@ -62,6 +92,12 @@ class BaseDictGenerator():
 
 class DictGenerator(BaseDictGenerator):
 
+    def _init_windower(self):
+        self.windower = SimpleWindower(self.n_times_atom)
+
+    def prox(self, D_hat):
+        return prox_d(D_hat)
+
     def get_D_shape(self):
         return (self.n_atoms, self.n_channels, self.n_times_atom)
 
@@ -70,6 +106,21 @@ class DictGenerator(BaseDictGenerator):
 
 
 class Rank1DictGenerator(BaseDictGenerator):
+
+    def __init__(self, n_channels, n_atoms, n_times_atom, random_state,
+                 window, uv_constraint):
+
+        super().__init__(n_channels, n_atoms, n_times_atom, random_state,
+                         window)
+
+        self.uv_constraint = uv_constraint
+
+    def _init_windower(self):
+        self.windower = UVWindower(self.n_times_atom, self.n_channels)
+
+    def prox(self, D_hat):
+        return prox_uv(D_hat, uv_constraint=self.uv_constraint,
+                       n_channels=self.n_channels)
 
     def get_D_shape(self):
         return (self.n_atoms, self.n_channels + self.n_times_atom)

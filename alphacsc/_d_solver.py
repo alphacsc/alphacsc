@@ -2,11 +2,10 @@ import numpy as np
 
 from .init_dict import DictGenerator, Rank1DictGenerator
 from .loss_and_gradient import gradient_uv, gradient_d
-from .update_d_multi import prox_d, prox_uv, check_solver_and_constraints
+from .update_d_multi import check_solver_and_constraints
 from .utils import check_random_state
 from .utils.convolution import numpy_convolve_uv
-from .utils.dictionary import get_uv, NoWindow, UVWindower, SimpleWindower
-
+from .utils.dictionary import get_uv
 from .utils.optim import fista, power_iteration
 
 
@@ -86,7 +85,7 @@ class BaseDSolver:
     """Base class for a d solver."""
 
     def __init__(self, n_channels, n_atoms, n_times_atom, solver_d,
-                 uv_constraint, window, eps, max_iter, momentum, random_state,
+                 uv_constraint, eps, max_iter, momentum, random_state,
                  verbose, debug, rank1):
 
         self.n_channels = n_channels
@@ -101,26 +100,6 @@ class BaseDSolver:
         self.verbose = verbose
         self.debug = debug
 
-        if not window:
-            self.windower = NoWindow()
-        else:
-            self._init_windower()
-
-    def _init_windower(self):
-        raise NotImplementedError()
-
-    def window(self, D_hat):
-        return self.windower.window(D_hat)
-
-    def dewindow(self, D_hat):
-        return self.windower.dewindow(D_hat)
-
-    def simple_window(self, D_hat):
-        return self.windower.simple_window(D_hat)
-
-    def simple_dewindow(self, D_hat):
-        return self.windower.simple_dewindow(D_hat)
-
     def _get_objective(self, z_encoder):
 
         def objective(D, full=False):
@@ -131,8 +110,20 @@ class BaseDSolver:
 
         return objective
 
+    def window(self, D_hat):
+        return self.dict_generator.window(D_hat)
+
+    def dewindow(self, D_hat):
+        return self.dict_generator.dewindow(D_hat)
+
+    def simple_window(self, D_hat):
+        return self.dict_generator.simple_window(D_hat)
+
+    def simple_dewindow(self, D_hat):
+        return self.dict_generator.simple_dewindow(D_hat)
+
     def prox(self, D_hat):
-        raise NotImplementedError()
+        return self.dict_generator.prox(D_hat)
 
     def get_max_error_dict(self, z_encoder):
         """Get the maximal reconstruction error patch from the data as a new atom
@@ -182,11 +173,6 @@ class BaseDSolver:
         self.dict_generator.set_strategy(D_init)
         D_hat = self.dict_generator.get_dict(X, D_init_params)
 
-        if not isinstance(D_init, np.ndarray):
-            D_hat = self.window(D_hat)
-
-        D_hat = self.prox(D_hat)
-
         return D_hat
 
     def update_D(self, z_encoder):
@@ -203,6 +189,8 @@ class BaseDSolver:
                              (n_atoms, n_channels, n_times_atom)
             The atoms to learn from the data.
         """
+
+        assert z_encoder.n_channels == self.n_channels
 
         D_hat0 = self.dewindow(z_encoder.D_hat)
 
@@ -228,22 +216,16 @@ class Rank1DSolver(BaseDSolver):
                  momentum, random_state, verbose, debug):
 
         super().__init__(
-            n_channels, n_atoms, n_times_atom, solver_d, uv_constraint, window,
-            eps, max_iter, momentum, random_state, verbose, debug, rank1=True
+            n_channels, n_atoms, n_times_atom, solver_d, uv_constraint, eps,
+            max_iter, momentum, random_state, verbose, debug, rank1=True
         )
 
         self.dict_generator = Rank1DictGenerator(
-            self.n_channels, self.n_atoms, self.n_times_atom, self.rng
+            self.n_channels, self.n_atoms, self.n_times_atom,
+            self.rng, window, self.uv_constraint
         )
 
         self.name = "Update uv"
-
-    def _init_windower(self):
-        self.windower = UVWindower(self.n_times_atom, self.n_channels)
-
-    def prox(self, D_hat):
-        return prox_uv(D_hat, uv_constraint=self.uv_constraint,
-                       n_channels=self.n_channels)
 
     def get_max_error_dict(self, z_encoder):
         """Get the maximal reconstruction error patch from the data as a new atom
@@ -307,8 +289,7 @@ class JointDSolver(Rank1DSolver):
 
             uv = self.window(uv)
 
-            uv = prox_uv(uv, uv_constraint=self.uv_constraint,
-                         n_channels=z_encoder.n_channels)
+            uv = self.prox(uv)
 
             return self.dewindow(uv)
 
@@ -539,18 +520,15 @@ class DSolver(BaseDSolver):
                  momentum, random_state, verbose, debug):
 
         super().__init__(
-            n_channels, n_atoms, n_times_atom, solver_d, uv_constraint, window,
-            eps, max_iter, momentum, random_state, verbose, debug, rank1=False
+            n_channels, n_atoms, n_times_atom, solver_d, uv_constraint, eps,
+            max_iter, momentum, random_state, verbose, debug, rank1=False
         )
 
         self.dict_generator = DictGenerator(
-            self.n_channels, self.n_atoms, self.n_times_atom, self.rng
+            self.n_channels, self.n_atoms, self.n_times_atom, self.rng, window
         )
 
         self.name = "Update D"
-
-    def _init_windower(self):
-        self.windower = SimpleWindower(self.n_times_atom)
 
     def _get_grad(self, z_encoder):
 
@@ -579,9 +557,6 @@ class DSolver(BaseDSolver):
             return self.dewindow(D)
 
         return prox
-
-    def prox(self, D_hat):
-        return prox_d(D_hat)
 
     def get_max_error_dict(self, z_encoder):
         """Get the maximal reconstruction error patch from the data as a new atom
