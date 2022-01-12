@@ -86,12 +86,11 @@ class BaseDSolver:
 
     def __init__(self, n_channels, n_atoms, n_times_atom, solver_d,
                  uv_constraint, eps, max_iter, momentum, random_state,
-                 verbose, debug, rank1):
+                 verbose, debug):
 
         self.n_channels = n_channels
         self.n_atoms = n_atoms
         self.n_times_atom = n_times_atom
-        self.rank1 = rank1
         self.uv_constraint = uv_constraint
         self.eps = eps
         self.max_iter = max_iter
@@ -244,7 +243,7 @@ class Rank1DSolver(BaseDSolver):
 
         super().__init__(
             n_channels, n_atoms, n_times_atom, solver_d, uv_constraint, eps,
-            max_iter, momentum, random_state, verbose, debug, rank1=True
+            max_iter, momentum, random_state, verbose, debug
         )
 
         self.dict_generator = Rank1DictGenerator(
@@ -528,7 +527,7 @@ class DSolver(BaseDSolver):
 
         super().__init__(
             n_channels, n_atoms, n_times_atom, solver_d, uv_constraint, eps,
-            max_iter, momentum, random_state, verbose, debug, rank1=False
+            max_iter, momentum, random_state, verbose, debug
         )
 
         self.dict_generator = DictGenerator(
