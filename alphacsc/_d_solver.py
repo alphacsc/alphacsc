@@ -233,19 +233,19 @@ class BaseDSolver:
         return self.prox(d0)
 
     def init_dictionary(self, X, D_init=None, D_init_params=dict()):
-        """Returns an initial dictionary for the signal X.
+        """Returns a dictionary for the signal X depending on D_init value.
 
         Parameter
         ---------
         X: array, shape (n_trials, n_channels, n_times)
             The data on which to perform CSC.
-        D_init : array or {'kmeans' | 'ssa' | 'chunk' | 'random'}
+        D_init : {'kmeans' | 'ssa' | 'chunk' | 'random'}
+                 or array, shape (n_atoms, n_channels + n_times_atom) or
+                             (n_atoms, n_channels, n_times_atom)
             The initialization scheme for the dictionary or the initial
-            atoms. The shape should match the required dictionary shape, ie if
-            rank1 is True, (n_atoms, n_channels + n_times_atom) and else
-            (n_atoms, n_channels, n_times_atom)
+            atoms.
         D_init_params : dict
-            Dictionnary of parameters for the kmeans init method.
+            Dictionary of parameters for the kmeans init method.
 
         Return
         ------
