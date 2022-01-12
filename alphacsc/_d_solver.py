@@ -110,6 +110,30 @@ class BaseDSolver:
 
         return objective
 
+    def _get_prox(self):
+
+        def prox(D, step_size=None):
+
+            D = self.window(D)
+
+            D = self.prox(D)
+
+            return self.dewindow(D)
+
+        return prox
+
+    def _get_grad(self, z_encoder):
+
+        def grad(D):
+
+            D = self.window(D)
+
+            grad = self.grad(D, z_encoder)
+
+            return self.window(grad)
+
+        return grad
+
     def window(self, D_hat):
         return self.dict_generator.window(D_hat)
 
@@ -122,8 +146,11 @@ class BaseDSolver:
     def simple_dewindow(self, D_hat):
         return self.dict_generator.simple_dewindow(D_hat)
 
-    def prox(self, D_hat):
-        return self.dict_generator.prox(D_hat)
+    def prox(self, D):
+        return self.dict_generator.prox(D)
+
+    def grad(self, D):
+        raise NotImplementedError()
 
     def get_max_error_dict(self, z_encoder):
         """Get the maximal reconstruction error patch from the data as a new atom
@@ -196,7 +223,7 @@ class BaseDSolver:
 
         D_hat, pobj = fista(
             self._get_objective(z_encoder), self._get_grad(z_encoder),
-            self._get_prox(z_encoder), None, D_hat0, self.max_iter,
+            self._get_prox(), None, D_hat0, self.max_iter,
             momentum=self.momentum, eps=self.eps, adaptive_step_size=True,
             name=self.name, debug=self.debug, verbose=self.verbose
         )
@@ -267,33 +294,12 @@ class JointDSolver(Rank1DSolver):
             eps, max_iter, momentum, random_state, verbose, debug
         )
 
-    def _get_grad(self, z_encoder):
-
-        def grad(uv):
-
-            uv = self.window(uv)
-
-            grad = gradient_uv(
-                uv=uv, X=z_encoder.X, z=z_encoder.get_z_hat(),
-                constants=z_encoder.get_constants(), loss=z_encoder.loss,
-                loss_params=z_encoder.loss_params
-            )
-
-            return self.window(grad)
-
-        return grad
-
-    def _get_prox(self, z_encoder):
-
-        def prox(uv, step_size=None):
-
-            uv = self.window(uv)
-
-            uv = self.prox(uv)
-
-            return self.dewindow(uv)
-
-        return prox
+    def grad(self, D, z_encoder):
+        return gradient_uv(
+            uv=D, X=z_encoder.X, z=z_encoder.get_z_hat(),
+            constants=z_encoder.get_constants(), loss=z_encoder.loss,
+            loss_params=z_encoder.loss_params
+        )
 
 
 class AlternateDSolver(Rank1DSolver):
@@ -325,6 +331,7 @@ class AlternateDSolver(Rank1DSolver):
         uv_hat : array, shape (n_atoms, n_channels + n_times_atom)
             The atoms to learn from the data.
         """
+        assert z_encoder.n_channels == self.n_channels
 
         uv_hat = self.dewindow(z_encoder.D_hat)
 
@@ -530,33 +537,12 @@ class DSolver(BaseDSolver):
 
         self.name = "Update D"
 
-    def _get_grad(self, z_encoder):
-
-        def grad(D):
-
-            D = self.window(D)
-
-            grad = gradient_d(
-                D=D, X=z_encoder.X, z=z_encoder.get_z_hat(),
-                constants=z_encoder.get_constants(), loss=z_encoder.loss,
-                loss_params=z_encoder.loss_params
-            )
-
-            return self.window(grad)
-
-        return grad
-
-    def _get_prox(self, z_encoder):
-
-        def prox(D, step_size=None):
-
-            D = self.window(D)
-
-            D = self.prox(D)
-
-            return self.dewindow(D)
-
-        return prox
+    def grad(self, D, z_encoder):
+        return gradient_d(
+            D=D, X=z_encoder.X, z=z_encoder.get_z_hat(),
+            constants=z_encoder.get_constants(), loss=z_encoder.loss,
+            loss_params=z_encoder.loss_params
+        )
 
     def get_max_error_dict(self, z_encoder):
         """Get the maximal reconstruction error patch from the data as a new atom
