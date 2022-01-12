@@ -1,4 +1,3 @@
-from alphacsc.update_d_multi import check_solver_and_constraints
 import pytest
 import numpy as np
 
@@ -13,7 +12,20 @@ from alphacsc.tests.conftest import parametrize_solver_and_constraint
 
 @pytest.mark.parametrize('window', [False, True])
 @pytest.mark.parametrize('loss', ['l2', 'dtw', 'whitening'])
-@parametrize_solver_and_constraint
+@pytest.mark.parametrize('rank1, solver_d, uv_constraint',
+                         [
+                             (True, 'auto', 'auto'),
+                             (False, 'auto', 'auto'),
+                             (False, 'fista', 'auto'),
+                             (True, 'joint', 'auto'),
+                             (True, 'joint', 'joint'),
+                             (True, 'joint', 'separate'),
+                             (True, 'fista', 'auto'),
+                             (True, 'fista', 'joint'),
+                             (True, 'fista', 'separate'),
+                             (True, 'alternate_adaptive', 'separate')
+                         ]
+                         )
 def test_learn_d_z_multi(loss, rank1, solver_d, uv_constraint, window):
     # smoke test for learn_d_z_multi
     n_trials, n_channels, n_times = 2, 3, 30
@@ -103,12 +115,8 @@ def test_window(rank1, solver_d, uv_constraint):
     rng = check_random_state(42)
     X = rng.randn(n_trials, n_channels, n_times)
 
-    *_, uv_constraint_ = check_solver_and_constraints(
-        rank1, solver_d, uv_constraint
-    )
-
     D_init = init_dictionary(X, n_atoms, n_times_atom, rank1=rank1,
-                             uv_constraint=uv_constraint_, random_state=0,
+                             uv_constraint=uv_constraint, random_state=0,
                              window=False)
 
     kwargs = dict(X=X, n_atoms=n_atoms, n_times_atom=n_times_atom, verbose=0,
@@ -117,7 +125,7 @@ def test_window(rank1, solver_d, uv_constraint):
     res_False = learn_d_z_multi(window=False, **kwargs)
 
     D_init = init_dictionary(X, n_atoms, n_times_atom, rank1=rank1,
-                             uv_constraint=uv_constraint_, random_state=0,
+                             uv_constraint=uv_constraint, random_state=0,
                              window=True)
 
     kwargs = dict(X=X, n_atoms=n_atoms, n_times_atom=n_times_atom, verbose=0,

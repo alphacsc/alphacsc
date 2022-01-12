@@ -11,7 +11,7 @@ from .update_z_multi import update_z_multi
 from .utils.dictionary import get_D, get_uv
 from .learn_d_z_multi import learn_d_z_multi
 from .loss_and_gradient import construct_X_multi
-from .update_d_multi import check_solver_and_constraints
+from ._d_solver import check_solver_and_constraints
 
 
 DOC_FMT = """{short_desc}
