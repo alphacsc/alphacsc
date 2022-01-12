@@ -109,11 +109,23 @@ class BaseDSolver:
     def _init_windower(self):
         raise NotImplementedError()
 
+    def window(self, D_hat):
+        return self.windower.window(D_hat)
+
+    def dewindow(self, D_hat):
+        return self.windower.dewindow(D_hat)
+
+    def simple_window(self, D_hat):
+        return self.windower.simple_window(D_hat)
+
+    def simple_dewindow(self, D_hat):
+        return self.windower.simple_dewindow(D_hat)
+
     def _get_objective(self, z_encoder):
 
         def objective(D, full=False):
 
-            D = self.windower.window(D)
+            D = self.window(D)
 
             return z_encoder.compute_objective(D)
 
@@ -171,7 +183,7 @@ class BaseDSolver:
         D_hat = self.dict_generator.get_dict(X, D_init_params)
 
         if not isinstance(D_init, np.ndarray):
-            D_hat = self.windower.window(D_hat)
+            D_hat = self.window(D_hat)
 
         D_hat = self.prox(D_hat)
 
@@ -192,7 +204,7 @@ class BaseDSolver:
             The atoms to learn from the data.
         """
 
-        D_hat0 = self.windower.dewindow(z_encoder.D_hat)
+        D_hat0 = self.dewindow(z_encoder.D_hat)
 
         D_hat, pobj = fista(
             self._get_objective(z_encoder), self._get_grad(z_encoder),
@@ -201,7 +213,7 @@ class BaseDSolver:
             name=self.name, debug=self.debug, verbose=self.verbose
         )
 
-        D_hat = self.windower.window(D_hat)
+        D_hat = self.window(D_hat)
 
         if self.debug:
             return D_hat, pobj
@@ -256,7 +268,7 @@ class Rank1DSolver(BaseDSolver):
 
         d0 = z_encoder.get_max_error_patch()
 
-        d0 = self.windower.simple_window(d0)
+        d0 = self.simple_window(d0)
 
         return self.prox(get_uv(d0))
 
@@ -277,7 +289,7 @@ class JointDSolver(Rank1DSolver):
 
         def grad(uv):
 
-            uv = self.windower.window(uv)
+            uv = self.window(uv)
 
             grad = gradient_uv(
                 uv=uv, X=z_encoder.X, z=z_encoder.get_z_hat(),
@@ -285,7 +297,7 @@ class JointDSolver(Rank1DSolver):
                 loss_params=z_encoder.loss_params
             )
 
-            return self.windower.window(grad)
+            return self.window(grad)
 
         return grad
 
@@ -293,12 +305,12 @@ class JointDSolver(Rank1DSolver):
 
         def prox(uv, step_size=None):
 
-            uv = self.windower.window(uv)
+            uv = self.window(uv)
 
             uv = prox_uv(uv, uv_constraint=self.uv_constraint,
                          n_channels=z_encoder.n_channels)
 
-            return self.windower.dewindow(uv)
+            return self.dewindow(uv)
 
         return prox
 
@@ -333,7 +345,7 @@ class AlternateDSolver(Rank1DSolver):
             The atoms to learn from the data.
         """
 
-        uv_hat = self.windower.dewindow(z_encoder.D_hat)
+        uv_hat = self.dewindow(z_encoder.D_hat)
 
         objective = self._get_objective(z_encoder)
 
@@ -352,7 +364,7 @@ class AlternateDSolver(Rank1DSolver):
                 pobj.extend(pobj_u)
                 pobj.extend(pobj_v)
 
-        uv_hat = self.windower.window(uv_hat)
+        uv_hat = self.window(uv_hat)
 
         if self.debug:
             return uv_hat, pobj
@@ -367,7 +379,7 @@ class AlternateDSolver(Rank1DSolver):
 
         def grad_u(u):
 
-            uv = np.c_[u, self.windower.simple_window(v_hat)]
+            uv = np.c_[u, self.simple_window(v_hat)]
 
             grad_d = gradient_d(
                 uv, X=z_encoder.X, z=z_encoder.get_z_hat(),
@@ -408,7 +420,7 @@ class AlternateDSolver(Rank1DSolver):
 
         def grad_v(v):
 
-            v = self.windower.simple_window(v)
+            v = self.simple_window(v)
 
             uv = np.c_[u_hat, v]
 
@@ -420,15 +432,15 @@ class AlternateDSolver(Rank1DSolver):
 
             grad_v = (grad_d * uv[:, :z_encoder.n_channels, None]).sum(axis=1)
 
-            return self.windower.simple_window(grad_v)
+            return self.simple_window(grad_v)
 
         def prox_v(v, step_size=None):
 
-            v = self.windower.simple_window(v)
+            v = self.simple_window(v)
 
             v /= np.maximum(1., np.linalg.norm(v, axis=1, keepdims=True))
 
-            return self.windower.simple_dewindow(v)
+            return self.simple_dewindow(v)
 
         def obj(v):
             uv = np.c_[u_hat, v]
@@ -544,7 +556,7 @@ class DSolver(BaseDSolver):
 
         def grad(D):
 
-            D = self.windower.window(D)
+            D = self.window(D)
 
             grad = gradient_d(
                 D=D, X=z_encoder.X, z=z_encoder.get_z_hat(),
@@ -552,7 +564,7 @@ class DSolver(BaseDSolver):
                 loss_params=z_encoder.loss_params
             )
 
-            return self.windower.window(grad)
+            return self.window(grad)
 
         return grad
 
@@ -560,11 +572,11 @@ class DSolver(BaseDSolver):
 
         def prox(D, step_size=None):
 
-            D = self.windower.window(D)
+            D = self.window(D)
 
             D = self.prox(D)
 
-            return self.windower.dewindow(D)
+            return self.dewindow(D)
 
         return prox
 
@@ -595,6 +607,6 @@ class DSolver(BaseDSolver):
 
         d0 = z_encoder.get_max_error_patch()
 
-        d0 = self.windower.window(d0)
+        d0 = self.window(d0)
 
         return self.prox(d0)
