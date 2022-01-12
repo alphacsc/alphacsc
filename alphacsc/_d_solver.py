@@ -5,7 +5,6 @@ from .loss_and_gradient import gradient_uv, gradient_d
 from .update_d_multi import check_solver_and_constraints
 from .utils import check_random_state
 from .utils.convolution import numpy_convolve_uv
-from .utils.dictionary import get_uv
 from .utils.optim import fista, power_iteration
 
 
@@ -171,8 +170,13 @@ class BaseDSolver:
         [Yellin2017] BLOOD CELL DETECTION AND COUNTING IN HOLOGRAPHIC LENS-FREE
         IMAGING BY CONVOLUTIONAL SPARSE DICTIONARY LEARNING AND CODING.
         """
+        assert z_encoder.n_channels == self.n_channels
 
-        raise NotImplementedError()
+        d0 = z_encoder.get_max_error_patch()
+
+        d0 = self.window(d0)
+
+        return self.prox(d0)
 
     def init_dictionary(self, X, D_init=None, D_init_params=dict()):
         """Returns an initial dictionary for the signal X.
@@ -252,33 +256,6 @@ class Rank1DSolver(BaseDSolver):
         )
 
         self.name = "Update uv"
-
-    def get_max_error_dict(self, z_encoder):
-        """Get the maximal reconstruction error patch from the data as a new atom
-
-        This idea is used for instance in [Yellin2017]
-
-        Parameters
-        ----------
-        z_encoder : BaseZEncoder
-            ZEncoder object to be able to compute the largest error patch.
-
-        Return
-        ------
-        uvk: array, shape (n_channels + n_times_atom,)
-            New atom for the dictionary, chosen as the chunk of data with the
-            maximal reconstruction error.
-
-        [Yellin2017] BLOOD CELL DETECTION AND COUNTING IN HOLOGRAPHIC LENS-FREE
-        IMAGING BY CONVOLUTIONAL SPARSE DICTIONARY LEARNING AND CODING.
-        """
-        assert z_encoder.n_channels == self.n_channels
-
-        d0 = z_encoder.get_max_error_patch()
-
-        d0 = self.simple_window(d0)
-
-        return self.prox(get_uv(d0))
 
 
 class JointDSolver(Rank1DSolver):
@@ -542,31 +519,3 @@ class DSolver(BaseDSolver):
             constants=z_encoder.get_constants(), loss=z_encoder.loss,
             loss_params=z_encoder.loss_params
         )
-
-    def get_max_error_dict(self, z_encoder):
-        """Get the maximal reconstruction error patch from the data as a new atom
-
-        This idea is used for instance in [Yellin2017]
-
-        Parameters
-        ----------
-        z_encoder : BaseZEncoder
-            ZEncoder object to be able to compute the largest error patch.
-
-        Return
-        ------
-        dk: array, shape (n_channels, n_times_atom,)
-            New atom for the dictionary, chosen as the chunk of data with the
-            maximal reconstruction error.
-
-        [Yellin2017] BLOOD CELL DETECTION AND COUNTING IN HOLOGRAPHIC LENS-FREE
-        IMAGING BY CONVOLUTIONAL SPARSE DICTIONARY LEARNING AND CODING.
-        """
-
-        assert z_encoder.n_channels == self.n_channels
-
-        d0 = z_encoder.get_max_error_patch()
-
-        d0 = self.window(d0)
-
-        return self.prox(d0)

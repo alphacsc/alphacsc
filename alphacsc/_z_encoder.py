@@ -3,7 +3,7 @@ import numpy as np
 from .utils import construct_X_multi
 from .utils.dictionary import get_D_shape
 from .update_z_multi import update_z_multi
-from .utils.dictionary import _patch_reconstruction_error
+from .utils.dictionary import _patch_reconstruction_error, get_uv
 from .loss_and_gradient import compute_objective
 
 DEFAULT_TOL_Z = 1e-3
@@ -372,7 +372,11 @@ class AlphaCSCEncoder(BaseZEncoder):
 
         n_channels = self.X.shape[1]
         *_, n_times_atom = get_D_shape(self.D_hat, n_channels)
-        return self.X[n0, :, t0:t0 + n_times_atom][None]
+
+        patch = self.X[n0, :, t0:t0 + n_times_atom][None]
+        if self.D_hat.ndim == 2:
+            patch = get_uv(patch)
+        return patch
 
     def set_D(self, D):
         self.D_hat = D
@@ -535,7 +539,11 @@ class DicodileEncoder(BaseZEncoder):
 
         n_channels = self.X.shape[1]
         *_, n_times_atom = get_D_shape(self.D_hat, n_channels)
-        return self.X[n0, :, t0:t0 + n_times_atom][None]
+
+        patch = self.X[n0, :, t0:t0 + n_times_atom][None]
+        if self.D_hat.ndim == 2:
+            patch = get_uv(patch)
+        return patch
 
     def get_z_hat(self):
         """
