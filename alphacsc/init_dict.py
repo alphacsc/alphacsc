@@ -24,7 +24,7 @@ ried = custom_distances.roll_invariant_euclidean_distances
 tied = custom_distances.translation_invariant_euclidean_distances
 
 
-class BaseDictGenerator():
+class BaseDictionary():
 
     def __init__(self, n_channels, n_atoms, n_times_atom, random_state,
                  window):
@@ -91,7 +91,7 @@ class BaseDictGenerator():
                                       ' with parameter {}.'.format(D_init))
 
 
-class DictGenerator(BaseDictGenerator):
+class Dictionary(BaseDictionary):
 
     def _init_windower(self):
         self.windower = SimpleWindower(self.n_times_atom)
@@ -106,7 +106,7 @@ class DictGenerator(BaseDictGenerator):
         return get_D(D_hat, self.n_channels)
 
 
-class Rank1DictGenerator(BaseDictGenerator):
+class Rank1Dictionary(BaseDictionary):
 
     def __init__(self, n_channels, n_atoms, n_times_atom, random_state,
                  window, uv_constraint):

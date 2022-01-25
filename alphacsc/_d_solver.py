@@ -1,6 +1,6 @@
 import numpy as np
 
-from .init_dict import DictGenerator, Rank1DictGenerator
+from .init_dict import Dictionary, Rank1Dictionary
 from .loss_and_gradient import gradient_uv, gradient_d
 from .utils import check_random_state
 from .utils.convolution import numpy_convolve_uv
@@ -304,7 +304,7 @@ class Rank1DSolver(BaseDSolver):
             max_iter, momentum, random_state, verbose, debug
         )
 
-        self.dict_generator = Rank1DictGenerator(
+        self.dict_generator = Rank1Dictionary(
             self.n_channels, self.n_atoms, self.n_times_atom,
             self.rng, window, self.uv_constraint
         )
@@ -561,7 +561,7 @@ class DSolver(BaseDSolver):
             max_iter, momentum, random_state, verbose, debug
         )
 
-        self.dict_generator = DictGenerator(
+        self.dict_generator = Dictionary(
             self.n_channels, self.n_atoms, self.n_times_atom, self.rng, window
         )
 
