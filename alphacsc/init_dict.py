@@ -56,16 +56,16 @@ class BaseDictionary():
     def prox(self, D_hat):
         raise NotImplementedError()
 
-    def get_D_shape(self):
+    def get_shape(self):
         raise NotImplementedError()
 
-    def get_dict(self, X, D_init_params):
-        D_hat = self.strategy.get_dict(X, D_init_params)
+    def init(self, X, D_init_params):
+        D_hat = self.strategy.init(X, D_init_params)
 
         if not hasattr(self.strategy, 'D_init'):
             D_hat = self.window(D_hat)
-        D_hat = self.prox(D_hat)
-        return D_hat
+        self.D_hat = self.prox(D_hat)
+        return self.D_hat
 
     def wrap(self, D_hat):
         return D_hat
@@ -73,7 +73,7 @@ class BaseDictionary():
     def wrap_rank1(self, D_hat):
         return D_hat
 
-    def set_strategy(self, D_init):
+    def set_init_strategy(self, D_init):
         if isinstance(D_init, np.ndarray):
             self.strategy = IdentityStrategy(self, D_init)
         elif D_init is None or D_init == 'random':
@@ -99,7 +99,7 @@ class Dictionary(BaseDictionary):
     def prox(self, D_hat):
         return prox_d(D_hat)
 
-    def get_D_shape(self):
+    def get_shape(self):
         return (self.n_atoms, self.n_channels, self.n_times_atom)
 
     def wrap(self, D_hat):
@@ -123,7 +123,7 @@ class Rank1Dictionary(BaseDictionary):
         return prox_uv(D_hat, uv_constraint=self.uv_constraint,
                        n_channels=self.n_channels)
 
-    def get_D_shape(self):
+    def get_shape(self):
         return (self.n_atoms, self.n_channels + self.n_times_atom)
 
     def wrap_rank1(self, D_hat):
@@ -132,47 +132,38 @@ class Rank1Dictionary(BaseDictionary):
 
 class BaseStrategy():
 
-    def __init__(self, generator):
-        self.generator = generator
-        self.n_channels = generator.n_channels
-        self.n_atoms = generator.n_atoms
-        self.n_times_atom = generator.n_times_atom
-        self.rng = generator.rng
+    def __init__(self, parent):
+        self.parent = parent
+        self.n_channels = parent.n_channels
+        self.n_atoms = parent.n_atoms
+        self.n_times_atom = parent.n_times_atom
+        self.rng = parent.rng
 
-    def get_D_shape(self):
-        return self.generator.get_D_shape()
-
-    def get_dict(self, X, D_init_params):
+    def init(self, X, D_init_params):
         raise NotImplementedError()
-
-    def wrap(self, D_hat):
-        return self.generator.wrap(D_hat)
-
-    def wrap_rank1(self, D_hat):
-        return self.generator.wrap_rank1(D_hat)
 
 
 class IdentityStrategy(BaseStrategy):
 
-    def __init__(self, generator, D_init):
-        super().__init__(generator)
+    def __init__(self, parent, D_init):
+        super().__init__(parent)
 
-        assert self.get_D_shape() == D_init.shape
+        assert self.parent.get_shape() == D_init.shape
         self.D_init = D_init
 
-    def get_dict(self, X, D_init_params):
+    def init(self, X, D_init_params):
         return self.D_init.copy()
 
 
 class RandomStrategy(BaseStrategy):
 
-    def get_dict(self, X, D_init_params):
-        return self.rng.randn(*self.get_D_shape())
+    def init(self, X, D_init_params):
+        return self.rng.randn(*self.parent.get_shape())
 
 
 class ChunkStrategy(BaseStrategy):
 
-    def get_dict(self, X, D_init_params):
+    def init(self, X, D_init_params):
         n_trials, n_channels, n_times = X.shape
 
         D_hat = np.zeros(
@@ -183,29 +174,29 @@ class ChunkStrategy(BaseStrategy):
             t0 = self.rng.randint(n_times - self.n_times_atom)
             D_hat[i_atom] = X[i_trial, :, t0:t0 + self.n_times_atom]
 
-        D_hat = self.wrap_rank1(D_hat)
+        D_hat = self.parent.wrap_rank1(D_hat)
         return D_hat
 
 
 class KMeansStrategy(BaseStrategy):
 
-    def get_dict(self, X, D_init_params):
+    def init(self, X, D_init_params):
         D_hat = kmeans_init(X, self.n_atoms, self.n_times_atom,
                             random_state=self.rng, **D_init_params)
 
-        D_hat = self.wrap(D_hat)
+        D_hat = self.parent.wrap(D_hat)
         return D_hat
 
 
 class SSAStrategy(BaseStrategy):
 
-    def get_dict(self, X, D_init_params):
+    def init(self, X, D_init_params):
         u_hat = self.rng.randn(self.n_atoms, self.n_channels)
         v_hat = ssa_init(X, self.n_atoms, self.n_times_atom,
                          random_state=self.rng)
         D_hat = np.c_[u_hat, v_hat]
 
-        D_hat = self.wrap(D_hat)
+        D_hat = self.parent.wrap(D_hat)
         return D_hat
 
 

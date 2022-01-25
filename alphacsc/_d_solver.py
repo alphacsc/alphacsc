@@ -187,19 +187,19 @@ class BaseDSolver:
         return grad
 
     def window(self, D_hat):
-        return self.dict_generator.window(D_hat)
+        return self.dictionary.window(D_hat)
 
     def dewindow(self, D_hat):
-        return self.dict_generator.dewindow(D_hat)
+        return self.dictionary.dewindow(D_hat)
 
     def simple_window(self, D_hat):
-        return self.dict_generator.simple_window(D_hat)
+        return self.dictionary.simple_window(D_hat)
 
     def simple_dewindow(self, D_hat):
-        return self.dict_generator.simple_dewindow(D_hat)
+        return self.dictionary.simple_dewindow(D_hat)
 
     def prox(self, D):
-        return self.dict_generator.prox(D)
+        return self.dictionary.prox(D)
 
     def grad(self, D):
         raise NotImplementedError()
@@ -254,8 +254,8 @@ class BaseDSolver:
             The initial atoms to learn from the data.
         """
 
-        self.dict_generator.set_strategy(D_init)
-        D_hat = self.dict_generator.get_dict(X, D_init_params)
+        self.dictionary.set_init_strategy(D_init)
+        D_hat = self.dictionary.init(X, D_init_params)
 
         return D_hat
 
@@ -304,7 +304,7 @@ class Rank1DSolver(BaseDSolver):
             max_iter, momentum, random_state, verbose, debug
         )
 
-        self.dict_generator = Rank1Dictionary(
+        self.dictionary = Rank1Dictionary(
             self.n_channels, self.n_atoms, self.n_times_atom,
             self.rng, window, self.uv_constraint
         )
@@ -561,7 +561,7 @@ class DSolver(BaseDSolver):
             max_iter, momentum, random_state, verbose, debug
         )
 
-        self.dict_generator = Dictionary(
+        self.dictionary = Dictionary(
             self.n_channels, self.n_atoms, self.n_times_atom, self.rng, window
         )
 
