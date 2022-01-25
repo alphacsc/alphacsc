@@ -22,7 +22,7 @@
 """Test suite"""
 import numpy as np
 import warnings
-import kmc2
+from alphacsc.other.kmc2 import kmc2
 from scipy.sparse import csr_matrix
 from sklearn.cluster import MiniBatchKMeans
 
