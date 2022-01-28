@@ -2,14 +2,13 @@ import pytest
 
 import numpy as np
 
-from alphacsc.utils import check_random_state
+from alphacsc.update_d_multi import prox_uv, prox_d
+from alphacsc.utils import check_random_state, construct_X_multi
 from alphacsc.utils.compute_constants import compute_ztz, compute_ztX
-from alphacsc.loss_and_gradient import (
-    compute_objective, compute_X_and_objective_multi
-)
+from alphacsc.loss_and_gradient import compute_objective
 
 N_TRIALS, N_CHANNELS, N_TIMES = 5, 3, 100
-N_TIMES_ATOM, N_ATOMS = 10, 4
+N_TIMES_ATOM, N_ATOMS = 6, 4
 
 parametrize_solver_and_constraint = pytest.mark.parametrize(
     'rank1, solver_d, uv_constraint',
@@ -34,6 +33,18 @@ def rng():
 @pytest.fixture
 def X(rng, n_trials):
     return rng.randn(n_trials, N_CHANNELS, N_TIMES)
+
+
+@pytest.fixture
+def D_hat(rank1, rng):
+    if rank1:
+        shape = (N_ATOMS, N_CHANNELS + N_TIMES_ATOM)
+        d = rng.normal(size=shape)
+        return prox_uv(d)
+    else:
+        shape = (N_ATOMS, N_CHANNELS, N_TIMES_ATOM)
+        d = rng.normal(size=shape)
+        return prox_d(d)
 
 
 class MockZEncoder:
@@ -66,26 +77,22 @@ class MockZEncoder:
             return compute_objective(D=D,
                                      constants=self.get_constants())
 
-        return compute_X_and_objective_multi(
-            self.X,
-            self.get_z_hat(),
-            D_hat=D,
-            loss=self.loss,
-            loss_params=self.loss_params,
-            feasible_evaluation=False
+        X_hat = construct_X_multi(self.z_hat, D=D, n_channels=self.n_channels)
+
+        return compute_objective(
+            X=self.X, X_hat=X_hat, z_hat=self.z_hat,
+            reg=self.reg, loss=self.loss,
+            loss_params=self.loss_params
         )
 
 
 @pytest.fixture
-def z_encoder_rank1(rng, shape, loss):
+def z_encoder(D_hat, rng, loss):
 
     from alphacsc.utils import construct_X_multi
-    from alphacsc.update_d_multi import prox_uv
     z_hat = rng.normal(size=(N_TRIALS, N_ATOMS, N_TIMES - N_TIMES_ATOM + 1))
-    uv0 = rng.normal(size=shape)
-    uv0 = prox_uv(uv0)
 
-    X = construct_X_multi(z_hat, D=uv0, n_channels=N_CHANNELS)
+    X = construct_X_multi(z_hat, D=D_hat, n_channels=N_CHANNELS)
 
-    return MockZEncoder(X, uv0, z_hat, N_ATOMS, N_CHANNELS, N_TIMES_ATOM,
+    return MockZEncoder(X, D_hat, z_hat, N_ATOMS, N_CHANNELS, N_TIMES_ATOM,
                         loss, dict())

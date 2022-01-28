@@ -304,25 +304,16 @@ def test_init_dictionary_rank1_initial_D_init(X, D_init, solver_d,
     assert id(D_hat) != id(D_init)
 
 
-@pytest.mark.parametrize('rank1, solver_d, uv_constraint, shape', [
-    (True, 'alternate', 'separate', (N_ATOMS, N_CHANNELS + N_TIMES_ATOM)),
-    (True, 'alternate_adaptive', 'separate',
-     (N_ATOMS, N_CHANNELS + N_TIMES_ATOM)),
-    (True, 'joint', 'joint', (N_ATOMS, N_CHANNELS + N_TIMES_ATOM)),
-    (True, 'fista', 'joint', (N_ATOMS, N_CHANNELS + N_TIMES_ATOM)),
-    (False, 'fista', 'auto', (N_ATOMS, N_CHANNELS, N_TIMES_ATOM))
+@pytest.mark.parametrize('rank1, solver_d, uv_constraint', [
+    (True, 'alternate', 'separate'),
+    (True, 'alternate_adaptive', 'separate'),
+    (True, 'joint', 'joint'),
+    (True, 'fista', 'joint'),
+    (False, 'fista', 'auto'),
 ])
 @pytest.mark.parametrize('loss', ['l2'])
 @pytest.mark.parametrize('window', ['True', 'False'])
-def test_update_D(rank1, solver_d, uv_constraint, window, shape,
-                  z_encoder_rank1, rng):
-
-    X = z_encoder_rank1.X
-    z = z_encoder_rank1.z_hat
-
-    def objective(uv):
-        X_hat = construct_X_multi(z, D=uv, n_channels=N_CHANNELS)
-        return compute_objective(X, X_hat, z_encoder_rank1.loss)
+def test_update_D(rank1, solver_d, uv_constraint, window, z_encoder, rng):
 
     d_solver = get_solver_d(N_CHANNELS,
                             N_ATOMS,
@@ -333,34 +324,33 @@ def test_update_D(rank1, solver_d, uv_constraint, window, shape,
                             window=window,
                             max_iter=1000)
 
-    uv0 = z_encoder_rank1.D_hat
+    d_hat0 = d_solver.init_dictionary(z_encoder.X, z_encoder.D_hat)
 
     # Ensure that the known optimal point is stable
-    uv = d_solver.update_D(z_encoder_rank1)
-    cost = objective(uv)
+    d_hat = d_solver.update_D(z_encoder)
+    cost = z_encoder.compute_objective(d_hat)
 
     assert np.isclose(cost, 0), "optimal point not stable"
-    assert np.allclose(uv, uv0), "optimal point not stable"
+    assert np.allclose(d_hat, d_hat0), "optimal point not stable"
 
-    uv1 = rng.normal(size=(shape))
-    uv1 = prox_uv(uv1)
+    # ----------------
 
-    cost0 = objective(uv1)
+    d_hat1 = d_solver.init_dictionary(z_encoder.X, "random")
+    assert not np.allclose(d_hat0, d_hat1)
 
-    z_encoder_rank1.D_hat = uv1
+    cost1 = z_encoder.compute_objective(d_hat1)
 
-    uv = d_solver.update_D(z_encoder_rank1)
-    cost1 = objective(uv)
+    d_hat2 = d_solver.update_D(z_encoder)
+    cost2 = z_encoder.compute_objective(d_hat2)
 
-    assert cost1 < cost0, "Learning is not going down"
+    assert cost2 < cost1, "Learning is not going down"
 
 
-@pytest.mark.parametrize('rank1, solver_d, uv_constraint, shape', [
-    (True, 'alternate', 'separate', (N_ATOMS, N_CHANNELS + N_TIMES_ATOM)),
+@pytest.mark.parametrize('rank1, solver_d, uv_constraint', [
+    (True, 'alternate', 'separate'),
 ])
 @pytest.mark.parametrize('loss', ['dtw', 'whitening'])
-def test_update_D_error(rank1, solver_d, uv_constraint, shape,
-                        z_encoder_rank1, rng):
+def test_update_D_error(rank1, solver_d, uv_constraint, z_encoder, rng):
 
     d_solver = get_solver_d(N_CHANNELS,
                             N_ATOMS,
@@ -371,4 +361,4 @@ def test_update_D_error(rank1, solver_d, uv_constraint, shape,
                             max_iter=1000)
 
     with pytest.raises(NotImplementedError):
-        d_solver.update_D(z_encoder_rank1)
+        d_solver.update_D(z_encoder)

@@ -3,22 +3,13 @@ import numpy as np
 import pytest
 
 from alphacsc._z_encoder import get_z_encoder_for
-from alphacsc.init_dict import init_dictionary
 from alphacsc.loss_and_gradient import compute_objective
 from alphacsc.utils import construct_X_multi
 from alphacsc.utils.compute_constants import compute_ztz, compute_ztX
 
+from conftest import N_ATOMS, N_TIMES_ATOM
+
 N_CHANNELS, N_TIMES = 3, 30
-N_TIMES_ATOM, N_ATOMS = 6, 4
-
-
-@pytest.fixture
-def D_hat(X, rank1):
-    return init_dictionary(X,
-                           N_ATOMS,
-                           N_TIMES_ATOM,
-                           random_state=0,
-                           rank1=rank1)
 
 
 @pytest.fixture
@@ -151,7 +142,6 @@ def test_get_encoder_for_error_solver_kwargs(X, D_hat):
                           n_jobs=2)
 
 
-@pytest.mark.parametrize('n_trials', [2])
 @pytest.mark.parametrize('rank1', [True])
 @pytest.mark.parametrize('X_error', [None, np.zeros([2, N_CHANNELS])])
 def test_get_encoder_for_error_X(X_error, D_hat):
