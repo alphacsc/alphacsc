@@ -157,7 +157,8 @@ def test_online_learning():
 
 
 @pytest.mark.parametrize('klass', [BatchCDL, OnlineCDL, GreedyCDL])
-def test_transformers(klass):
+@parametrize_solver_and_constraint
+def test_transformers(klass, rank1, solver_d, uv_constraint):
     # smoke test for transformer classes
     n_trials, n_channels, n_times = 2, 3, 100
     n_times_atom, n_atoms = 10, 4
