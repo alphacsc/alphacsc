@@ -85,7 +85,7 @@ class BaseDictionary():
         elif D_init == 'ssa':
             self.strategy = SSAStrategy(self)
         elif D_init == 'greedy':
-            raise NotImplementedError()
+            self.strategy = GreedyStrategy(self)
         else:
             raise NotImplementedError('It is not possible to initialize uv'
                                       ' with parameter {}.'.format(D_init))
@@ -198,6 +198,13 @@ class SSAStrategy(BaseStrategy):
 
         D_hat = self.parent.wrap(D_hat)
         return D_hat
+
+
+class GreedyStrategy(BaseStrategy):
+
+    def init(self, X, D_init_params):
+        D_hat = self.rng.randn(*self.parent.get_shape())
+        return D_hat[:0]
 
 
 def init_dictionary(X, n_atoms, n_times_atom, uv_constraint='separate',
