@@ -259,6 +259,11 @@ class BaseDSolver:
 
         return D_hat
 
+    def add_one_atom(self, z_encoder):
+        new_atom = self.get_max_error_dict(z_encoder)[0]
+        z_encoder.add_one_atom(new_atom)
+        z_encoder.update_z_hat()
+
     def update_D(self, z_encoder):
         """Learn d's in time domain.
 

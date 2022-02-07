@@ -298,9 +298,7 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
         if greedy and ii % n_iter_by_atom == 0 and \
                 z_encoder.D_hat.shape[0] < n_atoms:
             # add a new atom every n_iter_by_atom iterations
-            new_atom = d_solver.get_max_error_dict(z_encoder)[0]
-            # XXX what should happen here when using DiCoDiLe?
-            z_encoder.add_one_atom(new_atom)
+            d_solver.add_one_atom(z_encoder)
 
         if lmbd_max not in ['fixed', 'scaled']:
             reg_ = reg * get_lambda_max(X, z_encoder.D_hat)

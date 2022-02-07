@@ -381,15 +381,25 @@ class AlphaCSCEncoder(BaseZEncoder):
     def set_D(self, D):
         self.D_hat = D
 
-    def set_reg(self, reg):
-        self.reg = reg
-
     def add_one_atom(self, new_atom):
         assert new_atom.shape == (self.n_times_atom + self.X.shape[1],)
         self.D_hat = np.concatenate([self.D_hat, new_atom[None]])
         self.z_hat = np.concatenate(
             [self.z_hat, self._get_new_z_hat(1)], axis=1
         )
+
+    def update_z_hat(self):
+        n_atoms = self.z_hat.shape[1]
+        # XXX would it require a more complex check or adjustment. We are
+        # assuming that the number of atoms increase one by one.
+        # check shape and adjust z_hat
+        if self.D_hat.shape[0] < n_atoms:
+            self.z_hat = np.concatenate(
+                [self.z_hat, self._get_new_z_hat(1)], axis=1
+            )
+
+    def set_reg(self, reg):
+        self.reg = reg
 
     def get_z_hat(self):
         return self.z_hat
