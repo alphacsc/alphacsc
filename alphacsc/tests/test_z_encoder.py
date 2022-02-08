@@ -373,19 +373,3 @@ def test_get_sufficient_statistics_partial_error(X, D_hat):
     with pytest.raises(AssertionError,
                        match="compute_z_partial should be called.*"):
         z_encoder.get_sufficient_statistics_partial()
-
-
-@pytest.mark.parametrize('n_trials', [2])
-@pytest.mark.parametrize('rank1', [True])
-def test_add_one_atom(X, D_hat):
-    """Test for valid values."""
-
-    with get_z_encoder_for(X=X,
-                           D_hat=D_hat,
-                           n_atoms=N_ATOMS,
-                           n_times_atom=N_TIMES_ATOM,
-                           n_jobs=2) as z_encoder:
-        new_atom = np.random.rand(N_CHANNELS + N_TIMES_ATOM)
-        z_encoder.add_one_atom(new_atom)
-        n_atoms_plus_one = z_encoder.D_hat.shape[0]
-        assert n_atoms_plus_one == N_ATOMS + 1

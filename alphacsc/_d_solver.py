@@ -261,7 +261,8 @@ class BaseDSolver:
 
     def add_one_atom(self, z_encoder):
         new_atom = self.get_max_error_dict(z_encoder)[0]
-        z_encoder.add_one_atom(new_atom)
+
+        z_encoder.D_hat = np.concatenate([z_encoder.D_hat, new_atom[None]])
         z_encoder.update_z_hat()
 
     def update_D(self, z_encoder):

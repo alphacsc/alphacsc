@@ -5,10 +5,9 @@ import numpy as np
 
 from alphacsc.tests.conftest import N_TRIALS, N_CHANNELS, N_TIMES_ATOM, N_ATOMS
 
-from alphacsc.loss_and_gradient import compute_objective
-from alphacsc.utils import construct_X_multi
 from alphacsc.update_d_multi import prox_d, prox_uv
 from alphacsc._d_solver import get_solver_d, check_solver_and_constraints
+from alphacsc._z_encoder import get_z_encoder_for
 
 
 @pytest.fixture
@@ -362,3 +361,42 @@ def test_update_D_error(rank1, solver_d, uv_constraint, z_encoder, rng):
 
     with pytest.raises(NotImplementedError):
         d_solver.update_D(z_encoder)
+
+
+@pytest.mark.parametrize('rank1, solver_d, uv_constraint', [
+    (False, 'fista', 'auto'),
+    (True, 'joint', 'joint'),
+    (True, 'fista', 'joint'),
+    (True, 'alternate_adaptive', 'separate'),
+    (True, 'alternate', 'separate'),
+])
+@pytest.mark.parametrize('window', [True, False])
+@pytest.mark.parametrize('n_trials', [2])
+def test_add_one_atom(X, rank1, solver_d, uv_constraint, window):
+    """Tests valid values."""
+
+    d_solver = get_solver_d(N_CHANNELS,
+                            N_ATOMS,
+                            N_TIMES_ATOM,
+                            solver_d=solver_d,
+                            rank1=rank1,
+                            window=window)
+
+    D_hat = d_solver.init_dictionary(X, D_init="greedy")
+
+    with get_z_encoder_for(X=X,
+                           D_hat=D_hat,
+                           n_atoms=N_ATOMS,
+                           n_times_atom=N_TIMES_ATOM,
+                           n_jobs=2) as z_encoder:
+
+        n_atoms_initial = z_encoder.D_hat.shape[0]
+        assert n_atoms_initial == 0
+        d_solver.add_one_atom(z_encoder)
+        n_atoms_plus_one = z_encoder.D_hat.shape[0]
+        assert n_atoms_plus_one == n_atoms_initial + 1
+
+        d_solver.add_one_atom(z_encoder)
+        n_atoms_plus_two = z_encoder.D_hat.shape[0]
+
+        assert n_atoms_plus_two == n_atoms_initial + 2
