@@ -195,8 +195,11 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
 
     z_kwargs = dict(verbose=verbose, **solver_z_kwargs)
 
-    with get_z_encoder_for(X, d_solver.D_hat, n_atoms, n_times_atom, n_jobs, solver_z,
-                           z_kwargs, reg, loss, loss_params) as z_encoder:
+    with get_z_encoder_for(
+            X, d_solver.D_hat, n_atoms, n_times_atom, n_jobs,
+            solver_z, z_kwargs, reg, loss, loss_params
+    ) as z_encoder:
+
         if callable(callback):
             callback(z_encoder, [])
 
