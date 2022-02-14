@@ -191,11 +191,11 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
 
     if algorithm == 'greedy':
         # Initialize D with no atoms as they will be added sequentially.
-        D_hat = D_hat[:0]
+        d_solver.D_hat = D_hat[:0]
 
     z_kwargs = dict(verbose=verbose, **solver_z_kwargs)
 
-    with get_z_encoder_for(X, D_hat, n_atoms, n_times_atom, n_jobs, solver_z,
+    with get_z_encoder_for(X, d_solver.D_hat, n_atoms, n_times_atom, n_jobs, solver_z,
                            z_kwargs, reg, loss, loss_params) as z_encoder:
         if callable(callback):
             callback(z_encoder, [])
@@ -296,12 +296,12 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
             print('[{}] CD iterations {} / {}'.format(name, ii, n_iter))
 
         if greedy and ii % n_iter_by_atom == 0 and \
-                z_encoder.D_hat.shape[0] < n_atoms:
+                d_solver.D_hat.shape[0] < n_atoms:
             # add a new atom every n_iter_by_atom iterations
             d_solver.add_one_atom(z_encoder)
 
         if lmbd_max not in ['fixed', 'scaled']:
-            reg_ = reg * get_lambda_max(X, z_encoder.D_hat)
+            reg_ = reg * get_lambda_max(X, d_solver.D_hat)
             if lmbd_max == 'shared':
                 reg_ = reg_.max()
             z_encoder.set_reg(reg_)
@@ -337,7 +337,6 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
         # Compute D update
         start = time.time()
         D_hat = d_solver.update_D(z_encoder)
-        z_encoder.set_D(D_hat)
 
         # monitor cost function
         times.append(time.time() - start)
@@ -346,8 +345,8 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
         null_atom_indices = np.where(z_nnz == 0)[0]
         if len(null_atom_indices) > 0:
             k0 = null_atom_indices[0]
-            D_hat[k0] = d_solver.get_max_error_dict(z_encoder)[0]
-            z_encoder.set_D(D_hat)
+            d_solver.D_hat[k0] = d_solver.get_max_error_dict(z_encoder)[0]
+            z_encoder.set_D(d_solver.D_hat)
             if verbose > 5:
                 print('[{}] Resampled atom {}'.format(name, k0))
 
@@ -358,7 +357,7 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
                 and end_iter_func(z_encoder, pobj, ii)):
             break
 
-    return pobj, times, z_encoder.D_hat, z_encoder.get_z_hat()
+    return pobj, times, d_solver.D_hat, z_encoder.get_z_hat()
 
 
 def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
@@ -367,8 +366,8 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
                   name="online"):
 
     X = z_encoder.X
-    D_hat = z_encoder.D_hat
-    n_atoms = z_encoder.n_atoms
+    D_hat = d_solver.D_hat
+    n_atoms = d_solver.n_atoms
 
     reg_ = reg
 
@@ -435,7 +434,6 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
         # Compute D update
         start = time.time()
         D_hat = d_solver.update_D(z_encoder)
-        z_encoder.set_D(D_hat)
 
         # monitor cost function
         times.append(time.time() - start)
@@ -444,8 +442,8 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
         null_atom_indices = np.where(z_nnz == 0)[0]
         if len(null_atom_indices) > 0:
             k0 = null_atom_indices[0]
-            D_hat[k0] = d_solver.get_max_error_dict(z_encoder)[0]
-            z_encoder.set_D(D_hat)
+            d_solver.D_hat[k0] = d_solver.get_max_error_dict(z_encoder)[0]
+            z_encoder.set_D(d_solver.D_hat)
             if verbose > 5:
                 print('[{}] Resampled atom {}'.format(name, k0))
 
@@ -455,7 +453,7 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
         if end_iter_func(z_encoder, pobj, ii):
             break
 
-    return pobj, times, z_encoder.D_hat, z_encoder.get_z_hat()
+    return pobj, times, d_solver.D_hat, z_encoder.get_z_hat()
 
 
 def get_iteration_func(eps, stopping_pobj, callback, lmbd_max, name, verbose,

@@ -349,7 +349,8 @@ def test_update_D(rank1, solver_d, uv_constraint, window, z_encoder, rng):
     (True, 'alternate', 'separate'),
 ])
 @pytest.mark.parametrize('loss', ['dtw', 'whitening'])
-def test_update_D_error(rank1, solver_d, uv_constraint, z_encoder, rng):
+@pytest.mark.parametrize('n_trials', [2])
+def test_update_D_error(X, D_hat, rank1, solver_d, uv_constraint, z_encoder):
 
     d_solver = get_solver_d(N_CHANNELS,
                             N_ATOMS,
@@ -358,6 +359,8 @@ def test_update_D_error(rank1, solver_d, uv_constraint, z_encoder, rng):
                             uv_constraint=uv_constraint,
                             rank1=rank1,
                             max_iter=1000)
+
+    d_solver.init_dictionary(X, D_hat)
 
     with pytest.raises(NotImplementedError):
         d_solver.update_D(z_encoder)

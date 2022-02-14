@@ -255,14 +255,15 @@ class BaseDSolver:
         """
 
         self.dictionary.set_init_strategy(D_init)
-        D_hat = self.dictionary.init(X, D_init_params)
+        self.D_hat = self.dictionary.init(X, D_init_params)
 
-        return D_hat
+        return self.D_hat
 
     def add_one_atom(self, z_encoder):
         new_atom = self.get_max_error_dict(z_encoder)[0]
 
-        z_encoder.D_hat = np.concatenate([z_encoder.D_hat, new_atom[None]])
+        self.D_hat = np.concatenate([self.D_hat, new_atom[None]])
+        z_encoder.set_D(self.D_hat)
         z_encoder.update_z_hat()
 
     def update_D(self, z_encoder):
@@ -282,7 +283,7 @@ class BaseDSolver:
 
         assert z_encoder.n_channels == self.n_channels
 
-        D_hat0 = self.dewindow(z_encoder.D_hat)
+        D_hat0 = self.dewindow(self.D_hat)
 
         D_hat, pobj = fista(
             self._get_objective(z_encoder), self._get_grad(z_encoder),
@@ -291,11 +292,13 @@ class BaseDSolver:
             name=self.name, debug=self.debug, verbose=self.verbose
         )
 
-        D_hat = self.window(D_hat)
+        self.D_hat = self.window(D_hat)
+
+        z_encoder.set_D(self.D_hat)
 
         if self.debug:
-            return D_hat, pobj
-        return D_hat
+            return self.D_hat, pobj
+        return self.D_hat
 
 
 class Rank1DSolver(BaseDSolver):
@@ -369,7 +372,7 @@ class AlternateDSolver(Rank1DSolver):
         """
         assert z_encoder.n_channels == self.n_channels
 
-        uv_hat = self.dewindow(z_encoder.D_hat)
+        uv_hat = self.dewindow(self.D_hat)
 
         objective = self._get_objective(z_encoder)
 
@@ -388,11 +391,13 @@ class AlternateDSolver(Rank1DSolver):
                 pobj.extend(pobj_u)
                 pobj.extend(pobj_v)
 
-        uv_hat = self.window(uv_hat)
+        self.D_hat = self.window(uv_hat)
+
+        z_encoder.set_D(self.D_hat)
 
         if self.debug:
-            return uv_hat, pobj
-        return uv_hat
+            return self.D_hat, pobj
+        return self.D_hat
 
     def _update_u(self, uv_hat0, objective, z_encoder):
 

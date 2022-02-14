@@ -67,6 +67,9 @@ class MockZEncoder:
     def get_z_hat(self):
         return self.z_hat
 
+    def set_D(self, D):
+        self.D_hat = D
+
     def get_constants(self):
 
         return dict(ztX=self.ztX, ztz=self.ztz, XtX=self.XtX,
