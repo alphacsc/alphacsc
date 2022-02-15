@@ -239,7 +239,7 @@ class BaseDSolver:
             The initial atoms to learn from the data.
         """
 
-        self.D_hat = self.dictionary.init(X)
+        self.D_hat = self.dictionary.initialize(X)
 
         return self.D_hat
 

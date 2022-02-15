@@ -62,7 +62,7 @@ class BaseDictionary():
     def get_shape(self):
         raise NotImplementedError()
 
-    def init(self, X):
+    def initialize(self, X):
         D_hat = self.strategy.init(X)
 
         if not hasattr(self.strategy, 'D_init'):
