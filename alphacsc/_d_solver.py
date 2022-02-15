@@ -166,7 +166,7 @@ class BaseDSolver:
 
         def objective(D, full=False):
 
-            D = self.window(D)
+            D = self.dictionary.window(D)
 
             return z_encoder.compute_objective(D)
 
@@ -176,11 +176,11 @@ class BaseDSolver:
 
         def prox(D, step_size=None):
 
-            D = self.window(D)
+            D = self.dictionary.window(D)
 
-            D = self.prox(D)
+            D = self.dictionary.prox(D)
 
-            return self.dewindow(D)
+            return self.dictionary.dewindow(D)
 
         return prox
 
@@ -188,31 +188,13 @@ class BaseDSolver:
 
         def grad(D):
 
-            D = self.window(D)
+            D = self.dictionary.window(D)
 
             grad = self.grad(D, z_encoder)
 
-            return self.window(grad)
+            return self.dictionary.window(grad)
 
         return grad
-
-    def window(self, D_hat):
-        return self.dictionary.window(D_hat)
-
-    def dewindow(self, D_hat):
-        return self.dictionary.dewindow(D_hat)
-
-    def simple_window(self, D_hat):
-        return self.dictionary.simple_window(D_hat)
-
-    def simple_dewindow(self, D_hat):
-        return self.dictionary.simple_dewindow(D_hat)
-
-    def prox(self, D):
-        return self.dictionary.prox(D)
-
-    def grad(self, D):
-        raise NotImplementedError()
 
     def get_max_error_dict(self, z_encoder):
         """Get the maximal reconstruction error patch from the data as a new atom
@@ -238,9 +220,9 @@ class BaseDSolver:
 
         d0 = z_encoder.get_max_error_patch()
 
-        d0 = self.window(d0)
+        d0 = self.dictionary.window(d0)
 
-        return self.prox(d0)
+        return self.dictionary.prox(d0)
 
     def init_dictionary(self, X):
         """Returns a dictionary for the signal X depending on D_init value.
@@ -285,7 +267,7 @@ class BaseDSolver:
 
         assert z_encoder.n_channels == self.n_channels
 
-        D_hat0 = self.dewindow(self.D_hat)
+        D_hat0 = self.dictionary.dewindow(self.D_hat)
 
         D_hat, pobj = fista(
             self._get_objective(z_encoder), self._get_grad(z_encoder),
@@ -294,7 +276,7 @@ class BaseDSolver:
             name=self.name, debug=self.debug, verbose=self.verbose
         )
 
-        self.D_hat = self.window(D_hat)
+        self.D_hat = self.dictionary.window(D_hat)
 
         z_encoder.set_D(self.D_hat)
 
@@ -376,7 +358,7 @@ class AlternateDSolver(Rank1DSolver):
         """
         assert z_encoder.n_channels == self.n_channels
 
-        uv_hat = self.dewindow(self.D_hat)
+        uv_hat = self.dictionary.dewindow(self.D_hat)
 
         objective = self._get_objective(z_encoder)
 
@@ -395,7 +377,7 @@ class AlternateDSolver(Rank1DSolver):
                 pobj.extend(pobj_u)
                 pobj.extend(pobj_v)
 
-        self.D_hat = self.window(uv_hat)
+        self.D_hat = self.dictionary.window(uv_hat)
 
         z_encoder.set_D(self.D_hat)
 
@@ -412,7 +394,7 @@ class AlternateDSolver(Rank1DSolver):
 
         def grad_u(u):
 
-            uv = np.c_[u, self.simple_window(v_hat)]
+            uv = np.c_[u, self.dictionary.simple_window(v_hat)]
 
             grad_d = gradient_d(
                 uv, X=z_encoder.X, z=z_encoder.get_z_hat(),
@@ -453,7 +435,7 @@ class AlternateDSolver(Rank1DSolver):
 
         def grad_v(v):
 
-            v = self.simple_window(v)
+            v = self.dictionary.simple_window(v)
 
             uv = np.c_[u_hat, v]
 
@@ -465,15 +447,15 @@ class AlternateDSolver(Rank1DSolver):
 
             grad_v = (grad_d * uv[:, :z_encoder.n_channels, None]).sum(axis=1)
 
-            return self.simple_window(grad_v)
+            return self.dictionary.simple_window(grad_v)
 
         def prox_v(v, step_size=None):
 
-            v = self.simple_window(v)
+            v = self.dictionary.simple_window(v)
 
             v /= np.maximum(1., np.linalg.norm(v, axis=1, keepdims=True))
 
-            return self.simple_dewindow(v)
+            return self.dictionary.simple_dewindow(v)
 
         def obj(v):
             uv = np.c_[u_hat, v]
