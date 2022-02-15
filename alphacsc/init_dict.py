@@ -27,16 +27,19 @@ tied = custom_distances.translation_invariant_euclidean_distances
 class BaseDictionary():
 
     def __init__(self, n_channels, n_atoms, n_times_atom, random_state,
-                 window):
+                 window, D_init, D_init_params):
         self.n_channels = n_channels
         self.n_atoms = n_atoms
         self.n_times_atom = n_times_atom
+        self.D_init_params = D_init_params
         self.rng = check_random_state(random_state)
 
         if not window:
             self.windower = NoWindow()
         else:
             self._init_windower()
+
+        self._set_init_strategy(D_init)
 
     def _init_windower(self):
         raise NotImplementedError()
@@ -59,8 +62,8 @@ class BaseDictionary():
     def get_shape(self):
         raise NotImplementedError()
 
-    def init(self, X, D_init_params):
-        D_hat = self.strategy.init(X, D_init_params)
+    def init(self, X):
+        D_hat = self.strategy.init(X)
 
         if not hasattr(self.strategy, 'D_init'):
             D_hat = self.window(D_hat)
@@ -73,7 +76,7 @@ class BaseDictionary():
     def wrap_rank1(self, D_hat):
         return D_hat
 
-    def set_init_strategy(self, D_init):
+    def _set_init_strategy(self, D_init):
         if isinstance(D_init, np.ndarray):
             self.strategy = IdentityStrategy(self, D_init)
         elif D_init is None or D_init == 'random':
@@ -109,10 +112,10 @@ class Dictionary(BaseDictionary):
 class Rank1Dictionary(BaseDictionary):
 
     def __init__(self, n_channels, n_atoms, n_times_atom, random_state,
-                 window, uv_constraint):
+                 window, D_init, D_init_params, uv_constraint):
 
         super().__init__(n_channels, n_atoms, n_times_atom, random_state,
-                         window)
+                         window, D_init, D_init_params)
 
         self.uv_constraint = uv_constraint
 
@@ -139,7 +142,7 @@ class BaseStrategy():
         self.n_times_atom = parent.n_times_atom
         self.rng = parent.rng
 
-    def init(self, X, D_init_params):
+    def init(self, X):
         raise NotImplementedError()
 
 
@@ -151,19 +154,19 @@ class IdentityStrategy(BaseStrategy):
         assert self.parent.get_shape() == D_init.shape
         self.D_init = D_init
 
-    def init(self, X, D_init_params):
+    def init(self, X):
         return self.D_init.copy()
 
 
 class RandomStrategy(BaseStrategy):
 
-    def init(self, X, D_init_params):
+    def init(self, X):
         return self.rng.randn(*self.parent.get_shape())
 
 
 class ChunkStrategy(BaseStrategy):
 
-    def init(self, X, D_init_params):
+    def init(self, X):
         n_trials, n_channels, n_times = X.shape
 
         D_hat = np.zeros(
@@ -180,9 +183,9 @@ class ChunkStrategy(BaseStrategy):
 
 class KMeansStrategy(BaseStrategy):
 
-    def init(self, X, D_init_params):
+    def init(self, X):
         D_hat = kmeans_init(X, self.n_atoms, self.n_times_atom,
-                            random_state=self.rng, **D_init_params)
+                            random_state=self.rng, **self.parent.D_init_params)
 
         D_hat = self.parent.wrap(D_hat)
         return D_hat
@@ -190,7 +193,7 @@ class KMeansStrategy(BaseStrategy):
 
 class SSAStrategy(BaseStrategy):
 
-    def init(self, X, D_init_params):
+    def init(self, X):
         u_hat = self.rng.randn(self.n_atoms, self.n_channels)
         v_hat = ssa_init(X, self.n_atoms, self.n_times_atom,
                          random_state=self.rng)
@@ -202,7 +205,7 @@ class SSAStrategy(BaseStrategy):
 
 class GreedyStrategy(BaseStrategy):
 
-    def init(self, X, D_init_params):
+    def init(self, X):
         D_hat = self.rng.randn(*self.parent.get_shape())
         return D_hat[:0]
 

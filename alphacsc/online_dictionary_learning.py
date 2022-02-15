@@ -122,14 +122,13 @@ class OnlineCDL(ConvolutionalDictionaryLearning):
         self.d_solver = get_solver_d(
             n_channels, self.n_atoms, self.n_times_atom,
             solver_d=self.solver_d, rank1=self.rank1, window=self.window,
+            D_init=self.D_init, D_init_params=self.D_init_params,
             random_state=self.random_state, **self.solver_d_kwargs
         )
 
         # Init dictionary either from D_init or from an heuristic based on the
         # first batch X
-        self._D_hat = self.d_solver.init_dictionary(
-            X, D_init=self.D_init, D_init_params=self.D_init_params
-        )
+        self._D_hat = self.d_solver.init_dictionary(X)
 
         self.reg_ = self.reg
         _lmbd_max = get_lambda_max(X, self._D_hat).max()

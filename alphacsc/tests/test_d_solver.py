@@ -101,6 +101,8 @@ def test_get_solver_d(rank1, solver_d, uv_constraint, window, momentum):
                             N_TIMES_ATOM,
                             solver_d=solver_d,
                             rank1=rank1,
+                            D_init='random',
+                            D_init_params=None,
                             window=window,
                             momentum=momentum)
 
@@ -120,6 +122,8 @@ def test_get_solver_d_error_solver(solver_d):
                      N_TIMES_ATOM,
                      solver_d=solver_d,
                      rank1=False,
+                     D_init='random',
+                     D_init_params=None,
                      window=True,
                      momentum=False)
 
@@ -139,6 +143,8 @@ def test_get_solver_d_error_uv_constraint(solver_d, uv_constraint):
                      solver_d=solver_d,
                      uv_constraint=uv_constraint,
                      rank1=False,
+                     D_init='random',
+                     D_init_params=None,
                      window=True,
                      momentum=False)
 
@@ -158,91 +164,51 @@ def test_get_solver_d_error_rank1_uv_constraint(solver_d):
                      solver_d=solver_d,
                      uv_constraint='joint',
                      rank1=True,
+                     D_init='random',
+                     D_init_params=None,
                      window=True,
                      momentum=False)
 
 
-@pytest.mark.parametrize('solver_d', ['auto', 'fista'])
-@pytest.mark.parametrize('uv_constraint', ['auto'])
+@pytest.mark.parametrize('solver_d, uv_constraint, rank1, shape', [
+    ('auto', 'auto', False, (N_ATOMS, N_CHANNELS, N_TIMES_ATOM)),
+    ('fista', 'auto', False, (N_ATOMS, N_CHANNELS, N_TIMES_ATOM)),
+    ('joint', 'joint', True, (N_ATOMS, N_CHANNELS+N_TIMES_ATOM)),
+    ('joint', 'separate', True, (N_ATOMS, N_CHANNELS+N_TIMES_ATOM)),
+    ('fista', 'joint', True, (N_ATOMS, N_CHANNELS+N_TIMES_ATOM)),
+    ('fista', 'separate', True, (N_ATOMS, N_CHANNELS+N_TIMES_ATOM)),
+    ('auto', 'separate', True, (N_ATOMS, N_CHANNELS+N_TIMES_ATOM)),
+    ('alternate', 'separate', True, (N_ATOMS, N_CHANNELS+N_TIMES_ATOM)),
+    ('alternate_adaptive', 'separate', True, (N_ATOMS, N_CHANNELS+N_TIMES_ATOM)),  # noqa
+])
 @pytest.mark.parametrize('window', [True, False])
 @pytest.mark.parametrize('n_trials', [N_TRIALS])
 @pytest.mark.parametrize('D_init', ['random', 'chunk', 'kmeans', 'ssa'])
-def test_init_dictionary(X, D_init, solver_d, uv_constraint, window):
-    """Tests for valid values when rank1 is False and D_init is specified as
-    type."""
+def test_init_dictionary(X, D_init, solver_d, uv_constraint, rank1, shape,
+                         window):
+    """Tests for valid values when D_init is specified as type."""
     d_solver = get_solver_d(N_CHANNELS,
                             N_ATOMS,
                             N_TIMES_ATOM,
                             solver_d=solver_d,
                             uv_constraint=uv_constraint,
-                            rank1=False,
+                            D_init=D_init,
+                            D_init_params=dict(),
+                            rank1=rank1,
                             window=window)
 
     assert d_solver is not None
 
-    D_hat = d_solver.init_dictionary(X, D_init=D_init)
+    D_hat = d_solver.init_dictionary(X)
 
     assert D_hat is not None
-    assert D_hat.shape == (N_ATOMS, N_CHANNELS, N_TIMES_ATOM)
-
-
-@pytest.mark.parametrize('solver_d', ['joint', 'fista'])
-@pytest.mark.parametrize('uv_constraint', ['joint', 'separate'])
-@pytest.mark.parametrize('window', [True, False])
-@pytest.mark.parametrize('D_init', ['random', 'chunk', 'kmeans', 'ssa'])
-@pytest.mark.parametrize('n_trials', [N_TRIALS])
-def test_init_dictionary_rank1(X, D_init, solver_d, uv_constraint, window):
-    """Tests for valid values when solver_d is either in 'joint' or 'fista',
-    rank1 is True and D_init is specified as type."""
-
-    d_solver = get_solver_d(N_CHANNELS,
-                            N_ATOMS,
-                            N_TIMES_ATOM,
-                            solver_d=solver_d,
-                            uv_constraint=uv_constraint,
-                            rank1=True,
-                            window=window)
-
-    assert d_solver is not None
-
-    D_hat = d_solver.init_dictionary(X, D_init=D_init)
-
-    assert D_hat is not None
-    assert D_hat.shape == (N_ATOMS, N_CHANNELS+N_TIMES_ATOM)
-
-
-@pytest.mark.parametrize('solver_d', ['auto', 'alternate',
-                                      'alternate_adaptive'])
-@pytest.mark.parametrize('uv_constraint', ['separate'])
-@pytest.mark.parametrize('window', [True, False])
-@pytest.mark.parametrize('D_init', ['random', 'chunk', 'kmeans', 'ssa'])
-@pytest.mark.parametrize('n_trials', [N_TRIALS])
-def test_init_dictionary_rank1_alternate(X, D_init, solver_d, uv_constraint,
-                                         window):
-    """Tests for valid values when solver_d is alternate, rank1 is True, and
-    D_init is specified as type."""
-
-    d_solver = get_solver_d(N_CHANNELS,
-                            N_ATOMS,
-                            N_TIMES_ATOM,
-                            solver_d=solver_d,
-                            uv_constraint=uv_constraint,
-                            rank1=True,
-                            window=window)
-
-    assert d_solver is not None
-
-    D_hat = d_solver.init_dictionary(X, D_init=D_init)
-
-    assert D_hat is not None
-
-    assert D_hat.shape == (N_ATOMS, N_CHANNELS+N_TIMES_ATOM)
+    assert D_hat.shape == shape
 
 
 @pytest.mark.parametrize('solver_d', ['auto', 'fista'])
 @pytest.mark.parametrize('uv_constraint', ['auto'])
-@pytest.mark.parametrize('window', [True, False])
 @pytest.mark.parametrize('shape', [(N_ATOMS, N_CHANNELS, N_TIMES_ATOM)])
+@pytest.mark.parametrize('window', [True, False])
 @pytest.mark.parametrize('n_trials', [N_TRIALS])
 def test_init_dictionary_initial_D_init(X, D_init, solver_d, window,
                                         uv_constraint, shape):
@@ -256,15 +222,17 @@ def test_init_dictionary_initial_D_init(X, D_init, solver_d, window,
                             uv_constraint=uv_constraint,
                             rank1=False,
                             window=window,
+                            D_init=D_init,
+                            D_init_params=None,
                             random_state=42)
 
     assert d_solver is not None
 
-    D_hat = d_solver.init_dictionary(X, D_init)
+    D_hat = d_solver.init_dictionary(X)
 
     assert D_hat is not None
 
-    assert D_hat.shape == (N_ATOMS, N_CHANNELS, N_TIMES_ATOM)
+    assert D_hat.shape == shape
 
     D_init = prox_d(D_init)
     assert_allclose(D_hat, D_init)
@@ -287,11 +255,13 @@ def test_init_dictionary_rank1_initial_D_init(X, D_init, solver_d,
                             uv_constraint=uv_constraint,
                             rank1=True,
                             window=False,
+                            D_init=D_init,
+                            D_init_params=None,
                             random_state=42)
 
     assert d_solver is not None
 
-    D_hat = d_solver.init_dictionary(X, D_init)
+    D_hat = d_solver.init_dictionary(X)
 
     assert D_hat is not None
 
@@ -312,18 +282,20 @@ def test_init_dictionary_rank1_initial_D_init(X, D_init, solver_d,
 ])
 @pytest.mark.parametrize('loss', ['l2'])
 @pytest.mark.parametrize('window', ['True', 'False'])
-def test_update_D(rank1, solver_d, uv_constraint, window, z_encoder, rng):
+def test_update_D(D_hat, rank1, solver_d, uv_constraint, window, z_encoder, rng):
 
     d_solver = get_solver_d(N_CHANNELS,
                             N_ATOMS,
                             N_TIMES_ATOM,
                             solver_d=solver_d,
                             uv_constraint=uv_constraint,
+                            D_init=D_hat,
+                            D_init_params=None,
                             rank1=rank1,
                             window=window,
                             max_iter=1000)
 
-    d_hat0 = d_solver.init_dictionary(z_encoder.X, z_encoder.D_hat)
+    d_hat0 = d_solver.init_dictionary(z_encoder.X)
 
     # Ensure that the known optimal point is stable
     d_hat = d_solver.update_D(z_encoder)
@@ -334,7 +306,18 @@ def test_update_D(rank1, solver_d, uv_constraint, window, z_encoder, rng):
 
     # ----------------
 
-    d_hat1 = d_solver.init_dictionary(z_encoder.X, "random")
+    d_solver = get_solver_d(N_CHANNELS,
+                            N_ATOMS,
+                            N_TIMES_ATOM,
+                            solver_d=solver_d,
+                            uv_constraint=uv_constraint,
+                            D_init='random',
+                            D_init_params=None,
+                            rank1=rank1,
+                            window=window,
+                            max_iter=1000)
+
+    d_hat1 = d_solver.init_dictionary(z_encoder.X)
     assert not np.allclose(d_hat0, d_hat1)
 
     cost1 = z_encoder.compute_objective(d_hat1)
@@ -358,9 +341,11 @@ def test_update_D_error(X, D_hat, rank1, solver_d, uv_constraint, z_encoder):
                             solver_d=solver_d,
                             uv_constraint=uv_constraint,
                             rank1=rank1,
+                            D_init=D_hat,
+                            D_init_params=None,
                             max_iter=1000)
 
-    d_solver.init_dictionary(X, D_hat)
+    d_solver.init_dictionary(X)
 
     with pytest.raises(NotImplementedError):
         d_solver.update_D(z_encoder)
@@ -383,9 +368,11 @@ def test_add_one_atom(X, rank1, solver_d, uv_constraint, window):
                             N_TIMES_ATOM,
                             solver_d=solver_d,
                             rank1=rank1,
+                            D_init='greedy',
+                            D_init_params=None,
                             window=window)
 
-    D_hat = d_solver.init_dictionary(X, D_init="greedy")
+    D_hat = d_solver.init_dictionary(X)
 
     with get_z_encoder_for(X=X,
                            D_hat=D_hat,
@@ -393,13 +380,13 @@ def test_add_one_atom(X, rank1, solver_d, uv_constraint, window):
                            n_times_atom=N_TIMES_ATOM,
                            n_jobs=2) as z_encoder:
 
-        n_atoms_initial = z_encoder.D_hat.shape[0]
+        n_atoms_initial = d_solver.D_hat.shape[0]
         assert n_atoms_initial == 0
         d_solver.add_one_atom(z_encoder)
-        n_atoms_plus_one = z_encoder.D_hat.shape[0]
+        n_atoms_plus_one = d_solver.D_hat.shape[0]
         assert n_atoms_plus_one == n_atoms_initial + 1
 
         d_solver.add_one_atom(z_encoder)
-        n_atoms_plus_two = z_encoder.D_hat.shape[0]
+        n_atoms_plus_two = d_solver.D_hat.shape[0]
 
         assert n_atoms_plus_two == n_atoms_initial + 2

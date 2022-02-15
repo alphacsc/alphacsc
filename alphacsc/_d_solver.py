@@ -64,9 +64,9 @@ def check_solver_and_constraints(rank1, solver_d, uv_constraint):
 
 def get_solver_d(n_channels, n_atoms, n_times_atom,
                  solver_d='alternate_adaptive', rank1=False,
-                 uv_constraint='auto', window=False, eps=1e-8,
-                 max_iter=300, momentum=False, random_state=None,
-                 verbose=0, debug=False):
+                 uv_constraint='auto', D_init=None, D_init_params=dict(),
+                 window=False, eps=1e-8, max_iter=300, momentum=False,
+                 random_state=None, verbose=0, debug=False):
     """Returns solver depending on solver_d type and rank1 value.
 
     Parameters
@@ -90,6 +90,13 @@ def get_solver_d(n_channels, n_atoms, n_times_atom,
         If 'joint', the constraint is norm_2([u, v]) <= 1
         If 'separate', the constraint is norm_2(u) <= 1 and norm_2(v) <= 1
         If rank1 is False, then uv_constraint must be 'auto'.
+    D_init : {'kmeans' | 'ssa' | 'chunk' | 'random'}
+             or array, shape (n_atoms, n_channels + n_times_atom) or
+                         (n_atoms, n_channels, n_times_atom)
+        The initialization scheme for the dictionary or the initial
+        atoms.
+    D_init_params : dict
+        Dictionary of parameters for the kmeans init method.
     window : boolean
         If True, re-parametrizes the atoms with a temporal Tukey window
     eps : float
@@ -115,12 +122,14 @@ def get_solver_d(n_channels, n_atoms, n_times_atom,
         if solver_d in ['auto', 'alternate', 'alternate_adaptive']:
             return AlternateDSolver(
                 n_channels, n_atoms, n_times_atom, solver_d, uv_constraint,
-                window, eps, max_iter, momentum, random_state, verbose, debug
+                D_init, D_init_params, window, eps, max_iter, momentum,
+                random_state, verbose, debug
             )
         elif solver_d in ['fista', 'joint']:
             return JointDSolver(
                 n_channels, n_atoms, n_times_atom, solver_d, uv_constraint,
-                window, eps, max_iter, momentum, random_state, verbose, debug
+                D_init, D_init_params, window, eps, max_iter, momentum,
+                random_state, verbose, debug
             )
         else:
             raise ValueError('Unknown solver_d: %s' % (solver_d, ))
@@ -128,7 +137,8 @@ def get_solver_d(n_channels, n_atoms, n_times_atom,
         if solver_d in ['auto', 'fista']:
             return DSolver(
                 n_channels, n_atoms, n_times_atom, solver_d, uv_constraint,
-                window, eps, max_iter, momentum, random_state, verbose, debug
+                D_init, D_init_params, window, eps, max_iter, momentum,
+                random_state, verbose, debug
             )
         else:
             raise ValueError('Unknown solver_d: %s' % (solver_d, ))
@@ -232,20 +242,13 @@ class BaseDSolver:
 
         return self.prox(d0)
 
-    def init_dictionary(self, X, D_init=None, D_init_params=dict()):
+    def init_dictionary(self, X):
         """Returns a dictionary for the signal X depending on D_init value.
 
         Parameter
         ---------
         X: array, shape (n_trials, n_channels, n_times)
             The data on which to perform CSC.
-        D_init : {'kmeans' | 'ssa' | 'chunk' | 'random'}
-                 or array, shape (n_atoms, n_channels + n_times_atom) or
-                             (n_atoms, n_channels, n_times_atom)
-            The initialization scheme for the dictionary or the initial
-            atoms.
-        D_init_params : dict
-            Dictionary of parameters for the kmeans init method.
 
         Return
         ------
@@ -254,8 +257,7 @@ class BaseDSolver:
             The initial atoms to learn from the data.
         """
 
-        self.dictionary.set_init_strategy(D_init)
-        self.D_hat = self.dictionary.init(X, D_init_params)
+        self.D_hat = self.dictionary.init(X)
 
         return self.D_hat
 
@@ -304,18 +306,18 @@ class BaseDSolver:
 class Rank1DSolver(BaseDSolver):
     """Base class for a rank1 solver d."""
 
-    def __init__(self, n_channels, n_atoms, n_times_atom,
-                 solver_d, uv_constraint, window, eps, max_iter,
-                 momentum, random_state, verbose, debug):
+    def __init__(self, n_channels, n_atoms, n_times_atom, solver_d,
+                 uv_constraint, D_init, D_init_params, window, eps,
+                 max_iter, momentum, random_state, verbose, debug):
 
         super().__init__(
-            n_channels, n_atoms, n_times_atom, solver_d, uv_constraint, eps,
-            max_iter, momentum, random_state, verbose, debug
+            n_channels, n_atoms, n_times_atom, solver_d, uv_constraint,
+            eps, max_iter, momentum, random_state, verbose, debug
         )
 
         self.dictionary = Rank1Dictionary(
             self.n_channels, self.n_atoms, self.n_times_atom,
-            self.rng, window, self.uv_constraint
+            self.rng, window, D_init, D_init_params, self.uv_constraint
         )
 
         self.name = "Update uv"
@@ -324,13 +326,14 @@ class Rank1DSolver(BaseDSolver):
 class JointDSolver(Rank1DSolver):
     """A class for 'fista' or 'joint' solver_d when rank1 is True. """
 
-    def __init__(self, n_channels, n_atoms, n_times_atom,
-                 solver_d, uv_constraint, window, eps, max_iter,
+    def __init__(self, n_channels, n_atoms, n_times_atom, solver_d,
+                 uv_constraint, D_init, D_init_params, window, eps, max_iter,
                  momentum, random_state, verbose, debug):
 
         super().__init__(
-            n_channels, n_atoms, n_times_atom, solver_d, uv_constraint, window,
-            eps, max_iter, momentum, random_state, verbose, debug
+            n_channels, n_atoms, n_times_atom, solver_d, uv_constraint, D_init,
+            D_init_params, window, eps, max_iter, momentum, random_state,
+            verbose, debug
         )
 
     def grad(self, D, z_encoder):
@@ -346,13 +349,14 @@ class AlternateDSolver(Rank1DSolver):
        True.
     """
 
-    def __init__(self, n_channels, n_atoms, n_times_atom,
-                 solver_d, uv_constraint, window, eps, max_iter,
-                 momentum, random_state, verbose, debug):
+    def __init__(self, n_channels, n_atoms, n_times_atom, solver_d,
+                 uv_constraint, D_init, D_init_params, window, eps,
+                 max_iter, momentum, random_state, verbose, debug):
 
         super().__init__(
-            n_channels, n_atoms, n_times_atom, solver_d, uv_constraint, window,
-            eps, max_iter, momentum, random_state, verbose, debug
+            n_channels, n_atoms, n_times_atom, solver_d, uv_constraint, D_init,
+            D_init_params, window, eps, max_iter, momentum, random_state,
+            verbose, debug
         )
 
         self.adaptive_step_size = (solver_d == 'alternate_adaptive')
@@ -563,8 +567,8 @@ class AlternateDSolver(Rank1DSolver):
 class DSolver(BaseDSolver):
     """A class for 'fista' solver_d when rank1 is False. """
 
-    def __init__(self, n_channels, n_atoms, n_times_atom,
-                 solver_d, uv_constraint, window, eps, max_iter,
+    def __init__(self, n_channels, n_atoms, n_times_atom, solver_d,
+                 uv_constraint, D_init, D_init_params, window, eps, max_iter,
                  momentum, random_state, verbose, debug):
 
         super().__init__(
@@ -573,7 +577,8 @@ class DSolver(BaseDSolver):
         )
 
         self.dictionary = Dictionary(
-            self.n_channels, self.n_atoms, self.n_times_atom, self.rng, window
+            self.n_channels, self.n_atoms, self.n_times_atom, self.rng, window,
+            D_init, D_init_params
         )
 
         self.name = "Update D"
