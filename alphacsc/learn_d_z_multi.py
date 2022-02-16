@@ -210,21 +210,24 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         kwargs.update(algorithm_params)
 
         if algorithm == 'batch':
-            pobj, times, D_hat, z_hat = _batch_learn(greedy=False, **kwargs)
+            pobj, times = _batch_learn(greedy=False, **kwargs)
         elif algorithm == "greedy":
-            pobj, times, D_hat, z_hat = _batch_learn(greedy=True, **kwargs)
+            pobj, times = _batch_learn(greedy=True, **kwargs)
         elif algorithm == "online":
-            pobj, times, D_hat, z_hat = _online_learn(**kwargs)
+            pobj, times = _online_learn(**kwargs)
         elif algorithm == "stochastic":
             # For stochastic learning, set forgetting factor alpha of the
             # online algorithm to 0, making each step independent of previous
             # steps and set D-update max_iter to a low value (typically 1).
             kwargs['alpha'] = 0
-            pobj, times, D_hat, z_hat = _online_learn(**kwargs)
+            pobj, times = _online_learn(**kwargs)
         else:
             raise NotImplementedError(
                 "Algorithm '{}' is not implemented to learn dictionary atoms."
                 .format(algorithm))
+
+        D_hat = d_solver.D_hat
+        z_hat = z_encoder.get_z_hat()
 
         if sort_atoms:
             D_hat, z_hat = sort_atoms_by_explained_variances(
@@ -338,7 +341,7 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
                 and end_iter_func(z_encoder, pobj, ii)):
             break
 
-    return pobj, times, d_solver.D_hat, z_encoder.get_z_hat()
+    return pobj, times
 
 
 def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
@@ -431,7 +434,7 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
         if end_iter_func(z_encoder, pobj, ii):
             break
 
-    return pobj, times, d_solver.D_hat, z_encoder.get_z_hat()
+    return pobj, times
 
 
 def get_iteration_func(eps, stopping_pobj, callback, lmbd_max, name, verbose,
