@@ -3,7 +3,9 @@ import numpy as np
 from .utils import construct_X_multi
 from .utils.dictionary import get_D_shape
 from .update_z_multi import update_z_multi
-from .utils.dictionary import _patch_reconstruction_error, get_uv
+from .utils.dictionary import (
+    _patch_reconstruction_error, get_uv, get_lambda_max
+)
 from .loss_and_gradient import compute_objective
 
 DEFAULT_TOL_Z = 1e-3
@@ -242,16 +244,19 @@ class BaseZEncoder:
         """
         raise NotImplementedError()
 
-    def set_reg(self, reg):
+    def update_reg(self, is_shared):
         """
         Update the regularization parameter.
 
         Parameters
         ----------
-        reg : float
-              Regularization parameter
+        is_shared : bool
+            if the regularization parameter is fixed as a ratio of its
+            maximal value at init i.e. reg_used = reg * lmbd_max(uv_init)
         """
-        raise NotImplementedError()
+        self.reg = self.reg * get_lambda_max(self.X, self.D_hat)
+        if is_shared:
+            self.reg = self.reg.max()
 
     def get_constants(self):
         """
@@ -379,9 +384,6 @@ class AlphaCSCEncoder(BaseZEncoder):
             self.z_hat = np.concatenate(
                 [self.z_hat, self._get_new_z_hat(1)], axis=1
             )
-
-    def set_reg(self, reg):
-        self.reg = reg
 
     def get_z_hat(self):
         return self.z_hat
@@ -581,16 +583,18 @@ class DicodileEncoder(BaseZEncoder):
         self.D_hat = D
         self._encoder.set_worker_D(D)
 
-    def set_reg(self, reg):
+    def update_reg(self, is_shared):
         """
         Update the regularization parameter.
 
         Parameters
         ----------
-        reg : float
-              Regularization parameter
+        is_shared : bool
+            if the regularization parameter is fixed as a ratio of its
+            maximal value at init i.e. reg_used = reg * lmbd_max(uv_init)
         """
-        self._encoder.set_worker_params({'reg': reg})  # XXX
+        super().update_reg()
+        self._encoder.set_worker_params({'reg': self.reg})  # XXX
 
     def __enter__(self):
         # XXX run init here?
