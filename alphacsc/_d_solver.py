@@ -454,7 +454,7 @@ class AlternateDSolver(Rank1DSolver):
 
             v /= np.maximum(1., np.linalg.norm(v, axis=1, keepdims=True))
 
-            return self.dict_util.simple_remove_window(v)
+            return self.dict_util.remove_simple_window(v)
 
         def obj(v):
             uv = np.c_[u_hat, v]

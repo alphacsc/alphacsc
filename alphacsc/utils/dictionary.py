@@ -116,7 +116,7 @@ class NoWindow():
     def simple_window(self, d):
         return d
 
-    def simple_remove_window(self, d):
+    def remove_simple_window(self, d):
         return d
 
 
@@ -138,7 +138,7 @@ class UVWindower(NoWindow):
     def simple_window(self, d):
         return d * self.tukey_window
 
-    def simple_remove_window(self, d):
+    def remove_simple_window(self, d):
         return d / self.tukey_window
 
 

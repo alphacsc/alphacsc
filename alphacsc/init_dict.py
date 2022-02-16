@@ -70,8 +70,8 @@ class BaseDictionaryUtil():
     def simple_window(self, D_hat):
         return self._windower.simple_window(D_hat)
 
-    def simple_remove_window(self, D_hat):
-        return self._windower.simple_remove_window(D_hat)
+    def remove_simple_window(self, D_hat):
+        return self._windower.remove_simple_window(D_hat)
 
     def prox(self, D_hat):
         raise NotImplementedError()
