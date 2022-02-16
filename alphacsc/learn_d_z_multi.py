@@ -248,8 +248,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
 
         # Rescale the solution to match the given scale of the problem
         z_hat *= std_X
-        reg *= std_X
-        z_encoder.set_reg(reg)
+        reg = z_encoder.reg * std_X
 
     return pobj, times, D_hat, z_hat, reg
 
