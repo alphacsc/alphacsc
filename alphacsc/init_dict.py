@@ -35,7 +35,7 @@ class BaseDictionaryUtil():
         self.rng = check_random_state(random_state)
 
         if not window:
-            self.windower = NoWindow()
+            self._windower = NoWindow()
         else:
             self._init_windower()
 
@@ -44,17 +44,34 @@ class BaseDictionaryUtil():
     def _init_windower(self):
         raise NotImplementedError()
 
-    def window(self, D_hat):
-        return self.windower.window(D_hat)
+    def _set_init_strategy(self, D_init):
+        if isinstance(D_init, np.ndarray):
+            self.strategy = IdentityStrategy(self, D_init)
+        elif D_init is None or D_init == 'random':
+            self.strategy = RandomStrategy(self)
+        elif D_init == 'chunk':
+            self.strategy = ChunkStrategy(self)
+        elif D_init == "kmeans":
+            self.strategy = KMeansStrategy(self)
+        elif D_init == 'ssa':
+            self.strategy = SSAStrategy(self)
+        elif D_init == 'greedy':
+            self.strategy = GreedyStrategy(self)
+        else:
+            raise NotImplementedError('It is not possible to initialize uv'
+                                      ' with parameter {}.'.format(D_init))
 
-    def dewindow(self, D_hat):
-        return self.windower.dewindow(D_hat)
+    def window(self, D_hat):
+        return self._windower.window(D_hat)
+
+    def remove_window(self, D_hat):
+        return self._windower.remove_window(D_hat)
 
     def simple_window(self, D_hat):
-        return self.windower.simple_window(D_hat)
+        return self._windower.simple_window(D_hat)
 
-    def simple_dewindow(self, D_hat):
-        return self.windower.simple_dewindow(D_hat)
+    def simple_remove_window(self, D_hat):
+        return self._windower.simple_remove_window(D_hat)
 
     def prox(self, D_hat):
         raise NotImplementedError()
@@ -79,28 +96,11 @@ class BaseDictionaryUtil():
     def wrap_rank1(self, D_hat):
         return D_hat
 
-    def _set_init_strategy(self, D_init):
-        if isinstance(D_init, np.ndarray):
-            self.strategy = IdentityStrategy(self, D_init)
-        elif D_init is None or D_init == 'random':
-            self.strategy = RandomStrategy(self)
-        elif D_init == 'chunk':
-            self.strategy = ChunkStrategy(self)
-        elif D_init == "kmeans":
-            self.strategy = KMeansStrategy(self)
-        elif D_init == 'ssa':
-            self.strategy = SSAStrategy(self)
-        elif D_init == 'greedy':
-            self.strategy = GreedyStrategy(self)
-        else:
-            raise NotImplementedError('It is not possible to initialize uv'
-                                      ' with parameter {}.'.format(D_init))
-
 
 class DictionaryUtil(BaseDictionaryUtil):
 
     def _init_windower(self):
-        self.windower = SimpleWindower(self.n_times_atom)
+        self._windower = SimpleWindower(self.n_times_atom)
 
     def prox(self, D_hat):
         return prox_d(D_hat)
@@ -123,7 +123,7 @@ class Rank1DictionaryUtil(BaseDictionaryUtil):
         self.uv_constraint = uv_constraint
 
     def _init_windower(self):
-        self.windower = UVWindower(self.n_times_atom, self.n_channels)
+        self._windower = UVWindower(self.n_times_atom, self.n_channels)
 
     def prox(self, D_hat):
         return prox_uv(D_hat, uv_constraint=self.uv_constraint,

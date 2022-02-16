@@ -180,7 +180,7 @@ class BaseDSolver:
 
             D = self.dict_util.prox(D)
 
-            return self.dict_util.dewindow(D)
+            return self.dict_util.remove_window(D)
 
         return prox
 
@@ -266,7 +266,7 @@ class BaseDSolver:
 
         assert z_encoder.n_channels == self.n_channels
 
-        D_hat0 = self.dict_util.dewindow(self.D_hat)
+        D_hat0 = self.dict_util.remove_window(self.D_hat)
 
         D_hat, pobj = fista(
             self._get_objective(z_encoder), self._get_grad(z_encoder),
@@ -357,7 +357,7 @@ class AlternateDSolver(Rank1DSolver):
         """
         assert z_encoder.n_channels == self.n_channels
 
-        uv_hat = self.dict_util.dewindow(self.D_hat)
+        uv_hat = self.dict_util.remove_window(self.D_hat)
 
         objective = self._get_objective(z_encoder)
 
@@ -454,7 +454,7 @@ class AlternateDSolver(Rank1DSolver):
 
             v /= np.maximum(1., np.linalg.norm(v, axis=1, keepdims=True))
 
-            return self.dict_util.simple_dewindow(v)
+            return self.dict_util.simple_remove_window(v)
 
         def obj(v):
             uv = np.c_[u_hat, v]
