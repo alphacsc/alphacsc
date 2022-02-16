@@ -204,8 +204,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
 
         # common parameters
         kwargs = dict(
-            z_encoder=z_encoder, d_solver=d_solver, reg=reg,
-            end_iter_func=end_iter_func, n_iter=n_iter, lmbd_max=lmbd_max,
+            z_encoder=z_encoder, d_solver=d_solver, n_iter=n_iter,
+            end_iter_func=end_iter_func, lmbd_max=lmbd_max,
             verbose=verbose, random_state=random_state, name=name
         )
         kwargs.update(algorithm_params)
@@ -262,7 +262,6 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
                  random_state=None, name="batch"):
 
     n_atoms = z_encoder.n_atoms
-    reg_ = reg
 
     if greedy:
         n_iter_by_atom = 1
@@ -293,10 +292,7 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
         if lmbd_max in ['per_atom', 'shared'] or (
                 lmbd_max == 'scaled' and ii == 0
         ):
-            reg_ = set_reg(lmbd_max, d_solver.D_hat, z_encoder)
-
-        if verbose > 5:
-            print('[{}] lambda = {:.3e}'.format(name, np.mean(reg_)))
+            adjust_reg(lmbd_max, d_solver.D_hat, z_encoder, name, verbose)
 
         # Compute z update
         start = time.time()
@@ -358,8 +354,6 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
     D_hat = d_solver.D_hat
     n_atoms = d_solver.n_atoms
 
-    reg_ = reg
-
     n_trials, n_channels = X.shape[:2]
     if D_hat.ndim == 2:
         n_atoms, n_times_atom = D_hat.shape
@@ -383,10 +377,7 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
         if lmbd_max in ['per_atom', 'shared'] or (
                 lmbd_max == 'scaled' and ii == 0
         ):
-            reg_ = set_reg(lmbd_max, D_hat, z_encoder)
-
-        if verbose > 5:
-            print('[{}] lambda = {:.3e}'.format(name, np.mean(reg_)))
+            adjust_reg(lmbd_max, D_hat, z_encoder, name, verbose)
 
         # Compute z update
         start = time.time()
@@ -444,12 +435,14 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
     return pobj, times, d_solver.D_hat, z_encoder.get_z_hat()
 
 
-def set_reg(lmbd_max, D_hat, z_encoder):
+def adjust_reg(lmbd_max, D_hat, z_encoder, name, verbose):
     reg_ = z_encoder.reg * get_lambda_max(z_encoder.X, D_hat)
     if lmbd_max == 'shared':
         reg_ = reg_.max()
     z_encoder.set_reg(reg_)
-    return reg_
+
+    if verbose > 5:
+        print('[{}] lambda = {:.3e}'.format(name, np.mean(reg_)))
 
 
 def get_iteration_func(eps, stopping_pobj, callback, lmbd_max, name, verbose,
