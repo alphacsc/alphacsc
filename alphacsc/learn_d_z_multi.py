@@ -289,6 +289,10 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
         ):
             z_encoder.update_reg(lmbd_max == 'shared')
 
+            if verbose > 5:
+                print('[{}] lambda = {:.3e}'.format(
+                    name, np.mean(z_encoder.reg)))
+
         # Compute z update
         start = time.time()
         z_encoder.compute_z()
@@ -370,6 +374,10 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
                 lmbd_max == 'scaled' and ii == 0
         ):
             z_encoder.update_reg(lmbd_max == 'shared')
+
+            if verbose > 5:
+                print('[{}] lambda = {:.3e}'.format(
+                    name, np.mean(z_encoder.reg)))
 
         # Compute z update
         start = time.time()
