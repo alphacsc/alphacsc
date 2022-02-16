@@ -13,7 +13,6 @@ import numpy as np
 from .utils import check_dimension
 from .utils import check_random_state
 from .utils.convolution import sort_atoms_by_explained_variances
-from .utils.dictionary import get_lambda_max
 from .utils.whitening import whitening
 from ._z_encoder import get_z_encoder_for
 from ._d_solver import get_solver_d
@@ -288,7 +287,7 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
         if lmbd_max in ['per_atom', 'shared'] or (
                 lmbd_max == 'scaled' and ii == 0
         ):
-            adjust_reg(lmbd_max, d_solver.D_hat, z_encoder, name, verbose)
+            z_encoder.update_reg(lmbd_max == 'shared')
 
         # Compute z update
         start = time.time()
@@ -323,8 +322,8 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
         null_atom_indices = np.where(z_nnz == 0)[0]
         if len(null_atom_indices) > 0:
             k0 = null_atom_indices[0]
-            d_solver.D_hat[k0] = d_solver.get_max_error_dict(z_encoder)[0]
-            z_encoder.set_D(d_solver.D_hat)
+            d_solver.resample_atom(k0, z_encoder)
+
             if verbose > 5:
                 print('[{}] Resampled atom {}'.format(name, k0))
 
@@ -370,7 +369,7 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
         if lmbd_max in ['per_atom', 'shared'] or (
                 lmbd_max == 'scaled' and ii == 0
         ):
-            adjust_reg(lmbd_max, D_hat, z_encoder, name, verbose)
+            z_encoder.update_reg(lmbd_max == 'shared')
 
         # Compute z update
         start = time.time()
@@ -414,8 +413,7 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
         null_atom_indices = np.where(z_nnz == 0)[0]
         if len(null_atom_indices) > 0:
             k0 = null_atom_indices[0]
-            d_solver.D_hat[k0] = d_solver.get_max_error_dict(z_encoder)[0]
-            z_encoder.set_D(d_solver.D_hat)
+            d_solver.resample_atom(k0, z_encoder)
             if verbose > 5:
                 print('[{}] Resampled atom {}'.format(name, k0))
 
@@ -426,16 +424,6 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
             break
 
     return pobj, times, d_solver.D_hat, z_encoder.get_z_hat()
-
-
-def adjust_reg(lmbd_max, D_hat, z_encoder, name, verbose):
-    reg_ = z_encoder.reg * get_lambda_max(z_encoder.X, D_hat)
-    if lmbd_max == 'shared':
-        reg_ = reg_.max()
-    z_encoder.set_reg(reg_)
-
-    if verbose > 5:
-        print('[{}] lambda = {:.3e}'.format(name, np.mean(reg_)))
 
 
 def get_iteration_func(eps, stopping_pobj, callback, lmbd_max, name, verbose,
