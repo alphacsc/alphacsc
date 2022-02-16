@@ -291,7 +291,7 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
             d_solver.add_one_atom(z_encoder)
 
         if lmbd_max in ['per_atom', 'shared'] or (
-                lmbd_max == 'per_atom' and ii == 1
+                lmbd_max == 'scaled' and ii == 0
         ):
             reg_ = set_reg(lmbd_max, d_solver.D_hat, z_encoder)
 
@@ -381,7 +381,7 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
             print('[{}] CD iterations {} / {}'.format(name, ii, n_iter))
 
         if lmbd_max in ['per_atom', 'shared'] or (
-                lmbd_max == 'per_atom' and ii == 1
+                lmbd_max == 'scaled' and ii == 0
         ):
             reg_ = set_reg(lmbd_max, D_hat, z_encoder)
 
