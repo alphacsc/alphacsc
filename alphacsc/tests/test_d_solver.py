@@ -282,7 +282,8 @@ def test_init_dictionary_rank1_initial_D_init(X, D_init, solver_d,
 ])
 @pytest.mark.parametrize('loss', ['l2'])
 @pytest.mark.parametrize('window', ['True', 'False'])
-def test_update_D(D_hat, rank1, solver_d, uv_constraint, window, z_encoder, rng):
+def test_update_D(D_hat, rank1, solver_d, uv_constraint, window,
+                  z_encoder, rng):
 
     d_solver = get_solver_d(N_CHANNELS,
                             N_ATOMS,
