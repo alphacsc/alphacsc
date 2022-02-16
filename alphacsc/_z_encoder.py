@@ -260,18 +260,6 @@ class BaseZEncoder:
         return dict(n_channels=self.n_channels, XtX=self.XtX,
                     ztz=self.ztz, ztX=self.ztX)
 
-    def add_one_atom(self, new_atom):
-        """
-        Add one atom to the dictionary and extend z_hat
-        to match the new dimensions.
-
-        Parameters
-        ----------
-        new_atom : array, shape (n_channels + n_times_atom)
-            A new atom to add to the dictionary.
-        """
-        raise NotImplementedError()
-
     def __enter__(self):
         return self
 
@@ -603,19 +591,6 @@ class DicodileEncoder(BaseZEncoder):
               Regularization parameter
         """
         self._encoder.set_worker_params({'reg': reg})  # XXX
-
-    def add_one_atom(self, new_atom):
-        """
-        Add one atom to the dictionary and extend z_hat
-        to match the new dimensions.
-
-        Parameters
-        ----------
-        new_atom : array, shape (n_channels + n_times_atom)
-            A new atom to add to the dictionary.
-        """
-        raise NotImplementedError(
-            "Greedy learning is not available in DiCoDiLe")
 
     def __enter__(self):
         # XXX run init here?
