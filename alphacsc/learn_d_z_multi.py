@@ -158,10 +158,19 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         # The typical stochastic algorithm samples one signal, compute the
         # associated value z and then perform one step of gradient descent
         # for D.
-        assert 'max_iter' not in solver_d_kwargs, (
+        assert (
+            'max_iter' not in solver_d_kwargs or solver_d_kwargs['max_iter'] != 1  # noqa
+        ), (
             "with algorithm='stochastic', max_iter is forced to 1."
         )
         solver_d_kwargs["max_iter"] = 1
+
+    elif algorithm == 'greedy':
+        # Initialize D with no atoms as they will be added sequentially.
+        D_init = 'greedy'
+
+    # initialization
+    start = time.time()
 
     d_solver = get_solver_d(
         n_channels, n_atoms, n_times_atom, solver_d=solver_d, rank1=rank1,
@@ -170,9 +179,6 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         **solver_d_kwargs
     )
 
-    # initialization
-    start = time.time()
-
     D_hat = d_solver.init_dictionary(X)
 
     init_duration = time.time() - start
@@ -180,18 +186,6 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
     # Compute the coefficients to whiten X. TODO: add timing
     if loss == 'whitening':
         loss_params['ar_model'], X = whitening(X, ordar=loss_params['ordar'])
-
-    # XXX - lambda_max does not correspond to the one for the dictionary with
-    # one atom for algorithm='greedy'.
-    _lmbd_max = get_lambda_max(X, D_hat).max()
-    if verbose > 1:
-        print("[{}] Max value for lambda: {}".format(name, _lmbd_max))
-    if lmbd_max == "scaled":
-        reg = reg * _lmbd_max
-
-    if algorithm == 'greedy':
-        # Initialize D with no atoms as they will be added sequentially.
-        d_solver.D_hat = D_hat[:0]
 
     z_kwargs = dict(verbose=verbose, **solver_z_kwargs)
 
@@ -210,15 +204,9 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
 
         # common parameters
         kwargs = dict(
-            z_encoder=z_encoder,
-            d_solver=d_solver,
-            end_iter_func=end_iter_func,
-            n_iter=n_iter,
-            verbose=verbose,
-            random_state=random_state,
-            reg=reg,
-            lmbd_max=lmbd_max,
-            name=name,
+            z_encoder=z_encoder, d_solver=d_solver, reg=reg,
+            end_iter_func=end_iter_func, n_iter=n_iter, lmbd_max=lmbd_max,
+            verbose=verbose, random_state=random_state, name=name
         )
         kwargs.update(algorithm_params)
 
@@ -273,7 +261,6 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
                  lmbd_max='fixed', reg=None, verbose=0, greedy=False,
                  random_state=None, name="batch"):
 
-    X = z_encoder.X
     n_atoms = z_encoder.n_atoms
     reg_ = reg
 
@@ -303,11 +290,10 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
             # add a new atom every n_iter_by_atom iterations
             d_solver.add_one_atom(z_encoder)
 
-        if lmbd_max not in ['fixed', 'scaled']:
-            reg_ = reg * get_lambda_max(X, d_solver.D_hat)
-            if lmbd_max == 'shared':
-                reg_ = reg_.max()
-            z_encoder.set_reg(reg_)
+        if lmbd_max in ['per_atom', 'shared'] or (
+                lmbd_max == 'per_atom' and ii == 1
+        ):
+            reg_ = set_reg(lmbd_max, d_solver.D_hat, z_encoder)
 
         if verbose > 5:
             print('[{}] lambda = {:.3e}'.format(name, np.mean(reg_)))
@@ -339,7 +325,7 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
 
         # Compute D update
         start = time.time()
-        D_hat = d_solver.update_D(z_encoder)
+        d_solver.update_D(z_encoder)
 
         # monitor cost function
         times.append(time.time() - start)
@@ -356,7 +342,7 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
         if verbose > 5:
             print('[{}] Objective (d) : {:.3e}'.format(name, pobj[-1]))
 
-        if ((not greedy or D_hat.shape[0] == n_atoms)
+        if ((not greedy or d_solver.D_hat.shape[0] == n_atoms)
                 and end_iter_func(z_encoder, pobj, ii)):
             break
 
@@ -394,11 +380,10 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
         if verbose > 1:
             print('[{}] CD iterations {} / {}'.format(name, ii, n_iter))
 
-        if lmbd_max not in ['fixed', 'scaled']:
-            reg_ = reg * get_lambda_max(X, D_hat)
-            if lmbd_max == 'shared':
-                reg_ = reg_.max()
-            z_encoder.set_reg(reg_)
+        if lmbd_max in ['per_atom', 'shared'] or (
+                lmbd_max == 'per_atom' and ii == 1
+        ):
+            reg_ = set_reg(lmbd_max, D_hat, z_encoder)
 
         if verbose > 5:
             print('[{}] lambda = {:.3e}'.format(name, np.mean(reg_)))
@@ -436,7 +421,7 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
 
         # Compute D update
         start = time.time()
-        D_hat = d_solver.update_D(z_encoder)
+        d_solver.update_D(z_encoder)
 
         # monitor cost function
         times.append(time.time() - start)
@@ -457,6 +442,14 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
             break
 
     return pobj, times, d_solver.D_hat, z_encoder.get_z_hat()
+
+
+def set_reg(lmbd_max, D_hat, z_encoder):
+    reg_ = z_encoder.reg * get_lambda_max(z_encoder.X, D_hat)
+    if lmbd_max == 'shared':
+        reg_ = reg_.max()
+    z_encoder.set_reg(reg_)
+    return reg_
 
 
 def get_iteration_func(eps, stopping_pobj, callback, lmbd_max, name, verbose,
