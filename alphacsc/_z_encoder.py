@@ -381,7 +381,8 @@ class AlphaCSCEncoder(BaseZEncoder):
     def set_D(self, D):
         self.D_hat = D
 
-    def update_z_hat(self):
+    def update_z_hat(self, D):
+        self.D_hat = D
         # XXX would it require a more complex check or adjustment. We are
         # assuming that the number of atoms increase one by one.
         # check shape and adjust z_hat

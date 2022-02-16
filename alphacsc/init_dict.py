@@ -24,7 +24,7 @@ ried = custom_distances.roll_invariant_euclidean_distances
 tied = custom_distances.translation_invariant_euclidean_distances
 
 
-class BaseDictionary():
+class BaseDictionaryUtil():
 
     def __init__(self, n_channels, n_atoms, n_times_atom, random_state,
                  window, D_init, D_init_params):
@@ -67,8 +67,11 @@ class BaseDictionary():
 
         if not hasattr(self.strategy, 'D_init'):
             D_hat = self.window(D_hat)
-        self.D_hat = self.prox(D_hat)
-        return self.D_hat
+        D_hat = self.prox(D_hat)
+        return D_hat
+
+    def add_one_atom(self, D_hat, new_atom):
+        return np.concatenate([D_hat, new_atom[None]])
 
     def wrap(self, D_hat):
         return D_hat
@@ -94,7 +97,7 @@ class BaseDictionary():
                                       ' with parameter {}.'.format(D_init))
 
 
-class Dictionary(BaseDictionary):
+class DictionaryUtil(BaseDictionaryUtil):
 
     def _init_windower(self):
         self.windower = SimpleWindower(self.n_times_atom)
@@ -109,7 +112,7 @@ class Dictionary(BaseDictionary):
         return get_D(D_hat, self.n_channels)
 
 
-class Rank1Dictionary(BaseDictionary):
+class Rank1DictionaryUtil(BaseDictionaryUtil):
 
     def __init__(self, n_channels, n_atoms, n_times_atom, random_state,
                  window, D_init, D_init_params, uv_constraint):

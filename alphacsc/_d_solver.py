@@ -1,6 +1,6 @@
 import numpy as np
 
-from .init_dict import Dictionary, Rank1Dictionary
+from .init_dict import DictionaryUtil, Rank1DictionaryUtil
 from .loss_and_gradient import gradient_uv, gradient_d
 from .utils import check_random_state
 from .utils.convolution import numpy_convolve_uv
@@ -166,7 +166,7 @@ class BaseDSolver:
 
         def objective(D, full=False):
 
-            D = self.dictionary.window(D)
+            D = self.dict_util.window(D)
 
             return z_encoder.compute_objective(D)
 
@@ -176,11 +176,11 @@ class BaseDSolver:
 
         def prox(D, step_size=None):
 
-            D = self.dictionary.window(D)
+            D = self.dict_util.window(D)
 
-            D = self.dictionary.prox(D)
+            D = self.dict_util.prox(D)
 
-            return self.dictionary.dewindow(D)
+            return self.dict_util.dewindow(D)
 
         return prox
 
@@ -188,11 +188,11 @@ class BaseDSolver:
 
         def grad(D):
 
-            D = self.dictionary.window(D)
+            D = self.dict_util.window(D)
 
             grad = self.grad(D, z_encoder)
 
-            return self.dictionary.window(grad)
+            return self.dict_util.window(grad)
 
         return grad
 
@@ -220,9 +220,9 @@ class BaseDSolver:
 
         d0 = z_encoder.get_max_error_patch()
 
-        d0 = self.dictionary.window(d0)
+        d0 = self.dict_util.window(d0)
 
-        return self.dictionary.prox(d0)
+        return self.dict_util.prox(d0)
 
     def init_dictionary(self, X):
         """Returns a dictionary for the signal X depending on D_init value.
@@ -239,16 +239,15 @@ class BaseDSolver:
             The initial atoms to learn from the data.
         """
 
-        self.D_hat = self.dictionary.initialize(X)
-
+        self.D_hat = self.dict_util.initialize(X)
         return self.D_hat
 
     def add_one_atom(self, z_encoder):
         new_atom = self.get_max_error_dict(z_encoder)[0]
 
-        self.D_hat = np.concatenate([self.D_hat, new_atom[None]])
-        z_encoder.set_D(self.D_hat)
-        z_encoder.update_z_hat()
+        self.D_hat = self.dict_util.add_one_atom(self.D_hat, new_atom)
+
+        z_encoder.update_z_hat(self.D_hat)
 
     def update_D(self, z_encoder):
         """Learn d's in time domain.
@@ -267,7 +266,7 @@ class BaseDSolver:
 
         assert z_encoder.n_channels == self.n_channels
 
-        D_hat0 = self.dictionary.dewindow(self.D_hat)
+        D_hat0 = self.dict_util.dewindow(self.D_hat)
 
         D_hat, pobj = fista(
             self._get_objective(z_encoder), self._get_grad(z_encoder),
@@ -276,7 +275,7 @@ class BaseDSolver:
             name=self.name, debug=self.debug, verbose=self.verbose
         )
 
-        self.D_hat = self.dictionary.window(D_hat)
+        self.D_hat = self.dict_util.window(D_hat)
 
         z_encoder.set_D(self.D_hat)
 
@@ -297,7 +296,7 @@ class Rank1DSolver(BaseDSolver):
             eps, max_iter, momentum, random_state, verbose, debug
         )
 
-        self.dictionary = Rank1Dictionary(
+        self.dict_util = Rank1DictionaryUtil(
             self.n_channels, self.n_atoms, self.n_times_atom,
             self.rng, window, D_init, D_init_params, self.uv_constraint
         )
@@ -358,7 +357,7 @@ class AlternateDSolver(Rank1DSolver):
         """
         assert z_encoder.n_channels == self.n_channels
 
-        uv_hat = self.dictionary.dewindow(self.D_hat)
+        uv_hat = self.dict_util.dewindow(self.D_hat)
 
         objective = self._get_objective(z_encoder)
 
@@ -377,7 +376,7 @@ class AlternateDSolver(Rank1DSolver):
                 pobj.extend(pobj_u)
                 pobj.extend(pobj_v)
 
-        self.D_hat = self.dictionary.window(uv_hat)
+        self.D_hat = self.dict_util.window(uv_hat)
 
         z_encoder.set_D(self.D_hat)
 
@@ -394,7 +393,7 @@ class AlternateDSolver(Rank1DSolver):
 
         def grad_u(u):
 
-            uv = np.c_[u, self.dictionary.simple_window(v_hat)]
+            uv = np.c_[u, self.dict_util.simple_window(v_hat)]
 
             grad_d = gradient_d(
                 uv, X=z_encoder.X, z=z_encoder.get_z_hat(),
@@ -435,7 +434,7 @@ class AlternateDSolver(Rank1DSolver):
 
         def grad_v(v):
 
-            v = self.dictionary.simple_window(v)
+            v = self.dict_util.simple_window(v)
 
             uv = np.c_[u_hat, v]
 
@@ -447,15 +446,15 @@ class AlternateDSolver(Rank1DSolver):
 
             grad_v = (grad_d * uv[:, :z_encoder.n_channels, None]).sum(axis=1)
 
-            return self.dictionary.simple_window(grad_v)
+            return self.dict_util.simple_window(grad_v)
 
         def prox_v(v, step_size=None):
 
-            v = self.dictionary.simple_window(v)
+            v = self.dict_util.simple_window(v)
 
             v /= np.maximum(1., np.linalg.norm(v, axis=1, keepdims=True))
 
-            return self.dictionary.simple_dewindow(v)
+            return self.dict_util.simple_dewindow(v)
 
         def obj(v):
             uv = np.c_[u_hat, v]
@@ -558,7 +557,7 @@ class DSolver(BaseDSolver):
             max_iter, momentum, random_state, verbose, debug
         )
 
-        self.dictionary = Dictionary(
+        self.dict_util = DictionaryUtil(
             self.n_channels, self.n_atoms, self.n_times_atom, self.rng, window,
             D_init, D_init_params
         )
