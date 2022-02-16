@@ -239,10 +239,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
             if verbose > 1:
                 print(
                     "[{}] Compute the final z_hat with support freeze in "
-                    "{:.2f}s".format(
-                        name,
-                        time.time() -
-                        start_unbiased_z_hat))
+                    "{:.2f}s".format(name, time.time() - start_unbiased_z_hat))
 
         times[0] += init_duration
 
@@ -302,9 +299,6 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
         times.append(time.time() - start)
         pobj.append(z_encoder.get_cost())
 
-        # XXX to adapt to Encoder class, we must fetch z_hat at each iteration.
-        # XXX is that acceptable or not? (seems that DiCoDiLe does not require
-        # it)
         z_nnz = z_encoder.get_z_nnz()
         if verbose > 5:
             print(
