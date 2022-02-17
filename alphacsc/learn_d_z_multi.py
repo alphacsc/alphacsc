@@ -108,7 +108,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
     D_init : str or array, shape (n_atoms, n_channels + n_times_atoms) or \
                            shape (n_atoms, n_channels, n_times_atom)
         The initial atoms or an initialization scheme in {'kmeans' | 'ssa' |
-        'chunk' | 'random'}.
+        'chunk' | 'random' | 'greedy'}.
     D_init_params : dict
         Dictionnary of parameters for the kmeans init method.
     unbiased_z_hat : boolean
@@ -293,8 +293,8 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
             z_encoder.update_reg(lmbd_max == 'shared')
 
             if verbose > 5:
-                print('[{}] lambda = {:.3e}'.format(
-                    name, np.mean(z_encoder.reg)))
+                print('[{}] lambda = {:.3e}'.format(name,
+                                                    np.mean(z_encoder.reg)))
 
         # Compute z update
         start = time.time()
@@ -379,8 +379,8 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
             z_encoder.update_reg(lmbd_max == 'shared')
 
             if verbose > 5:
-                print('[{}] lambda = {:.3e}'.format(
-                    name, np.mean(z_encoder.reg)))
+                print('[{}] lambda = {:.3e}'.format(name,
+                                                    np.mean(z_encoder.reg)))
 
         # Compute z update
         start = time.time()

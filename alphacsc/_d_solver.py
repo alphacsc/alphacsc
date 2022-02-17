@@ -1,6 +1,6 @@
 import numpy as np
 
-from .init_dict import get_dict_strategy
+from .init_dict import get_init_strategy
 from .loss_and_gradient import gradient_uv, gradient_d
 from .utils import check_random_state
 from .utils.convolution import numpy_convolve_uv
@@ -92,7 +92,7 @@ def get_solver_d(n_channels, n_atoms, n_times_atom,
         If 'joint', the constraint is norm_2([u, v]) <= 1
         If 'separate', the constraint is norm_2(u) <= 1 and norm_2(v) <= 1
         If rank1 is False, then uv_constraint must be 'auto'.
-    D_init : {'kmeans' | 'ssa' | 'chunk' | 'random'}
+    D_init : {'kmeans' | 'ssa' | 'chunk' | 'random' | 'greedy'}
              or array, shape (n_atoms, n_channels + n_times_atom) or
                          (n_atoms, n_channels, n_times_atom)
         The initialization scheme for the dictionary or the initial
@@ -164,7 +164,7 @@ class BaseDSolver:
         self.verbose = verbose
         self.debug = debug
 
-        self.dict_strategy = get_dict_strategy(
+        self.init_strategy = get_init_strategy(
             n_times_atom, self.get_D_shape(), self.rng, D_init, D_init_params
         )
 
@@ -238,8 +238,8 @@ class BaseDSolver:
     def init_dictionary(self, X):
         """Returns a dictionary for the signal X depending on D_init value.
 
-        Parameter
-        ---------
+        Parameters
+        ----------
         X: array, shape (n_trials, n_channels, n_times)
             The data on which to perform CSC.
 
@@ -250,9 +250,9 @@ class BaseDSolver:
             The initial atoms to learn from the data.
         """
 
-        D_hat = self.dict_strategy.initialize(X)
+        D_hat = self.init_strategy.initialize(X)
 
-        if not hasattr(self.dict_strategy, 'D_init'):
+        if not hasattr(self.init_strategy, 'D_init'):
             D_hat = self._windower.window(D_hat)
 
         self.D_hat = self.prox(D_hat)
