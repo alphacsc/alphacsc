@@ -439,7 +439,7 @@ class AlternateDSolver(Rank1DSolver):
             return objective(uv)
 
         def op_Hu(u):
-            u = np.reshape(u, (z_encoder.n_atoms, n_channels))
+            u = np.reshape(u, (self.D_hat.shape[0], n_channels))
             uv = np.c_[u, v_hat]
             H_d = numpy_convolve_uv(z_encoder.ztz, uv)
             H_u = (H_d * uv[:, None, n_channels:]).sum(axis=2)
@@ -488,7 +488,7 @@ class AlternateDSolver(Rank1DSolver):
             return objective(uv)
 
         def op_Hv(v):
-            v = np.reshape(v, (z_encoder.n_atoms, z_encoder.n_times_atom))
+            v = np.reshape(v, (self.D_hat.shape[0], z_encoder.n_times_atom))
             uv = np.c_[u_hat, v]
             H_d = numpy_convolve_uv(z_encoder.ztz, uv)
             H_v = (H_d * uv[:, :n_channels, None]).sum(axis=1)
@@ -555,15 +555,17 @@ class AlternateDSolver(Rank1DSolver):
             # XXX - maybe replace with scipy.sparse.linalg.svds
             b_hat_0 = np.random.randn(uv_hat.size)
 
+            n_atoms = self.D_hat.shape[0]
+
             if variable == 'u':
                 b_hat_0 = b_hat_0.reshape(
-                    z_encoder.n_atoms, -1)[:, :z_encoder.n_channels].ravel()
-                n_points = z_encoder.n_atoms * z_encoder.n_channels
+                    n_atoms, -1)[:, :z_encoder.n_channels].ravel()
+                n_points = n_atoms * z_encoder.n_channels
                 L = power_iteration(op, n_points, b_hat_0=b_hat_0)
             elif variable == 'v':
                 b_hat_0 = b_hat_0.reshape(
-                    z_encoder.n_atoms, -1)[:, z_encoder.n_channels:].ravel()
-                n_points = z_encoder.n_atoms * z_encoder.n_times_atom
+                    n_atoms, -1)[:, z_encoder.n_channels:].ravel()
+                n_points = n_atoms * self.n_times_atom
 
             L = power_iteration(op, n_points, b_hat_0=b_hat_0)
 
