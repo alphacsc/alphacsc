@@ -170,8 +170,8 @@ def test_transformers(klass, rank1, solver_d, uv_constraint):
 
     rng = check_random_state(42)
     X = rng.randn(n_trials, n_channels, n_times)
-    cdl = klass(n_atoms, n_times_atom, uv_constraint='separate', rank1=True,
-                solver_d='alternate_adaptive', random_state=0, n_iter=10,
+    cdl = klass(n_atoms, n_times_atom, uv_constraint=uv_constraint,
+                rank1=rank1, solver_d=solver_d, random_state=0, n_iter=10,
                 eps=-np.inf, solver_z='l-bfgs', window=True, verbose=0,
                 **kwargs)
     cdl.fit(X)
