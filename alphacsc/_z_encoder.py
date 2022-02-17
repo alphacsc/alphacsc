@@ -244,19 +244,12 @@ class BaseZEncoder:
         """
         raise NotImplementedError()
 
-    def update_reg(self, is_shared):
+    def update_reg(self):
         """
         Update the regularization parameter.
 
-        Parameters
-        ----------
-        is_shared : bool
-            if the regularization parameter is fixed as a ratio of its
-            maximal value at init i.e. reg_used = reg * lmbd_max(uv_init)
         """
-        self.reg = self.reg * get_lambda_max(self.X, self.D_hat)
-        if is_shared:
-            self.reg = self.reg.max()
+        self.reg = self.reg * get_lambda_max(self.X, self.D_hat).max()
 
     def get_constants(self):
         """
@@ -582,14 +575,8 @@ class DicodileEncoder(BaseZEncoder):
     def update_reg(self, is_shared):
         """
         Update the regularization parameter.
-
-        Parameters
-        ----------
-        is_shared : bool
-            if the regularization parameter is fixed as a ratio of its
-            maximal value at init i.e. reg_used = reg * lmbd_max(uv_init)
         """
-        super().update_reg(is_shared)
+        super().update_reg()
         self._encoder.set_worker_params({'reg': self.reg})  # XXX
 
     def __enter__(self):
