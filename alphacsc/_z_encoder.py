@@ -593,7 +593,7 @@ class DicodileEncoder(BaseZEncoder):
             if the regularization parameter is fixed as a ratio of its
             maximal value at init i.e. reg_used = reg * lmbd_max(uv_init)
         """
-        super().update_reg()
+        super().update_reg(is_shared)
         self._encoder.set_worker_params({'reg': self.reg})  # XXX
 
     def __enter__(self):
