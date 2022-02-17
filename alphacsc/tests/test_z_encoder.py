@@ -7,9 +7,7 @@ from alphacsc.loss_and_gradient import compute_objective
 from alphacsc.utils import construct_X_multi
 from alphacsc.utils.compute_constants import compute_ztz, compute_ztX
 
-from conftest import N_ATOMS, N_TIMES_ATOM
-
-N_CHANNELS, N_TIMES = 3, 30
+from conftest import N_ATOMS, N_TIMES_ATOM, N_CHANNELS
 
 
 @pytest.fixture
