@@ -1,10 +1,12 @@
 import numpy as np
 
-from .init_dict import DictionaryUtil, Rank1DictionaryUtil
+from .init_dict import get_dict_strategy
 from .loss_and_gradient import gradient_uv, gradient_d
 from .utils import check_random_state
 from .utils.convolution import numpy_convolve_uv
+from .utils.dictionary import NoWindow, UVWindower, SimpleWindower
 from .utils.optim import fista, power_iteration
+from .update_d_multi import prox_uv, prox_d
 
 
 def check_solver_and_constraints(rank1, solver_d, uv_constraint):
@@ -148,8 +150,8 @@ class BaseDSolver:
     """Base class for a d solver."""
 
     def __init__(self, n_channels, n_atoms, n_times_atom, solver_d,
-                 uv_constraint, eps, max_iter, momentum, random_state,
-                 verbose, debug):
+                 uv_constraint, D_init, D_init_params, window, eps, max_iter,
+                 momentum, random_state, verbose, debug):
 
         self.n_channels = n_channels
         self.n_atoms = n_atoms
@@ -162,11 +164,20 @@ class BaseDSolver:
         self.verbose = verbose
         self.debug = debug
 
+        self.dict_strategy = get_dict_strategy(
+            n_times_atom, self.get_D_shape(), self.rng, D_init, D_init_params
+        )
+
+        if not window:
+            self._windower = NoWindow()
+        else:
+            self._init_windower()
+
     def _get_objective(self, z_encoder):
 
         def objective(D, full=False):
 
-            D = self.dict_util.window(D)
+            D = self._windower.window(D)
 
             return z_encoder.compute_objective(D)
 
@@ -176,11 +187,11 @@ class BaseDSolver:
 
         def prox(D, step_size=None):
 
-            D = self.dict_util.window(D)
+            D = self._windower.window(D)
 
-            D = self.dict_util.prox(D)
+            D = self.prox(D)
 
-            return self.dict_util.remove_window(D)
+            return self._windower.remove_window(D)
 
         return prox
 
@@ -188,11 +199,11 @@ class BaseDSolver:
 
         def grad(D):
 
-            D = self.dict_util.window(D)
+            D = self._windower.window(D)
 
             grad = self.grad(D, z_encoder)
 
-            return self.dict_util.window(grad)
+            return self._windower.window(grad)
 
         return grad
 
@@ -220,9 +231,9 @@ class BaseDSolver:
 
         d0 = z_encoder.get_max_error_patch()
 
-        d0 = self.dict_util.window(d0)
+        d0 = self._windower.window(d0)
 
-        return self.dict_util.prox(d0)
+        return self.prox(d0)
 
     def init_dictionary(self, X):
         """Returns a dictionary for the signal X depending on D_init value.
@@ -239,13 +250,19 @@ class BaseDSolver:
             The initial atoms to learn from the data.
         """
 
-        self.D_hat = self.dict_util.initialize(X)
+        D_hat = self.dict_strategy.initialize(X)
+
+        if not hasattr(self.dict_strategy, 'D_init'):
+            D_hat = self._windower.window(D_hat)
+
+        self.D_hat = self.prox(D_hat)
+
         return self.D_hat
 
     def add_one_atom(self, z_encoder):
         new_atom = self.get_max_error_dict(z_encoder)[0]
 
-        self.D_hat = self.dict_util.add_one_atom(self.D_hat, new_atom)
+        self.D_hat = np.concatenate([self.D_hat, new_atom[None]])
 
         z_encoder.update_z_hat(self.D_hat)
 
@@ -270,7 +287,7 @@ class BaseDSolver:
 
         assert z_encoder.n_channels == self.n_channels
 
-        D_hat0 = self.dict_util.remove_window(self.D_hat)
+        D_hat0 = self._windower.remove_window(self.D_hat)
 
         D_hat, pobj = fista(
             self._get_objective(z_encoder), self._get_grad(z_encoder),
@@ -279,7 +296,7 @@ class BaseDSolver:
             name=self.name, debug=self.debug, verbose=self.verbose
         )
 
-        self.D_hat = self.dict_util.window(D_hat)
+        self.D_hat = self._windower.window(D_hat)
 
         z_encoder.set_D(self.D_hat)
 
@@ -297,15 +314,21 @@ class Rank1DSolver(BaseDSolver):
 
         super().__init__(
             n_channels, n_atoms, n_times_atom, solver_d, uv_constraint,
-            eps, max_iter, momentum, random_state, verbose, debug
-        )
-
-        self.dict_util = Rank1DictionaryUtil(
-            self.n_channels, self.n_atoms, self.n_times_atom,
-            self.rng, window, D_init, D_init_params, self.uv_constraint
+            D_init, D_init_params, window, eps, max_iter, momentum,
+            random_state, verbose, debug
         )
 
         self.name = "Update uv"
+
+    def _init_windower(self):
+        self._windower = UVWindower(self.n_times_atom, self.n_channels)
+
+    def prox(self, D_hat):
+        return prox_uv(D_hat, uv_constraint=self.uv_constraint,
+                       n_channels=self.n_channels)
+
+    def get_D_shape(self):
+        return (self.n_atoms, self.n_channels + self.n_times_atom)
 
 
 class JointDSolver(Rank1DSolver):
@@ -361,7 +384,7 @@ class AlternateDSolver(Rank1DSolver):
         """
         assert z_encoder.n_channels == self.n_channels
 
-        uv_hat = self.dict_util.remove_window(self.D_hat)
+        uv_hat = self._windower.remove_window(self.D_hat)
 
         objective = self._get_objective(z_encoder)
 
@@ -380,7 +403,7 @@ class AlternateDSolver(Rank1DSolver):
                 pobj.extend(pobj_u)
                 pobj.extend(pobj_v)
 
-        self.D_hat = self.dict_util.window(uv_hat)
+        self.D_hat = self._windower.window(uv_hat)
 
         z_encoder.set_D(self.D_hat)
 
@@ -397,7 +420,7 @@ class AlternateDSolver(Rank1DSolver):
 
         def grad_u(u):
 
-            uv = np.c_[u, self.dict_util.simple_window(v_hat)]
+            uv = np.c_[u, self._windower.simple_window(v_hat)]
 
             grad_d = gradient_d(
                 uv, X=z_encoder.X, z=z_encoder.get_z_hat(),
@@ -438,7 +461,7 @@ class AlternateDSolver(Rank1DSolver):
 
         def grad_v(v):
 
-            v = self.dict_util.simple_window(v)
+            v = self._windower.simple_window(v)
 
             uv = np.c_[u_hat, v]
 
@@ -450,15 +473,15 @@ class AlternateDSolver(Rank1DSolver):
 
             grad_v = (grad_d * uv[:, :z_encoder.n_channels, None]).sum(axis=1)
 
-            return self.dict_util.simple_window(grad_v)
+            return self._windower.simple_window(grad_v)
 
         def prox_v(v, step_size=None):
 
-            v = self.dict_util.simple_window(v)
+            v = self._windower.simple_window(v)
 
             v /= np.maximum(1., np.linalg.norm(v, axis=1, keepdims=True))
 
-            return self.dict_util.remove_simple_window(v)
+            return self._windower.remove_simple_window(v)
 
         def obj(v):
             uv = np.c_[u_hat, v]
@@ -557,16 +580,21 @@ class DSolver(BaseDSolver):
                  momentum, random_state, verbose, debug):
 
         super().__init__(
-            n_channels, n_atoms, n_times_atom, solver_d, uv_constraint, eps,
-            max_iter, momentum, random_state, verbose, debug
-        )
-
-        self.dict_util = DictionaryUtil(
-            self.n_channels, self.n_atoms, self.n_times_atom, self.rng, window,
-            D_init, D_init_params
+            n_channels, n_atoms, n_times_atom, solver_d, uv_constraint, D_init,
+            D_init_params, window, eps, max_iter, momentum, random_state,
+            verbose, debug
         )
 
         self.name = "Update D"
+
+    def _init_windower(self):
+        self._windower = SimpleWindower(self.n_times_atom)
+
+    def prox(self, D_hat):
+        return prox_d(D_hat)
+
+    def get_D_shape(self):
+        return (self.n_atoms, self.n_channels, self.n_times_atom)
 
     def grad(self, D, z_encoder):
         return gradient_d(

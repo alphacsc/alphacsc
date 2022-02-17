@@ -17,159 +17,62 @@ from .update_d_multi import prox_uv, prox_d
 
 from .utils.dictionary import tukey_window
 from .utils.dictionary import get_uv, get_D
-from .utils.dictionary import NoWindow, UVWindower, SimpleWindower
 
 
 ried = custom_distances.roll_invariant_euclidean_distances
 tied = custom_distances.translation_invariant_euclidean_distances
 
 
-class BaseDictionaryUtil():
-
-    def __init__(self, n_channels, n_atoms, n_times_atom, random_state,
-                 window, D_init, D_init_params):
-        self.n_channels = n_channels
-        self.n_atoms = n_atoms
-        self.n_times_atom = n_times_atom
-        self.D_init_params = D_init_params
-        self.rng = check_random_state(random_state)
-
-        if not window:
-            self._windower = NoWindow()
-        else:
-            self._init_windower()
-
-        self._set_init_strategy(D_init)
-
-    def _init_windower(self):
-        raise NotImplementedError()
-
-    def _set_init_strategy(self, D_init):
-        if isinstance(D_init, np.ndarray):
-            self.strategy = IdentityStrategy(self, D_init)
-        elif D_init is None or D_init == 'random':
-            self.strategy = RandomStrategy(self)
-        elif D_init == 'chunk':
-            self.strategy = ChunkStrategy(self)
-        elif D_init == "kmeans":
-            self.strategy = KMeansStrategy(self)
-        elif D_init == 'ssa':
-            self.strategy = SSAStrategy(self)
-        elif D_init == 'greedy':
-            self.strategy = GreedyStrategy(self)
-        else:
-            raise NotImplementedError('It is not possible to initialize uv'
-                                      ' with parameter {}.'.format(D_init))
-
-    def window(self, D_hat):
-        return self._windower.window(D_hat)
-
-    def remove_window(self, D_hat):
-        return self._windower.remove_window(D_hat)
-
-    def simple_window(self, D_hat):
-        return self._windower.simple_window(D_hat)
-
-    def remove_simple_window(self, D_hat):
-        return self._windower.remove_simple_window(D_hat)
-
-    def prox(self, D_hat):
-        raise NotImplementedError()
-
-    def get_shape(self):
-        raise NotImplementedError()
-
-    def initialize(self, X):
-        D_hat = self.strategy.init(X)
-
-        if not hasattr(self.strategy, 'D_init'):
-            D_hat = self.window(D_hat)
-        D_hat = self.prox(D_hat)
-        return D_hat
-
-    def add_one_atom(self, D_hat, new_atom):
-        return np.concatenate([D_hat, new_atom[None]])
-
-    def wrap(self, D_hat):
-        return D_hat
-
-    def wrap_rank1(self, D_hat):
-        return D_hat
+def get_dict_strategy(n_times_atom, shape, rng, D_init, D_init_params):
+    if isinstance(D_init, np.ndarray):
+        return IdentityStrategy(shape, D_init)
+    elif D_init is None or D_init == 'random':
+        return RandomStrategy(shape, rng)
+    elif D_init == 'chunk':
+        return ChunkStrategy(n_times_atom, shape, rng)
+    elif D_init == "kmeans":
+        return KMeansStrategy(n_times_atom, shape, rng, D_init_params)
+    elif D_init == 'ssa':
+        return SSAStrategy(n_times_atom, shape, rng)
+    elif D_init == 'greedy':
+        return GreedyStrategy(shape, rng)
+    else:
+        raise NotImplementedError('It is not possible to initialize uv'
+                                  ' with parameter {}.'.format(D_init))
 
 
-class DictionaryUtil(BaseDictionaryUtil):
+class IdentityStrategy():
 
-    def _init_windower(self):
-        self._windower = SimpleWindower(self.n_times_atom)
+    def __init__(self, shape, D_init):
 
-    def prox(self, D_hat):
-        return prox_d(D_hat)
-
-    def get_shape(self):
-        return (self.n_atoms, self.n_channels, self.n_times_atom)
-
-    def wrap(self, D_hat):
-        return get_D(D_hat, self.n_channels)
-
-
-class Rank1DictionaryUtil(BaseDictionaryUtil):
-
-    def __init__(self, n_channels, n_atoms, n_times_atom, random_state,
-                 window, D_init, D_init_params, uv_constraint):
-
-        super().__init__(n_channels, n_atoms, n_times_atom, random_state,
-                         window, D_init, D_init_params)
-
-        self.uv_constraint = uv_constraint
-
-    def _init_windower(self):
-        self._windower = UVWindower(self.n_times_atom, self.n_channels)
-
-    def prox(self, D_hat):
-        return prox_uv(D_hat, uv_constraint=self.uv_constraint,
-                       n_channels=self.n_channels)
-
-    def get_shape(self):
-        return (self.n_atoms, self.n_channels + self.n_times_atom)
-
-    def wrap_rank1(self, D_hat):
-        return get_uv(D_hat)
-
-
-class BaseStrategy():
-
-    def __init__(self, parent):
-        self.parent = parent
-        self.n_channels = parent.n_channels
-        self.n_atoms = parent.n_atoms
-        self.n_times_atom = parent.n_times_atom
-        self.rng = parent.rng
-
-    def init(self, X):
-        raise NotImplementedError()
-
-
-class IdentityStrategy(BaseStrategy):
-
-    def __init__(self, parent, D_init):
-        super().__init__(parent)
-
-        assert self.parent.get_shape() == D_init.shape
+        assert shape == D_init.shape
         self.D_init = D_init
 
-    def init(self, X):
+    def initialize(self, X):
         return self.D_init.copy()
 
 
-class RandomStrategy(BaseStrategy):
+class RandomStrategy():
 
-    def init(self, X):
-        return self.rng.randn(*self.parent.get_shape())
+    def __init__(self, shape, rng):
+
+        self.shape = shape
+        self.rng = rng
+
+    def initialize(self, X):
+        return self.rng.randn(*self.shape)
 
 
-class ChunkStrategy(BaseStrategy):
+class ChunkStrategy():
 
-    def init(self, X):
+    def __init__(self, n_times_atom, shape, rng):
+
+        self.n_atoms = shape[0]
+        self.n_times_atom = n_times_atom
+        self.rank1 = True if len(shape) == 2 else False
+        self.rng = rng
+
+    def initialize(self, X):
         n_trials, n_channels, n_times = X.shape
 
         D_hat = np.zeros(
@@ -180,36 +83,60 @@ class ChunkStrategy(BaseStrategy):
             t0 = self.rng.randint(n_times - self.n_times_atom)
             D_hat[i_atom] = X[i_trial, :, t0:t0 + self.n_times_atom]
 
-        D_hat = self.parent.wrap_rank1(D_hat)
+        if self.rank1:
+            D_hat = get_uv(D_hat)
+
         return D_hat
 
 
-class KMeansStrategy(BaseStrategy):
+class KMeansStrategy():
 
-    def init(self, X):
+    def __init__(self, n_times_atom, shape, rng, D_init_params):
+
+        self.n_atoms = shape[0]
+        self.n_times_atom = n_times_atom
+        self.rank1 = True if len(shape) == 2 else False
+        self.rng = rng
+        self.D_init_params = D_init_params
+
+    def initialize(self, X):
+        n_channels = X.shape[1]
+
         D_hat = kmeans_init(X, self.n_atoms, self.n_times_atom,
-                            random_state=self.rng, **self.parent.D_init_params)
+                            random_state=self.rng, **self.D_init_params)
 
-        D_hat = self.parent.wrap(D_hat)
+        if not self.rank1:
+            D_hat = get_D(D_hat, n_channels)
         return D_hat
 
 
-class SSAStrategy(BaseStrategy):
+class SSAStrategy():
 
-    def init(self, X):
-        u_hat = self.rng.randn(self.n_atoms, self.n_channels)
+    def __init__(self, n_times_atom, shape, rng):
+
+        self.n_atoms = shape[0]
+        self.n_times_atom = n_times_atom
+        self.rank1 = True if len(shape) == 2 else False
+        self.rng = rng
+
+    def initialize(self, X):
+        n_channels = X.shape[1]
+
+        u_hat = self.rng.randn(self.n_atoms, n_channels)
         v_hat = ssa_init(X, self.n_atoms, self.n_times_atom,
                          random_state=self.rng)
         D_hat = np.c_[u_hat, v_hat]
 
-        D_hat = self.parent.wrap(D_hat)
+        if not self.rank1:
+            D_hat = get_D(D_hat, n_channels)
+
         return D_hat
 
 
-class GreedyStrategy(BaseStrategy):
+class GreedyStrategy(RandomStrategy):
 
-    def init(self, X):
-        D_hat = self.rng.randn(*self.parent.get_shape())
+    def initialize(self, X):
+        D_hat = super().initialize(X)
         return D_hat[:0]
 
 
