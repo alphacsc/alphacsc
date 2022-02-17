@@ -374,15 +374,11 @@ class AlphaCSCEncoder(BaseZEncoder):
     def set_D(self, D):
         self.D_hat = D
 
-    def update_z_hat(self, D):
-        self.D_hat = D
-        # XXX would it require a more complex check or adjustment. We are
-        # assuming that the number of atoms increase one by one.
-        # check shape and adjust z_hat
+        nb_missing_atoms = D.shape[0] - self.z_hat.shape[1]
 
-        if self.z_hat.shape[1] < self.n_atoms:
+        if nb_missing_atoms > 0:
             self.z_hat = np.concatenate(
-                [self.z_hat, self._get_new_z_hat(1)], axis=1
+                [self.z_hat, self._get_new_z_hat(nb_missing_atoms)], axis=1
             )
 
     def get_z_hat(self):

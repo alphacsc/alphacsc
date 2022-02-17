@@ -264,7 +264,7 @@ class BaseDSolver:
 
         self.D_hat = np.concatenate([self.D_hat, new_atom[None]])
 
-        z_encoder.update_z_hat(self.D_hat)
+        z_encoder.set_D(self.D_hat)
 
     def resample_atom(self, k0, z_encoder):
         self.D_hat[k0] = self.get_max_error_dict(z_encoder)[0]
