@@ -488,7 +488,7 @@ class AlternateDSolver(Rank1DSolver):
             return objective(uv)
 
         def op_Hv(v):
-            v = np.reshape(v, (self.D_hat.shape[0], z_encoder.n_times_atom))
+            v = np.reshape(v, (self.D_hat.shape[0], self.n_times_atom))
             uv = np.c_[u_hat, v]
             H_d = numpy_convolve_uv(z_encoder.ztz, uv)
             H_v = (H_d * uv[:, :n_channels, None]).sum(axis=1)
