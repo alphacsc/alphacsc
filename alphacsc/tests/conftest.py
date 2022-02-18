@@ -7,7 +7,7 @@ from alphacsc.utils import check_random_state, construct_X_multi
 from alphacsc.utils.compute_constants import compute_ztz, compute_ztX
 from alphacsc.loss_and_gradient import compute_objective
 
-N_TRIALS, N_CHANNELS, N_TIMES = 5, 3, 100
+N_TRIALS, N_CHANNELS, N_TIMES = 2, 3, 100
 N_TIMES_ATOM, N_ATOMS = 6, 4
 
 parametrize_solver_and_constraint = pytest.mark.parametrize(
