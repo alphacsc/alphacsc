@@ -259,7 +259,7 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
                  lmbd_max='fixed', reg=None, verbose=0, greedy=False,
                  random_state=None, name="batch"):
 
-    n_atoms = z_encoder.n_atoms
+    n_atoms = d_solver.n_atoms
 
     if greedy:
         n_iter_by_atom = 1
