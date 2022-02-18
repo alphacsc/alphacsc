@@ -45,7 +45,7 @@ def test_learn_d_z_multi(X, loss, rank1, solver_d, uv_constraint, window,
         uv_constraint)
 
     try:
-        if lmbd_max != 'shared' or 'per_atom':
+        if lmbd_max != 'shared' and lmbd_max != 'per_atom':
             assert np.sum(np.diff(pobj) > 1e-13) == 0, msg
     except AssertionError:
         import matplotlib.pyplot as plt
