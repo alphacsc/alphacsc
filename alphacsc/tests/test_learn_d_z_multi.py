@@ -9,6 +9,8 @@ from alphacsc.init_dict import init_dictionary
 
 from alphacsc.tests.conftest import parametrize_solver_and_constraint
 
+from conftest import N_ATOMS, N_TIMES, N_TIMES_ATOM, N_CHANNELS, N_TRIALS
+
 
 @pytest.mark.parametrize('window', [False, True])
 @pytest.mark.parametrize('loss', ['l2', 'dtw', 'whitening'])
@@ -26,18 +28,17 @@ from alphacsc.tests.conftest import parametrize_solver_and_constraint
                              (True, 'alternate_adaptive', 'separate')
                          ]
                          )
-def test_learn_d_z_multi(loss, rank1, solver_d, uv_constraint, window):
+@pytest.mark.parametrize('lmbd_max', ['fixed', 'scaled', 'shared', 'per_atom'])
+@pytest.mark.parametrize('n_trials', [N_TRIALS])
+def test_learn_d_z_multi(X, loss, rank1, solver_d, uv_constraint, window,
+                         lmbd_max):
     # smoke test for learn_d_z_multi
-    n_trials, n_channels, n_times = 2, 3, 30
-    n_times_atom, n_atoms = 6, 4
 
     loss_params = dict(gamma=1, sakoe_chiba_band=10, ordar=10)
 
-    rng = check_random_state(42)
-    X = rng.randn(n_trials, n_channels, n_times)
     pobj, times, uv_hat, z_hat, reg = learn_d_z_multi(
-        X, n_atoms, n_times_atom, uv_constraint=uv_constraint, rank1=rank1,
-        solver_d=solver_d, random_state=0,
+        X, N_ATOMS, N_TIMES_ATOM, uv_constraint=uv_constraint, rank1=rank1,
+        solver_d=solver_d, random_state=0, lmbd_max=lmbd_max,
         n_iter=30, eps=-np.inf, solver_z='l-bfgs', window=window,
         verbose=0, loss=loss, loss_params=loss_params)
 
@@ -58,19 +59,16 @@ def test_learn_d_z_multi(loss, rank1, solver_d, uv_constraint, window):
 @pytest.mark.parametrize('loss', ['dtw', 'whitening'])
 @pytest.mark.parametrize('rank1, solver_d, uv_constraint', [
     (True, 'alternate', 'separate')])
-def test_learn_d_z_multi_error(loss, rank1, solver_d, uv_constraint, window):
+@pytest.mark.parametrize('n_trials', [N_TRIALS])
+def test_learn_d_z_multi_error(X, loss, rank1, solver_d, uv_constraint,
+                               window):
     # smoke test for learn_d_z_multi
-    n_trials, n_channels, n_times = 2, 3, 30
-    n_times_atom, n_atoms = 6, 4
 
     loss_params = dict(gamma=1, sakoe_chiba_band=10, ordar=10)
 
-    rng = check_random_state(42)
-    X = rng.randn(n_trials, n_channels, n_times)
-
     with pytest.raises(NotImplementedError):
         pobj, times, uv_hat, z_hat, reg = learn_d_z_multi(
-            X, n_atoms, n_times_atom, uv_constraint=uv_constraint, rank1=rank1,
+            X, N_ATOMS, N_TIMES_ATOM, uv_constraint=uv_constraint, rank1=rank1,
             solver_d=solver_d, random_state=0,
             n_iter=30, eps=-np.inf, solver_z='l-bfgs', window=window,
             verbose=0, loss=loss, loss_params=loss_params
@@ -79,17 +77,13 @@ def test_learn_d_z_multi_error(loss, rank1, solver_d, uv_constraint, window):
 
 @pytest.mark.parametrize('window', [False, True])
 # TODO expand params when DiCoDiLe is rank-1-capable
-def test_learn_d_z_multi_dicodile(window):
+@pytest.mark.parametrize('n_trials', [1])
+def test_learn_d_z_multi_dicodile(X, window):
     pytest.importorskip('dicodile')
     # smoke test for learn_d_z_multi
-    # XXX For DiCoDiLe, n_trials cannot be >1
-    n_trials, n_channels, n_times = 1, 3, 30
-    n_times_atom, n_atoms = 6, 4
 
-    rng = check_random_state(42)
-    X = rng.randn(n_trials, n_channels, n_times)
     pobj, times, uv_hat, z_hat, reg = learn_d_z_multi(
-        X, n_atoms, n_times_atom, uv_constraint='auto', rank1=False,
+        X, N_ATOMS, N_TIMES_ATOM, uv_constraint='auto', rank1=False,
         solver_d='auto', random_state=0,
         n_iter=30, eps=-np.inf, solver_z='dicodile', window=window,
         verbose=0, loss='l2', loss_params=None)
@@ -107,49 +101,43 @@ def test_learn_d_z_multi_dicodile(window):
 
 
 @parametrize_solver_and_constraint
-def test_window(rank1, solver_d, uv_constraint):
+@pytest.mark.parametrize('n_trials', [N_TRIALS])
+def test_window(X, rank1, solver_d, uv_constraint):
     # Smoke test that the parameter window does something
-    n_trials, n_channels, n_times = 2, 3, 100
-    n_times_atom, n_atoms = 10, 4
 
-    rng = check_random_state(42)
-    X = rng.randn(n_trials, n_channels, n_times)
-
-    D_init = init_dictionary(X, n_atoms, n_times_atom, rank1=rank1,
+    D_init = init_dictionary(X, N_ATOMS, N_TIMES_ATOM, rank1=rank1,
                              uv_constraint=uv_constraint, random_state=0,
                              window=False)
 
-    kwargs = dict(X=X, n_atoms=n_atoms, n_times_atom=n_times_atom, verbose=0,
+    kwargs = dict(X=X, n_atoms=N_ATOMS, n_times_atom=N_TIMES_ATOM, verbose=0,
                   uv_constraint=uv_constraint, solver_d=solver_d, rank1=rank1,
                   random_state=0, n_iter=1, solver_z='l-bfgs', D_init=D_init)
     res_False = learn_d_z_multi(window=False, **kwargs)
 
-    D_init = init_dictionary(X, n_atoms, n_times_atom, rank1=rank1,
+    D_init = init_dictionary(X, N_ATOMS, N_TIMES_ATOM, rank1=rank1,
                              uv_constraint=uv_constraint, random_state=0,
                              window=True)
 
-    kwargs = dict(X=X, n_atoms=n_atoms, n_times_atom=n_times_atom, verbose=0,
+    kwargs = dict(X=X, n_atoms=N_ATOMS, n_times_atom=N_TIMES_ATOM, verbose=0,
                   uv_constraint=uv_constraint, solver_d=solver_d, rank1=rank1,
                   random_state=0, n_iter=1, solver_z='l-bfgs', D_init=D_init)
+
     res_True = learn_d_z_multi(window=True, **kwargs)
 
     assert not np.allclose(res_False[2], res_True[2])
 
 
-def test_online_learning():
+@pytest.mark.parametrize('n_trials', [N_TRIALS])
+def test_online_learning(X, n_trials):
     # smoke test for learn_d_z_multi
-    n_trials, n_channels, n_times = 2, 3, 100
-    n_times_atom, n_atoms = 10, 4
 
-    rng = check_random_state(42)
-    X = rng.randn(n_trials, n_channels, n_times)
     pobj_0, _, _, _, _ = learn_d_z_multi(
-        X, n_atoms, n_times_atom, uv_constraint="separate", solver_d="joint",
+        X, N_ATOMS, N_TIMES_ATOM, uv_constraint="separate", solver_d="joint",
         random_state=0, n_iter=30, solver_z='l-bfgs', algorithm="batch",
         loss='l2')
 
     pobj_1, _, _, _, _ = learn_d_z_multi(
-        X, n_atoms, n_times_atom, uv_constraint="separate", solver_d="joint",
+        X, N_ATOMS, N_TIMES_ATOM, uv_constraint="separate", solver_d="joint",
         random_state=0, n_iter=30, solver_z='l-bfgs', algorithm="online",
         algorithm_params=dict(batch_size=n_trials, alpha=0), loss='l2')
 
@@ -158,10 +146,9 @@ def test_online_learning():
 
 @pytest.mark.parametrize('klass', [BatchCDL, OnlineCDL, GreedyCDL])
 @parametrize_solver_and_constraint
-def test_transformers(klass, rank1, solver_d, uv_constraint):
+@pytest.mark.parametrize('n_trials', [N_TRIALS])
+def test_transformers(X, klass, rank1, solver_d, uv_constraint, n_trials):
     # smoke test for transformer classes
-    n_trials, n_channels, n_times = 2, 3, 100
-    n_times_atom, n_atoms = 10, 4
 
     if klass == OnlineCDL:
         kwargs = dict(batch_selection='cyclic')
@@ -169,8 +156,8 @@ def test_transformers(klass, rank1, solver_d, uv_constraint):
         kwargs = dict()
 
     rng = check_random_state(42)
-    X = rng.randn(n_trials, n_channels, n_times)
-    cdl = klass(n_atoms, n_times_atom, uv_constraint=uv_constraint,
+    X = rng.randn(n_trials, N_CHANNELS, N_TIMES)
+    cdl = klass(N_ATOMS, N_TIMES_ATOM, uv_constraint=uv_constraint,
                 rank1=rank1, solver_d=solver_d, random_state=0, n_iter=10,
                 eps=-np.inf, solver_z='l-bfgs', window=True, verbose=0,
                 **kwargs)
@@ -190,23 +177,19 @@ def test_transformers(klass, rank1, solver_d, uv_constraint):
 
 
 @pytest.mark.parametrize('solver_z', ['l-bfgs', 'lgcd'])
-def test_unbiased_z_hat(solver_z):
-    n_trials, n_channels, n_times = 2, 3, 30
-    n_times_atom, n_atoms = 6, 4
+@pytest.mark.parametrize('n_trials', [N_TRIALS])
+def test_unbiased_z_hat(X, solver_z):
 
     loss_params = dict(gamma=1, sakoe_chiba_band=10, ordar=10)
 
-    rng = check_random_state(42)
-    X = rng.randn(n_trials, n_channels, n_times)
-
     _, _, _, z_hat, _ = learn_d_z_multi(
-        X, n_atoms, n_times_atom, uv_constraint='auto', rank1=False,
+        X, N_ATOMS, N_TIMES_ATOM, uv_constraint='auto', rank1=False,
         solver_d='auto', random_state=0, unbiased_z_hat=False,
         n_iter=1, eps=-np.inf, solver_z=solver_z, window=False,
         verbose=0, loss='l2', loss_params=loss_params)
 
     _, _, _, z_hat_unbiased, _ = learn_d_z_multi(
-        X, n_atoms, n_times_atom, uv_constraint='auto', rank1=False,
+        X, N_ATOMS, N_TIMES_ATOM, uv_constraint='auto', rank1=False,
         solver_d='auto', random_state=0, unbiased_z_hat=True,
         n_iter=1, eps=-np.inf, solver_z=solver_z, window=False,
         verbose=0, loss='l2', loss_params=loss_params)
