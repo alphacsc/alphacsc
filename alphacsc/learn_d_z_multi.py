@@ -349,16 +349,7 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
                   alpha=.8, batch_selection='random', batch_size=1,
                   name="online"):
 
-    X = z_encoder.X
-    D_hat = d_solver.D_hat
-    n_atoms = d_solver.n_atoms
-
-    n_trials, n_channels = X.shape[:2]
-    if D_hat.ndim == 2:
-        n_atoms, n_times_atom = D_hat.shape
-        n_times_atom -= n_channels
-    else:
-        n_atoms, _, n_times_atom = D_hat.shape
+    n_trials = z_encoder.n_trials
 
     # monitor cost function
     times = [0]
