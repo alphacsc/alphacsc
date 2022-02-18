@@ -244,12 +244,20 @@ class BaseZEncoder:
         """
         raise NotImplementedError()
 
-    def update_reg(self):
+    def update_reg(self, is_per_atom):
         """
         Update the regularization parameter.
 
+        Parameters
+        ----------
+        is_per_atom: bool
+            True if lmbd_max='per_atom'; False otherwise
+
         """
-        self.reg = self.reg * get_lambda_max(self.X, self.D_hat).max()
+        self.reg = self.reg * get_lambda_max(self.X, self.D_hat)
+
+        if not is_per_atom:
+            self.reg = self.reg.max()
 
     def get_constants(self):
         """
@@ -574,11 +582,16 @@ class DicodileEncoder(BaseZEncoder):
         self.D_hat = D
         self._encoder.set_worker_D(D)
 
-    def update_reg(self):
+    def update_reg(self, is_per_atom):
         """
         Update the regularization parameter.
-        """
-        super().update_reg()
+
+        Parameters
+        ----------
+        is_per_atom: bool
+            True if lmbd_max='per_atom'; False otherwise
+       """
+        super().update_reg(is_per_atom)
         self._encoder.set_worker_params({'reg': self.reg})  # XXX
 
     def __enter__(self):
