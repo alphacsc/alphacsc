@@ -369,6 +369,8 @@ class AlphaCSCEncoder(BaseZEncoder):
 
         nb_missing_atoms = D.shape[0] - self.z_hat.shape[1]
 
+        assert nb_missing_atoms >= 0
+
         if nb_missing_atoms > 0:
             self.z_hat = np.concatenate(
                 [self.z_hat, self._get_new_z_hat(nb_missing_atoms)], axis=1
