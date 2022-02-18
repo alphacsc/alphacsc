@@ -163,6 +163,7 @@ class BaseDSolver:
         self.rng = check_random_state(random_state)
         self.verbose = verbose
         self.debug = debug
+        self.D_init = D_init
 
         self.init_strategy = get_init_strategy(
             n_times_atom, self.get_D_shape(), self.rng, D_init, D_init_params
@@ -224,9 +225,7 @@ class BaseDSolver:
 
         D_hat = self.init_strategy.initialize(X)
 
-        # if D_init is not an ndarray
-        # when D_init is an ndarray, the strategy has D_init attribute
-        if not hasattr(self.init_strategy, 'D_init'):
+        if not isinstance(self.D_init, np.ndarray):
             D_hat = self._windower.window(D_hat)
 
         self.D_hat = self.prox(D_hat)
