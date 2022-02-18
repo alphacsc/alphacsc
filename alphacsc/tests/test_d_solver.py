@@ -3,7 +3,7 @@ from numpy.testing import assert_allclose
 
 import numpy as np
 
-from alphacsc.tests.conftest import N_TRIALS, N_CHANNELS, N_TIMES_ATOM, N_ATOMS
+from alphacsc.tests.conftest import N_CHANNELS, N_TIMES_ATOM, N_ATOMS
 
 from alphacsc.update_d_multi import prox_d, prox_uv
 from alphacsc._d_solver import get_solver_d, check_solver_and_constraints
@@ -182,7 +182,6 @@ def test_get_solver_d_error_rank1_uv_constraint(solver_d):
     ('alternate_adaptive', 'separate', True, (N_ATOMS, N_CHANNELS+N_TIMES_ATOM)),  # noqa
 ])
 @pytest.mark.parametrize('window', [True, False])
-@pytest.mark.parametrize('n_trials', [N_TRIALS])
 @pytest.mark.parametrize('D_init', ['random', 'chunk', 'kmeans', 'ssa'])
 def test_init_dictionary(X, D_init, solver_d, uv_constraint, rank1, shape,
                          window):
@@ -209,7 +208,6 @@ def test_init_dictionary(X, D_init, solver_d, uv_constraint, rank1, shape,
 @pytest.mark.parametrize('uv_constraint', ['auto'])
 @pytest.mark.parametrize('shape', [(N_ATOMS, N_CHANNELS, N_TIMES_ATOM)])
 @pytest.mark.parametrize('window', [True, False])
-@pytest.mark.parametrize('n_trials', [N_TRIALS])
 def test_init_dictionary_initial_D_init(X, D_init, solver_d, window,
                                         uv_constraint, shape):
     """Tests if init_dictionary is doing what is expected when rank1 is False and
@@ -242,7 +240,6 @@ def test_init_dictionary_initial_D_init(X, D_init, solver_d, window,
 @pytest.mark.parametrize('solver_d', ['joint', 'fista'])
 @pytest.mark.parametrize('uv_constraint', ['joint', 'separate'])
 @pytest.mark.parametrize('shape', [(N_ATOMS, N_CHANNELS + N_TIMES_ATOM)])
-@pytest.mark.parametrize('n_trials', [N_TRIALS])
 def test_init_dictionary_rank1_initial_D_init(X, D_init, solver_d,
                                               uv_constraint, shape):
     """Tests if init_dictionary is doing what is expected  when rank1=True and
@@ -333,7 +330,6 @@ def test_update_D(D_hat, rank1, solver_d, uv_constraint, window,
     (True, 'alternate', 'separate'),
 ])
 @pytest.mark.parametrize('loss', ['dtw', 'whitening'])
-@pytest.mark.parametrize('n_trials', [2])
 def test_update_D_error(X, D_hat, rank1, solver_d, uv_constraint, z_encoder):
 
     d_solver = get_solver_d(N_CHANNELS,
@@ -360,7 +356,6 @@ def test_update_D_error(X, D_hat, rank1, solver_d, uv_constraint, z_encoder):
     (True, 'alternate', 'separate'),
 ])
 @pytest.mark.parametrize('window', [True, False])
-@pytest.mark.parametrize('n_trials', [2])
 def test_add_one_atom(X, rank1, solver_d, uv_constraint, window):
     """Tests valid values."""
 

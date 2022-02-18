@@ -9,7 +9,7 @@ from alphacsc.init_dict import init_dictionary
 
 from alphacsc.tests.conftest import parametrize_solver_and_constraint
 
-from conftest import N_ATOMS, N_TIMES, N_TIMES_ATOM, N_CHANNELS, N_TRIALS
+from conftest import N_ATOMS, N_TIMES, N_TIMES_ATOM, N_CHANNELS
 
 
 @pytest.mark.parametrize('window', [False, True])
@@ -29,7 +29,6 @@ from conftest import N_ATOMS, N_TIMES, N_TIMES_ATOM, N_CHANNELS, N_TRIALS
                          ]
                          )
 @pytest.mark.parametrize('lmbd_max', ['fixed', 'scaled', 'shared', 'per_atom'])
-@pytest.mark.parametrize('n_trials', [N_TRIALS])
 def test_learn_d_z_multi(X, loss, rank1, solver_d, uv_constraint, window,
                          lmbd_max):
     # smoke test for learn_d_z_multi
@@ -60,7 +59,6 @@ def test_learn_d_z_multi(X, loss, rank1, solver_d, uv_constraint, window,
 @pytest.mark.parametrize('loss', ['dtw', 'whitening'])
 @pytest.mark.parametrize('rank1, solver_d, uv_constraint', [
     (True, 'alternate', 'separate')])
-@pytest.mark.parametrize('n_trials', [N_TRIALS])
 def test_learn_d_z_multi_error(X, loss, rank1, solver_d, uv_constraint,
                                window):
     # smoke test for learn_d_z_multi
@@ -102,7 +100,6 @@ def test_learn_d_z_multi_dicodile(X, window):
 
 
 @parametrize_solver_and_constraint
-@pytest.mark.parametrize('n_trials', [N_TRIALS])
 def test_window(X, rank1, solver_d, uv_constraint):
     # Smoke test that the parameter window does something
 
@@ -128,7 +125,6 @@ def test_window(X, rank1, solver_d, uv_constraint):
     assert not np.allclose(res_False[2], res_True[2])
 
 
-@pytest.mark.parametrize('n_trials', [N_TRIALS])
 def test_online_learning(X, n_trials):
     # smoke test for learn_d_z_multi
 
@@ -147,7 +143,6 @@ def test_online_learning(X, n_trials):
 
 @pytest.mark.parametrize('klass', [BatchCDL, OnlineCDL, GreedyCDL])
 @parametrize_solver_and_constraint
-@pytest.mark.parametrize('n_trials', [N_TRIALS])
 def test_transformers(X, klass, rank1, solver_d, uv_constraint, n_trials):
     # smoke test for transformer classes
 
@@ -178,7 +173,6 @@ def test_transformers(X, klass, rank1, solver_d, uv_constraint, n_trials):
 
 
 @pytest.mark.parametrize('solver_z', ['l-bfgs', 'lgcd'])
-@pytest.mark.parametrize('n_trials', [N_TRIALS])
 def test_unbiased_z_hat(X, solver_z):
 
     loss_params = dict(gamma=1, sakoe_chiba_band=10, ordar=10)

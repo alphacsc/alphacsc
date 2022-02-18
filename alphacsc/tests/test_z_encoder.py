@@ -110,7 +110,6 @@ def test_get_encoder_for_dicodile_error_rank1(X, D_hat, requires_dicodile):
                           n_jobs=2)
 
 
-@pytest.mark.parametrize('n_trials', [2])
 @pytest.mark.parametrize('rank1', [True])
 @pytest.mark.parametrize('solver', [None, 'other'])
 def test_get_encoder_for_error_solver(X, D_hat,  solver):
@@ -126,7 +125,6 @@ def test_get_encoder_for_error_solver(X, D_hat,  solver):
                           n_jobs=2)
 
 
-@pytest.mark.parametrize('n_trials', [2])
 @pytest.mark.parametrize('rank1', [True])
 def test_get_encoder_for_error_solver_kwargs(X, D_hat):
     """Tests for invalid value of `solver_kwargs`."""
@@ -154,7 +152,6 @@ def test_get_encoder_for_error_X(X_error, D_hat):
                           n_jobs=2)
 
 
-@pytest.mark.parametrize('n_trials', [2])
 @pytest.mark.parametrize('D_init', [None, np.zeros(2)])
 def test_get_encoder_for_error_D_hat(X, D_init):
     """Tests for invalid values of `D_hat`."""
@@ -168,7 +165,6 @@ def test_get_encoder_for_error_D_hat(X, D_init):
                           n_jobs=2)
 
 
-@pytest.mark.parametrize('n_trials', [2])
 @pytest.mark.parametrize('rank1', [True])
 def test_get_encoder_for_error_reg(X, D_hat):
     """Tests for invalid value of `reg`."""
@@ -199,7 +195,6 @@ def test_get_encoder_for_error_loss(X, D_hat,  loss):
                           n_jobs=2)
 
 
-@pytest.mark.parametrize('n_trials', [2])
 @pytest.mark.parametrize('rank1', [True])
 def test_get_encoder_for_error_loss_params(X, D_hat):
     """Tests for invalid value of `loss_params`."""
@@ -278,7 +273,6 @@ def test_compute_z(solver, X, D_hat, requires_dicodile):
         assert z_encoder.get_z_hat().any()
 
 
-@pytest.mark.parametrize('n_trials', [2])
 @pytest.mark.parametrize('rank1', [True])
 def test_compute_z_partial(X, D_hat, n_trials, rng):
     """Test for valid values."""
@@ -338,7 +332,6 @@ def test_get_sufficient_statistics_error(solver, X, D_hat,
         z_encoder.get_sufficient_statistics()
 
 
-@pytest.mark.parametrize('n_trials', [2])
 @pytest.mark.parametrize('rank1', [True])
 def test_get_sufficient_statistics_partial(X, D_hat, n_trials, rng):
     """Test for valid values."""
@@ -356,7 +349,6 @@ def test_get_sufficient_statistics_partial(X, D_hat, n_trials, rng):
     assert ztz_i0 is not None and ztX_i0 is not None
 
 
-@pytest.mark.parametrize('n_trials', [2])
 @pytest.mark.parametrize('rank1', [True])
 def test_get_sufficient_statistics_partial_error(X, D_hat):
     """Test for invalid call to function."""

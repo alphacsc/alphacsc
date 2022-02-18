@@ -31,6 +31,11 @@ def rng():
 
 
 @pytest.fixture
+def n_trials():
+    return N_TRIALS
+
+
+@pytest.fixture
 def X(rng, n_trials):
     return rng.randn(n_trials, N_CHANNELS, N_TIMES)
 
