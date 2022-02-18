@@ -96,10 +96,11 @@ class RandomStrategy():
     def __init__(self, shape, random_state):
 
         self.shape = shape
-        self.rng = check_random_state(random_state)
+        self.random_state = random_state
 
     def initialize(self, X):
-        return self.rng.randn(*self.shape)
+        rng = check_random_state(self.random_state)
+        return rng.randn(*self.shape)
 
 
 class ChunkStrategy():
@@ -122,17 +123,18 @@ class ChunkStrategy():
         self.n_atoms = shape[0]
         self.n_times_atom = n_times_atom
         self.rank1 = True if len(shape) == 2 else False
-        self.rng = check_random_state(random_state)
+        self.random_state = random_state
 
     def initialize(self, X):
+        rng = check_random_state(self.random_state)
         n_trials, n_channels, n_times = X.shape
 
         D_hat = np.zeros(
             (self.n_atoms, n_channels, self.n_times_atom))
 
         for i_atom in range(self.n_atoms):
-            i_trial = self.rng.randint(n_trials)
-            t0 = self.rng.randint(n_times - self.n_times_atom)
+            i_trial = rng.randint(n_trials)
+            t0 = rng.randint(n_times - self.n_times_atom)
             D_hat[i_atom] = X[i_trial, :, t0:t0 + self.n_times_atom]
 
         if self.rank1:
@@ -163,14 +165,15 @@ class KMeansStrategy():
         self.n_atoms = shape[0]
         self.n_times_atom = n_times_atom
         self.rank1 = True if len(shape) == 2 else False
-        self.rng = check_random_state(random_state)
+        self.random_state = random_state
         self.D_init_params = D_init_params
 
     def initialize(self, X):
+        rng = check_random_state(self.random_state)
         n_channels = X.shape[1]
 
         D_hat = kmeans_init(X, self.n_atoms, self.n_times_atom,
-                            random_state=self.rng, **self.D_init_params)
+                            random_state=rng, **self.D_init_params)
 
         if not self.rank1:
             D_hat = get_D(D_hat, n_channels)
@@ -197,14 +200,15 @@ class SSAStrategy():
         self.n_atoms = shape[0]
         self.n_times_atom = n_times_atom
         self.rank1 = True if len(shape) == 2 else False
-        self.rng = check_random_state(random_state)
+        self.random_state = random_state
 
     def initialize(self, X):
+        rng = check_random_state(self.random_state)
         n_channels = X.shape[1]
 
-        u_hat = self.rng.randn(self.n_atoms, n_channels)
+        u_hat = rng.randn(self.n_atoms, n_channels)
         v_hat = ssa_init(X, self.n_atoms, self.n_times_atom,
-                         random_state=self.rng)
+                         random_state=rng)
         D_hat = np.c_[u_hat, v_hat]
 
         if not self.rank1:
