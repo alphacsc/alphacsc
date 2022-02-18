@@ -572,7 +572,7 @@ class DicodileEncoder(BaseZEncoder):
         self.D_hat = D
         self._encoder.set_worker_D(D)
 
-    def update_reg(self, is_shared):
+    def update_reg(self):
         """
         Update the regularization parameter.
         """
