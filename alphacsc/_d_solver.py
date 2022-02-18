@@ -262,18 +262,49 @@ class BaseDSolver:
         return self.D_hat
 
     def add_one_atom(self, z_encoder):
+        """Adds one atom to D_hat and updates D_hat in z_encoder.
+
+        Parameters
+        ----------
+        z_encoder: BaseZEncoder
+            ZEncoder object.
+
+        Returns
+        -------
+        D_hat : array, shape (n_atoms, n_channels + n_times_atom) or
+                             (n_atoms, n_channels, n_times_atom)
+            The atoms to learn from the data.
+        """
         new_atom = self.get_max_error_dict(z_encoder)[0]
 
         self.D_hat = np.concatenate([self.D_hat, new_atom[None]])
 
         z_encoder.set_D(self.D_hat)
+        return self.D_hat
 
     def resample_atom(self, k0, z_encoder):
+        """Resamples the atom at index k0 of D_hat and updates D_hat in
+        z_encoder.
+
+        Parameters
+        ----------
+        k0: int
+            index of the atom to resample
+        z_encoder: BaseZEncoder
+            ZEncoder object.
+
+        Returns
+        -------
+        D_hat : array, shape (n_atoms, n_channels + n_times_atom) or
+                             (n_atoms, n_channels, n_times_atom)
+            The atoms to learn from the data.
+        """
         self.D_hat[k0] = self.get_max_error_dict(z_encoder)[0]
         z_encoder.set_D(self.D_hat)
+        return self.D_hat
 
     def update_D(self, z_encoder):
-        """Learn d's in time domain.
+        """Learn d's in time domain and update D_hat in z_encoder.
 
         Parameters
         ----------
@@ -330,6 +361,11 @@ class Rank1DSolver(BaseDSolver):
                        n_channels=self.n_channels)
 
     def get_D_shape(self):
+        """Returns the expected shape of the dictionary.
+
+        Note: For the 'greedy' strategy this does not return the actual
+        dictionary shape, but the final expected shape.
+        """
         return (self.n_atoms, self.n_channels + self.n_times_atom)
 
 
@@ -598,6 +634,11 @@ class DSolver(BaseDSolver):
         return prox_d(D_hat)
 
     def get_D_shape(self):
+        """Returns the expected shape of the dictionary.
+
+        Note: For the 'greedy' strategy this does not return the actual
+        dictionary shape, but the final expected shape.
+        """
         return (self.n_atoms, self.n_channels, self.n_times_atom)
 
     def grad(self, D, z_encoder):
