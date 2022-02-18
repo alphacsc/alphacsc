@@ -252,6 +252,8 @@ class BaseDSolver:
 
         D_hat = self.init_strategy.initialize(X)
 
+        # if D_init is not an ndarray
+        # when D_init is an ndarray, the strategy has D_init attribute
         if not hasattr(self.init_strategy, 'D_init'):
             D_hat = self._windower.window(D_hat)
 
