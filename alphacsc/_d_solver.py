@@ -276,8 +276,8 @@ class BaseDSolver:
             The atoms to learn from the data, where k < n_atoms is the initial
         number of atoms in the dictionary before adding an atom.
         """
-        # XXX should it check the number of atoms in D_hat is smaller
-        # than n_atoms
+        assert self.D_hat.shape[0] < self.n_atoms
+
         new_atom = self.get_max_error_dict(z_encoder)[0]
 
         self.D_hat = np.concatenate([self.D_hat, new_atom[None]])
