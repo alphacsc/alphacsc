@@ -144,7 +144,6 @@ class UVWindower(NoWindow):
 
 class SimpleWindower(NoWindow):
     def __init__(self, n_times_atom):
-        print(f"initialized {n_times_atom}")
         self.tukey_window = tukey_window(n_times_atom)[None, None, :]
 
     def window(self, d):
