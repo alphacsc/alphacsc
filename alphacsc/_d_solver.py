@@ -207,6 +207,32 @@ class BaseDSolver:
 
         return grad
 
+    def init_dictionary(self, X):
+        """Returns a dictionary for the signal X depending on D_init value.
+
+        Parameters
+        ----------
+        X: array, shape (n_trials, n_channels, n_times)
+            The data on which to perform CSC.
+
+        Return
+        ------
+        D : array shape (n_atoms, n_channels + n_times_atom) or
+                  shape (n_atoms, n_channels, n_times_atom)
+            The initial atoms to learn from the data.
+        """
+
+        D_hat = self.init_strategy.initialize(X)
+
+        # if D_init is not an ndarray
+        # when D_init is an ndarray, the strategy has D_init attribute
+        if not hasattr(self.init_strategy, 'D_init'):
+            D_hat = self._windower.window(D_hat)
+
+        self.D_hat = self.prox(D_hat)
+
+        return self.D_hat
+
     def get_max_error_dict(self, z_encoder):
         """Get the maximal reconstruction error patch from the data as a new atom
 
@@ -234,32 +260,6 @@ class BaseDSolver:
         d0 = self._windower.window(d0)
 
         return self.prox(d0)
-
-    def init_dictionary(self, X):
-        """Returns a dictionary for the signal X depending on D_init value.
-
-        Parameters
-        ----------
-        X: array, shape (n_trials, n_channels, n_times)
-            The data on which to perform CSC.
-
-        Return
-        ------
-        D : array shape (n_atoms, n_channels + n_times_atom) or
-                  shape (n_atoms, n_channels, n_times_atom)
-            The initial atoms to learn from the data.
-        """
-
-        D_hat = self.init_strategy.initialize(X)
-
-        # if D_init is not an ndarray
-        # when D_init is an ndarray, the strategy has D_init attribute
-        if not hasattr(self.init_strategy, 'D_init'):
-            D_hat = self._windower.window(D_hat)
-
-        self.D_hat = self.prox(D_hat)
-
-        return self.D_hat
 
     def add_one_atom(self, z_encoder):
         """Adds one atom to D_hat and updates D_hat in z_encoder.
