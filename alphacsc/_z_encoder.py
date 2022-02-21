@@ -3,7 +3,9 @@ import numpy as np
 from .utils import construct_X_multi
 from .utils.dictionary import get_D_shape
 from .update_z_multi import update_z_multi
-from .utils.dictionary import _patch_reconstruction_error
+from .utils.dictionary import (
+    _patch_reconstruction_error, get_uv, get_lambda_max
+)
 from .loss_and_gradient import compute_objective
 
 DEFAULT_TOL_Z = 1e-3
@@ -242,16 +244,20 @@ class BaseZEncoder:
         """
         raise NotImplementedError()
 
-    def set_reg(self, reg):
+    def update_reg(self, is_per_atom):
         """
         Update the regularization parameter.
 
         Parameters
         ----------
-        reg : float
-              Regularization parameter
+        is_per_atom: bool
+            True if lmbd_max='per_atom'; False otherwise
+
         """
-        raise NotImplementedError()
+        self.reg = self.reg * get_lambda_max(self.X, self.D_hat)
+
+        if not is_per_atom:
+            self.reg = self.reg.max()
 
     def get_constants(self):
         """
@@ -259,18 +265,6 @@ class BaseZEncoder:
 
         return dict(n_channels=self.n_channels, XtX=self.XtX,
                     ztz=self.ztz, ztX=self.ztX)
-
-    def add_one_atom(self, new_atom):
-        """
-        Add one atom to the dictionary and extend z_hat
-        to match the new dimensions.
-
-        Parameters
-        ----------
-        new_atom : array, shape (n_channels + n_times_atom)
-            A new atom to add to the dictionary.
-        """
-        raise NotImplementedError()
 
     def __enter__(self):
         return self
@@ -372,20 +366,23 @@ class AlphaCSCEncoder(BaseZEncoder):
 
         n_channels = self.X.shape[1]
         *_, n_times_atom = get_D_shape(self.D_hat, n_channels)
-        return self.X[n0, :, t0:t0 + n_times_atom][None]
+
+        patch = self.X[n0, :, t0:t0 + n_times_atom][None]
+        if self.D_hat.ndim == 2:
+            patch = get_uv(patch)
+        return patch
 
     def set_D(self, D):
         self.D_hat = D
 
-    def set_reg(self, reg):
-        self.reg = reg
+        nb_missing_atoms = D.shape[0] - self.z_hat.shape[1]
 
-    def add_one_atom(self, new_atom):
-        assert new_atom.shape == (self.n_times_atom + self.X.shape[1],)
-        self.D_hat = np.concatenate([self.D_hat, new_atom[None]])
-        self.z_hat = np.concatenate(
-            [self.z_hat, self._get_new_z_hat(1)], axis=1
-        )
+        assert nb_missing_atoms >= 0
+
+        if nb_missing_atoms > 0:
+            self.z_hat = np.concatenate(
+                [self.z_hat, self._get_new_z_hat(nb_missing_atoms)], axis=1
+            )
 
     def get_z_hat(self):
         return self.z_hat
@@ -535,7 +532,11 @@ class DicodileEncoder(BaseZEncoder):
 
         n_channels = self.X.shape[1]
         *_, n_times_atom = get_D_shape(self.D_hat, n_channels)
-        return self.X[n0, :, t0:t0 + n_times_atom][None]
+
+        patch = self.X[n0, :, t0:t0 + n_times_atom][None]
+        if self.D_hat.ndim == 2:
+            patch = get_uv(patch)
+        return patch
 
     def get_z_hat(self):
         """
@@ -581,29 +582,17 @@ class DicodileEncoder(BaseZEncoder):
         self.D_hat = D
         self._encoder.set_worker_D(D)
 
-    def set_reg(self, reg):
+    def update_reg(self, is_per_atom):
         """
         Update the regularization parameter.
 
         Parameters
         ----------
-        reg : float
-              Regularization parameter
-        """
-        self._encoder.set_worker_params({'reg': reg})  # XXX
-
-    def add_one_atom(self, new_atom):
-        """
-        Add one atom to the dictionary and extend z_hat
-        to match the new dimensions.
-
-        Parameters
-        ----------
-        new_atom : array, shape (n_channels + n_times_atom)
-            A new atom to add to the dictionary.
-        """
-        raise NotImplementedError(
-            "Greedy learning is not available in DiCoDiLe")
+        is_per_atom: bool
+            True if lmbd_max='per_atom'; False otherwise
+       """
+        super().update_reg(is_per_atom)
+        self._encoder.set_worker_params({'reg': self.reg})  # XXX
 
     def __enter__(self):
         # XXX run init here?

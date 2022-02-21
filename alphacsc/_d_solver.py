@@ -1,22 +1,84 @@
 import numpy as np
 
-from .init_dict import init_dictionary
+from .init_dict import get_init_strategy
 from .loss_and_gradient import gradient_uv, gradient_d
-from .update_d_multi import prox_d, prox_uv, check_solver_and_constraints
 from .utils import check_random_state
 from .utils.convolution import numpy_convolve_uv
-from .utils.dictionary import NoWindow, UVWindower, SimpleWindower, get_uv
+from .utils.dictionary import NoWindow, UVWindower, SimpleWindower
 from .utils.optim import fista, power_iteration
+from .update_d_multi import prox_uv, prox_d
 
 
-def get_solver_d(solver_d='alternate_adaptive', rank1=False,
-                 uv_constraint='auto', window=False, eps=1e-8,
-                 max_iter=300, momentum=False, random_state=None,
-                 verbose=0, debug=False):
+def check_solver_and_constraints(rank1, solver_d, uv_constraint):
+    """Checks if solver_d and uv_constraint are compatible depending on
+    rank1 value.
+
+    - If rank1 is False, solver_d should be 'fista' and uv_constraint should be
+    'auto'.
+    - If rank1 is True;
+       - If solver_d is either 'alternate' or 'alternate_adaptive',
+         uv_constraint should be 'separate'.
+       - If solver_d is either 'joint' or 'fista', uv_constraint should be
+         'joint'.
+
+    Parameters
+    ----------
+    rank1: boolean
+        If set to True, learn rank 1 dictionary atoms.
+    solver_d : str in {'alternate' | 'alternate_adaptive' | 'fista' | 'joint' |
+    'auto'}
+        The solver to use for the d update.
+        - If rank1 is False, only option is 'fista'
+        - If rank1 is True, options are 'alternate', 'alternate_adaptive'
+          (default) or 'joint'
+    uv_constraint : str in {'joint' | 'separate' | 'auto'}
+        The kind of norm constraint on the atoms if using rank1=True.
+        If 'joint', the constraint is norm_2([u, v]) <= 1
+        If 'separate', the constraint is norm_2(u) <= 1 and norm_2(v) <= 1
+        If rank1 is False, then uv_constraint must be 'auto'.
+    """
+
+    if rank1:
+        if solver_d == 'auto':
+            solver_d = 'alternate_adaptive'
+        if 'alternate' in solver_d:
+            if uv_constraint == 'auto':
+                uv_constraint = 'separate'
+            else:
+                assert uv_constraint == 'separate', (
+                    "solver_d='alternate*' should be used with "
+                    f"uv_constraint='separate'. Got '{uv_constraint}'."
+                )
+        elif uv_constraint == 'auto' and solver_d in ['joint', 'fista']:
+            uv_constraint = 'joint'
+    else:
+        assert solver_d in ['auto', 'fista'], (
+            f"solver_d should be auto or fista. Got solver_d='{solver_d}'."
+        )
+        assert solver_d in ['auto', 'fista'] and uv_constraint == 'auto', (
+            "If rank1 is False, uv_constraint should be 'auto' "
+            f"and solver_d should be auto or fista. Got solver_d='{solver_d}' "
+            f"and uv_constraint='{uv_constraint}'."
+        )
+        solver_d = 'fista'
+    return solver_d, uv_constraint
+
+
+def get_solver_d(n_channels, n_atoms, n_times_atom,
+                 solver_d='alternate_adaptive', rank1=False,
+                 uv_constraint='auto', D_init=None, D_init_params=dict(),
+                 window=False, eps=1e-8, max_iter=300, momentum=False,
+                 random_state=None, verbose=0, debug=False):
     """Returns solver depending on solver_d type and rank1 value.
 
     Parameters
     ----------
+    n_channels : int
+        The number of channels.
+    n_atoms : int
+        The number of atoms to learn.
+    n_times_atom : int
+        The support of the atom.
     solver_d : str in {'alternate' | 'alternate_adaptive' | 'fista' | 'joint' |
     'auto'}
         The solver to use for the d update.
@@ -30,6 +92,13 @@ def get_solver_d(solver_d='alternate_adaptive', rank1=False,
         If 'joint', the constraint is norm_2([u, v]) <= 1
         If 'separate', the constraint is norm_2(u) <= 1 and norm_2(v) <= 1
         If rank1 is False, then uv_constraint must be 'auto'.
+    D_init : {'kmeans' | 'ssa' | 'chunk' | 'random' | 'greedy'}
+             or array, shape (n_atoms, n_channels + n_times_atom) or
+                         (n_atoms, n_channels, n_times_atom)
+        The initialization scheme for the dictionary or the initial
+        atoms.
+    D_init_params : dict
+        Dictionary of parameters for the kmeans init method.
     window : boolean
         If True, re-parametrizes the atoms with a temporal Tukey window
     eps : float
@@ -54,12 +123,14 @@ def get_solver_d(solver_d='alternate_adaptive', rank1=False,
     if rank1:
         if solver_d in ['auto', 'alternate', 'alternate_adaptive']:
             return AlternateDSolver(
-                solver_d, uv_constraint, window, eps, max_iter, momentum,
+                n_channels, n_atoms, n_times_atom, solver_d, uv_constraint,
+                D_init, D_init_params, window, eps, max_iter, momentum,
                 random_state, verbose, debug
             )
         elif solver_d in ['fista', 'joint']:
             return JointDSolver(
-                solver_d, uv_constraint, window, eps, max_iter, momentum,
+                n_channels, n_atoms, n_times_atom, solver_d, uv_constraint,
+                D_init, D_init_params, window, eps, max_iter, momentum,
                 random_state, verbose, debug
             )
         else:
@@ -67,7 +138,8 @@ def get_solver_d(solver_d='alternate_adaptive', rank1=False,
     else:
         if solver_d in ['auto', 'fista']:
             return DSolver(
-                solver_d, uv_constraint, window, eps, max_iter, momentum,
+                n_channels, n_atoms, n_times_atom, solver_d, uv_constraint,
+                D_init, D_init_params, window, eps, max_iter, momentum,
                 random_state, verbose, debug
             )
         else:
@@ -77,45 +149,72 @@ def get_solver_d(solver_d='alternate_adaptive', rank1=False,
 class BaseDSolver:
     """Base class for a d solver."""
 
-    def __init__(self, solver_d, uv_constraint, window,
-                 eps, max_iter, momentum, random_state, verbose,
-                 debug, rank1):
+    def __init__(self, n_channels, n_atoms, n_times_atom, solver_d,
+                 uv_constraint, D_init, D_init_params, window, eps, max_iter,
+                 momentum, random_state, verbose, debug):
 
-        self.rank1 = rank1
+        self.n_channels = n_channels
+        self.n_atoms = n_atoms
+        self.n_times_atom = n_times_atom
         self.uv_constraint = uv_constraint
-        self.window = window
         self.eps = eps
         self.max_iter = max_iter
         self.momentum = momentum
         self.rng = check_random_state(random_state)
         self.verbose = verbose
         self.debug = debug
+        self.D_init = D_init
 
-        self.windower = None
+        self.init_strategy = get_init_strategy(
+            n_times_atom, self.get_D_shape(), self.rng, D_init, D_init_params
+        )
 
-        # This guarantees that, if self.window=False, self.windower=NoWindow()
-        if not self.window:
-            self.windower = NoWindow()
+        if not window:
+            self._windower = NoWindow()
+        else:
+            self._init_windower()
 
-    def init_dictionary(self, X, n_atoms, n_times_atom, D_init=None,
-                        D_init_params=dict()):
-        """Returns an initial dictionary for the signal X.
+    def _get_objective(self, z_encoder):
 
-        Parameter
-        ---------
+        def objective(D, full=False):
+
+            D = self._windower.window(D)
+
+            return z_encoder.compute_objective(D)
+
+        return objective
+
+    def _get_prox(self):
+
+        def prox(D, step_size=None):
+
+            D = self._windower.window(D)
+
+            D = self.prox(D)
+
+            return self._windower.remove_window(D)
+
+        return prox
+
+    def _get_grad(self, z_encoder):
+
+        def grad(D):
+
+            D = self._windower.window(D)
+
+            grad = self.grad(D, z_encoder)
+
+            return self._windower.window(grad)
+
+        return grad
+
+    def init_dictionary(self, X):
+        """Returns a dictionary for the signal X depending on D_init value.
+
+        Parameters
+        ----------
         X: array, shape (n_trials, n_channels, n_times)
             The data on which to perform CSC.
-        n_atoms : int
-            The number of atoms to learn.
-        n_times_atom : int
-            The support of the atom.
-        D_init : array or {'kmeans' | 'ssa' | 'chunk' | 'random'}
-            The initialization scheme for the dictionary or the initial
-            atoms. The shape should match the required dictionary shape, ie if
-            rank1 is True, (n_atoms, n_channels + n_times_atom) and else
-            (n_atoms, n_channels, n_times_atom)
-        D_init_params : dict
-            Dictionnary of parameters for the kmeans init method.
 
         Return
         ------
@@ -124,44 +223,14 @@ class BaseDSolver:
             The initial atoms to learn from the data.
         """
 
-        return init_dictionary(
-            X, n_atoms, n_times_atom, D_init=D_init,
-            rank1=self.rank1, uv_constraint=self.uv_constraint,
-            D_init_params=D_init_params, random_state=self.rng,
-            window=self.window
-        )
+        D_hat = self.init_strategy.initialize(X)
 
-    def update_D(self, z_encoder):
-        """Learn d's in time domain.
+        if not isinstance(self.D_init, np.ndarray):
+            D_hat = self._windower.window(D_hat)
 
-        Parameters
-        ----------
-        z_encoder: BaseZEncoder
-            ZEncoder object.
+        self.D_hat = self.prox(D_hat)
 
-        Returns
-        -------
-        D_hat : array, shape (n_atoms, n_channels + n_times_atom) or
-                             (n_atoms, n_channels, n_times_atom)
-            The atoms to learn from the data.
-        """
-
-        self._init_windower(z_encoder)
-
-        D_hat0 = self.windower.dewindow(z_encoder.D_hat)
-
-        D_hat, pobj = fista(
-            self._get_objective(z_encoder), self._get_grad(z_encoder),
-            self._get_prox(z_encoder), None, D_hat0, self.max_iter,
-            momentum=self.momentum, eps=self.eps, adaptive_step_size=True,
-            name=self.name, debug=self.debug, verbose=self.verbose
-        )
-
-        D_hat = self.windower.window(D_hat)
-
-        if self.debug:
-            return D_hat, pobj
-        return D_hat
+        return self.D_hat
 
     def get_max_error_dict(self, z_encoder):
         """Get the maximal reconstruction error patch from the data as a new atom
@@ -183,109 +252,144 @@ class BaseDSolver:
         [Yellin2017] BLOOD CELL DETECTION AND COUNTING IN HOLOGRAPHIC LENS-FREE
         IMAGING BY CONVOLUTIONAL SPARSE DICTIONARY LEARNING AND CODING.
         """
+        assert z_encoder.n_channels == self.n_channels
 
-        raise NotImplementedError()
+        d0 = z_encoder.get_max_error_patch()
 
-    def _init_windower(self, z_encoder):
-        raise NotImplementedError()
+        d0 = self._windower.window(d0)
 
-    def _get_objective(self, z_encoder):
+        return self.prox(d0)
 
-        def objective(D, full=False):
+    def add_one_atom(self, z_encoder):
+        """Adds one atom to D_hat and updates D_hat in z_encoder.
 
-            D = self.windower.window(D)
+        Parameters
+        ----------
+        z_encoder: BaseZEncoder
+            ZEncoder object.
 
-            return z_encoder.compute_objective(D)
+        Returns
+        -------
+        D_hat : array, shape (k+1, n_channels + n_times_atom) or
+                             (k+1, n_channels, n_times_atom)
+            The atoms to learn from the data, where k < n_atoms is the initial
+        number of atoms in the dictionary before adding an atom.
+        """
+        assert self.D_hat.shape[0] < self.n_atoms
 
-        return objective
+        new_atom = self.get_max_error_dict(z_encoder)[0]
+
+        self.D_hat = np.concatenate([self.D_hat, new_atom[None]])
+
+        z_encoder.set_D(self.D_hat)
+        return self.D_hat
+
+    def resample_atom(self, k0, z_encoder):
+        """Resamples the atom at index k0 of D_hat and updates D_hat in
+        z_encoder.
+
+        Parameters
+        ----------
+        k0: int
+            index of the atom to resample
+        z_encoder: BaseZEncoder
+            ZEncoder object.
+
+        Returns
+        -------
+        D_hat : array, shape (n_atoms, n_channels + n_times_atom) or
+                             (n_atoms, n_channels, n_times_atom)
+            The atoms to learn from the data.
+        """
+        self.D_hat[k0] = self.get_max_error_dict(z_encoder)[0]
+        z_encoder.set_D(self.D_hat)
+        return self.D_hat
+
+    def update_D(self, z_encoder):
+        """Learn d's in time domain and update D_hat in z_encoder.
+
+        Parameters
+        ----------
+        z_encoder: BaseZEncoder
+            ZEncoder object.
+
+        Returns
+        -------
+        D_hat : array, shape (n_atoms, n_channels + n_times_atom) or
+                             (n_atoms, n_channels, n_times_atom)
+            The atoms to learn from the data.
+        """
+
+        assert z_encoder.n_channels == self.n_channels
+
+        D_hat0 = self._windower.remove_window(self.D_hat)
+
+        D_hat, pobj = fista(
+            self._get_objective(z_encoder), self._get_grad(z_encoder),
+            self._get_prox(), None, D_hat0, self.max_iter,
+            momentum=self.momentum, eps=self.eps, adaptive_step_size=True,
+            name=self.name, debug=self.debug, verbose=self.verbose
+        )
+
+        self.D_hat = self._windower.window(D_hat)
+
+        z_encoder.set_D(self.D_hat)
+
+        if self.debug:
+            return self.D_hat, pobj
+        return self.D_hat
 
 
 class Rank1DSolver(BaseDSolver):
     """Base class for a rank1 solver d."""
 
-    def __init__(self, solver_d, uv_constraint, window, eps, max_iter,
-                 momentum, random_state, verbose, debug):
+    def __init__(self, n_channels, n_atoms, n_times_atom, solver_d,
+                 uv_constraint, D_init, D_init_params, window, eps,
+                 max_iter, momentum, random_state, verbose, debug):
 
         super().__init__(
-            solver_d, uv_constraint, window, eps, max_iter, momentum,
-            random_state, verbose, debug, rank1=True
+            n_channels, n_atoms, n_times_atom, solver_d, uv_constraint,
+            D_init, D_init_params, window, eps, max_iter, momentum,
+            random_state, verbose, debug
         )
 
         self.name = "Update uv"
 
-    def get_max_error_dict(self, z_encoder):
-        """Get the maximal reconstruction error patch from the data as a new atom
+    def _init_windower(self):
+        self._windower = UVWindower(self.n_times_atom, self.n_channels)
 
-        This idea is used for instance in [Yellin2017]
+    def prox(self, D_hat):
+        return prox_uv(D_hat, uv_constraint=self.uv_constraint,
+                       n_channels=self.n_channels)
 
-        Parameters
-        ----------
-        z_encoder : BaseZEncoder
-            ZEncoder object to be able to compute the largest error patch.
+    def get_D_shape(self):
+        """Returns the expected shape of the dictionary.
 
-        Return
-        ------
-        uvk: array, shape (n_channels + n_times_atom,)
-            New atom for the dictionary, chosen as the chunk of data with the
-            maximal reconstruction error.
-
-        [Yellin2017] BLOOD CELL DETECTION AND COUNTING IN HOLOGRAPHIC LENS-FREE
-        IMAGING BY CONVOLUTIONAL SPARSE DICTIONARY LEARNING AND CODING.
+        Note: For the 'greedy' strategy this does not return the actual
+        dictionary shape, but the final expected shape.
         """
-        self._init_windower(z_encoder)
-
-        d0 = z_encoder.get_max_error_patch()
-
-        d0 = self.windower.simple_window(d0)
-
-        return prox_uv(get_uv(d0), uv_constraint=self.uv_constraint,
-                       n_channels=z_encoder.n_channels)
-
-    def _init_windower(self, z_encoder):
-        if self.windower is None:
-            self.windower = UVWindower(z_encoder.n_times_atom,
-                                       z_encoder.n_channels)
+        return (self.n_atoms, self.n_channels + self.n_times_atom)
 
 
 class JointDSolver(Rank1DSolver):
     """A class for 'fista' or 'joint' solver_d when rank1 is True. """
 
-    def __init__(self, solver_d, uv_constraint, window, eps, max_iter,
+    def __init__(self, n_channels, n_atoms, n_times_atom, solver_d,
+                 uv_constraint, D_init, D_init_params, window, eps, max_iter,
                  momentum, random_state, verbose, debug):
 
         super().__init__(
-            solver_d, uv_constraint, window, eps, max_iter,
-            momentum, random_state, verbose, debug
+            n_channels, n_atoms, n_times_atom, solver_d, uv_constraint, D_init,
+            D_init_params, window, eps, max_iter, momentum, random_state,
+            verbose, debug
         )
 
-    def _get_grad(self, z_encoder):
-
-        def grad(uv):
-
-            uv = self.windower.window(uv)
-
-            grad = gradient_uv(
-                uv=uv, X=z_encoder.X, z=z_encoder.get_z_hat(),
-                constants=z_encoder.get_constants(), loss=z_encoder.loss,
-                loss_params=z_encoder.loss_params
-            )
-
-            return self.windower.window(grad)
-
-        return grad
-
-    def _get_prox(self, z_encoder):
-
-        def prox(uv, step_size=None):
-
-            uv = self.windower.window(uv)
-
-            uv = prox_uv(uv, uv_constraint=self.uv_constraint,
-                         n_channels=z_encoder.n_channels)
-
-            return self.windower.dewindow(uv)
-
-        return prox
+    def grad(self, D, z_encoder):
+        return gradient_uv(
+            uv=D, X=z_encoder.X, z=z_encoder.get_z_hat(),
+            constants=z_encoder.get_constants(), loss=z_encoder.loss,
+            loss_params=z_encoder.loss_params
+        )
 
 
 class AlternateDSolver(Rank1DSolver):
@@ -293,12 +397,14 @@ class AlternateDSolver(Rank1DSolver):
        True.
     """
 
-    def __init__(self, solver_d, uv_constraint, window, eps, max_iter,
-                 momentum, random_state, verbose, debug):
+    def __init__(self, n_channels, n_atoms, n_times_atom, solver_d,
+                 uv_constraint, D_init, D_init_params, window, eps,
+                 max_iter, momentum, random_state, verbose, debug):
 
         super().__init__(
-            solver_d, uv_constraint, window, eps, max_iter,
-            momentum, random_state, verbose, debug
+            n_channels, n_atoms, n_times_atom, solver_d, uv_constraint, D_init,
+            D_init_params, window, eps, max_iter, momentum, random_state,
+            verbose, debug
         )
 
         self.adaptive_step_size = (solver_d == 'alternate_adaptive')
@@ -316,10 +422,9 @@ class AlternateDSolver(Rank1DSolver):
         uv_hat : array, shape (n_atoms, n_channels + n_times_atom)
             The atoms to learn from the data.
         """
+        assert z_encoder.n_channels == self.n_channels
 
-        self._init_windower(z_encoder)
-
-        uv_hat = self.windower.dewindow(z_encoder.D_hat)
+        uv_hat = self._windower.remove_window(self.D_hat)
 
         objective = self._get_objective(z_encoder)
 
@@ -338,22 +443,24 @@ class AlternateDSolver(Rank1DSolver):
                 pobj.extend(pobj_u)
                 pobj.extend(pobj_v)
 
-        uv_hat = self.windower.window(uv_hat)
+        self.D_hat = self._windower.window(uv_hat)
+
+        z_encoder.set_D(self.D_hat)
 
         if self.debug:
-            return uv_hat, pobj
-        return uv_hat
+            return self.D_hat, pobj
+        return self.D_hat
 
     def _update_u(self, uv_hat0, objective, z_encoder):
 
-        n_channels = z_encoder.n_channels
+        n_channels = self.n_channels
 
         uv_hat = uv_hat0.copy()
         u_hat, v_hat = uv_hat[:, :n_channels], uv_hat[:, n_channels:]
 
         def grad_u(u):
 
-            uv = np.c_[u, self.windower.simple_window(v_hat)]
+            uv = np.c_[u, self._windower.simple_window(v_hat)]
 
             grad_d = gradient_d(
                 uv, X=z_encoder.X, z=z_encoder.get_z_hat(),
@@ -372,7 +479,7 @@ class AlternateDSolver(Rank1DSolver):
             return objective(uv)
 
         def op_Hu(u):
-            u = np.reshape(u, (z_encoder.n_atoms, n_channels))
+            u = np.reshape(u, (self.D_hat.shape[0], n_channels))
             uv = np.c_[u, v_hat]
             H_d = numpy_convolve_uv(z_encoder.ztz, uv)
             H_u = (H_d * uv[:, None, n_channels:]).sum(axis=2)
@@ -387,14 +494,14 @@ class AlternateDSolver(Rank1DSolver):
 
     def _update_v(self, uv_hat0, objective, z_encoder):
 
-        n_channels = z_encoder.n_channels
+        n_channels = self.n_channels
 
         uv_hat = uv_hat0.copy()
         u_hat, v_hat = uv_hat[:, :n_channels], uv_hat[:, n_channels:]
 
         def grad_v(v):
 
-            v = self.windower.simple_window(v)
+            v = self._windower.simple_window(v)
 
             uv = np.c_[u_hat, v]
 
@@ -406,22 +513,22 @@ class AlternateDSolver(Rank1DSolver):
 
             grad_v = (grad_d * uv[:, :z_encoder.n_channels, None]).sum(axis=1)
 
-            return self.windower.simple_window(grad_v)
+            return self._windower.simple_window(grad_v)
 
         def prox_v(v, step_size=None):
 
-            v = self.windower.simple_window(v)
+            v = self._windower.simple_window(v)
 
             v /= np.maximum(1., np.linalg.norm(v, axis=1, keepdims=True))
 
-            return self.windower.simple_dewindow(v)
+            return self._windower.remove_simple_window(v)
 
         def obj(v):
             uv = np.c_[u_hat, v]
             return objective(uv)
 
         def op_Hv(v):
-            v = np.reshape(v, (z_encoder.n_atoms, z_encoder.n_times_atom))
+            v = np.reshape(v, (self.D_hat.shape[0], self.n_times_atom))
             uv = np.c_[u_hat, v]
             H_d = numpy_convolve_uv(z_encoder.ztz, uv)
             H_v = (H_d * uv[:, :n_channels, None]).sum(axis=1)
@@ -488,15 +595,17 @@ class AlternateDSolver(Rank1DSolver):
             # XXX - maybe replace with scipy.sparse.linalg.svds
             b_hat_0 = np.random.randn(uv_hat.size)
 
+            n_atoms = self.D_hat.shape[0]
+
             if variable == 'u':
                 b_hat_0 = b_hat_0.reshape(
-                    z_encoder.n_atoms, -1)[:, :z_encoder.n_channels].ravel()
-                n_points = z_encoder.n_atoms * z_encoder.n_channels
+                    n_atoms, -1)[:, :z_encoder.n_channels].ravel()
+                n_points = n_atoms * z_encoder.n_channels
                 L = power_iteration(op, n_points, b_hat_0=b_hat_0)
             elif variable == 'v':
                 b_hat_0 = b_hat_0.reshape(
-                    z_encoder.n_atoms, -1)[:, z_encoder.n_channels:].ravel()
-                n_points = z_encoder.n_atoms * z_encoder.n_times_atom
+                    n_atoms, -1)[:, z_encoder.n_channels:].ravel()
+                n_points = n_atoms * self.n_times_atom
 
             L = power_iteration(op, n_points, b_hat_0=b_hat_0)
 
@@ -508,72 +617,35 @@ class AlternateDSolver(Rank1DSolver):
 class DSolver(BaseDSolver):
     """A class for 'fista' solver_d when rank1 is False. """
 
-    def __init__(self, solver_d, uv_constraint, window, eps, max_iter,
+    def __init__(self, n_channels, n_atoms, n_times_atom, solver_d,
+                 uv_constraint, D_init, D_init_params, window, eps, max_iter,
                  momentum, random_state, verbose, debug):
 
         super().__init__(
-            solver_d, uv_constraint, window, eps, max_iter, momentum,
-            random_state, verbose, debug, rank1=False
+            n_channels, n_atoms, n_times_atom, solver_d, uv_constraint, D_init,
+            D_init_params, window, eps, max_iter, momentum, random_state,
+            verbose, debug
         )
 
         self.name = "Update D"
 
-    def get_max_error_dict(self, z_encoder):
-        """Get the maximal reconstruction error patch from the data as a new atom
+    def _init_windower(self):
+        self._windower = SimpleWindower(self.n_times_atom)
 
-        This idea is used for instance in [Yellin2017]
+    def prox(self, D_hat):
+        return prox_d(D_hat)
 
-        Parameters
-        ----------
-        z_encoder : BaseZEncoder
-            ZEncoder object to be able to compute the largest error patch.
+    def get_D_shape(self):
+        """Returns the expected shape of the dictionary.
 
-        Return
-        ------
-        dk: array, shape (n_channels, n_times_atom,)
-            New atom for the dictionary, chosen as the chunk of data with the
-            maximal reconstruction error.
-
-        [Yellin2017] BLOOD CELL DETECTION AND COUNTING IN HOLOGRAPHIC LENS-FREE
-        IMAGING BY CONVOLUTIONAL SPARSE DICTIONARY LEARNING AND CODING.
+        Note: For the 'greedy' strategy this does not return the actual
+        dictionary shape, but the final expected shape.
         """
+        return (self.n_atoms, self.n_channels, self.n_times_atom)
 
-        self._init_windower(z_encoder)
-
-        d0 = z_encoder.get_max_error_patch()
-
-        d0 = self.windower.window(d0)
-
-        return prox_d(d0)
-
-    def _init_windower(self, z_encoder):
-        if self.windower is None:
-            self.windower = SimpleWindower(z_encoder.n_times_atom)
-
-    def _get_grad(self, z_encoder):
-
-        def grad(D):
-
-            D = self.windower.window(D)
-
-            grad = gradient_d(
-                D=D, X=z_encoder.X, z=z_encoder.get_z_hat(),
-                constants=z_encoder.get_constants(), loss=z_encoder.loss,
-                loss_params=z_encoder.loss_params
-            )
-
-            return self.windower.window(grad)
-
-        return grad
-
-    def _get_prox(self, z_encoder):
-
-        def prox(D, step_size=None):
-
-            D = self.windower.window(D)
-
-            D = prox_d(D)
-
-            return self.windower.dewindow(D)
-
-        return prox
+    def grad(self, D, z_encoder):
+        return gradient_d(
+            D=D, X=z_encoder.X, z=z_encoder.get_z_hat(),
+            constants=z_encoder.get_constants(), loss=z_encoder.loss,
+            loss_params=z_encoder.loss_params
+        )

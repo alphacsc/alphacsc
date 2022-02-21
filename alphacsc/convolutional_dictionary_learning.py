@@ -11,7 +11,7 @@ from .update_z_multi import update_z_multi
 from .utils.dictionary import get_D, get_uv
 from .learn_d_z_multi import learn_d_z_multi
 from .loss_and_gradient import construct_X_multi
-from .update_d_multi import check_solver_and_constraints
+from ._d_solver import check_solver_and_constraints
 
 
 DOC_FMT = """{short_desc}
@@ -93,7 +93,7 @@ DOC_FMT = """{short_desc}
     D_init : str or array
         The initial atoms with shape (n_atoms, n_channels + n_times_atoms) or
         (n_atoms, n_channels, n_times_atom) or an initialization scheme str in
-        {{'kmeans' | 'ssa' | 'chunk' | 'random'}}.
+        {{'kmeans' | 'ssa' | 'chunk' | 'random' | 'greedy'}}.
     D_init_params : dict
         Dictionnary of parameters for the kmeans init method.
 

@@ -110,13 +110,13 @@ class NoWindow():
     def window(self, d):
         return d
 
-    def dewindow(self, d):
+    def remove_window(self, d):
         return d
 
     def simple_window(self, d):
         return d
 
-    def simple_dewindow(self, d):
+    def remove_simple_window(self, d):
         return d
 
 
@@ -130,7 +130,7 @@ class UVWindower(NoWindow):
         d[:, self.n_channels:] *= self.tukey_window
         return d
 
-    def dewindow(self, d):
+    def remove_window(self, d):
         d = d.copy()
         d[:, self.n_channels:] /= self.tukey_window
         return d
@@ -138,19 +138,18 @@ class UVWindower(NoWindow):
     def simple_window(self, d):
         return d * self.tukey_window
 
-    def simple_dewindow(self, d):
+    def remove_simple_window(self, d):
         return d / self.tukey_window
 
 
 class SimpleWindower(NoWindow):
     def __init__(self, n_times_atom):
-        print(f"initialized {n_times_atom}")
         self.tukey_window = tukey_window(n_times_atom)[None, None, :]
 
     def window(self, d):
         return d * self.tukey_window
 
-    def dewindow(self, d):
+    def remove_window(self, d):
         return d / self.tukey_window
 
 

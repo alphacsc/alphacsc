@@ -1,6 +1,5 @@
 import numpy as np
 
-from .init_dict import init_dictionary
 from .utils.dictionary import get_lambda_max
 
 from .convolutional_dictionary_learning import DOC_FMT, DEFAULT
@@ -96,13 +95,7 @@ class OnlineCDL(ConvolutionalDictionaryLearning):
                               " not been updated.", UserWarning)
                 return z_encoder.get_z_hat()
 
-            d_solver = get_solver_d(solver_d=self.solver_d,
-                                    rank1=self.rank1,
-                                    window=self.window,
-                                    random_state=self.random_state,
-                                    **self.solver_d_kwargs)
-
-            self._D_hat = d_solver.update_D(z_encoder)
+            self._D_hat = self.d_solver.update_D(z_encoder)
             self.z_hat = z_encoder.get_z_hat()
 
             return self.z_hat
@@ -126,13 +119,16 @@ class OnlineCDL(ConvolutionalDictionaryLearning):
         self.constants['ztX'] = np.zeros((self.n_atoms, n_channels,
                                           self. n_times_atom))
 
+        self.d_solver = get_solver_d(
+            n_channels, self.n_atoms, self.n_times_atom,
+            solver_d=self.solver_d, rank1=self.rank1, window=self.window,
+            D_init=self.D_init, D_init_params=self.D_init_params,
+            random_state=self.random_state, **self.solver_d_kwargs
+        )
+
         # Init dictionary either from D_init or from an heuristic based on the
         # first batch X
-        self._D_hat = init_dictionary(
-            X, self.n_atoms, self.n_times_atom, rank1=self.rank1,
-            window=self.window, uv_constraint=self.uv_constraint,
-            D_init=self.D_init, D_init_params=self.D_init_params,
-            random_state=self.random_state)
+        self._D_hat = self.d_solver.init_dictionary(X)
 
         self.reg_ = self.reg
         _lmbd_max = get_lambda_max(X, self._D_hat).max()

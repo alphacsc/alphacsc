@@ -18,8 +18,221 @@ from .update_d_multi import prox_uv, prox_d
 from .utils.dictionary import tukey_window
 from .utils.dictionary import get_uv, get_D
 
+
 ried = custom_distances.roll_invariant_euclidean_distances
 tied = custom_distances.translation_invariant_euclidean_distances
+
+
+def get_init_strategy(n_times_atom, shape, random_state, D_init,
+                      D_init_params):
+    """Returns dictionary initialization strategy.
+
+    Parameters
+    ----------
+    n_times_atom : int
+        The support of the atom.
+    shape: tuple
+        Expected shape of the dictionary. (n_atoms, n_channels + n_times_atoms)
+    or (n_atoms, n_channels, n_times_atom)
+    random_state: int or np.random.RandomState
+        A seed to generate a RandomState instance or the instance itself.
+    D_init : str or array, shape (n_atoms, n_channels + n_times_atoms) or \
+                           shape (n_atoms, n_channels, n_times_atom)
+        The initial atoms or an initialization scheme in
+        {'kmeans' | 'ssa' | 'chunk' | 'random' | 'greedy'}.
+    D_init_params : dict
+        Dictionnary of parameters for the kmeans init method.
+    """
+    if isinstance(D_init, np.ndarray):
+        return IdentityStrategy(shape, D_init)
+    elif D_init is None or D_init == 'random':
+        return RandomStrategy(shape, random_state)
+    elif D_init == 'chunk':
+        return ChunkStrategy(n_times_atom, shape, random_state)
+    elif D_init == "kmeans":
+        return KMeansStrategy(n_times_atom, shape, random_state, D_init_params)
+    elif D_init == 'ssa':
+        return SSAStrategy(n_times_atom, shape, random_state)
+    elif D_init == 'greedy':
+        return GreedyStrategy(shape, random_state)
+    else:
+        raise NotImplementedError('It is not possible to initialize uv'
+                                  ' with parameter {}.'.format(D_init))
+
+
+class IdentityStrategy():
+    """A class that creates a dictionary from a specified array.
+
+    Parameters
+    ----------
+    shape: tuple
+        Expected shape of the dictionary. (n_atoms, n_channels + n_times_atoms)
+    or (n_atoms, n_channels, n_times_atom)
+    D_init : array of shape (n_atoms, n_channels + n_times_atoms) or \
+                      shape (n_atoms, n_channels, n_times_atom)
+    """
+
+    def __init__(self, shape, D_init):
+
+        assert shape == D_init.shape
+        self.D_init = D_init
+
+    def initialize(self, X):
+        return self.D_init.copy()
+
+
+class RandomStrategy():
+    """A class that creates a random dictionary for a specified shape.
+
+    Parameters
+    ----------
+    shape: tuple
+        Expected shape of the dictionary. (n_atoms, n_channels + n_times_atoms)
+    or (n_atoms, n_channels, n_times_atom)
+    random_state: int or np.random.RandomState
+        A seed to generate a RandomState instance or the instance itself.
+    """
+
+    def __init__(self, shape, random_state):
+
+        self.shape = shape
+        self.random_state = random_state
+
+    def initialize(self, X):
+        rng = check_random_state(self.random_state)
+        return rng.randn(*self.shape)
+
+
+class ChunkStrategy():
+    """A class that creates a random dictionary for a specified shape with
+    'chunk' strategy.
+
+    Parameters
+    ----------
+    n_times_atom : int
+        The support of the atom.
+    shape: tuple
+        Expected shape of the dictionary. (n_atoms, n_channels + n_times_atoms)
+    or (n_atoms, n_channels, n_times_atom)
+    random_state: int or np.random.RandomState
+        A seed to generate a RandomState instance or the instance itself.
+    """
+
+    def __init__(self, n_times_atom, shape, random_state):
+
+        self.n_atoms = shape[0]
+        self.n_times_atom = n_times_atom
+        self.rank1 = True if len(shape) == 2 else False
+        self.random_state = random_state
+
+    def initialize(self, X):
+        rng = check_random_state(self.random_state)
+        n_trials, n_channels, n_times = X.shape
+
+        D_hat = np.zeros(
+            (self.n_atoms, n_channels, self.n_times_atom))
+
+        for i_atom in range(self.n_atoms):
+            i_trial = rng.randint(n_trials)
+            t0 = rng.randint(n_times - self.n_times_atom)
+            D_hat[i_atom] = X[i_trial, :, t0:t0 + self.n_times_atom]
+
+        if self.rank1:
+            D_hat = get_uv(D_hat)
+
+        return D_hat
+
+
+class KMeansStrategy():
+    """A class that creates a random dictionary for a specified shape with
+    'kmeans' strategy.
+
+    Parameters
+    ----------
+    n_times_atom : int
+        The support of the atom.
+    shape: tuple
+        Expected shape of the dictionary. (n_atoms, n_channels + n_times_atoms)
+    or (n_atoms, n_channels, n_times_atom)
+    random_state: int or np.random.RandomState
+        A seed to generate a RandomState instance or the instance itself.
+    D_init_params : dict
+        Dictionnary of parameters for the kmeans init method.
+    """
+
+    def __init__(self, n_times_atom, shape, random_state, D_init_params):
+
+        self.n_atoms = shape[0]
+        self.n_times_atom = n_times_atom
+        self.rank1 = True if len(shape) == 2 else False
+        self.random_state = random_state
+        self.D_init_params = D_init_params
+
+    def initialize(self, X):
+        rng = check_random_state(self.random_state)
+        n_channels = X.shape[1]
+
+        D_hat = kmeans_init(X, self.n_atoms, self.n_times_atom,
+                            random_state=rng, **self.D_init_params)
+
+        if not self.rank1:
+            D_hat = get_D(D_hat, n_channels)
+        return D_hat
+
+
+class SSAStrategy():
+    """A class that creates a random dictionary for a specified shape with
+    'ssa' strategy.
+
+    Parameters
+    ----------
+    n_times_atom : int
+        The support of the atom.
+    shape: tuple
+        Expected shape of the dictionary. (n_atoms, n_channels + n_times_atoms)
+    or (n_atoms, n_channels, n_times_atom)
+    random_state: int or np.random.RandomState
+        A seed to generate a RandomState instance or the instance itself.
+    """
+
+    def __init__(self, n_times_atom, shape, random_state):
+
+        self.n_atoms = shape[0]
+        self.n_times_atom = n_times_atom
+        self.rank1 = True if len(shape) == 2 else False
+        self.random_state = random_state
+
+    def initialize(self, X):
+        rng = check_random_state(self.random_state)
+        n_channels = X.shape[1]
+
+        u_hat = rng.randn(self.n_atoms, n_channels)
+        v_hat = ssa_init(X, self.n_atoms, self.n_times_atom,
+                         random_state=rng)
+        D_hat = np.c_[u_hat, v_hat]
+
+        if not self.rank1:
+            D_hat = get_D(D_hat, n_channels)
+
+        return D_hat
+
+
+class GreedyStrategy(RandomStrategy):
+    """A class that creates a random dictionary for a specified shape and
+    removes all elements.
+
+    Parameters
+    ----------
+    shape: tuple
+        Expected shape of the dictionary. (n_atoms, n_channels + n_times_atoms)
+    or (n_atoms, n_channels, n_times_atom)
+    random_state: int or np.random.RandomState
+        A seed to generate a RandomState instance or the instance itself.
+    """
+
+    def initialize(self, X):
+        D_hat = super().initialize(X)
+        return D_hat[:0]
 
 
 def init_dictionary(X, n_atoms, n_times_atom, uv_constraint='separate',
@@ -29,34 +242,34 @@ def init_dictionary(X, n_atoms, n_times_atom, uv_constraint='separate',
 
     Parameter
     ---------
-    X: array, shape (n_trials, n_channels, n_times)
+    X: array, shape(n_trials, n_channels, n_times)
         The data on which to perform CSC.
-    n_atoms : int
+    n_atoms: int
         The number of atoms to learn.
-    n_times_atom : int
+    n_times_atom: int
         The support of the atom.
-    uv_constraint : str in {'joint' | 'separate'}
+    uv_constraint: str in {'joint' | 'separate'}
         The kind of norm constraint on the atoms:
         If 'joint', the constraint is norm_2([u, v]) <= 1
         If 'separate', the constraint is norm_2(u) <= 1 and norm_2(v) <= 1
-    rank1 : boolean
+    rank1: boolean
         If set to True, use a rank 1 dictionary.
-    window : boolean
+    window: boolean
         If True, multiply the atoms with a temporal Tukey window.
-    D_init : array or {'kmeans' | 'ssa' | 'chunk' | 'random'}
+    D_init: array or {'kmeans' | 'ssa' | 'chunk' | 'random'}
         The initialization scheme for the dictionary or the initial
         atoms. The shape should match the required dictionary shape, ie if
         rank1 is True, (n_atoms, n_channels + n_times_atom) and else
         (n_atoms, n_channels, n_times_atom)
-    D_init_params : dict
+    D_init_params: dict
         Dictionnary of parameters for the kmeans init method.
-    random_state : int | None
+    random_state: int | None
         The random state.
 
     Return
     ------
-    D : array shape (n_atoms, n_channels + n_times_atom) or
-              shape (n_atoms, n_channels, n_times_atom)
+    D: array shape(n_atoms, n_channels + n_times_atom) or
+              shape(n_atoms, n_channels, n_times_atom)
         The initial atoms to learn from the data.
     """
     n_trials, n_channels, n_times = X.shape
