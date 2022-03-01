@@ -4,6 +4,7 @@
 # You can set these variables from the command line.
 SPHINXOPTS    =
 SPHINXBUILD   = sphinx-build
+SPHINXMULTI   = sphinx-multiversion
 PAPER         =
 BUILDDIR      = _build
 ALLOW_AS_ROOT = ${ALLOW}
@@ -25,6 +26,7 @@ help:
 	@echo "Please use \`make <target>' where <target> is one of"
 	@echo "  html-noplot to make standalone HTML files, without plotting anything"
 	@echo "  html       to make standalone HTML files"
+	@echo "  multihtml  to make standalone HTML files for each release version"
 	@echo "  dirhtml    to make HTML files named index.html in directories"
 	@echo "  singlehtml to make a single large HTML file"
 	@echo "  pickle     to make pickle files"
@@ -54,6 +56,12 @@ html-noplot:
 .PHONY: html
 html:
 	mpiexec -np 1 $(ALLOW_AS_ROOT) --host localhost:50 $(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
+	@echo
+	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
+
+.PHONY: multihtml
+multihtml:
+	mpiexec -np 1 $(ALLOW_AS_ROOT) --host localhost:50 $(SPHINXMULTI) . $(BUILDDIR)/html
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
 
