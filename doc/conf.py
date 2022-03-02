@@ -97,7 +97,7 @@ numpydoc_show_class_members = False
 smv_branch_whitelist = None
 smv_remote_whitelist = r'^(upstream)$'
 smv_prefer_remote_refs = True
-smv_tag_whitelist = r'^(?!0.[3]).*$'
+smv_tag_whitelist = r'^(?!0.[23]).*$'
 
 # -- Options for HTML output ----------------------------------------------
 
