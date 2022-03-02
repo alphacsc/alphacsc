@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
       - name: Generate HTML docs
         uses: ax3l/sphinx-action@newer-sphinx
         env:
