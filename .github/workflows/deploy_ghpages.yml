@@ -23,6 +23,8 @@ jobs:
             python -m pip install --upgrade pip
             python -m pip install -e .[doc,dicodile]
             python -m pip install git+https://github.com/mne-tools/mne-python.git@main
+            cd doc
+            sphinx-multiversion --dump-metadata . _build
           build-command: "make multihtml"
       - name:  Upload generated HTML as artifact
         uses: actions/upload-artifact@v2
