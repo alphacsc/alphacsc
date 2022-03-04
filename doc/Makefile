@@ -61,9 +61,10 @@ html:
 
 .PHONY: multihtml
 multihtml:
+	@echo "Hostfile"
+	@echo "$(MPI_HOSTFILE)"
 	$(SPHINXMULTI) . $(BUILDDIR)/html
 	@echo
-	@echo "$MPI_HOSTFILE"
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
 
 .PHONY: dirhtml
