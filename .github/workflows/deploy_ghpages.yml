@@ -16,6 +16,8 @@ jobs:
       - name: Generate HTML docs
         uses: ax3l/sphinx-action@newer-sphinx
         env:
+          OMPI_ALLOW_RUN_AS_ROOT: 1
+          OMPI_ALLOW_RUN_AS_ROOT_CONFIRM: 1
           ALLOW: --allow-run-as-root
         with:
           docs-folder: "doc/"
