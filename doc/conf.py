@@ -94,10 +94,11 @@ numpydoc_show_class_members = False
 
 # -- Options for sphinx-multiversion --------------------------------------
 
-smv_branch_whitelist = None
+smv_branch_whitelist = 'master'
 smv_remote_whitelist = r'^(origin)$'
 smv_prefer_remote_refs = True
-smv_tag_whitelist = r'^(?!0.[23]).*$'
+smv_tag_whitelist = '0.4.0rc'
+#smv_tag_whitelist = r'^(?!0.[23]).*$'
 
 # -- Options for HTML output ----------------------------------------------
 
