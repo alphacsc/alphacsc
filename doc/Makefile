@@ -61,7 +61,7 @@ html:
 
 .PHONY: multihtml
 multihtml:
-	mpiexec -np 1 $(ALLOW_AS_ROOT) --host localhost:50 $(SPHINXMULTI) . $(BUILDDIR)/html
+	$(SPHINXMULTI) . $(BUILDDIR)/html
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
 
