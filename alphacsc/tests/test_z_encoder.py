@@ -34,7 +34,8 @@ def test_get_encoder_for_alphacsc(X, solver, D_hat, loss):
         assert z_encoder is not None
 
 
-@pytest.mark.parametrize('solver, n_trials, rank1', [('dicodile', 1, False)])
+@pytest.mark.parametrize('solver, n_trials, rank1', [('dicodile', 1, False),
+                                                     ('dicodile', 1, True)])
 def test_get_encoder_for_dicodile(X, D_hat, solver, requires_dicodile):
     """Test for valid values for dicodile backend."""
 
