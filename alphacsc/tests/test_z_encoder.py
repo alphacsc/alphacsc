@@ -96,20 +96,6 @@ def test_get_encoder_for_dicodile_error_loss_params(solver, X, D_hat,
                           n_jobs=2)
 
 
-@pytest.mark.parametrize('solver, n_trials, rank1', [('dicodile', 1, True)])
-def test_get_encoder_for_dicodile_error_rank1(X, D_hat, requires_dicodile):
-    """Test for dictionary generated with invalid rank1 value for dicodile
-    backend."""
-
-    with pytest.raises(AssertionError):
-        get_z_encoder_for(solver='dicodile',
-                          X=X,
-                          D_hat=D_hat,
-                          n_atoms=N_ATOMS,
-                          n_times_atom=N_TIMES_ATOM,
-                          n_jobs=2)
-
-
 @pytest.mark.parametrize('rank1', [True])
 @pytest.mark.parametrize('solver', [None, 'other'])
 def test_get_encoder_for_error_solver(X, D_hat,  solver):
