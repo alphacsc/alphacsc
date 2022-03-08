@@ -87,9 +87,6 @@ def get_z_encoder_for(X, D_hat, n_atoms, n_times_atom, n_jobs,
     elif solver == 'dicodile':
         assert loss == 'l2', f"DiCoDiLe requires a l2 loss ('{loss}' passed)."
         assert loss_params is None, "DiCoDiLe requires loss_params=None."
-        assert feasible_evaluation is False, (
-            "DiCoDiLe requires feasible_evaluation=False."
-        )
 
         return DicodileEncoder(
             X, D_hat, n_atoms, n_times_atom, n_jobs,
