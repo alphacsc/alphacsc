@@ -18,7 +18,7 @@ jobs:
         env:
           OMPI_ALLOW_RUN_AS_ROOT: 1
           OMPI_ALLOW_RUN_AS_ROOT_CONFIRM: 1
-          MPI_HOSTFILE: hostfile
+          MPI_HOSTFILE: /github/workspace/hostfile
           ALLOW: --allow-run-as-root
         with:
           docs-folder: "doc/"
@@ -30,9 +30,6 @@ jobs:
             python -m pip install git+https://github.com/mne-tools/mne-python.git@main
             echo "localhost slots=50" > hostfile
             echo $MPI_HOSTFILE
-            export MPI_HOSTFILE=hostfile
-            echo $MPI_HOSTFILE
-            echo $(pwd)
             cd doc
             sphinx-multiversion --dump-metadata . _build
           build-command: "make multihtml"
