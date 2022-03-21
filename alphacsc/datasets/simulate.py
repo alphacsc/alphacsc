@@ -90,7 +90,7 @@ def load_data(n_trials=40, n_channels=1, n_times=6, sigma=.05, sfreq=300,
             t = rng.choice(T_max - L_sig)
             signal[i] += sigma * X[channels, t:t + L_sig]
     else:
-        signal += sigma * rng.randn(signal.shape)
+        signal += sigma * rng.randn(*signal.shape)
 
     signal *= tukey(signal.shape[-1], alpha=0.05)[None, None, :]
 
