@@ -63,6 +63,7 @@ plt.show()
 ###############################################################################
 # As we can see, the data contains severe artifacts. We will thus compare three
 # approaches to tackle these artifacts:
+#
 #   - First, we will fit a CSC model on a section not affected by artifacts.
 #   - Then, we will fit a CSC model on a section affected by artifacts.
 #   - Finally, we will fit an alpha-CSC model on a section affected by
