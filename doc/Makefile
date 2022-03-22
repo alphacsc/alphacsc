@@ -61,7 +61,7 @@ html:
 
 .PHONY: multihtml
 multihtml:
-	$(SPHINXMULTI) . $(BUILDDIR)/html
+	$(SPHINXMULTI) $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) . $(BUILDDIR)/html
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
 
