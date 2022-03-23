@@ -41,7 +41,7 @@ DOC_FMT = """{short_desc}
 
         - :code:`'joint'`: the constraint is ||[u, v]||_2 <= 1
         - :code:`'separate'`: the constraint is ||u||_2 <= 1 and ||v||_2 <= 1.
-        This is the default for rank1 with if 'auto'.
+          This is the default for rank1 with if 'auto'.
     sort_atoms : boolean
         If True, the atoms are sorted by explained variances.
 
@@ -60,13 +60,13 @@ DOC_FMT = """{short_desc}
 
         - :code:`'scaled'`: the regularization parameter is fixed as a ratio of
           its maximal value at init *i.e.*
-          :math:`lambda` = reg * lmbd_max(uv_init).
+          lambda = reg * lmbd_max(uv_init).
         - :code:`'shared'`: the regularization parameter is set at each
           iteration as a ratio of its maximal value for the current dictionary
-          estimate *i.e.* :math:`lambda` = reg * lmbd_max(uv_hat).
+          estimate *i.e.* lambda = reg * lmbd_max(uv_hat).
         - :code:`'per_atom'`: the regularization parameter is set per atom and
           at each iteration as a ratio of its maximal value for this atom
-          *i.e.* :math:`lambda[k]` = reg * lmbd_max(uv_hat[k]).
+          *i.e.* lambda[k] = reg * lmbd_max(uv_hat[k]).
 
 
     Z-step parameters
@@ -117,11 +117,12 @@ DOC_FMT = """{short_desc}
 DEFAULT = dict(
     short_desc="Base class for convolutional dictionary learning algorithms.",
     desc=r"""This transformer solves the following problem
-    \\[
-        \\arg\\min_{D, Z} \\sum_{n=1}^N
-            \\frac{1}{2}\\|X^{(n)} - \\sum_{k=1}^K D_k*Z^{(n)}_k\\|_2^2
-            + \\lambda\\|Z^{(n)}\\|_2
-    \\]
+
+    .. math::
+        \min_{D, Z} \sum_{n=1}^N
+            \frac{1}{2} \|X^{(n)} - \sum_{k=1}^K D_k*Z^{(n)}_k\|_2^2
+            + \lambda\|Z^{(n)}\|_2
+
     for `K = n_atoms` and `N = n_samples`.
     """,
     algorithm="""
