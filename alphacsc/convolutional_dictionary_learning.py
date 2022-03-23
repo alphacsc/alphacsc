@@ -27,8 +27,8 @@ DOC_FMT = """{short_desc}
         The number of atoms to learn.
     n_times_atom : int
         The support of the atom.
-    loss : {{ 'l2' | 'dtw' | 'whitening' }}
-        Loss for the data-fit term. Either the norm l2 or the soft-DTW.
+    loss : {{ 'l2' | 'whitening' }}
+        Loss for the data-fit term. Either the norm l2 or the l2 with whitening.
     loss_params : dict
         Parameters of the loss.
     rank1 : boolean

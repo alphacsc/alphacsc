@@ -35,7 +35,7 @@ def test_simple():
     assert error < 1e-4, "Gradient is false: {:.4e}".format(error)
 
 
-@pytest.mark.parametrize('loss', ['l2', 'dtw', 'whitening'])
+@pytest.mark.parametrize('loss', ['l2', 'whitening'])
 def test_gradient_d(loss):
     # Generate synchronous D
     n_times_atom, n_times = 10, 100
@@ -43,8 +43,7 @@ def test_gradient_d(loss):
     n_atoms = 2
     n_trials = 3
 
-    # Constant for the DTW loss
-    loss_params = dict(gamma=1, sakoe_chiba_band=n_times_atom // 2)
+    loss_params = dict()
 
     rng = np.random.RandomState()
     X = rng.normal(size=(n_trials, n_channels, n_times))
@@ -82,14 +81,14 @@ def test_gradient_d(loss):
         raise
 
 
-@pytest.mark.parametrize('loss', ['l2', 'dtw', 'whitening'])
+@pytest.mark.parametrize('loss', ['l2', 'whitening'])
 def test_gradient_uv(loss):
     # Generate synchronous D
     n_times_atom, n_times = 10, 100
     n_channels = 5
     n_atoms = 2
     n_trials = 3
-    loss_params = dict(gamma=1, sakoe_chiba_band=n_times_atom // 2)
+    loss_params = dict()
 
     rng = np.random.RandomState()
     X = rng.normal(size=(n_trials, n_channels, n_times))

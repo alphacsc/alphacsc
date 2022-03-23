@@ -329,7 +329,7 @@ def test_update_D(D_hat, rank1, solver_d, uv_constraint, window,
 @pytest.mark.parametrize('rank1, solver_d, uv_constraint', [
     (True, 'alternate', 'separate'),
 ])
-@pytest.mark.parametrize('loss', ['dtw', 'whitening'])
+@pytest.mark.parametrize('loss', ['whitening'])
 def test_update_D_error(X, D_hat, rank1, solver_d, uv_constraint, z_encoder):
 
     d_solver = get_solver_d(N_CHANNELS,

@@ -40,8 +40,8 @@ def update_z_multi(X, D, reg, z0=None, solver='l-bfgs', solver_kwargs=dict(),
         The solver to use.
     solver_kwargs : dict
         Parameters for the solver
-    loss : 'l2' | 'dtw' | 'whitening'
-        The data fit loss, either classical l2 norm or the soft-DTW loss.
+    loss : 'l2' | 'whitening'
+        The data fit loss, either classical l2 norm or l2 with whitening.
     loss_params : dict
         Parameters of the loss
     freeze_support : boolean

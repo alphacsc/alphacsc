@@ -20,7 +20,7 @@ from ._d_solver import get_solver_d
 
 def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
                     lmbd_max='fixed', reg=0.1, loss='l2',
-                    loss_params=dict(gamma=.1, sakoe_chiba_band=10, ordar=10),
+                    loss_params=dict(gamma=.1, ordar=10),
                     rank1=True, uv_constraint='auto', eps=1e-10,
                     algorithm='batch', algorithm_params=dict(),
                     solver_z='l-bfgs', solver_z_kwargs=dict(),
@@ -56,8 +56,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         The number of coordinate-descent iterations.
     n_jobs : int
         The number of parallel jobs.
-    loss : 'l2' | 'dtw'
-        Loss for the data-fit term. Either the norm l2 or the soft-DTW.
+    loss : 'l2' | 'whitening'
+        Loss for the data-fit term. Either the norm l2 or the l2 with whitening.
         If solver_z is 'dicodile', then the loss must be 'l2'.
     loss_params : dict
         Parameters of the loss

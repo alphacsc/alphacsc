@@ -41,8 +41,8 @@ def get_z_encoder_for(X, D_hat, n_atoms, n_times_atom, n_jobs,
         Additional keyword arguments to pass to update_z_multi.
     reg : float
         The regularization parameter.
-    loss : {{ 'l2' (default) | 'dtw' | 'whitening'}}
-        Loss for the data-fit term. Either the norm l2 or the soft-DTW.
+    loss : {{ 'l2' (default) | 'whitening'}}
+        Loss for the data-fit term. Either the norm l2 or l2 with whitening.
         If solver is 'dicodile', then the loss must be 'l2'.
     loss_params : dict | None
         Parameters of the loss.
@@ -69,7 +69,7 @@ def get_z_encoder_for(X, D_hat, n_atoms, n_times_atom, n_jobs,
 
     assert reg is not None, 'reg value cannot be None.'
 
-    assert loss in ['l2', 'dtw', 'whitening'], (
+    assert loss in ['l2', 'whitening'], (
         f'unrecognized loss type: {loss}.'
     )
 
@@ -278,7 +278,7 @@ class AlphaCSCEncoder(BaseZEncoder):
                  solver, solver_kwargs, reg, loss, loss_params):
 
         if loss_params is None:
-            loss_params = dict(gamma=.1, sakoe_chiba_band=10, ordar=10)
+            loss_params = dict(gamma=.1, ordar=10)
 
         super().__init__(
             X, D_hat, n_atoms, n_times_atom, n_jobs,

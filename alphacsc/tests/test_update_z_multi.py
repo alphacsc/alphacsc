@@ -10,20 +10,20 @@ from alphacsc.utils import construct_X_multi
 from alphacsc.utils.compute_constants import compute_ztz, compute_ztX
 
 
-@pytest.mark.parametrize('loss', ['l2', 'dtw', 'whitening'])
+@pytest.mark.parametrize('loss', ['l2', 'whitening'])
 @pytest.mark.parametrize('solver', ['l-bfgs', 'ista', 'fista'])
 def test_update_z_multi_decrease_cost_function(loss, solver):
     n_trials, n_channels, n_times = 2, 3, 100
     n_times_atom, n_atoms = 10, 4
     n_times_valid = n_times - n_times_atom + 1
     reg = 0
-    loss_params = dict(gamma=1, sakoe_chiba_band=n_times_atom // 2)
 
     rng = np.random.RandomState(0)
     X = rng.randn(n_trials, n_channels, n_times)
     uv = rng.randn(n_atoms, n_channels + n_times_atom)
     z = rng.randn(n_trials, n_atoms, n_times_valid)
 
+    loss_params = dict()
     if loss == 'whitening':
         loss_params['ar_model'], X = whitening(X, ordar=10)
 

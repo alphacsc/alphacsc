@@ -12,18 +12,6 @@ from .utils.convolution import _choose_convolve_multi
 from .utils.whitening import apply_whitening
 from .utils import construct_X_multi
 
-try:
-    from .other import sdtw as _sdtw
-except ImportError:
-    _sdtw = None
-
-
-def _assert_dtw():
-    if _sdtw is None:
-        raise NotImplementedError("Could not import alphacsc.other.sdtw. This "
-                                  "module must be compiled with cython to "
-                                  "make loss='dtw' available.")
-
 
 def compute_objective(X=None, X_hat=None, z_hat=None, D=None,
                       constants=None, reg=None, loss='l2', loss_params=dict()):
@@ -44,16 +32,13 @@ def compute_objective(X=None, X_hat=None, z_hat=None, D=None,
     reg : float or array, shape (n_atoms, )
         The regularization parameters. If None, no regularization is added.
         The regularization constant
-    loss : str in {'l2' | 'dtw'}
+    loss : str in {'l2' | 'whitening'}
         Loss function for the data-fit
     loss_params : dict
         Parameter for the loss
     """
     if loss == 'l2':
         obj = _l2_objective(X=X, X_hat=X_hat, D=D, constants=constants)
-    elif loss == 'dtw':
-        _assert_dtw()
-        obj = _dtw_objective(X, X_hat, loss_params=loss_params)
     elif loss == 'whitening':
         ar_model = loss_params['ar_model']
 
@@ -90,7 +75,7 @@ def compute_X_and_objective_multi(X, z_hat, D_hat=None, reg=None, loss='l2',
         The atoms to learn from the data.
     reg : float
         The regularization Parameters
-    loss : 'l2' | 'dtw'
+    loss : 'l2' | 'whitening'
         Loss to measure the discrepency between the signal and our estimate.
     loss_params : dict
         Parameters of the loss
@@ -172,7 +157,7 @@ def gradient_uv(uv, X=None, z=None, constants=None, reg=None, loss='l2',
         Constant to accelerate the computation of the gradient
     reg : float or None
         The regularization constant
-    loss : str in {'l2' | 'dtw'}
+    loss : str in {'l2' | 'whitening'}
         Loss function for the data-fit
     loss_params : dict
         Parameter for the loss
@@ -202,9 +187,6 @@ def gradient_uv(uv, X=None, z=None, constants=None, reg=None, loss='l2',
 
     if loss == 'l2':
         cost, grad_d = _l2_gradient_d(D=uv, X=X, z=z, constants=constants)
-    elif loss == 'dtw':
-        _assert_dtw()
-        cost, grad_d = _dtw_gradient_d(D=uv, X=X, z=z, loss_params=loss_params)
     elif loss == 'whitening':
         cost, grad_d = _whitening_gradient_d(D=uv, X=X, z=z,
                                              loss_params=loss_params)
@@ -236,9 +218,6 @@ def gradient_zi(Xi, zi, D=None, constants=None, reg=None, loss='l2',
 
     if loss == 'l2':
         cost, grad = _l2_gradient_zi(Xi, zi, D=D, return_func=return_func)
-    elif loss == 'dtw':
-        _assert_dtw()
-        cost, grad = _dtw_gradient_zi(Xi, zi, D=D, loss_params=loss_params)
     elif loss == 'whitening':
         cost, grad = _whitening_gradient_zi(Xi, zi, D=D,
                                             loss_params=loss_params,
@@ -282,7 +261,7 @@ def gradient_d(D=None, X=None, z=None, constants=None, reg=None,
         Constant to accelerate the computation of the gradient
     reg : float or None
         The regularization constant
-    loss : str in {'l2' | 'dtw'}
+    loss : str in {'l2' | 'whitening'}
         Loss function for the data-fit
     loss_params : dict
         Parameter for the loss
@@ -310,9 +289,6 @@ def gradient_d(D=None, X=None, z=None, constants=None, reg=None,
 
     if loss == 'l2':
         cost, grad_d = _l2_gradient_d(D=D, X=X, z=z, constants=constants)
-    elif loss == 'dtw':
-        _assert_dtw()
-        cost, grad_d = _dtw_gradient_d(D=D, X=X, z=z, loss_params=loss_params)
     elif loss == 'whitening':
         cost, grad_d = _whitening_gradient_d(D=D, X=X, z=z,
                                              loss_params=loss_params)
@@ -331,55 +307,6 @@ def gradient_d(D=None, X=None, z=None, constants=None, reg=None,
         return cost, grad_d
 
     return grad_d
-
-
-def _dtw_objective(X, X_hat, loss_params=dict()):
-    gamma = loss_params.get('gamma')
-    sakoe_chiba_band = loss_params.get('sakoe_chiba_band', -1)
-
-    n_trials = X.shape[0]
-    cost = 0
-    for idx in range(n_trials):
-        D_X = _sdtw.distance.SquaredEuclidean(X_hat[idx].T, X[idx].T)
-        sdtw = _sdtw.SoftDTW(D_X, gamma=gamma,
-                             sakoe_chiba_band=sakoe_chiba_band)
-        cost += sdtw.compute()
-
-    return cost
-
-
-def _dtw_gradient(X, z, D=None, loss_params=dict()):
-    gamma = loss_params.get('gamma')
-    sakoe_chiba_band = loss_params.get('sakoe_chiba_band', -1)
-
-    n_trials, n_channels, n_times = X.shape
-    X_hat = construct_X_multi(z, D=D, n_channels=n_channels)
-    grad = np.zeros(X_hat.shape)
-    cost = 0
-    for idx in range(n_trials):
-        D_X = _sdtw.distance.SquaredEuclidean(X_hat[idx].T, X[idx].T)
-        sdtw = _sdtw.SoftDTW(D_X, gamma=gamma,
-                             sakoe_chiba_band=sakoe_chiba_band)
-
-        cost += sdtw.compute()
-        grad[idx] = D_X.jacobian_product(sdtw.grad()).T
-
-    return cost, grad
-
-
-def _dtw_gradient_d(D, X=None, z=None, loss_params={}):
-    cost, grad_X_hat = _dtw_gradient(X, z, D=D, loss_params=loss_params)
-
-    return cost, _dense_transpose_convolve_z(grad_X_hat, z)
-
-
-def _dtw_gradient_zi(Xi, z_i, D=None, loss_params={}):
-    n_channels = Xi.shape[0]
-    cost_i, grad_Xi_hat = _dtw_gradient(Xi[None], z_i[None], D=D,
-                                        loss_params=loss_params)
-
-    return cost_i, _dense_transpose_convolve_d(
-        grad_Xi_hat[0], D=D, n_channels=n_channels)
 
 
 def _l2_gradient_d(D, X=None, z=None, constants=None):

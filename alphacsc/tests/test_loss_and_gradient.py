@@ -69,7 +69,7 @@ def gradient_checker(func, grad, shape, args=(), kwargs={}, n_checks=10,
         test_grad(z0)
 
 
-@pytest.mark.parametrize('loss', ['l2', 'dtw', 'whitening'])
+@pytest.mark.parametrize('loss', ['l2', 'whitening'])
 @pytest.mark.parametrize('func', [
     _construct_X, _gradient_zi, _objective, _gradient_d])
 def test_consistency(loss, func):
@@ -96,7 +96,7 @@ def test_consistency(loss, func):
     assert np.allclose(val_D, val_uv)
 
 
-@pytest.mark.parametrize('loss', ['l2', 'dtw', 'whitening'])
+@pytest.mark.parametrize('loss', ['l2', 'whitening'])
 def test_gradients(loss):
     """Check that the gradients have the correct shape.
     """
@@ -104,8 +104,6 @@ def test_gradients(loss):
     n_atoms, n_times_atom = 10, 15
 
     n_checks = 5
-    if loss == "dtw":
-        n_checks = 1
 
     loss_params = dict(gamma=.01)
 
