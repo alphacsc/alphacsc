@@ -27,11 +27,6 @@ DOC_FMT = """{short_desc}
         The number of atoms to learn.
     n_times_atom : int
         The support of the atom.
-    loss : {{ 'l2' | 'whitening' }}
-        Loss for the data-fit term. Either the norm l2 or the l2 with
-        whitening.
-    loss_params : dict
-        Parameters of the loss.
     rank1 : boolean
         If set to True, learn rank 1 dictionary atoms.
     window : boolean
@@ -136,7 +131,6 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
     __doc__ = DOC_FMT.format(**DEFAULT)
 
     def __init__(self, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
-                 loss='l2', loss_params=None,
                  rank1=True, window=False, uv_constraint='auto',
                  solver_z='l_bfgs', solver_z_kwargs={},
                  solver_d='auto', solver_d_kwargs={},
@@ -156,8 +150,6 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
         self.n_atoms = n_atoms
         self.n_times_atom = n_times_atom
         self.reg = reg
-        self.loss = loss
-        self.loss_params = loss_params
         self.rank1 = rank1
         self.window = window
         self.uv_constraint = uv_constraint
@@ -197,7 +189,6 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
         res = learn_d_z_multi(
             X, self.n_atoms, self.n_times_atom,
             reg=self.reg, lmbd_max=self.lmbd_max,
-            loss=self.loss, loss_params=self.loss_params,
             rank1=self.rank1, window=self.window,
             uv_constraint=self.uv_constraint,
             algorithm=self.algorithm, algorithm_params=self.algorithm_params,
@@ -230,7 +221,7 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
                 X, self._D_hat, z0=z_hat, n_jobs=self.n_jobs,
                 reg=0, freeze_support=True,
                 solver=self.solver_z, solver_kwargs=self.solver_z_kwargs,
-                loss=self.loss, loss_params=self.loss_params)
+            )
             if self.verbose > 0:
                 print("done")
 
@@ -243,7 +234,7 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
         z_hat, _, _ = update_z_multi(
             X, self._D_hat, reg=self.reg_, n_jobs=self.n_jobs,
             solver=self.solver_z, solver_kwargs=self.solver_z_kwargs,
-            loss=self.loss, loss_params=self.loss_params)
+        )
 
         if self.unbiased_z_hat:
             if self.verbose > 0:
@@ -253,7 +244,7 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
                 X, self._D_hat, z0=z_hat, n_jobs=self.n_jobs,
                 reg=0, freeze_support=True,
                 solver=self.solver_z, solver_kwargs=self.solver_z_kwargs,
-                loss=self.loss, loss_params=self.loss_params)
+            )
             if self.verbose > 0:
                 print("done")
         return z_hat

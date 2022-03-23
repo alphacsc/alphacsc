@@ -13,7 +13,6 @@ from conftest import N_ATOMS, N_TIMES, N_TIMES_ATOM, N_CHANNELS
 
 
 @pytest.mark.parametrize('window', [False, True])
-@pytest.mark.parametrize('loss', ['l2', 'whitening'])
 @pytest.mark.parametrize('rank1, solver_d, uv_constraint',
                          [
                              (True, 'auto', 'auto'),
@@ -29,17 +28,16 @@ from conftest import N_ATOMS, N_TIMES, N_TIMES_ATOM, N_CHANNELS
                          ]
                          )
 @pytest.mark.parametrize('lmbd_max', ['fixed', 'scaled', 'shared', 'per_atom'])
-def test_learn_d_z_multi(X, loss, rank1, solver_d, uv_constraint, window,
+def test_learn_d_z_multi(X, rank1, solver_d, uv_constraint, window,
                          lmbd_max):
     # smoke test for learn_d_z_multi
-
-    loss_params = dict(ordar=10)
 
     pobj, times, uv_hat, z_hat, reg = learn_d_z_multi(
         X, N_ATOMS, N_TIMES_ATOM, uv_constraint=uv_constraint, rank1=rank1,
         solver_d=solver_d, random_state=0, lmbd_max=lmbd_max,
         n_iter=30, eps=-np.inf, solver_z='l-bfgs', window=window,
-        verbose=0, loss=loss, loss_params=loss_params)
+        verbose=0
+    )
 
     msg = "Cost function does not go down for uv_constraint {}".format(
         uv_constraint)
@@ -56,25 +54,6 @@ def test_learn_d_z_multi(X, loss, rank1, solver_d, uv_constraint, window,
 
 
 @pytest.mark.parametrize('window', [False, True])
-@pytest.mark.parametrize('loss', ['whitening'])
-@pytest.mark.parametrize('rank1, solver_d, uv_constraint', [
-    (True, 'alternate', 'separate')])
-def test_learn_d_z_multi_error(X, loss, rank1, solver_d, uv_constraint,
-                               window):
-    # smoke test for learn_d_z_multi
-
-    loss_params = dict(ordar=10)
-
-    with pytest.raises(NotImplementedError):
-        pobj, times, uv_hat, z_hat, reg = learn_d_z_multi(
-            X, N_ATOMS, N_TIMES_ATOM, uv_constraint=uv_constraint, rank1=rank1,
-            solver_d=solver_d, random_state=0,
-            n_iter=30, eps=-np.inf, solver_z='l-bfgs', window=window,
-            verbose=0, loss=loss, loss_params=loss_params
-        )
-
-
-@pytest.mark.parametrize('window', [False, True])
 # TODO expand params when DiCoDiLe is rank-1-capable
 @pytest.mark.parametrize('n_trials', [1])
 def test_learn_d_z_multi_dicodile(X, window):
@@ -85,7 +64,8 @@ def test_learn_d_z_multi_dicodile(X, window):
         X, N_ATOMS, N_TIMES_ATOM, uv_constraint='auto', rank1=False,
         solver_d='auto', random_state=0,
         n_iter=30, eps=-np.inf, solver_z='dicodile', window=window,
-        verbose=0, loss='l2', loss_params=None)
+        verbose=0
+    )
 
     msg = "Cost function does not go down"
 
@@ -131,12 +111,13 @@ def test_online_learning(X, n_trials):
     pobj_0, _, _, _, _ = learn_d_z_multi(
         X, N_ATOMS, N_TIMES_ATOM, uv_constraint="separate", solver_d="joint",
         random_state=0, n_iter=30, solver_z='l-bfgs', algorithm="batch",
-        loss='l2')
+    )
 
     pobj_1, _, _, _, _ = learn_d_z_multi(
         X, N_ATOMS, N_TIMES_ATOM, uv_constraint="separate", solver_d="joint",
         random_state=0, n_iter=30, solver_z='l-bfgs', algorithm="online",
-        algorithm_params=dict(batch_size=n_trials, alpha=0), loss='l2')
+        algorithm_params=dict(batch_size=n_trials, alpha=0)
+    )
 
     assert np.allclose(pobj_0, pobj_1)
 
@@ -175,18 +156,16 @@ def test_transformers(X, klass, rank1, solver_d, uv_constraint, n_trials):
 @pytest.mark.parametrize('solver_z', ['l-bfgs', 'lgcd'])
 def test_unbiased_z_hat(X, solver_z):
 
-    loss_params = dict(ordar=10)
-
     _, _, _, z_hat, _ = learn_d_z_multi(
         X, N_ATOMS, N_TIMES_ATOM, uv_constraint='auto', rank1=False,
         solver_d='auto', random_state=0, unbiased_z_hat=False,
         n_iter=1, eps=-np.inf, solver_z=solver_z, window=False,
-        verbose=0, loss='l2', loss_params=loss_params)
+        verbose=0)
 
     _, _, _, z_hat_unbiased, _ = learn_d_z_multi(
         X, N_ATOMS, N_TIMES_ATOM, uv_constraint='auto', rank1=False,
         solver_d='auto', random_state=0, unbiased_z_hat=True,
         n_iter=1, eps=-np.inf, solver_z=solver_z, window=False,
-        verbose=0, loss='l2', loss_params=loss_params)
+        verbose=0)
 
     assert np.all(z_hat_unbiased[z_hat == 0] == 0)

@@ -15,7 +15,7 @@ DEFAULT_TOL_Z = 1e-3
 
 def get_z_encoder_for(X, D_hat, n_atoms, n_times_atom, n_jobs,
                       solver='l-bfgs', solver_kwargs=dict(),
-                      reg=0.1, loss='l2', loss_params=None):
+                      reg=0.1):
     """
     Returns a z encoder for the required solver.
 
@@ -41,12 +41,6 @@ def get_z_encoder_for(X, D_hat, n_atoms, n_times_atom, n_jobs,
         Additional keyword arguments to pass to update_z_multi.
     reg : float
         The regularization parameter.
-    loss : {{ 'l2' (default) | 'whitening'}}
-        Loss for the data-fit term. Either the norm l2 or l2 with whitening.
-        If solver is 'dicodile', then the loss must be 'l2'.
-    loss_params : dict | None
-        Parameters of the loss.
-        If solver_z is 'dicodile', then loss_params should be None.
 
     Returns
     -------
@@ -69,28 +63,18 @@ def get_z_encoder_for(X, D_hat, n_atoms, n_times_atom, n_jobs,
 
     assert reg is not None, 'reg value cannot be None.'
 
-    assert loss in ['l2', 'whitening'], (
-        f'unrecognized loss type: {loss}.'
-    )
-
-    assert (loss_params is None) or isinstance(loss_params, dict), (
-        'loss_params should be a valid dict or None.'
-    )
-
     if solver in ['l-bfgs', 'lgcd']:
 
         return AlphaCSCEncoder(
             X, D_hat, n_atoms, n_times_atom, n_jobs,
-            solver, solver_kwargs, reg, loss, loss_params
+            solver, solver_kwargs, reg
         )
 
     elif solver == 'dicodile':
-        assert loss == 'l2', f"DiCoDiLe requires a l2 loss ('{loss}' passed)."
-        assert loss_params is None, "DiCoDiLe requires loss_params=None."
 
         return DicodileEncoder(
             X, D_hat, n_atoms, n_times_atom, n_jobs,
-            solver_kwargs, reg, loss, loss_params
+            solver_kwargs, reg
         )
     else:
         raise ValueError(f'unrecognized solver type: {solver}.')
@@ -99,7 +83,7 @@ def get_z_encoder_for(X, D_hat, n_atoms, n_times_atom, n_jobs,
 class BaseZEncoder:
 
     def __init__(self, X, D_hat, n_atoms, n_times_atom, n_jobs,
-                 solver_kwargs, reg, loss, loss_params):
+                 solver_kwargs, reg):
 
         self.X = X
         self.D_hat = D_hat
@@ -109,8 +93,6 @@ class BaseZEncoder:
 
         self.solver_kwargs = solver_kwargs
         self.reg = reg
-        self.loss = loss
-        self.loss_params = loss_params
 
         self.n_trials, self.n_channels, self.n_times = X.shape
         self.n_times_valid = self.n_times - self.n_times_atom + 1
@@ -150,18 +132,7 @@ class BaseZEncoder:
         obj :
             The value of objective function.
         '''
-        if self.loss == 'l2':
-            return compute_objective(D=D, constants=self.get_constants())
-
-        else:
-            X_hat = construct_X_multi(
-                self.z_hat, D=D, n_channels=self.n_channels)
-
-            return compute_objective(
-                X=self.X, X_hat=X_hat, z_hat=self.z_hat,
-                reg=self.reg, loss=self.loss,
-                loss_params=self.loss_params
-            )
+        return compute_objective(D=D, constants=self.get_constants())
 
     def get_cost(self):
         """
@@ -275,14 +246,10 @@ class BaseZEncoder:
 
 class AlphaCSCEncoder(BaseZEncoder):
     def __init__(self, X, D_hat, n_atoms, n_times_atom, n_jobs,
-                 solver, solver_kwargs, reg, loss, loss_params):
-
-        if loss_params is None:
-            loss_params = dict(ordar=10)
+                 solver, solver_kwargs, reg):
 
         super().__init__(
-            X, D_hat, n_atoms, n_times_atom, n_jobs,
-            solver_kwargs, reg, loss, loss_params
+            X, D_hat, n_atoms, n_times_atom, n_jobs,  solver_kwargs, reg
         )
 
         self.solver = solver
@@ -304,8 +271,7 @@ class AlphaCSCEncoder(BaseZEncoder):
         return update_z_multi(
             X, self.D_hat, reg=reg, z0=z0, solver=self.solver,
             solver_kwargs=self.solver_kwargs, freeze_support=unbiased_z_hat,
-            loss=self.loss, loss_params=self.loss_params, n_jobs=self.n_jobs,
-            return_ztz=True
+            n_jobs=self.n_jobs, return_ztz=True
         )
 
     def compute_z(self, unbiased_z_hat=False):
@@ -333,8 +299,7 @@ class AlphaCSCEncoder(BaseZEncoder):
                                   n_channels=self.n_channels)
 
         return compute_objective(X=self.X, X_hat=X_hat, z_hat=self.z_hat,
-                                 reg=self.reg, loss=self.loss,
-                                 loss_params=self.loss_params)
+                                 reg=self.reg)
 
     def get_sufficient_statistics(self):
         assert hasattr(self, 'ztz') and hasattr(self, 'ztX'), (
@@ -403,7 +368,7 @@ class AlphaCSCEncoder(BaseZEncoder):
 
 class DicodileEncoder(BaseZEncoder):
     def __init__(self, X, D_hat, n_atoms, n_times_atom, n_jobs,
-                 solver_kwargs, reg, loss, loss_params):
+                 solver_kwargs, reg):
         try:
             import dicodile
         except ImportError as ie:
@@ -412,8 +377,7 @@ class DicodileEncoder(BaseZEncoder):
                 '"pip install alphacsc[dicodile]"') from ie
 
         super().__init__(
-            X, D_hat, n_atoms, n_times_atom, n_jobs,
-            solver_kwargs, reg, loss, loss_params
+            X, D_hat, n_atoms, n_times_atom, n_jobs, solver_kwargs, reg
         )
 
         self._encoder = dicodile.update_z.distributed_sparse_encoder.DistributedSparseEncoder(  # noqa: E501

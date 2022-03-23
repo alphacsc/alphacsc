@@ -384,8 +384,7 @@ class JointDSolver(Rank1DSolver):
     def grad(self, D, z_encoder):
         return gradient_uv(
             uv=D, X=z_encoder.X, z=z_encoder.get_z_hat(),
-            constants=z_encoder.get_constants(), loss=z_encoder.loss,
-            loss_params=z_encoder.loss_params
+            constants=z_encoder.get_constants()
         )
 
 
@@ -461,8 +460,7 @@ class AlternateDSolver(Rank1DSolver):
 
             grad_d = gradient_d(
                 uv, X=z_encoder.X, z=z_encoder.get_z_hat(),
-                constants=z_encoder.get_constants(), loss=z_encoder.loss,
-                loss_params=z_encoder.loss_params
+                constants=z_encoder.get_constants()
             )
 
             return (grad_d * uv[:, None, z_encoder.n_channels:]).sum(axis=2)
@@ -504,8 +502,7 @@ class AlternateDSolver(Rank1DSolver):
 
             grad_d = gradient_d(
                 uv, X=z_encoder.X, z=z_encoder.get_z_hat(),
-                constants=z_encoder.get_constants(), loss=z_encoder.loss,
-                loss_params=z_encoder.loss_params
+                constants=z_encoder.get_constants()
             )
 
             grad_v = (grad_d * uv[:, :z_encoder.n_channels, None]).sum(axis=1)
@@ -642,6 +639,5 @@ class DSolver(BaseDSolver):
     def grad(self, D, z_encoder):
         return gradient_d(
             D=D, X=z_encoder.X, z=z_encoder.get_z_hat(),
-            constants=z_encoder.get_constants(), loss=z_encoder.loss,
-            loss_params=z_encoder.loss_params
+            constants=z_encoder.get_constants()
         )

@@ -50,7 +50,7 @@ class OnlineCDL(ConvolutionalDictionaryLearning):
             algorithm_params=dict(alpha=alpha, batch_size=batch_size,
                                   batch_selection=batch_selection),
             n_jobs=n_jobs, random_state=random_state, algorithm='online',
-            lmbd_max=lmbd_max, raise_on_increase=False, loss='l2',
+            lmbd_max=lmbd_max, raise_on_increase=False,
             callback=None, verbose=verbose, name="OnlineCDL"
         )
         self.index = 0
@@ -59,13 +59,11 @@ class OnlineCDL(ConvolutionalDictionaryLearning):
         # Successive partial_fit are equivalent to OnlineCDL only if
         # the X passed to this method are taken from a normalized
         # X_full ( X_full / X_full.std())
-        self._check_param_partial_fit()
         self._ensure_fit_init(X)
 
         with get_z_encoder_for(X, self._D_hat, self.n_atoms, self.n_times_atom,
                                self.n_jobs, self.solver_z,
-                               self.solver_z_kwargs, self.reg_, self.loss,
-                               self.loss_params) as z_encoder:
+                               self.solver_z_kwargs, self.reg_) as z_encoder:
 
             z_encoder.compute_z()
 
@@ -134,7 +132,3 @@ class OnlineCDL(ConvolutionalDictionaryLearning):
         _lmbd_max = get_lambda_max(X, self._D_hat).max()
         if self.lmbd_max == "scaled":
             self.reg_ *= _lmbd_max
-
-    def _check_param_partial_fit(self):
-        assert self.loss == 'l2', (
-            "partial_fit is implemented only for loss={}.".format(self.loss))

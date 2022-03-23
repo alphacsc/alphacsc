@@ -9,12 +9,11 @@ import numpy as np
 from .utils.convolution import numpy_convolve_uv
 from .utils.convolution import tensordot_convolve
 from .utils.convolution import _choose_convolve_multi
-from .utils.whitening import apply_whitening
 from .utils import construct_X_multi
 
 
 def compute_objective(X=None, X_hat=None, z_hat=None, D=None,
-                      constants=None, reg=None, loss='l2', loss_params=dict()):
+                      constants=None, reg=None):
     """Compute the value of the objective function
 
     Parameters
@@ -32,22 +31,8 @@ def compute_objective(X=None, X_hat=None, z_hat=None, D=None,
     reg : float or array, shape (n_atoms, )
         The regularization parameters. If None, no regularization is added.
         The regularization constant
-    loss : str in {'l2' | 'whitening'}
-        Loss function for the data-fit
-    loss_params : dict
-        Parameter for the loss
     """
-    if loss == 'l2':
-        obj = _l2_objective(X=X, X_hat=X_hat, D=D, constants=constants)
-    elif loss == 'whitening':
-        ar_model = loss_params['ar_model']
-
-        # X is assumed to be already whitened, just select the valid part
-        X = X[:, :, ar_model.ordar:-ar_model.ordar]
-        X_hat = apply_whitening(ar_model, X_hat, mode='valid')
-        obj = _l2_objective(X=X, X_hat=X_hat, D=D, constants=constants)
-    else:
-        raise NotImplementedError("loss '{}' is not implemented".format(loss))
+    obj = _l2_objective(X=X, X_hat=X_hat, D=D, constants=constants)
 
     if reg is not None:
         if isinstance(reg, (int, float)):
@@ -58,8 +43,8 @@ def compute_objective(X=None, X_hat=None, z_hat=None, D=None,
     return obj
 
 
-def compute_X_and_objective_multi(X, z_hat, D_hat=None, reg=None, loss='l2',
-                                  loss_params=dict(), feasible_evaluation=True,
+def compute_X_and_objective_multi(X, z_hat, D_hat=None, reg=None,
+                                  feasible_evaluation=True,
                                   uv_constraint='joint', return_X_hat=False):
     """Compute X and return the value of the objective function
 
@@ -75,10 +60,6 @@ def compute_X_and_objective_multi(X, z_hat, D_hat=None, reg=None, loss='l2',
         The atoms to learn from the data.
     reg : float
         The regularization Parameters
-    loss : 'l2' | 'whitening'
-        Loss to measure the discrepency between the signal and our estimate.
-    loss_params : dict
-        Parameters of the loss
     feasible_evaluation: boolean
         If feasible_evaluation is True, it first projects on the feasible set,
         i.e. norm(uv_hat) <= 1.
@@ -107,30 +88,26 @@ def compute_X_and_objective_multi(X, z_hat, D_hat=None, reg=None, loss='l2',
 
     X_hat = construct_X_multi(z_hat, D=D_hat, n_channels=n_channels)
 
-    cost = compute_objective(X=X, X_hat=X_hat, z_hat=z_hat, reg=reg, loss=loss,
-                             loss_params=loss_params)
+    cost = compute_objective(X=X, X_hat=X_hat, z_hat=z_hat, reg=reg)
     if return_X_hat:
         return cost, X_hat
     return cost
 
 
-def compute_gradient_norm(X, z_hat, D_hat, reg, loss='l2', loss_params=dict(),
+def compute_gradient_norm(X, z_hat, D_hat, reg,
                           rank1=False, sample_weights=None):
     if X.ndim == 2:
         X = X[:, None, :]
         D_hat = D_hat[:, None, :]
 
     if rank1:
-        grad_d = gradient_uv(uv=D_hat, X=X, z=z_hat, constants=None,
-                             loss=loss, loss_params=loss_params)
+        grad_d = gradient_uv(uv=D_hat, X=X, z=z_hat, constants=None)
     else:
-        grad_d = gradient_d(D=D_hat, X=X, z=z_hat, constants=None,
-                            loss=loss, loss_params=loss_params)
+        grad_d = gradient_d(D=D_hat, X=X, z=z_hat, constants=None)
 
     grad_norm_z = 0
     for i in range(X.shape[0]):
-        grad_zi = gradient_zi(X[i], z_hat[i], D=D_hat, reg=reg,
-                              loss=loss, loss_params=loss_params)
+        grad_zi = gradient_zi(X[i], z_hat[i], D=D_hat, reg=reg)
         grad_norm_z += np.dot(grad_zi.ravel(), grad_zi.ravel())
 
     grad_norm_d = np.dot(grad_d.ravel(), grad_d.ravel())
@@ -139,8 +116,8 @@ def compute_gradient_norm(X, z_hat, D_hat, reg, loss='l2', loss_params=dict(),
     return grad_norm
 
 
-def gradient_uv(uv, X=None, z=None, constants=None, reg=None, loss='l2',
-                loss_params=dict(), return_func=False, flatten=False):
+def gradient_uv(uv, X=None, z=None, constants=None, reg=None,
+                return_func=False, flatten=False):
     """Compute the gradient of the reconstruction loss relative to uv.
 
     Parameters
@@ -157,10 +134,6 @@ def gradient_uv(uv, X=None, z=None, constants=None, reg=None, loss='l2',
         Constant to accelerate the computation of the gradient
     reg : float or None
         The regularization constant
-    loss : str in {'l2' | 'whitening'}
-        Loss function for the data-fit
-    loss_params : dict
-        Parameter for the loss
     return_func : boolean
         Returns also the objective function, used to speed up LBFGS solver
     flatten : boolean
@@ -185,13 +158,7 @@ def gradient_uv(uv, X=None, z=None, constants=None, reg=None, loss='l2',
     if flatten:
         uv = uv.reshape((n_atoms, -1))
 
-    if loss == 'l2':
-        cost, grad_d = _l2_gradient_d(D=uv, X=X, z=z, constants=constants)
-    elif loss == 'whitening':
-        cost, grad_d = _whitening_gradient_d(D=uv, X=X, z=z,
-                                             loss_params=loss_params)
-    else:
-        raise NotImplementedError("loss {} is not implemented.".format(loss))
+    cost, grad_d = _l2_gradient_d(D=uv, X=X, z=z, constants=constants)
     grad_u = (grad_d * uv[:, None, n_channels:]).sum(axis=2)
     grad_v = (grad_d * uv[:, :n_channels, None]).sum(axis=1)
     grad = np.c_[grad_u, grad_v]
@@ -210,20 +177,13 @@ def gradient_uv(uv, X=None, z=None, constants=None, reg=None, loss='l2',
     return grad
 
 
-def gradient_zi(Xi, zi, D=None, constants=None, reg=None, loss='l2',
-                loss_params=dict(), return_func=False, flatten=False):
+def gradient_zi(Xi, zi, D=None, constants=None, reg=None,
+                return_func=False, flatten=False):
     n_atoms = D.shape[0]
     if flatten:
         zi = zi.reshape((n_atoms, -1))
 
-    if loss == 'l2':
-        cost, grad = _l2_gradient_zi(Xi, zi, D=D, return_func=return_func)
-    elif loss == 'whitening':
-        cost, grad = _whitening_gradient_zi(Xi, zi, D=D,
-                                            loss_params=loss_params,
-                                            return_func=return_func)
-    else:
-        raise NotImplementedError("loss {} is not implemented.".format(loss))
+    cost, grad = _l2_gradient_zi(Xi, zi, D=D, return_func=return_func)
 
     if reg is not None:
         grad += reg
@@ -243,8 +203,7 @@ def gradient_zi(Xi, zi, D=None, constants=None, reg=None, loss='l2',
 
 
 def gradient_d(D=None, X=None, z=None, constants=None, reg=None,
-               loss='l2', loss_params=dict(), return_func=False,
-               flatten=False):
+               return_func=False, flatten=False):
     """Compute the gradient of the reconstruction loss relative to d.
 
     Parameters
@@ -261,10 +220,6 @@ def gradient_d(D=None, X=None, z=None, constants=None, reg=None,
         Constant to accelerate the computation of the gradient
     reg : float or None
         The regularization constant
-    loss : str in {'l2' | 'whitening'}
-        Loss function for the data-fit
-    loss_params : dict
-        Parameter for the loss
     return_func : boolean
         Returns also the objective function, used to speed up LBFGS solver
     flatten : boolean
@@ -287,13 +242,7 @@ def gradient_d(D=None, X=None, z=None, constants=None, reg=None,
             n_channels = X.shape[1]
         D = D.reshape((n_atoms, n_channels, -1))
 
-    if loss == 'l2':
-        cost, grad_d = _l2_gradient_d(D=D, X=X, z=z, constants=constants)
-    elif loss == 'whitening':
-        cost, grad_d = _whitening_gradient_d(D=D, X=X, z=z,
-                                             loss_params=loss_params)
-    else:
-        raise NotImplementedError("loss {} is not implemented.".format(loss))
+    cost, grad_d = _l2_gradient_d(D=D, X=X, z=z, constants=constants)
 
     if flatten:
         grad_d = grad_d.ravel()
@@ -389,56 +338,6 @@ def _l2_gradient_zi(Xi, z_i, D=None, return_func=False):
     grad = _dense_transpose_convolve_d(Dz_i, D=D, n_channels=n_channels)
 
     return func, grad
-
-
-def _whitening_gradient(X, X_hat, loss_params, return_func=False):
-    ar_model = loss_params['ar_model']
-
-    # Xi is assumed to be already whitened, select the valid part
-    X = X[:, :, ar_model.ordar:-ar_model.ordar]
-
-    # Construct X_hat and whitten it
-    X_hat = apply_whitening(ar_model, X_hat, mode='valid')
-    residual = X_hat - X
-
-    if return_func:
-        func = 0.5 * np.dot(residual.ravel(), residual.ravel())
-    else:
-        func = None
-
-    hTh_res = apply_whitening(ar_model, residual, reverse_ar=True,
-                              mode='full')
-
-    return hTh_res, func
-
-
-def _whitening_gradient_zi(Xi, z_i, D, loss_params, return_func=False):
-    n_channels, n_times = Xi.shape
-
-    # Construct Xi_hat and compute the gradient relatively to X_hat
-    Xi_hat = construct_X_multi(z_i[None], D=D, n_channels=n_channels)
-    hTh_res, func = _whitening_gradient(Xi[None], Xi_hat, loss_params,
-                                        return_func=return_func)
-
-    # Use the chain rule to compute the gradient compared to z_i
-    grad = _dense_transpose_convolve_d(hTh_res[0], D=D, n_channels=n_channels)
-    assert grad.shape == z_i.shape
-
-    return func, grad
-
-
-def _whitening_gradient_d(D, X, z, loss_params):
-    n_channels = X.shape[1]
-
-    # Construct Xi_hat and compute the gradient relatively to X_hat
-    X_hat = construct_X_multi(z, D=D, n_channels=n_channels)
-    hTh_res, func = _whitening_gradient(X, X_hat, loss_params,
-                                        return_func=False)
-
-    # Use the chain rule to compute the gradient compared to D
-    grad = _dense_transpose_convolve_z(hTh_res, z)
-
-    return None, grad
 
 
 def _dense_transpose_convolve_z(residual, z):

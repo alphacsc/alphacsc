@@ -4,15 +4,13 @@ import numpy as np
 from alphacsc.update_z_multi import update_z_multi
 from alphacsc.update_z_multi import compute_DtD, _coordinate_descent_idx
 from alphacsc.loss_and_gradient import compute_X_and_objective_multi
-from alphacsc.utils.whitening import whitening
 from alphacsc.utils import construct_X_multi
 
 from alphacsc.utils.compute_constants import compute_ztz, compute_ztX
 
 
-@pytest.mark.parametrize('loss', ['l2', 'whitening'])
 @pytest.mark.parametrize('solver', ['l-bfgs', 'ista', 'fista'])
-def test_update_z_multi_decrease_cost_function(loss, solver):
+def test_update_z_multi_decrease_cost_function(solver):
     n_trials, n_channels, n_times = 2, 3, 100
     n_times_atom, n_atoms = 10, 4
     n_times_valid = n_times - n_times_atom + 1
@@ -23,26 +21,18 @@ def test_update_z_multi_decrease_cost_function(loss, solver):
     uv = rng.randn(n_atoms, n_channels + n_times_atom)
     z = rng.randn(n_trials, n_atoms, n_times_valid)
 
-    loss_params = dict()
-    if loss == 'whitening':
-        loss_params['ar_model'], X = whitening(X, ordar=10)
-
     loss_0 = compute_X_and_objective_multi(X=X, z_hat=z, D_hat=uv, reg=reg,
-                                           feasible_evaluation=False,
-                                           loss=loss, loss_params=loss_params)
+                                           feasible_evaluation=False)
 
     z_hat, ztz, ztX = update_z_multi(X, uv, reg, z0=z, solver=solver,
-                                     loss=loss, loss_params=loss_params,
                                      return_ztz=True)
 
     loss_1 = compute_X_and_objective_multi(X=X, z_hat=z_hat, D_hat=uv,
-                                           reg=reg, feasible_evaluation=False,
-                                           loss=loss, loss_params=loss_params)
+                                           reg=reg, feasible_evaluation=False)
     assert loss_1 < loss_0
 
-    if loss == 'l2':
-        assert np.allclose(ztz, compute_ztz(z_hat, n_times_atom))
-        assert np.allclose(ztX, compute_ztX(z_hat, X))
+    assert np.allclose(ztz, compute_ztz(z_hat, n_times_atom))
+    assert np.allclose(ztX, compute_ztX(z_hat, X))
 
 
 @pytest.mark.parametrize('solver_z', ['l-bfgs', 'lgcd'])

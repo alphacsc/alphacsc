@@ -13,14 +13,12 @@ import numpy as np
 from .utils import check_dimension
 from .utils import check_random_state
 from .utils.convolution import sort_atoms_by_explained_variances
-from .utils.whitening import whitening
 from ._z_encoder import get_z_encoder_for
 from ._d_solver import get_solver_d
 
 
 def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
-                    lmbd_max='fixed', reg=0.1, loss='l2',
-                    loss_params=dict(gamma=.1, ordar=10),
+                    lmbd_max='fixed', reg=0.1,
                     rank1=True, uv_constraint='auto', eps=1e-10,
                     algorithm='batch', algorithm_params=dict(),
                     solver_z='l-bfgs', solver_z_kwargs=dict(),
@@ -56,11 +54,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         The number of coordinate-descent iterations.
     n_jobs : int
         The number of parallel jobs.
-    loss : 'l2' | 'whitening'
-        Loss for the data-fit term. Either the norm l2 or the l2 with
-        whitening. If solver_z is 'dicodile', then the loss must be 'l2'.
-    loss_params : dict
-        Parameters of the loss
+
     rank1 : boolean
         If set to True, learn rank 1 dictionary atoms.
         If solver_z is 'dicodile', then rank1 must be False.
@@ -179,15 +173,11 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
 
     init_duration = time.time() - start
 
-    # Compute the coefficients to whiten X. TODO: add timing
-    if loss == 'whitening':
-        loss_params['ar_model'], X = whitening(X, ordar=loss_params['ordar'])
-
     z_kwargs = dict(verbose=verbose, **solver_z_kwargs)
 
     with get_z_encoder_for(
             X, d_solver.D_hat, n_atoms, n_times_atom, n_jobs,
-            solver_z, z_kwargs, reg, loss, loss_params
+            solver_z, z_kwargs, reg
     ) as z_encoder:
 
         if callable(callback):
