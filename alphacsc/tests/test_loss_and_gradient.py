@@ -78,8 +78,6 @@ def test_consistency(loss, func):
     n_trials, n_channels, n_times = 5, 3, 30
     n_atoms, n_times_atom = 4, 7
 
-    loss_params = dict(gamma=.01)
-
     n_times_valid = n_times - n_times_atom + 1
 
     X = np.random.randn(n_trials, n_channels, n_times)
@@ -88,6 +86,7 @@ def test_consistency(loss, func):
     uv = np.random.randn(n_atoms, n_channels + n_times_atom)
     D = get_D(uv, n_channels)
 
+    loss_params = dict()
     if loss == "whitening":
         loss_params['ar_model'], X = whitening(X)
 
@@ -105,7 +104,7 @@ def test_gradients(loss):
 
     n_checks = 5
 
-    loss_params = dict(gamma=.01)
+    loss_params = dict()
 
     n_times_valid = n_times - n_times_atom + 1
 

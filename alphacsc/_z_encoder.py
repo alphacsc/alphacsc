@@ -278,7 +278,7 @@ class AlphaCSCEncoder(BaseZEncoder):
                  solver, solver_kwargs, reg, loss, loss_params):
 
         if loss_params is None:
-            loss_params = dict(gamma=.1, ordar=10)
+            loss_params = dict(ordar=10)
 
         super().__init__(
             X, D_hat, n_atoms, n_times_atom, n_jobs,

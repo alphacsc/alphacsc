@@ -33,7 +33,7 @@ def test_learn_d_z_multi(X, loss, rank1, solver_d, uv_constraint, window,
                          lmbd_max):
     # smoke test for learn_d_z_multi
 
-    loss_params = dict(gamma=1, ordar=10)
+    loss_params = dict(ordar=10)
 
     pobj, times, uv_hat, z_hat, reg = learn_d_z_multi(
         X, N_ATOMS, N_TIMES_ATOM, uv_constraint=uv_constraint, rank1=rank1,
@@ -63,7 +63,7 @@ def test_learn_d_z_multi_error(X, loss, rank1, solver_d, uv_constraint,
                                window):
     # smoke test for learn_d_z_multi
 
-    loss_params = dict(gamma=1, ordar=10)
+    loss_params = dict(ordar=10)
 
     with pytest.raises(NotImplementedError):
         pobj, times, uv_hat, z_hat, reg = learn_d_z_multi(
@@ -175,7 +175,7 @@ def test_transformers(X, klass, rank1, solver_d, uv_constraint, n_trials):
 @pytest.mark.parametrize('solver_z', ['l-bfgs', 'lgcd'])
 def test_unbiased_z_hat(X, solver_z):
 
-    loss_params = dict(gamma=1, ordar=10)
+    loss_params = dict(ordar=10)
 
     _, _, _, z_hat, _ = learn_d_z_multi(
         X, N_ATOMS, N_TIMES_ATOM, uv_constraint='auto', rank1=False,
