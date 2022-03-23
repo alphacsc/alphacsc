@@ -348,7 +348,7 @@ class BatchCDL(ConvolutionalDictionaryLearning):
             solver_d=solver_d, solver_d_kwargs=solver_d_kwargs,
             eps=eps, D_init=D_init,
             algorithm='batch', lmbd_max=lmbd_max, raise_on_increase=True,
-            loss='l2', n_jobs=n_jobs, verbose=verbose, callback=None,
+            n_jobs=n_jobs, verbose=verbose, callback=None,
             random_state=random_state, name="BatchCDL"
         )
 
@@ -375,6 +375,6 @@ class GreedyCDL(ConvolutionalDictionaryLearning):
             solver_d=solver_d, solver_d_kwargs=solver_d_kwargs,
             eps=eps, D_init=D_init,
             algorithm='greedy', lmbd_max=lmbd_max, raise_on_increase=True,
-            loss='l2', n_jobs=n_jobs, verbose=verbose, callback=None,
+            n_jobs=n_jobs, verbose=verbose, callback=None,
             random_state=random_state, name="GreedyCDL"
         )

@@ -160,8 +160,8 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
 
 def _init_beta(Xi, z_hat, D, constants, reg, norm_Dk, tol):
     # Init beta with -DtX
-    beta = gradient_zi(Xi, z_hat, D=D, reg=None, loss='l2',
-                       return_func=False, constants=constants)
+    beta = gradient_zi(Xi, z_hat, D=D, reg=None, return_func=False,
+                       constants=constants)
 
     for k, t in zip(*z_hat.nonzero()):
         beta[k, t] -= z_hat[k, t] * norm_Dk[k]  # np.sum(DtD[k, k, t0])

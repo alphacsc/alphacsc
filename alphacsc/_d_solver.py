@@ -582,8 +582,6 @@ class AlternateDSolver(Rank1DSolver):
         if self.adaptive_step_size:
             L = 1
         else:
-            if z_encoder.loss != 'l2':
-                raise NotImplementedError()
 
             # compute lipschitz
             # XXX - maybe replace with scipy.sparse.linalg.svds

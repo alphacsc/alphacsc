@@ -94,7 +94,6 @@ def test_cd():
     X = construct_X_multi(z_gen, D=uv, n_channels=n_channels)
 
     loss_0 = compute_X_and_objective_multi(X=X, z_hat=z_gen, D_hat=uv, reg=reg,
-                                           loss='l2',
                                            feasible_evaluation=False)
 
     constants = {}
@@ -112,7 +111,7 @@ def test_cd():
     assert np.allclose(ztX, compute_ztX(z_hat, X))
 
     loss_1 = compute_X_and_objective_multi(X=X, z_hat=z_hat, D_hat=uv,
-                                           reg=reg, loss='l2',
+                                           reg=reg,
                                            feasible_evaluation=False)
     assert loss_1 <= loss_0, "Bad initialization in greedy CD."
 

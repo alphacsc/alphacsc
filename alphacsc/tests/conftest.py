@@ -89,5 +89,4 @@ def z_encoder(D_hat, rng):
 
     X = construct_X_multi(z_hat, D=D_hat, n_channels=N_CHANNELS)
 
-    return MockZEncoder(X, D_hat, z_hat, N_ATOMS, N_CHANNELS, N_TIMES_ATOM,
-                        dict())
+    return MockZEncoder(X, D_hat, z_hat, N_ATOMS, N_CHANNELS, N_TIMES_ATOM)
