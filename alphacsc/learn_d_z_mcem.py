@@ -19,7 +19,7 @@ def learn_d_z_weighted(
         lmbd_max='fixed', n_iter_global=10, init_tau=False, n_iter_optim=10,
         n_iter_mcmc=10, n_burnin_mcmc=0, random_state=None, n_jobs=1,
         solver_z='l-bfgs', solver_d_kwargs=dict(), solver_z_kwargs=dict(),
-        ds_init=None, ds_init_params=dict(), verbose=0, callback=None):
+        ds_init=None, verbose=0, callback=None):
     """Univariate Convolutional Sparse Coding with an alpha-stable distribution
 
     Parameters
@@ -67,10 +67,8 @@ def learn_d_z_weighted(
         Additional keyword arguments to provide to update_d
     solver_z_kwargs : dict
         Additional keyword arguments to pass to update_z
-    ds_init_params : dict
-        Dictionnary of parameters for the kmeans init method.
-    ds_init_params : dict
-        Dictionnary of parameters for the kmeans init method.
+    ds_init : str or array, shape (n_atoms, n_times_atom)
+        The initial atoms or an initialization scheme in {'chunk' | 'random'}.
     verbose : int
         The verbosity level.
     callback : func
@@ -120,10 +118,10 @@ def learn_d_z_weighted(
         pobj, times, d_hat, z_hat, reg = learn_d_z(
             X, n_atoms, n_times_atom, func_d, reg=reg, lmbd_max=lmbd_max,
             n_iter=n_iter_optim, random_state=rng, sample_weights=2 * tau,
-            ds_init=d_hat, ds_init_params=ds_init_params,
-            solver_d_kwargs=solver_d_kwargs, solver_z_kwargs=solver_z_kwargs,
-            verbose=verbose, solver_z=solver_z, n_jobs=n_jobs,
-            callback=callback)
+            ds_init=d_hat, solver_d_kwargs=solver_d_kwargs,
+            solver_z_kwargs=solver_z_kwargs, verbose=verbose,
+            solver_z=solver_z, n_jobs=n_jobs, callback=callback
+        )
         lmbd_max = 'fixed'  # subsequent iterations use the same regularization
 
     return d_hat, z_hat, tau

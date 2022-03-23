@@ -12,8 +12,7 @@ from .utils.dictionary import tukey_window
 from .utils.dictionary import get_uv
 
 
-def get_init_strategy(n_times_atom, shape, random_state, D_init,
-                      D_init_params):
+def get_init_strategy(n_times_atom, shape, random_state, D_init):
     """Returns dictionary initialization strategy.
 
     Parameters
@@ -28,9 +27,7 @@ def get_init_strategy(n_times_atom, shape, random_state, D_init,
     D_init : str or array, shape (n_atoms, n_channels + n_times_atoms) or \
                            shape (n_atoms, n_channels, n_times_atom)
         The initial atoms or an initialization scheme in
-        {'kmeans' | 'ssa' | 'chunk' | 'random' | 'greedy'}.
-    D_init_params : dict
-        Dictionnary of parameters for the kmeans init method.
+        {'chunk' | 'random' | 'greedy'}.
     """
     if isinstance(D_init, np.ndarray):
         return IdentityStrategy(shape, D_init)
@@ -147,8 +144,7 @@ class GreedyStrategy(RandomStrategy):
 
 
 def init_dictionary(X, n_atoms, n_times_atom, uv_constraint='separate',
-                    rank1=True, window=False, D_init=None,
-                    D_init_params=dict(), random_state=None):
+                    rank1=True, window=False, D_init=None, random_state=None):
     """Return an initial dictionary for the signals X
 
     Parameter
@@ -172,8 +168,6 @@ def init_dictionary(X, n_atoms, n_times_atom, uv_constraint='separate',
         atoms. The shape should match the required dictionary shape, ie if
         rank1 is True, (n_atoms, n_channels + n_times_atom) and else
         (n_atoms, n_channels, n_times_atom)
-    D_init_params: dict
-        Dictionnary of parameters for the kmeans init method.
     random_state: int | None
         The random state.
 

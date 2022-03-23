@@ -243,7 +243,7 @@ def one_run(X, X_shape, random_state, method, n_atoms, n_times_atom, reg):
     # use the same init for all methods
     ds_init = init_dictionary(X_init, n_atoms, n_times_atom, D_init='chunk',
                               rank1=False, uv_constraint='separate',
-                              D_init_params=dict(), random_state=random_state)
+                              random_state=random_state)
     if len(X_shape) == 2:
         ds_init = ds_init[:, 0, :]
 

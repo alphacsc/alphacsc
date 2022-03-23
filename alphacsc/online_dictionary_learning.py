@@ -38,7 +38,7 @@ class OnlineCDL(ConvolutionalDictionaryLearning):
                  solver_z='lgcd', solver_z_kwargs={}, unbiased_z_hat=False,
                  solver_d='auto', solver_d_kwargs={}, rank1=True, window=False,
                  uv_constraint='auto', lmbd_max='scaled', eps=1e-10,
-                 D_init=None, D_init_params={}, alpha=.8, batch_size=1,
+                 D_init=None, alpha=.8, batch_size=1,
                  batch_selection='random', verbose=10, random_state=None):
         super().__init__(
             n_atoms, n_times_atom, reg=reg, n_iter=n_iter,
@@ -46,7 +46,7 @@ class OnlineCDL(ConvolutionalDictionaryLearning):
             rank1=rank1, window=window, uv_constraint=uv_constraint,
             unbiased_z_hat=unbiased_z_hat,
             solver_d=solver_d, solver_d_kwargs=solver_d_kwargs,
-            eps=eps, D_init=D_init, D_init_params=D_init_params,
+            eps=eps, D_init=D_init,
             algorithm_params=dict(alpha=alpha, batch_size=batch_size,
                                   batch_selection=batch_selection),
             n_jobs=n_jobs, random_state=random_state, algorithm='online',
@@ -122,8 +122,8 @@ class OnlineCDL(ConvolutionalDictionaryLearning):
         self.d_solver = get_solver_d(
             n_channels, self.n_atoms, self.n_times_atom,
             solver_d=self.solver_d, rank1=self.rank1, window=self.window,
-            D_init=self.D_init, D_init_params=self.D_init_params,
-            random_state=self.random_state, **self.solver_d_kwargs
+            D_init=self.D_init, random_state=self.random_state,
+            **self.solver_d_kwargs
         )
 
         # Init dictionary either from D_init or from an heuristic based on the
