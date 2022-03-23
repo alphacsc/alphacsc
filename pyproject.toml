@@ -4,7 +4,6 @@ requires = [
   "setuptools>=45",
   "wheel",
   "oldest-supported-numpy", # https://github.com/scipy/oldest-supported-numpy
-  "Cython",
   "setuptools_scm>=6.2"
 ]
 build-backend = "setuptools.build_meta"
