@@ -1,11 +1,9 @@
-import pytest
 import numpy as np
 from scipy import optimize, signal
 
 from alphacsc.loss_and_gradient import compute_objective
 from alphacsc.loss_and_gradient import gradient_d, gradient_uv
 from alphacsc.update_d_multi import _get_d_update_constants
-from alphacsc.utils.whitening import whitening
 from alphacsc.utils import construct_X_multi
 
 
@@ -35,33 +33,25 @@ def test_simple():
     assert error < 1e-4, "Gradient is false: {:.4e}".format(error)
 
 
-@pytest.mark.parametrize('loss', ['l2', 'dtw', 'whitening'])
-def test_gradient_d(loss):
+def test_gradient_d():
     # Generate synchronous D
     n_times_atom, n_times = 10, 100
     n_channels = 5
     n_atoms = 2
     n_trials = 3
 
-    # Constant for the DTW loss
-    loss_params = dict(gamma=1, sakoe_chiba_band=n_times_atom // 2)
-
     rng = np.random.RandomState()
     X = rng.normal(size=(n_trials, n_channels, n_times))
     z = rng.normal(size=(n_trials, n_atoms, n_times - n_times_atom + 1))
     d = rng.normal(size=(n_atoms, n_channels, n_times_atom)).ravel()
 
-    if loss == 'whitening':
-        loss_params['ar_model'], X = whitening(X, ordar=10)
-
     def func(d0):
         D0 = d0.reshape(n_atoms, n_channels, n_times_atom)
         X_hat = construct_X_multi(z, D=D0)
-        return compute_objective(X, X_hat, loss=loss, loss_params=loss_params)
+        return compute_objective(X, X_hat)
 
     def grad(d0):
-        return gradient_d(D=d0, X=X, z=z, loss=loss, loss_params=loss_params,
-                          flatten=True)
+        return gradient_d(D=d0, X=X, z=z, flatten=True)
 
     error = optimize.check_grad(func, grad, d, epsilon=2e-8)
     grad_d = grad(d)
@@ -82,31 +72,25 @@ def test_gradient_d(loss):
         raise
 
 
-@pytest.mark.parametrize('loss', ['l2', 'dtw', 'whitening'])
-def test_gradient_uv(loss):
+def test_gradient_uv():
     # Generate synchronous D
     n_times_atom, n_times = 10, 100
     n_channels = 5
     n_atoms = 2
     n_trials = 3
-    loss_params = dict(gamma=1, sakoe_chiba_band=n_times_atom // 2)
 
     rng = np.random.RandomState()
     X = rng.normal(size=(n_trials, n_channels, n_times))
     z = rng.normal(size=(n_trials, n_atoms, n_times - n_times_atom + 1))
     uv = rng.normal(size=(n_atoms, n_channels + n_times_atom)).ravel()
 
-    if loss == 'whitening':
-        loss_params['ar_model'], X = whitening(X, ordar=10)
-
     def func(uv0):
         uv0 = uv0.reshape(n_atoms, n_channels + n_times_atom)
         X_hat = construct_X_multi(z, D=uv0, n_channels=n_channels)
-        return compute_objective(X, X_hat, loss=loss, loss_params=loss_params)
+        return compute_objective(X, X_hat)
 
     def grad(uv0):
-        return gradient_uv(uv=uv0, X=X, z=z, flatten=True, loss=loss,
-                           loss_params=loss_params)
+        return gradient_uv(uv=uv0, X=X, z=z, flatten=True)
 
     error = optimize.check_grad(func, grad, uv.ravel(), epsilon=2e-8)
     grad_uv = grad(uv)
@@ -127,16 +111,15 @@ def test_gradient_uv(loss):
             plt.show()
         raise
 
-    if loss == 'l2':
-        constants = _get_d_update_constants(X, z)
-        msg = "Wrong value for zt*X"
-        assert np.allclose(
-            gradient_uv(0 * uv, X=X, z=z, flatten=True),
-            gradient_uv(0 * uv, constants=constants, flatten=True)), msg
-        msg = "Wrong value for zt*z"
-        assert np.allclose(
-            gradient_uv(uv, X=X, z=z, flatten=True),
-            gradient_uv(uv, constants=constants, flatten=True)), msg
+    constants = _get_d_update_constants(X, z)
+    msg = "Wrong value for zt*X"
+    assert np.allclose(
+        gradient_uv(0 * uv, X=X, z=z, flatten=True),
+        gradient_uv(0 * uv, constants=constants, flatten=True)), msg
+    msg = "Wrong value for zt*z"
+    assert np.allclose(
+        gradient_uv(uv, X=X, z=z, flatten=True),
+        gradient_uv(uv, constants=constants, flatten=True)), msg
 
 
 def test_fast_cost():

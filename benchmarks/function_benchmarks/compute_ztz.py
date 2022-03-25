@@ -8,9 +8,6 @@ from joblib import Memory
 import matplotlib.pyplot as plt
 from scipy.stats.mstats import gmean
 
-from alphacsc.cython import _fast_compute_ztz_lil
-from alphacsc.cython import _fast_compute_ztz_csr
-
 memory = Memory(location='', verbose=0)
 
 
@@ -89,8 +86,6 @@ all_func = [
     # naive_sum,
     sum_numba,
     tensordot,
-    _fast_compute_ztz_lil,
-    _fast_compute_ztz_csr,
 ]
 
 
@@ -100,13 +95,7 @@ def test_equality():
 
     reference = all_func[0](z, n_times_atom)
     for func in all_func:
-
-        if 'fast' in func.__name__:
-            z_ = [sparse.lil_matrix(zi) for zi in np.swapaxes(z, 0, 1)]
-        else:
-            z_ = z
-
-        assert np.allclose(func(z_, n_times_atom), reference)
+        assert np.allclose(func(z, n_times_atom), reference)
 
 
 @memory.cache
@@ -114,9 +103,6 @@ def run_one(n_atoms, sparsity, n_times_atom, n_times_valid, func):
     n_trials = 4
     z = sparse.random(n_atoms, n_trials * n_times_valid, density=sparsity)
     z = z.toarray().reshape(n_atoms, n_trials, n_times_valid)
-
-    if 'fast' in func.__name__:
-        z = [sparse.lil_matrix(zi) for zi in np.swapaxes(z, 0, 1)]
 
     start = time.time()
     func(z, n_times_atom)

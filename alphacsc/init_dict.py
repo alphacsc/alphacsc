@@ -3,28 +3,16 @@
 #          Umut Simsekli <umut.simsekli@telecom-paristech.fr>
 #          Alexandre Gramfort <alexandre.gramfort@inria.fr>
 #          Thomas Moreau <thomas.moreau@inria.fr>
-import itertools
-
 import numpy as np
 
-from sklearn.cluster import MiniBatchKMeans
-from sklearn.decomposition import PCA
-from sklearn.manifold import TSNE
-
 from .utils import check_random_state
-from .other.kmc2 import custom_distances
 from .update_d_multi import prox_uv, prox_d
 
 from .utils.dictionary import tukey_window
-from .utils.dictionary import get_uv, get_D
+from .utils.dictionary import get_uv
 
 
-ried = custom_distances.roll_invariant_euclidean_distances
-tied = custom_distances.translation_invariant_euclidean_distances
-
-
-def get_init_strategy(n_times_atom, shape, random_state, D_init,
-                      D_init_params):
+def get_init_strategy(n_times_atom, shape, random_state, D_init):
     """Returns dictionary initialization strategy.
 
     Parameters
@@ -39,9 +27,7 @@ def get_init_strategy(n_times_atom, shape, random_state, D_init,
     D_init : str or array, shape (n_atoms, n_channels + n_times_atoms) or \
                            shape (n_atoms, n_channels, n_times_atom)
         The initial atoms or an initialization scheme in
-        {'kmeans' | 'ssa' | 'chunk' | 'random' | 'greedy'}.
-    D_init_params : dict
-        Dictionnary of parameters for the kmeans init method.
+        {'chunk' | 'random' | 'greedy'}.
     """
     if isinstance(D_init, np.ndarray):
         return IdentityStrategy(shape, D_init)
@@ -49,10 +35,6 @@ def get_init_strategy(n_times_atom, shape, random_state, D_init,
         return RandomStrategy(shape, random_state)
     elif D_init == 'chunk':
         return ChunkStrategy(n_times_atom, shape, random_state)
-    elif D_init == "kmeans":
-        return KMeansStrategy(n_times_atom, shape, random_state, D_init_params)
-    elif D_init == 'ssa':
-        return SSAStrategy(n_times_atom, shape, random_state)
     elif D_init == 'greedy':
         return GreedyStrategy(shape, random_state)
     else:
@@ -143,80 +125,6 @@ class ChunkStrategy():
         return D_hat
 
 
-class KMeansStrategy():
-    """A class that creates a random dictionary for a specified shape with
-    'kmeans' strategy.
-
-    Parameters
-    ----------
-    n_times_atom : int
-        The support of the atom.
-    shape: tuple
-        Expected shape of the dictionary. (n_atoms, n_channels + n_times_atoms)
-    or (n_atoms, n_channels, n_times_atom)
-    random_state: int or np.random.RandomState
-        A seed to generate a RandomState instance or the instance itself.
-    D_init_params : dict
-        Dictionnary of parameters for the kmeans init method.
-    """
-
-    def __init__(self, n_times_atom, shape, random_state, D_init_params):
-
-        self.n_atoms = shape[0]
-        self.n_times_atom = n_times_atom
-        self.rank1 = True if len(shape) == 2 else False
-        self.random_state = random_state
-        self.D_init_params = D_init_params
-
-    def initialize(self, X):
-        rng = check_random_state(self.random_state)
-        n_channels = X.shape[1]
-
-        D_hat = kmeans_init(X, self.n_atoms, self.n_times_atom,
-                            random_state=rng, **self.D_init_params)
-
-        if not self.rank1:
-            D_hat = get_D(D_hat, n_channels)
-        return D_hat
-
-
-class SSAStrategy():
-    """A class that creates a random dictionary for a specified shape with
-    'ssa' strategy.
-
-    Parameters
-    ----------
-    n_times_atom : int
-        The support of the atom.
-    shape: tuple
-        Expected shape of the dictionary. (n_atoms, n_channels + n_times_atoms)
-    or (n_atoms, n_channels, n_times_atom)
-    random_state: int or np.random.RandomState
-        A seed to generate a RandomState instance or the instance itself.
-    """
-
-    def __init__(self, n_times_atom, shape, random_state):
-
-        self.n_atoms = shape[0]
-        self.n_times_atom = n_times_atom
-        self.rank1 = True if len(shape) == 2 else False
-        self.random_state = random_state
-
-    def initialize(self, X):
-        rng = check_random_state(self.random_state)
-        n_channels = X.shape[1]
-
-        u_hat = rng.randn(self.n_atoms, n_channels)
-        v_hat = ssa_init(X, self.n_atoms, self.n_times_atom,
-                         random_state=rng)
-        D_hat = np.c_[u_hat, v_hat]
-
-        if not self.rank1:
-            D_hat = get_D(D_hat, n_channels)
-
-        return D_hat
-
-
 class GreedyStrategy(RandomStrategy):
     """A class that creates a random dictionary for a specified shape and
     removes all elements.
@@ -236,8 +144,7 @@ class GreedyStrategy(RandomStrategy):
 
 
 def init_dictionary(X, n_atoms, n_times_atom, uv_constraint='separate',
-                    rank1=True, window=False, D_init=None,
-                    D_init_params=dict(), random_state=None):
+                    rank1=True, window=False, D_init=None, random_state=None):
     """Return an initial dictionary for the signals X
 
     Parameter
@@ -256,13 +163,11 @@ def init_dictionary(X, n_atoms, n_times_atom, uv_constraint='separate',
         If set to True, use a rank 1 dictionary.
     window: boolean
         If True, multiply the atoms with a temporal Tukey window.
-    D_init: array or {'kmeans' | 'ssa' | 'chunk' | 'random'}
+    D_init: array or {'chunk' | 'random'}
         The initialization scheme for the dictionary or the initial
         atoms. The shape should match the required dictionary shape, ie if
         rank1 is True, (n_atoms, n_channels + n_times_atom) and else
         (n_atoms, n_channels, n_times_atom)
-    D_init_params: dict
-        Dictionnary of parameters for the kmeans init method.
     random_state: int | None
         The random state.
 
@@ -295,19 +200,6 @@ def init_dictionary(X, n_atoms, n_times_atom, uv_constraint='separate',
         if rank1:
             D_hat = get_uv(D_hat)
 
-    elif D_init == "kmeans":
-        D_hat = kmeans_init(X, n_atoms, n_times_atom, random_state=rng,
-                            **D_init_params)
-        if not rank1:
-            D_hat = get_D(D_hat, n_channels)
-
-    elif D_init == "ssa":
-        u_hat = rng.randn(n_atoms, n_channels)
-        v_hat = ssa_init(X, n_atoms, n_times_atom, random_state=rng)
-        D_hat = np.c_[u_hat, v_hat]
-        if not rank1:
-            D_hat = get_D(D_hat, n_channels)
-
     elif D_init == 'greedy':
         raise NotImplementedError()
 
@@ -327,205 +219,3 @@ def init_dictionary(X, n_atoms, n_times_atom, uv_constraint='separate',
     else:
         D_hat = prox_d(D_hat)
     return D_hat
-
-
-def kmeans_init(X, n_atoms, n_times_atom, max_iter=0, random_state=None,
-                non_uniform=True, distances='euclidean', tsne=False):
-    """Return an initial temporal dictionary for the signals X
-
-    Parameter
-    ---------
-    X : array, shape (n_trials, n_channels, n_times)
-        The data on which to perform CSC.
-    n_atoms : int
-        The number of atoms to learn.
-    n_times_atom : int
-        The support of the atom.
-    max_iter : int
-        Number of iteration of kmeans algorithm
-    random_state : int | None
-        The random state.
-    non_uniform : boolean
-        If True, the kmc2 init uses the norm of each data chunk.
-    distances : str in {'euclidean', 'roll_inv', 'trans_inv'}
-        Distance kind.
-
-    Return
-    ------
-    uv: array shape (n_atoms, n_channels + n_times_atom)
-        The initial atoms to learn from the data.
-    """
-    rng = check_random_state(random_state)
-
-    n_trials, n_channels, n_times = X.shape
-    X_original = X
-    if distances != 'euclidean':
-        # Only take the strongest channels, otherwise X is too big
-        n_strong_channels = 1
-        strongest_channels = np.argsort(X.std(axis=2).mean(axis=0))
-        X = X[:, strongest_channels[-n_strong_channels:], :]
-
-    X = X.reshape(-1, X.shape[-1])
-    n_trials, n_times = X.shape
-
-    # Time step between two windows
-    step = max(1, n_times_atom // 3)
-
-    # embed all windows of length n_times_atom in X
-    X_embed = np.concatenate(
-        [_embed(Xi, n_times_atom).T[::step, :] for Xi in X])
-    X_embed = np.atleast_2d(X_embed)
-
-    if non_uniform:
-        weights = np.linalg.norm(X_embed, axis=1)
-    else:
-        weights = None
-
-    # init the kmeans centers with KMC2
-    try:
-        from alphacsc.other.kmc2 import kmc2
-        seeding, indices = kmc2.kmc2(X_embed, k=n_atoms, weights=weights,
-                                     random_state=rng, distances=distances)
-    except ImportError:
-        if max_iter == 0:
-            raise ImportError("Could not import alphacsc.other.kmc2. This "
-                              "breaks the logic for the D_init='kmeans'. It "
-                              "should not be used with max_iter=0 in "
-                              "D_init_params.")
-        # Default to random init for non-euclidean distances and to "kmeans++"
-        # in the case of K-means.
-        indices = rng.choice(len(X_embed), size=n_atoms, replace=False)
-        seeding = "kmeans++"
-
-    # perform the kmeans, or use the seeding if max_iter == 0
-    if max_iter == 0:
-        v_init = seeding
-        labels = None
-        distance_metric = 'euclidean'
-
-    elif distances != 'euclidean':
-        if distances == 'trans_inv':
-            distance_metric = tied
-        elif distances == 'roll_inv':
-            distance_metric = ried
-        else:
-            raise ValueError('Unknown distance "%s".' % (distances, ))
-
-        try:
-            from .other.k_medoids import KMedoids
-        except ImportError:
-            raise ImportError("Could not import multics.other.k_medoid, make "
-                              "sure to compile it to be able to initialize "
-                              "the dictionary with k-means and a non-euclidean"
-                              " distance.")
-        model = KMedoids(n_clusters=n_atoms, init=np.int_(indices),
-                         max_iter=max_iter, distance_metric=distance_metric,
-                         random_state=rng).fit(X_embed)
-        indices = model.medoid_idxs_
-        labels = model.labels_
-
-    else:
-        distance_metric = 'euclidean'
-        model = MiniBatchKMeans(n_clusters=n_atoms, init=seeding, n_init=1,
-                                max_iter=max_iter, random_state=rng
-                                ).fit(X_embed)
-        v_init = model.cluster_centers_
-        u_init = rng.randn(n_atoms, n_channels)
-        D_init = np.c_[u_init, v_init]
-        labels = model.labels_
-
-    if tsne:
-        if distances == 'euclidean':
-            X_embed = X_embed[::100]
-            if labels is not None:
-                labels = labels[::100]
-        plot_tsne(X_embed, v_init, labels=labels, metric=distance_metric,
-                  random_state=rng)
-
-    if not (distances == 'euclidean' and max_iter > 0):
-        indices = np.array(indices)
-        n_window = X_embed.shape[0] // n_trials
-        medoid_i = (indices // n_window) // n_channels
-        medoid_t = (indices % n_window) * step
-        D = np.array([X_original[i, :, t:t + n_times_atom]
-                      for i, t in zip(medoid_i, medoid_t)])
-        D_init = get_uv(D)
-
-    return D_init
-
-
-def plot_tsne(X_embed, X_centers, labels=None, metric='euclidean',
-              random_state=None):
-
-    import matplotlib.pyplot as plt
-    from .viz.callback import COLORS
-
-    tsne = TSNE(n_components=2, random_state=random_state, perplexity=5,
-                metric=metric, verbose=2)
-    pca = PCA(n_components=min(10, X_embed.shape[1]))
-    X = np.concatenate([X_embed, X_centers])
-    n_centers = X_centers.shape[0]
-    X_pca = pca.fit_transform(X)
-    X_tsne = tsne.fit_transform(X_pca)
-
-    if labels is not None:
-        labels = np.r_[labels, np.arange(n_centers)]
-        colors = [c for c, l in zip(itertools.cycle(COLORS),
-                                    np.unique(labels))]
-        colors = np.array(colors)[labels]
-    else:
-        colors = None
-
-    plt.figure('tsne')
-    cc = colors[:-n_centers] if colors is not None else None
-    plt.scatter(X_tsne[:-n_centers, 0], X_tsne[:-n_centers, 1], c=cc,
-                marker='.')
-    cc = colors[-n_centers:] if colors is not None else None
-    plt.scatter(X_tsne[-n_centers:, 0], X_tsne[-n_centers:, 1], c=cc,
-                marker='*', s=4)
-
-
-def ssa_init(X, n_atoms, n_times_atom, random_state=None):
-    """Return an initial temporal dictionary for the signals X
-
-    Parameter
-    ---------
-    X: array, shape (n_trials, n_channels, n_times)
-        The data on which to perform CSC.
-    n_atoms : int
-        The number of atoms to learn.
-    n_times_atom : int
-        The support of the atom.
-    random_state : int | None
-        The random state.
-
-    Return
-    ------
-    uv: array shape (n_atoms, n_channels + n_times_atom)
-        The initial atoms to learn from the data.
-    """
-    # Only take the strongest channel, otherwise X is too big
-    strongest_channel = np.argmax(X.std(axis=2).mean(axis=0))
-    X_strong = X[:, strongest_channel, :]
-
-    # Time step between two windows
-    step = 1
-
-    # embed all the windows of length n_times_atom in X_strong
-    X_embed = np.concatenate(
-        [_embed(Xi, n_times_atom).T[::step, :] for Xi in X_strong])
-    X_embed = np.atleast_2d(X_embed)
-
-    model = PCA(n_components=n_atoms, random_state=random_state).fit(X_embed)
-    v_init = model.components_
-
-    return v_init
-
-
-def _embed(x, dim, lag=1):
-    """Create an embedding of array given a resulting dimension and lag.
-    """
-    x = x.copy()
-    X = np.lib.stride_tricks.as_strided(x, (len(x) - dim * lag + lag, dim),
-                                        (x.strides[0], x.strides[0] * lag))
-    return X.T

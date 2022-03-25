@@ -66,8 +66,8 @@ def check_solver_and_constraints(rank1, solver_d, uv_constraint):
 
 def get_solver_d(n_channels, n_atoms, n_times_atom,
                  solver_d='alternate_adaptive', rank1=False,
-                 uv_constraint='auto', D_init=None, D_init_params=dict(),
-                 window=False, eps=1e-8, max_iter=300, momentum=False,
+                 uv_constraint='auto', D_init=None, window=False,
+                 eps=1e-8, max_iter=300, momentum=False,
                  random_state=None, verbose=0, debug=False):
     """Returns solver depending on solver_d type and rank1 value.
 
@@ -92,13 +92,11 @@ def get_solver_d(n_channels, n_atoms, n_times_atom,
         If 'joint', the constraint is norm_2([u, v]) <= 1
         If 'separate', the constraint is norm_2(u) <= 1 and norm_2(v) <= 1
         If rank1 is False, then uv_constraint must be 'auto'.
-    D_init : {'kmeans' | 'ssa' | 'chunk' | 'random' | 'greedy'}
+    D_init : {'chunk' | 'random' | 'greedy'}
              or array, shape (n_atoms, n_channels + n_times_atom) or
                          (n_atoms, n_channels, n_times_atom)
         The initialization scheme for the dictionary or the initial
         atoms.
-    D_init_params : dict
-        Dictionary of parameters for the kmeans init method.
     window : boolean
         If True, re-parametrizes the atoms with a temporal Tukey window
     eps : float
@@ -124,13 +122,13 @@ def get_solver_d(n_channels, n_atoms, n_times_atom,
         if solver_d in ['auto', 'alternate', 'alternate_adaptive']:
             return AlternateDSolver(
                 n_channels, n_atoms, n_times_atom, solver_d, uv_constraint,
-                D_init, D_init_params, window, eps, max_iter, momentum,
+                D_init, window, eps, max_iter, momentum,
                 random_state, verbose, debug
             )
         elif solver_d in ['fista', 'joint']:
             return JointDSolver(
                 n_channels, n_atoms, n_times_atom, solver_d, uv_constraint,
-                D_init, D_init_params, window, eps, max_iter, momentum,
+                D_init, window, eps, max_iter, momentum,
                 random_state, verbose, debug
             )
         else:
@@ -139,7 +137,7 @@ def get_solver_d(n_channels, n_atoms, n_times_atom,
         if solver_d in ['auto', 'fista']:
             return DSolver(
                 n_channels, n_atoms, n_times_atom, solver_d, uv_constraint,
-                D_init, D_init_params, window, eps, max_iter, momentum,
+                D_init, window, eps, max_iter, momentum,
                 random_state, verbose, debug
             )
         else:
@@ -150,7 +148,7 @@ class BaseDSolver:
     """Base class for a d solver."""
 
     def __init__(self, n_channels, n_atoms, n_times_atom, solver_d,
-                 uv_constraint, D_init, D_init_params, window, eps, max_iter,
+                 uv_constraint, D_init, window, eps, max_iter,
                  momentum, random_state, verbose, debug):
 
         self.n_channels = n_channels
@@ -166,7 +164,7 @@ class BaseDSolver:
         self.D_init = D_init
 
         self.init_strategy = get_init_strategy(
-            n_times_atom, self.get_D_shape(), self.rng, D_init, D_init_params
+            n_times_atom, self.get_D_shape(), self.rng, D_init
         )
 
         if not window:
@@ -344,12 +342,12 @@ class Rank1DSolver(BaseDSolver):
     """Base class for a rank1 solver d."""
 
     def __init__(self, n_channels, n_atoms, n_times_atom, solver_d,
-                 uv_constraint, D_init, D_init_params, window, eps,
+                 uv_constraint, D_init, window, eps,
                  max_iter, momentum, random_state, verbose, debug):
 
         super().__init__(
             n_channels, n_atoms, n_times_atom, solver_d, uv_constraint,
-            D_init, D_init_params, window, eps, max_iter, momentum,
+            D_init, window, eps, max_iter, momentum,
             random_state, verbose, debug
         )
 
@@ -375,20 +373,18 @@ class JointDSolver(Rank1DSolver):
     """A class for 'fista' or 'joint' solver_d when rank1 is True. """
 
     def __init__(self, n_channels, n_atoms, n_times_atom, solver_d,
-                 uv_constraint, D_init, D_init_params, window, eps, max_iter,
+                 uv_constraint, D_init, window, eps, max_iter,
                  momentum, random_state, verbose, debug):
 
         super().__init__(
             n_channels, n_atoms, n_times_atom, solver_d, uv_constraint, D_init,
-            D_init_params, window, eps, max_iter, momentum, random_state,
-            verbose, debug
+            window, eps, max_iter, momentum, random_state, verbose, debug
         )
 
     def grad(self, D, z_encoder):
         return gradient_uv(
             uv=D, X=z_encoder.X, z=z_encoder.get_z_hat(),
-            constants=z_encoder.get_constants(), loss=z_encoder.loss,
-            loss_params=z_encoder.loss_params
+            constants=z_encoder.get_constants()
         )
 
 
@@ -398,12 +394,12 @@ class AlternateDSolver(Rank1DSolver):
     """
 
     def __init__(self, n_channels, n_atoms, n_times_atom, solver_d,
-                 uv_constraint, D_init, D_init_params, window, eps,
+                 uv_constraint, D_init, window, eps,
                  max_iter, momentum, random_state, verbose, debug):
 
         super().__init__(
             n_channels, n_atoms, n_times_atom, solver_d, uv_constraint, D_init,
-            D_init_params, window, eps, max_iter, momentum, random_state,
+            window, eps, max_iter, momentum, random_state,
             verbose, debug
         )
 
@@ -464,8 +460,7 @@ class AlternateDSolver(Rank1DSolver):
 
             grad_d = gradient_d(
                 uv, X=z_encoder.X, z=z_encoder.get_z_hat(),
-                constants=z_encoder.get_constants(), loss=z_encoder.loss,
-                loss_params=z_encoder.loss_params
+                constants=z_encoder.get_constants()
             )
 
             return (grad_d * uv[:, None, z_encoder.n_channels:]).sum(axis=2)
@@ -507,8 +502,7 @@ class AlternateDSolver(Rank1DSolver):
 
             grad_d = gradient_d(
                 uv, X=z_encoder.X, z=z_encoder.get_z_hat(),
-                constants=z_encoder.get_constants(), loss=z_encoder.loss,
-                loss_params=z_encoder.loss_params
+                constants=z_encoder.get_constants()
             )
 
             grad_v = (grad_d * uv[:, :z_encoder.n_channels, None]).sum(axis=1)
@@ -588,8 +582,6 @@ class AlternateDSolver(Rank1DSolver):
         if self.adaptive_step_size:
             L = 1
         else:
-            if z_encoder.loss != 'l2':
-                raise NotImplementedError()
 
             # compute lipschitz
             # XXX - maybe replace with scipy.sparse.linalg.svds
@@ -618,13 +610,12 @@ class DSolver(BaseDSolver):
     """A class for 'fista' solver_d when rank1 is False. """
 
     def __init__(self, n_channels, n_atoms, n_times_atom, solver_d,
-                 uv_constraint, D_init, D_init_params, window, eps, max_iter,
+                 uv_constraint, D_init, window, eps, max_iter,
                  momentum, random_state, verbose, debug):
 
         super().__init__(
             n_channels, n_atoms, n_times_atom, solver_d, uv_constraint, D_init,
-            D_init_params, window, eps, max_iter, momentum, random_state,
-            verbose, debug
+            window, eps, max_iter, momentum, random_state, verbose, debug
         )
 
         self.name = "Update D"
@@ -646,6 +637,5 @@ class DSolver(BaseDSolver):
     def grad(self, D, z_encoder):
         return gradient_d(
             D=D, X=z_encoder.X, z=z_encoder.get_z_hat(),
-            constants=z_encoder.get_constants(), loss=z_encoder.loss,
-            loss_params=z_encoder.loss_params
+            constants=z_encoder.get_constants()
         )
