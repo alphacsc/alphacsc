@@ -130,7 +130,7 @@ def run_cbpdn(X, ds_init, reg, n_iter, random_state, label):
 def run_fista(X, ds_init, reg, n_iter, random_state, label):
     assert X.ndim == 2
     n_atoms, n_times_atom = ds_init.shape
-    pobj, times, d_hat, z_hat = learn_d_z(
+    pobj, times, d_hat, z_hat, reg = learn_d_z(
         X, n_atoms, n_times_atom, func_d=update_d_block, solver_z='fista',
         solver_z_kwargs=dict(max_iter=2), reg=reg, n_iter=n_iter,
         random_state=random_state, ds_init=ds_init, n_jobs=1, verbose=verbose)
@@ -142,7 +142,7 @@ def run_l_bfgs(X, ds_init, reg, n_iter, random_state, label, factr_d=1e7,
                factr_z=1e14):
     assert X.ndim == 2
     n_atoms, n_times_atom = ds_init.shape
-    pobj, times, d_hat, z_hat = learn_d_z(
+    pobj, times, d_hat, z_hat, reg = learn_d_z(
         X, n_atoms, n_times_atom,
         func_d=update_d_block, solver_z='l-bfgs', solver_z_kwargs=dict(
             factr=factr_z), reg=reg, n_iter=n_iter, solver_d_kwargs=dict(
@@ -183,7 +183,7 @@ def run_multichannel_gcd_fullrank(X, ds_init, reg, n_iter, random_state,
     solver_z_kwargs = dict(max_iter=2, tol=1e-3)
     pobj, times, d_hat, z_hat, reg = learn_d_z_multi(
         X, n_atoms, n_times_atom, solver_d='fista', solver_z="lgcd",
-        uv_constraint='separate', eps=-np.inf, solver_z_kwargs=solver_z_kwargs,
+        uv_constraint='auto', eps=-np.inf, solver_z_kwargs=solver_z_kwargs,
         reg=reg, solver_d_kwargs=dict(max_iter=100), n_iter=n_iter,
         random_state=random_state, raise_on_increase=False, D_init=ds_init,
         n_jobs=1, verbose=verbose, rank1=False)
