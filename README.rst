@@ -108,7 +108,7 @@ To install Dicodile, run ``pip install alphacsc[dicodile]``.
 OpenMPI issues
 --------------
 
-When self-installing OpenMPI (for instance to run Dicodile on a single machine, or for continuous integration) it may be necessary to disable Docker-related virtual NICs, for instance by running ``export OMPI_MCA_btl_tcp_if_exclude="docker0"``.
+When self-installing OpenMPI (for instance to run `dicodile` on a single machine, or for continuous integration), running the `dicodile` solver might end up causing a deadlock (no output for a long time). It is often due to communication issue between the workers. This issue can often be solved by disabling Docker-related virtual NICs, for instance by running ``export OMPI_MCA_btl_tcp_if_exclude="docker0"``.
 
 Bug reports
 ===========
