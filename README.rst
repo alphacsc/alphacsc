@@ -103,7 +103,7 @@ Dicodile backend
 
 AlphaCSC can use a `dicodile <https://github.com/tomMoral/dicodile>`_-based backend to perform sparse encoding in parallel.
 
-To install Dicodile, run ``pip install alphacsc[dicodile]``.
+To install dicodile, run ``pip install alphacsc[dicodile]``.
 
 Known OpenMPI issues
 --------------------
