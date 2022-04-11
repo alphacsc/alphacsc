@@ -19,7 +19,6 @@
 # import os
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
-import sphinx_bootstrap_theme
 
 
 # -- General configuration ------------------------------------------------
@@ -38,7 +37,6 @@ extensions = [
     'sphinx.ext.intersphinx',
     'sphinx.ext.mathjax',
     'sphinx_gallery.gen_gallery',
-    'sphinx_multiversion',
     'numpydoc',
 ]
 
@@ -104,32 +102,38 @@ smv_tag_whitelist = '0.4.0rc'
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = 'bootstrap'
+html_theme = 'pydata_sphinx_theme'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
+if 'dev' in version:
+    version = 'dev'
+
 html_theme_options = {
-    'navbar_sidebarrel': False,
-    'navbar_pagenav': False,
-    'source_link_position': "",
-    'navbar_links': [
-        ("Models", "models"),
-        ("Examples", "auto_examples/index"),
-        ("API", "api"),
-        ("GitHub", "https://github.com/alphacsc/alphacsc", True)
+    "github_url": "https://github.com/alphacsc/alphacsc",
+    'icon_links': [
+        {
+            "name": "PyPI",
+            "url": "https://pypi.org/project/alphacsc",
+            "icon": "fas fa-box",
+        },
     ],
-    'bootswatch_theme': "united"
+    'show_toc_level': 1,
+    'navbar_end': ['version-switcher', 'navbar-icon-links'],
+    'footer_items': ['copyright'],
+    'switcher': {
+        'json_url': f'http://localhost:3000/versions.json',
+        'version_match': version,
+    }
 }
 
 html_sidebars = {
     '**': [
-        'versioning.html',
+        "searchbox.html",
     ],
 }
 
-# Add any paths that contain custom themes here, relative to this directory.
-html_theme_path = sphinx_bootstrap_theme.get_html_theme_path()
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
