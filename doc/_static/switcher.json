@@ -1,0 +1,17 @@
+[
+  {
+    "name": "dev",
+    "version": "dev",
+    "url": "/dev/"
+  },
+  {
+    "name": "0.3",
+    "version": "0.3",
+    "url": "/0.3/"
+  },
+  {
+    "name": "stable",
+    "version": "stable",
+    "url": "/stable/"
+  }
+]
