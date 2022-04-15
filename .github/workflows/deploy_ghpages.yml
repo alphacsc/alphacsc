@@ -3,7 +3,7 @@ name: Deploy GitHub pages
 on:
   pull_request:
   push:
-    branches: master
+    branches: multiversion_doc # master
 
     
 jobs:
@@ -11,6 +11,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - name: Cache Doc
+        id: cache-doc
+        uses: actions/cache@v3
+        with:
+          path: doc
+          key: ${{ runner.os }}-doc
       - name: Generate HTML docs
         uses: ax3l/sphinx-action@newer-sphinx
         env:
@@ -29,7 +35,7 @@ jobs:
           path: doc/_build/html/
 
   deploy_docs:
-    if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/multiversion_doc' # 'refs/heads/master'
     needs:
       build_docs
     runs-on: ubuntu-latest
@@ -42,8 +48,10 @@ jobs:
           path: doc/_build/html/
       - name: Commit to documentation repo
         run: |
-          git clone --no-checkout --depth 1 https://github.com/alphacsc/alphacsc.github.io.git --branch master --single-branch gh-pages
-          cp -r doc/_build/html/* gh-pages/
+          git clone --no-checkout
+          https://github.com/hgozukan/hgozukan.github.io.git --branch master --single-branch gh-pages
+          rm -r gh-pages/dev/*
+          cp -r doc/_build/html/* gh-pages/dev
           cd gh-pages
           touch .nojekyll
           git config --local user.email "alphacsc@github.com"
@@ -53,7 +61,7 @@ jobs:
       - name: Push changes
         uses: ad-m/github-push-action@v0.6.0
         with:
-          repository: alphacsc/alphacsc.github.io
+          repository: hgozukan/hgozukan.github.io
           branch: master
           directory: gh-pages
           github_token: ${{ secrets.DEPLOY_PAGES }}
