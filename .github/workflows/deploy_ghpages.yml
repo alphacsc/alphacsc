@@ -44,7 +44,7 @@ jobs:
         run: |
           git clone --no-checkout https://github.com/hndgzkn/hndgzkn.github.io.git --branch main --single-branch gh-pages
           [ ! -d "gh-pages/dev" ] && mkdir -p gh-pages/dev
-          rm -r gh-pages/dev/*
+          [ -d "gh-pages/dev" ] && rm -r gh-pages/dev/*
           cp -r doc/_build/html/* gh-pages/dev
           cd gh-pages
           touch .nojekyll
