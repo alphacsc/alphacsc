@@ -42,7 +42,7 @@ jobs:
           path: doc/_build/html/
       - name: Commit to documentation repo
         run: |
-          git clone --no-checkout https://github.com/hndgzkn/hndgzkn.github.io.git --branch master --single-branch gh-pages
+          git clone --no-checkout https://github.com/hndgzkn/hndgzkn.github.io.git --branch main --single-branch gh-pages
           [ ! -d "gh-pages/dev" ] && mkdir -p gh-pages/dev
           rm -r gh-pages/dev/*
           cp -r doc/_build/html/* gh-pages/dev
@@ -56,6 +56,6 @@ jobs:
         uses: ad-m/github-push-action@v0.6.0
         with:
           repository: hndgzkn/hndgzkn.github.io
-          branch: master
+          branch: main
           directory: gh-pages
           github_token: ${{ secrets.DEPLOY_PAGES }}
