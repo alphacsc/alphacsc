@@ -43,8 +43,8 @@ jobs:
       - name: Commit to documentation repo
         run: |
           git clone https://github.com/hndgzkn/hndgzkn.github.io.git --branch main --single-branch gh-pages
-          ls -al gh-pages
-          rm -r gh-pages/dev/*
+          rm -r gh-pages/dev
+          mkdir gh-pages/dev
           cp -r doc/_build/html/* gh-pages/dev
           cd gh-pages
           touch .nojekyll
