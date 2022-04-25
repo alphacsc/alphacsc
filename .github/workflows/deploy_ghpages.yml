@@ -43,9 +43,12 @@ jobs:
       - name: Commit to documentation repo
         run: |
           git clone https://github.com/hndgzkn/hndgzkn.github.io.git --branch main --single-branch gh-pages
-          rm -r gh-pages/dev
-          mkdir gh-pages/dev
-          cp -r doc/_build/html/* gh-pages/dev
+          rm -Rf gh-pages/dev
+          cp -a doc/_build/html/ gh-pages/dev
+          echo github.ref_name
+          if [ github.ref_type == 'tag' ]; then
+             cp -a doc/_build/html/ gh-pages/stable
+          fi;
           cd gh-pages
           touch .nojekyll
           git config --local user.email "hndgzkn@github.com"
