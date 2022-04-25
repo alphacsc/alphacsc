@@ -17,7 +17,7 @@ jobs:
         run: |
           git clone https://github.com/hndgzkn/hndgzkn.github.io.git --branch main --single-branch gh-pages
           rm -Rf gh-pages/dev
-          echo github.ref_name
+          echo ${github.ref_name}
           echo github.ref_type
           if [ github.ref_type == 'branch' ]; then
              echo "ok"
