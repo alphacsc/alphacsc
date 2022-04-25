@@ -19,6 +19,9 @@ jobs:
           rm -Rf gh-pages/dev
           echo ${{github.ref_name}}
           echo ${{github.ref_type}}
+          if [[ ${{github.ref_type}} =~ ""nc ]]; then
+             echo "contains"
+          fi;
           if [ ${{github.ref_type}} == 'branch' ]; then
              echo "ok"
           fi;
