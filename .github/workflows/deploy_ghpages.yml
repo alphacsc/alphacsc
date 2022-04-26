@@ -10,25 +10,6 @@ on:
     
 jobs:
 
-  trial:
-    if: github.ref == 'refs/heads/multiversion_doc' || github.ref == 'refs/heads/tag' # 'refs/heads/master'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Commit to documentation repo
-        run: |
-          git clone https://github.com/hndgzkn/hndgzkn.github.io.git --branch main --single-branch gh-pages
-          rm -Rf gh-pages/dev
-          echo ${{github.ref}}
-          echo ${{github.ref_name}}
-          echo ${{github.ref_type}}
-          if [[ ! ${{github.ref_type}} =~ "nc" ]]; then
-             echo "contains"
-          fi;
-          if [ ${{github.ref_type}} == 'branch' ]; then
-             echo "ok"
-          fi;
-    
   build_docs:
     runs-on: ubuntu-latest
     steps:
@@ -51,7 +32,7 @@ jobs:
           path: doc/_build/html/
 
   deploy_docs:
-    if: github.ref == 'refs/heads/multiversion_doc' # 'refs/heads/master'
+    if: github.ref == 'refs/heads/multiversion_doc'  || github.ref == 'refs/heads/tag' # 'refs/heads/master'
     needs:
       build_docs
     runs-on: ubuntu-latest
@@ -66,13 +47,21 @@ jobs:
         run: |
           git clone https://github.com/hndgzkn/hndgzkn.github.io.git --branch main --single-branch gh-pages
           rm -Rf gh-pages/dev
+
+          # copy documentation to dev directory
           cp -a doc/_build/html/ gh-pages/dev
-          echo github.ref_name
-          if [ github.ref_type == 'tag' ]; then
+
+          # if release:
+          # rename current stable directory with the version in version.txt
+          # copy documentation under stable directory
+          # update version.txt with current version
+          if [ ${{github.ref_type}} == 'tag' ]; then
+             mv gh-pages/stable gh-pages/$(cat version.txt)
              cp -a doc/_build/html/ gh-pages/stable
+             echo ${{github.ref_name}} > gh-pages/version.txt
           fi;
+
           cd gh-pages
-          touch .nojekyll
           git config --local user.email "hndgzkn@github.com"
           git config --local user.name "hndgzkn GitHub Action"
           git add .
