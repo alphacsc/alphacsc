@@ -12,8 +12,6 @@ jobs:
 
   trial:
     if: github.ref == 'refs/heads/multiversion_doc'  || github.ref == 'refs/heads/tag' # 'refs/heads/master'
-    needs:
-      build_docs
     runs-on: ubuntu-latest
     steps:
       - name: echo variables
