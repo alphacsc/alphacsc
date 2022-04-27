@@ -10,8 +10,13 @@
     "url": "/0.3/"
   },
   {
-    "name": "0.4.0 (stable)",
+    "name": "0.4.0",
     "version": "0.4.0",
+    "url": "/0.4.0/"
+  },
+  {
+    "name": "0.5.0 (stable)",
+    "version": "0.5.0",
     "url": "/stable/"
   }
 ]
