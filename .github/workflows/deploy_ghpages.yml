@@ -19,7 +19,7 @@ jobs:
           echo ${{github.ref_type}}
           echo ${{github.ref_name}}
           echo ${{github.ref}}
-          if [ ${{github.ref_type}} == 'tag' ] && [ ! ${{github.ref_name}} =~ 'rc' ]; then
+          if [ ${{github.ref_type}} == 'tag' ] && [[ ! ${{github.ref_name}} =~ "rc" ]]; then
               echo "ok"
           fi;
 
@@ -68,7 +68,7 @@ jobs:
           # rename current stable directory with the version in version.txt
           # copy documentation under stable directory
           # update version.txt with current version
-          if [ ${{github.ref_type}} == 'tag' ] && [ ! ${{github.ref_name}} =~ 'rc' ]; then
+          if [ ${{github.ref_type}} == 'tag' ] && [[ ! ${{github.ref_name}} =~ "rc" ]]; then
              mv gh-pages/stable gh-pages/$(cat gh-pages/version.txt)
              cp -a doc/_build/html/ gh-pages/stable
              echo ${{github.ref_name}} > gh-pages/version.txt
