@@ -19,6 +19,9 @@ jobs:
           echo ${{github.ref_type}}
           echo ${{github.ref_name}}
           echo ${{github.ref}}
+          if [ ${{github.ref_type}} == 'tag' ] && [ ! ${{github.ref_name}} =~ 'rc' ]; then
+              echo "ok"
+          fi;
 
   build_docs:
     runs-on: ubuntu-latest
