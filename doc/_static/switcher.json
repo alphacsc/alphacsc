@@ -15,8 +15,13 @@
     "url": "/0.4.0/"
   },
   {
-    "name": "0.5.0 (stable)",
+    "name": "0.5.0",
     "version": "0.5.0",
+    "url": "/0.5.0/"
+  },
+  {
+    "name": "0.6.0 (stable)",
+    "version": "0.6.0",
     "url": "/stable/"
   }
 ]
