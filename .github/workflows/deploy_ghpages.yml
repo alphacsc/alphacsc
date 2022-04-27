@@ -66,7 +66,7 @@ jobs:
           # copy documentation under stable directory
           # update version.txt with current version
           if [ ${{github.ref_type}} == 'tag' ]; then
-             mv gh-pages/stable gh-pages/$(cat version.txt)
+             mv gh-pages/stable gh-pages/$(cat gh-pages/version.txt)
              cp -a doc/_build/html/ gh-pages/stable
              echo ${{github.ref_name}} > gh-pages/version.txt
           fi;
