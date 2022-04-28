@@ -65,7 +65,7 @@ from alphacsc import __version__ as version  # noqa
 # The full version, including alpha/beta/rc tags.
 release = version
 
-if "dev" in release or "rc":
+if "dev" in release or "rc" in release:
     version_match = "dev"
 else:
     version_match = release
