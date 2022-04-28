@@ -28,6 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Cache documentation
+        if: ${{ github.ref_type }} != 'tag'
         uses: actions/cache@v3
         env:
           cache-name: cache-documentation
@@ -47,9 +48,6 @@ jobs:
             apt-get install -y gcc git libopenmpi-dev openmpi-bin
             python -m pip install --upgrade pip
             python -m pip install -e .[doc,dicodile]
-            if [[ ${{github.ref_type}} == 'tag' ]]; then
-               rm -rf doc/_build/html
-            fi;
             ls doc/_build/html
       - name:  Upload generated HTML as artifact
         uses: actions/upload-artifact@v2
