@@ -33,7 +33,7 @@ jobs:
         env:
           cache-name: cache-documentation
         with:
-          path: doc/_build/html/
+          path: doc/_build/doctrees
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ github.ref }}
           restore-keys: |
             ${{ runner.os }}-build-${{ env.cache-name }}-
@@ -48,7 +48,7 @@ jobs:
             apt-get install -y gcc git libopenmpi-dev openmpi-bin
             python -m pip install --upgrade pip
             python -m pip install -e .[doc,dicodile]
-            ls doc/_build/html
+            ls doc/_build/doctrees
       - name:  Upload generated HTML as artifact
         uses: actions/upload-artifact@v2
         with:
