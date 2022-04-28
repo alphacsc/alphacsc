@@ -27,6 +27,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - name: Cache documentation
+        uses: actions/cache@v3
+        env:
+          cache-name: cache-documentation
+        with:
+          path: doc/_build/html/
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ github.ref }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-
+            ${{ runner.os }}-build-
+            ${{ runner.os }}-
       - name: Generate HTML docs
         uses: ax3l/sphinx-action@newer-sphinx
         env:
@@ -38,6 +49,12 @@ jobs:
             apt-get install -y gcc git libopenmpi-dev openmpi-bin
             python -m pip install --upgrade pip
             python -m pip install -e .[doc,dicodile]
+          build-command: |
+            if [ ${{github.ref_type}} == 'tag' ]; then
+               rm -rf doc/_build/html
+            fi;
+            ls doc/_build/html
+            make html
       - name:  Upload generated HTML as artifact
         uses: actions/upload-artifact@v2
         with:
@@ -62,7 +79,9 @@ jobs:
           rm -Rf gh-pages/dev
 
           # copy documentation to dev directory
-          cp -a doc/_build/html/ gh-pages/dev
+          if [ ${{github.ref_type}} == 'tag' ]; then
+              cp -a doc/_build/html/ gh-pages/dev
+          fi;
 
           # if release:
           # rename current stable directory with the version in version.txt
