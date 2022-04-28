@@ -36,8 +36,6 @@ jobs:
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ github.ref }}
           restore-keys: |
             ${{ runner.os }}-build-${{ env.cache-name }}-
-            ${{ runner.os }}-build-
-            ${{ runner.os }}-
       - name: Generate HTML docs
         uses: ax3l/sphinx-action@newer-sphinx
         env:
