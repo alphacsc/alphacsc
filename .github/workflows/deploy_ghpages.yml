@@ -48,7 +48,7 @@ jobs:
             apt-get install -y gcc git libopenmpi-dev openmpi-bin
             python -m pip install --upgrade pip
             python -m pip install -e .[doc,dicodile]
-            ls doc/_build/doctrees
+            ls doc/_build/
       - name:  Upload generated HTML as artifact
         uses: actions/upload-artifact@v2
         with:
