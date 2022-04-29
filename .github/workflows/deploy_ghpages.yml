@@ -28,7 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Cache documentation
-        if: ${{ github.ref_type }} != 'tag' || ${{github.ref_name}} =~ "rc"
+        if: ${{ github.ref_type }} != 'tag'
         uses: actions/cache@v3
         env:
           cache-name: cache-documentation
