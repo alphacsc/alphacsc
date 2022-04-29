@@ -82,7 +82,8 @@ jobs:
           git clone https://github.com/hndgzkn/hndgzkn.github.io.git --branch main --single-branch gh-pages
 
           # copy documentation to dev directory
-          if [ ${{github.ref_type}} == 'branch' ] || [[ ${{github.ref_name}} =~ "rc" ]]; then
+          # when it is not a tag or a it is a tag but release candidate
+          if [ ${{github.ref_type}} != 'tag' ] || [[ ${{github.ref_name}} =~ "rc" ]]; then
               rm -Rf gh-pages/dev
               cp -a doc/_build/html/ gh-pages/dev
           fi;
