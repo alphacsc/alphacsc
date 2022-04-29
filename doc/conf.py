@@ -115,7 +115,7 @@ html_theme_options = {
     "show_toc_level": 1,
     "navbar_end": ["version-switcher", "navbar-icon-links"],
     "switcher": {
-        "json_url": "/dev/_static/switcher.json",
+        "json_url": "/stable/_static/switcher.json",
         "version_match": version_match,
     },
 }
