@@ -70,10 +70,10 @@ jobs:
       - name: Commit to documentation repo
         run: |
           git clone https://github.com/hndgzkn/hndgzkn.github.io.git --branch main --single-branch gh-pages
-          rm -Rf gh-pages/dev
 
           # copy documentation to dev directory
-          if [ ${{github.ref_type}} == 'tag' ]; then
+          if [ ${{github.ref_type}} != 'tag' ]; then
+              rm -Rf gh-pages/dev
               cp -a doc/_build/html/ gh-pages/dev
           fi;
 
