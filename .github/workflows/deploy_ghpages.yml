@@ -10,19 +10,6 @@ on:
     
 jobs:
 
-  trial:
-    if: github.ref == 'refs/heads/multiversion_doc'  || github.ref_type == 'tag'
-    runs-on: ubuntu-latest
-    steps:
-      - name: echo variables
-        run: |
-          echo ${{github.ref_type}}
-          echo ${{github.ref_name}}
-          echo ${{github.ref}}
-          if [ ${{github.ref_type}} == 'tag' ] && [[ ! ${{github.ref_name}} =~ "rc" ]]; then
-              echo "ok"
-          fi;
-
   build_docs:
     runs-on: ubuntu-latest
     steps:
