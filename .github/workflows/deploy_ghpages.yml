@@ -13,17 +13,6 @@ env:
     
 jobs:
 
-  trial:
-    if: ${{ github.ref == 'refs/heads/env.ALPHACSC_BRANCH' }}  || github.ref_type == 'tag'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Commit to documentation repo
-        run: |
-          git clone https://github.com/$DOC_REPO.git --branch main --single-branch gh-pages
-          ls gh-pages
-          echo github.ref
-          
   build_docs:
     runs-on: ubuntu-latest
     steps:
