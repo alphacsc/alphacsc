@@ -7,6 +7,9 @@ on:
   push:
     branches: multiversion_doc # master
 
+env:
+  DOC_REPO: hndgzkn/hndgzkn.github.io
+  ALPHACSC_BRANCH: multiversion_doc # master
     
 jobs:
 
@@ -43,7 +46,7 @@ jobs:
           path: doc/_build/html/
 
   deploy_docs:
-    if: github.ref == 'refs/heads/multiversion_doc'  || github.ref_type == 'tag' # 'refs/heads/master'
+    if: ${{ github.ref == 'refs/heads/env.ALPHACSC_BRANCH' }}  || github.ref_type == 'tag'
     needs:
       build_docs
     runs-on: ubuntu-latest
@@ -56,7 +59,7 @@ jobs:
           path: doc/_build/html/
       - name: Commit to documentation repo
         run: |
-          git clone https://github.com/hndgzkn/hndgzkn.github.io.git --branch main --single-branch gh-pages
+          git clone https://github.com/$DOC_REPO.git --branch main --single-branch gh-pages
 
           # copy documentation to dev directory
           # when it is not a tag or a it is a tag but release candidate
@@ -76,14 +79,14 @@ jobs:
           fi;
 
           cd gh-pages
-          git config --local user.email "hndgzkn@github.com"
-          git config --local user.name "hndgzkn GitHub Action"
+          git config --local user.email "alphacsc@github.com"
+          git config --local user.name "alphacsc GitHub Action"
           git add .
           git commit -m "Update documentation" -a || true
       - name: Push changes
         uses: ad-m/github-push-action@v0.6.0
         with:
-          repository: hndgzkn/hndgzkn.github.io
+          repository: ${{ DOC_REPO }}
           branch: main
           directory: gh-pages
           github_token: ${{ secrets.DEPLOY_PAGES }}
