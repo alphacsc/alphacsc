@@ -13,6 +13,17 @@ env:
     
 jobs:
 
+  trial:
+    if: ${{ github.ref == 'refs/heads/env.ALPHACSC_BRANCH' }}  || github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Commit to documentation repo
+        run: |
+          git clone https://github.com/$DOC_REPO.git --branch main --single-branch gh-pages
+          ls gh-pages
+          echo github.ref
+          
   build_docs:
     runs-on: ubuntu-latest
     steps:
@@ -86,7 +97,7 @@ jobs:
       - name: Push changes
         uses: ad-m/github-push-action@v0.6.0
         with:
-          repository: ${{ DOC_REPO }}
+          repository: ${{ env.DOC_REPO }}
           branch: main
           directory: gh-pages
           github_token: ${{ secrets.DEPLOY_PAGES }}
