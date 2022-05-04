@@ -23,7 +23,9 @@ jobs:
         env:
           cache-name: cache-documentation
         with:
-          path: doc/_build/
+          path: |
+            doc/_build/
+            doc/auto_examples
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ github.ref }}
           restore-keys: |
             ${{ runner.os }}-build-${{ env.cache-name }}-
