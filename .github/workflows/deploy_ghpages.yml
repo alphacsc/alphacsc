@@ -88,7 +88,8 @@ jobs:
       - name: Push changes
         uses: ad-m/github-push-action@v0.6.0
         with:
+          github_token: ${{ secrets.DEPLOY_PAGES }}
           repository: ${{ env.DOC_REPO }}
           branch: master
           directory: gh-pages
-          github_token: ${{ secrets.DEPLOY_PAGES }}
+          
