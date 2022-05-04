@@ -59,7 +59,7 @@ jobs:
           path: doc/_build/html/
       - name: Commit to documentation repo
         run: |
-          git clone https://github.com/$DOC_REPO.git --branch main --single-branch gh-pages
+          git clone https://github.com/$DOC_REPO.git --branch master --single-branch gh-pages
 
           # copy documentation to dev directory
           # when it is not a tag or a it is a tag but release candidate
