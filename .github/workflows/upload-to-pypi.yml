@@ -83,7 +83,6 @@ jobs:
           path: wheelhouse/*.whl
 
   upload_all:
-    if: github.ref == 'refs/heads/deneme'
     needs: [build_wheels, build_aarch64_wheels, make_sdist]
     runs-on: ubuntu-latest
     steps:
