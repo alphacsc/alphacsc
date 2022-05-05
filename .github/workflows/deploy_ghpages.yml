@@ -9,7 +9,6 @@ on:
 
 env:
   DOC_REPO: alphacsc/alphacsc.github.io
-  ALPHACSC_BRANCH: master
     
 jobs:
 
@@ -40,7 +39,6 @@ jobs:
             apt-get install -y gcc git libopenmpi-dev openmpi-bin
             python -m pip install --upgrade pip
             python -m pip install -e .[doc,dicodile]
-            ls doc/_build/
       - name:  Upload generated HTML as artifact
         uses: actions/upload-artifact@v2
         with:
@@ -61,8 +59,6 @@ jobs:
           path: doc/_build/html/
       - name: Commit to documentation repo
         run: |
-          echo ${{ github.ref }}
-          echo ${{ github.ref_type }}
           git clone https://github.com/$DOC_REPO.git --branch master --single-branch gh-pages
 
           # copy documentation to dev directory
@@ -90,8 +86,8 @@ jobs:
       - name: Push changes
         uses: ad-m/github-push-action@v0.6.0
         with:
-          github_token: ${{ secrets.DEPLOY_PAGES }}
           repository: ${{ env.DOC_REPO }}
           branch: master
           directory: gh-pages
+          github_token: ${{ secrets.DEPLOY_PAGES }}
           
