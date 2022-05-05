@@ -1,16 +1,33 @@
 name: Deploy GitHub pages
 
 on:
+  release:
+    types: [created]
   pull_request:
   push:
     branches: master
 
+env:
+  DOC_REPO: alphacsc/alphacsc.github.io
     
 jobs:
+
   build_docs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - name: Cache documentation
+        if: ${{ github.ref_type }} != 'tag'
+        uses: actions/cache@v3
+        env:
+          cache-name: cache-documentation
+        with:
+          path: |
+            doc/_build/
+            doc/auto_examples
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ github.ref }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-
       - name: Generate HTML docs
         uses: ax3l/sphinx-action@newer-sphinx
         env:
@@ -29,7 +46,7 @@ jobs:
           path: doc/_build/html/
 
   deploy_docs:
-    if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/master'  || github.ref_type == 'tag'
     needs:
       build_docs
     runs-on: ubuntu-latest
@@ -42,10 +59,26 @@ jobs:
           path: doc/_build/html/
       - name: Commit to documentation repo
         run: |
-          git clone --no-checkout --depth 1 https://github.com/alphacsc/alphacsc.github.io.git --branch master --single-branch gh-pages
-          cp -r doc/_build/html/* gh-pages/
+          git clone https://github.com/$DOC_REPO.git --branch master --single-branch gh-pages
+
+          # copy documentation to dev directory
+          # when it is not a tag or a it is a tag but release candidate
+          if [ ${{github.ref_type}} != 'tag' ] || [[ ${{github.ref_name}} =~ "rc" ]]; then
+              rm -Rf gh-pages/dev
+              cp -a doc/_build/html/ gh-pages/dev
+          fi;
+
+          # if release:
+          # rename current stable directory with the version in version.txt
+          # copy documentation under stable directory
+          # update version.txt with current version
+          if [ ${{github.ref_type}} == 'tag' ] && [[ ! ${{github.ref_name}} =~ "rc" ]]; then
+             mv gh-pages/stable gh-pages/$(cat gh-pages/version.txt)
+             cp -a doc/_build/html/ gh-pages/stable
+             echo ${{github.ref_name}} > gh-pages/version.txt
+          fi;
+
           cd gh-pages
-          touch .nojekyll
           git config --local user.email "alphacsc@github.com"
           git config --local user.name "alphacsc GitHub Action"
           git add .
@@ -53,7 +86,8 @@ jobs:
       - name: Push changes
         uses: ad-m/github-push-action@v0.6.0
         with:
-          repository: alphacsc/alphacsc.github.io
+          repository: ${{ env.DOC_REPO }}
           branch: master
           directory: gh-pages
           github_token: ${{ secrets.DEPLOY_PAGES }}
+          
