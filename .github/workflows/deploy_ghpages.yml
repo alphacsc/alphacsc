@@ -48,7 +48,7 @@ jobs:
           path: doc/_build/html/
 
   deploy_docs:
-    if: ${{ github.ref == 'refs/heads/env.ALPHACSC_BRANCH' }}  || github.ref_type == 'tag'
+    if: github.ref == 'refs/heads/master'  || github.ref_type == 'tag'
     needs:
       build_docs
     runs-on: ubuntu-latest
@@ -61,6 +61,8 @@ jobs:
           path: doc/_build/html/
       - name: Commit to documentation repo
         run: |
+          echo ${{ github.ref }}
+          echo ${{ github.ref_type }}
           git clone https://github.com/$DOC_REPO.git --branch master --single-branch gh-pages
 
           # copy documentation to dev directory
