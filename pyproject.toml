@@ -10,10 +10,3 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools_scm]
 write_to = "alphacsc/_version.py"
-
-[tool.cibuildwheel]
-build-verbosity = 1
-before-all="rm -r alphacsc/other/sporco"
-test-requires = "pytest"
-test-command = "pytest --pyargs alphacsc"
-
