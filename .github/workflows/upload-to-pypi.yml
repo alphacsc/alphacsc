@@ -3,7 +3,7 @@ name: Upload to Pypi
 on:
   pull_request:
   push:
-    branches: master
+#    branches: master
   release:
     types: [created]
   workflow_dispatch:
