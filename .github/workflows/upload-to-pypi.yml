@@ -11,15 +11,14 @@ on:
       overrideVersion:
         description: Manually force a version
 
-env:
-  SETUPTOOLS_SCM_PRETEND_VERSION: ${{ github.event.inputs.overrideVersion }}
-
 jobs:
   build:
     name: Make SDist
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
     - name: Setup Python
       uses: actions/setup-python@v2
       with:
