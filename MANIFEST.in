@@ -1,5 +1,16 @@
 include *.rst
 recursive-include examples *
+
 include LICENSE
 include README.rst
 include pyproject.toml
+
+prune benchmarks
+prune .github
+prune alphacsc/other
+
+exclude alphacsc/other/.gitignore
+exclude .pre-commit-config.yaml
+
+exclude .gitignore
+exclude doc/.gitignore
