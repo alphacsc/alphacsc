@@ -5,8 +5,13 @@
     "url": "/dev/"
   },
   {
-    "name": "0.3 (stable)",
+    "name": "0.3",
     "version": "0.3",
+    "url": "/0.3/"
+  },
+  {
+    "name": "0.4.0 (stable)",
+    "version": "0.4.0",
     "url": "/stable/"
   }
 ]
