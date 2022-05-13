@@ -291,7 +291,7 @@ if __name__ == '__main__':
         all_results = []
 
         X, info = load_data(
-            dataset='somato', epoch=False, n_jobs=n_jobs, n_trials=2
+            dataset='somato', epoch=False, n_jobs=n_jobs, n_splits=2
         )
 
         if n_channels == 1:

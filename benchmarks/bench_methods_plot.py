@@ -211,7 +211,7 @@ def plot_barplot(all_results_df, threshold, normalize_method, save_name):
 
             hatch = '//' if 'Proposed' in label else ''
 
-            rect = ax.bar(left=x_positions + i * width,
+            rect = ax.bar(x=x_positions + i * width,
                           height=np.array(this_df['mean']), width=width,
                           label=label, hatch=hatch, color=colors[i])
             rect_list.append(rect)
