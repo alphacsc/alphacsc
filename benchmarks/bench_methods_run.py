@@ -279,6 +279,9 @@ if __name__ == '__main__':
     out_iterator = itertools.product(n_times_atom_list, n_atoms_list,
                                      n_channel_list, reg_list)
 
+    if not os.path.exists("figures"):
+        os.mkdir("figures")
+
     for params in out_iterator:
         n_times_atom, n_atoms, n_channels, reg = params
         msg = 'n_times_atom, n_atoms, n_channels, reg = ' + str(params)
