@@ -80,8 +80,7 @@ def get_signals(n_channels=50, n_times_atom=64, n_times_valid=640,
     # add atoms
     z = np.array([sparse.random(n_atoms, n_times_valid, density=.05,
                                 random_state=random_state).toarray()
-                 for _ in range(n_trials)])
-    z = np.swapaxes(z, 0, 1)
+                  for _ in range(n_trials)])
 
     X = construct_X_multi(z, uv, n_channels=n_channels)
 
