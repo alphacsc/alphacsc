@@ -49,7 +49,7 @@ n_states = 1
 # loop over parameters
 n_times_atom_list = [32]
 n_atoms_list = [2]
-n_channel_list = [1]
+n_channel_list = [1, 5, 204]
 reg_list = [10.]
 
 
