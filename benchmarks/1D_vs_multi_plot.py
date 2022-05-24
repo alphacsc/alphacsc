@@ -56,7 +56,7 @@ if __name__ == "__main__":
             all_results_df['run_n_channels'] == n_channels]
         for sigma in span_sigma:
             results = results_n_channel[results_n_channel['sigma'] == sigma]
-            results = results.groupby(['random_state']).min()
+            results = results.groupby(['random_state']).min(numeric_only=True)
             curve += [results.score.mean()]
         color = colormap(normalize(n_channels))
         plt.loglog(span_sigma, curve, color=color,
