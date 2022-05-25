@@ -74,6 +74,23 @@ def run_multivariate(X, D_init, reg, n_iter, random_state,
         raise_on_increase=False)
 
 
+def run_multivariate_dicodile(X, D_init, reg, n_iter, random_state,
+                              label, n_channels):
+    n_atoms, n_channels_n_times_atom = D_init.shape
+    n_times_atom = n_channels_n_times_atom - n_channels
+    D_init = get_D(D_init, n_channels)
+
+    solver_z_kwargs = dict(max_iter=500, tol=1e-1)
+    return learn_d_z_multi(
+        X, n_atoms, n_times_atom, reg=reg, n_iter=n_iter,
+        uv_constraint='auto', rank1=False, D_init=D_init,
+        solver_d='auto', solver_d_kwargs=dict(max_iter=50),
+        solver_z="dicodile", solver_z_kwargs=solver_z_kwargs,
+        name="dicodile-{}-{}".format(n_channels, random_state),
+        random_state=random_state, n_jobs=10, verbose=VERBOSE,
+        raise_on_increase=False)
+
+
 def run_cbpdn(X, ds_init, reg, n_iter, random_state, label, n_channels):
     # use only one thread in fft
     import sporco.linalg
@@ -176,6 +193,8 @@ if __name__ == '__main__':
                         help='number of cores used to run the experiment')
     parser.add_argument('--dense', action="store_true",
                         help='run the experiment for multivariate')
+    parser.add_argument('--dicodile', action="store_true",
+                        help='run the experiment for multivariate dicodile')
     parser.add_argument('--wohlberg', action="store_true",
                         help='run the experiment for wohlberg')
 
@@ -211,6 +230,11 @@ if __name__ == '__main__':
         span_channels = np.unique(np.floor(
             np.logspace(0, np.log10(n_channels), 10)).astype(int))[:5]
 
+    if args.dicodile:
+        methods = [[run_multivariate_dicodile, 'dicodile', n_iter]]
+        span_channels = np.unique(np.floor(
+            np.logspace(0, np.log10(n_channels), 10)).astype(int))[:5]
+
     if args.wohlberg:
         methods = [[run_cbpdn, 'wohlberg', n_iter]]
         span_channels = np.unique(np.floor(
@@ -229,6 +253,8 @@ if __name__ == '__main__':
     suffix = ""
     if args.dense:
         suffix = "_dense"
+    if args.dicodile:
+        suffix = "_dicodile"
     if args.wohlberg:
         suffix = "_wohlberg"
 
