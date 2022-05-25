@@ -3,9 +3,8 @@ Benchmark different solver of the same CSC univariate or multivariate problem.
 
 This script needs the following packages:
     pip install pandas pyfftw
-    pip install alphacsc/other/sporco
 
-- Use bench_methods_run.py to run the benchmark.
+- Use bench_methods_proposed_run.py to run the benchmark.
   The results are saved in alphacsc/figures.
 - Use bench_methods_plot.py to plot the results.
   The figures are saved in alphacsc/figures.
@@ -20,9 +19,6 @@ import numpy as np
 import pandas as pd
 import scipy.sparse as sp
 from joblib import Parallel, delayed
-
-import alphacsc.other.heide_csc as CSC
-from sporco.admm.cbpdndl import ConvBPDNDictLearn
 
 from alphacsc.update_d import update_d_block
 from alphacsc.learn_d_z import learn_d_z
@@ -56,28 +52,6 @@ reg_list = [10.]
 ######################################
 # Functions compared in the benchmark
 ######################################
-
-
-def run_admm(X, ds_init, reg, n_iter, random_state, label, max_it_d=10,
-             max_it_z=10):
-    # admm with the following differences
-    # - positivity constraints
-    # - different init
-    # - d step and z step are swapped
-    tol = np.float64(1e-3)
-    size_kernel = ds_init.shape
-    assert size_kernel[1] % 2 == 1
-    [d, z, Dz, list_obj_val, times_admm] = CSC.learn_conv_sparse_coder(
-        X, size_kernel, max_it=n_iter, tol=tol, random_state=random_state,
-        lambda_prior=reg, ds_init=ds_init, verbose=verbose, max_it_d=max_it_d,
-        max_it_z=max_it_z)
-
-    # z.shape = (n_trials, n_atoms, n_times + 2 * n_times_atom)
-    z = z[:, :, 2 * n_times_atom:-2 * n_times_atom]
-    z = z.swapaxes(0, 1)
-    # z.shape = (n_atoms, n_trials, n_times - 2 * n_times_atom)
-
-    return list_obj_val, np.cumsum(times_admm)[::2], d, z
 
 
 def run_fista(X, ds_init, reg, n_iter, random_state, label):
