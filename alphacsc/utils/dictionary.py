@@ -33,7 +33,7 @@ def flip_uv(uv, n_channels):
 
     Return
     ------
-    uv: array (n_atoms, n_channels + n_times_atom)
+    uv: array, shape (n_atoms, n_channels + n_times_atom)
     """
     v = uv[:, n_channels:]
     index_array = np.argmax(np.absolute(v), axis=1)
