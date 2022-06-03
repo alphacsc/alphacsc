@@ -7,13 +7,13 @@ def get_D(uv_hat, n_channels):
 
     Parameter
     ---------
-    uv: array (n_atoms, n_channels + n_times_atom)
+    uv: array, shape (n_atoms, n_channels + n_times_atom)
     n_channels: int
         number of channels in the original multivariate series
 
     Return
     ------
-    D: array (n_atoms, n_channels, n_times_atom)
+    D: array, shape (n_atoms, n_channels, n_times_atom)
     """
 
     return uv_hat[:, :n_channels, None] * uv_hat[:, None, n_channels:]
@@ -37,9 +37,8 @@ def flip_uv(uv, n_channels):
     """
     v = uv[:, n_channels:]
     index_array = np.argmax(np.abs(v), axis=1)
-    val_index = np.take_along_axis(v, np.expand_dims(
-        index_array, axis=-1), axis=-1).squeeze(axis=-1)
-    uv[val_index < 0] *= -1
+    peak_value = v[:, index_array]
+    uv[peak_value < 0] *= -1
     return uv
 
 
@@ -48,11 +47,11 @@ def get_uv(D):
 
     Parameter
     ---------
-    D: array (n_atoms, n_channels, n_times_atom)
+    D: array, shape (n_atoms, n_channels, n_times_atom)
 
     Return
     ------
-    uv: array (n_atoms, n_channels + n_times_atom)
+    uv: array, shape (n_atoms, n_channels + n_times_atom)
     """
     n_atoms, n_channels, n_times_atom = D.shape
     uv = np.zeros((n_atoms, n_channels + n_times_atom))

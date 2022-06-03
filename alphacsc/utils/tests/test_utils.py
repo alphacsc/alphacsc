@@ -70,16 +70,16 @@ def test_flip_uv():
 
     uv = rng.randn(n_atoms, n_channels + n_times_atoms)
     uv = prox_uv(uv, uv_constraint='separate', n_channels=n_channels)
-    D = get_D(uv, n_channels)
     uv_flip = flip_uv(uv, n_channels)
-    D_flip = get_D(uv_flip, n_channels)
     v_flip = uv_flip[:, n_channels:]
-
     index_array = np.argmax(np.absolute(v_flip), axis=1)
-    val_index = np.take_along_axis(v_flip, np.expand_dims(
-        index_array, axis=-1), axis=-1).squeeze(axis=-1)
+    peak_value = v_flip[:, index_array]
+    # ensure that all temporal patterns v peak in positive after flip
+    assert all(peak_value >= 0)
 
-    assert (val_index < 0).sum() == 0
+    # ensure that the resulting dictionnaries D stay close
+    D = get_D(uv, n_channels)
+    D_flip = get_D(uv_flip, n_channels)
     assert_allclose(D, D_flip)
 
 
