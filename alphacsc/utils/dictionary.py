@@ -22,7 +22,7 @@ def get_D(uv_hat, n_channels):
 def flip_uv(uv, n_channels):
     """Ensure the temporal pattern v peak is positive for each atom.
 
-      If necessary, multiply both u and v by -1.
+    If necessary, multiply both u and v by -1.
 
     Parameter
     ---------
