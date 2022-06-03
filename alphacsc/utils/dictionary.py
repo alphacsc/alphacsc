@@ -26,7 +26,7 @@ def flip_uv(uv, n_channels):
 
     Parameter
     ---------
-    uv: array (n_atoms, n_channels + n_times_atom)
+    uv: array, shape (n_atoms, n_channels + n_times_atom)
         Rank1 dictionary which should be modified.
     n_channels: int
         number of channels in the original multivariate series
