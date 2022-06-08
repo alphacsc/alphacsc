@@ -286,6 +286,8 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
     def uv_hat_(self):
         """array: dictionary in rank 1 mode. If `rank1 = False`, this is an
         approximation of the dictionary obtained through svd.
+        Ensure, for each atom, that the temporal pattern v peaks is positive,
+        to uniformize visual representation (simple practical convention).
 
         shape (n_atoms, n_channels + n_times_atom)
         """
