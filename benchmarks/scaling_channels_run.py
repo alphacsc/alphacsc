@@ -9,7 +9,7 @@ This script performs the computations and save the results in a pickled file
 `figures/methods_scaling_reg*.pkl` which can be plotted using
 `scaling_channels_plot.py`.
 """
-import os
+from pathlib import Path
 import time
 import itertools
 
@@ -200,6 +200,10 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    figures_dir = Path('figures')
+    if not figures_dir.exists():
+        figures_dir.mkdir(exist_ok=True)
+
     # Use the caching utilities from joblib to same intermediate results and
     # avoid loosing computations when the interpreter crashes.
     mem = Memory(location='.', verbose=0)
@@ -258,12 +262,12 @@ if __name__ == '__main__':
     if args.wohlberg:
         suffix = "_wohlberg"
 
-    save_name = 'methods_scaling_reg{}{}.pkl'.format(reg, suffix)
-    if not os.path.exists("figures"):
-        os.mkdir("figures")
-    save_name = os.path.join('figures', save_name)
+    file_name = f'methods_scaling_reg{reg}{suffix}.pkl'
+    save_path = figures_dir.joinpath(file_name)
+
     all_results_df = pd.DataFrame(
         all_results, columns='n_channels random_state label pobj times '
         'd_hat z_hat n_atoms n_times_atom reg'.split(' '))
-    all_results_df.to_pickle(save_name)
+
+    all_results_df.to_pickle(save_path)
     print('-- End of the script --')

@@ -12,6 +12,7 @@ This script needs the following packages:
 
 from __future__ import print_function
 import os
+from pathlib import Path
 import time
 import itertools
 
@@ -225,17 +226,15 @@ if __name__ == '__main__':
     out_iterator = itertools.product(n_times_atom_list, n_atoms_list,
                                      n_channel_list, reg_list)
 
-    if not os.path.exists("figures"):
-        os.mkdir("figures")
+    figures_dir = Path('figures')
+    if not figures_dir.exists():
+        figures_dir.mkdir(exist_ok=True)
 
     for params in out_iterator:
         n_times_atom, n_atoms, n_channels, reg = params
         msg = 'n_times_atom, n_atoms, n_channels, reg = ' + str(params)
         print(colorify(msg, RED))
         print(colorify('-' * len(msg), RED))
-
-        save_name = base_name + str(params)
-        save_name = os.path.join('figures', save_name)
 
         all_results = []
 
@@ -271,10 +270,13 @@ if __name__ == '__main__':
 
         all_results.extend(results)
 
+        file_name = base_name + str(params) + '.pkl'
+        save_path = figures_dir.joinpath(file_name)
+
         all_results_df = pd.DataFrame(
             all_results, columns='random_state label pobj times d_hat '
             'z_hat n_atoms n_times_atom n_trials n_times n_channels reg'.
             split(' '))
-        all_results_df.to_pickle(save_name + '.pkl')
+        all_results_df.to_pickle(save_path)
 
     print('-- End of the script --')

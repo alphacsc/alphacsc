@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 import itertools
 
 import matplotlib
@@ -261,8 +261,9 @@ if __name__ == '__main__':
     ############################
 
     all_results_df = None
-    for load_name in os.listdir('figures'):
-        load_name = os.path.join('figures', load_name)
+    figures_dir = Path('figures')
+    for load_name in figures_dir.iterdir():
+        load_name = str(load_name)
         if (load_name[-4:] == '.pkl' and
                 ('run' in load_name or 'debug' in load_name)):
             print("load %s" % load_name)
@@ -283,5 +284,5 @@ if __name__ == '__main__':
 
     # plot the aggregation of all results
     plot_barplot(all_results_df, threshold=1e-2, normalize_method='last',
-                 save_name=os.path.join('figures', 'all'))
+                 save_name=str(figures_dir.joinpath('all')))
     plt.close('all')

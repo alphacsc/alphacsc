@@ -5,7 +5,7 @@ This script requires `pandas` which can be installed with `pip install pandas`.
 This script performs the computations and save the results in a pickled file
 `figures/rank1_snr.pkl` which can be plotted using `1D_vs_multi_plot.py`.
 """
-import os
+from pathlib import Path
 import itertools
 import numpy as np
 import pandas as pd
@@ -152,6 +152,10 @@ if __name__ == "__main__":
                         help='Number of processes used to run the benchmark.')
     args = parser.parse_args()
 
+    figures_dir = Path('figures')
+    if not figures_dir.exists():
+        figures_dir.mkdir(exist_ok=True)
+
     # Use the caching utilities from joblib to same intermediate results and
     # avoid loosing computations when the interpreter crashes.
     mem = Memory(location='.', verbose=VERBOSE)
@@ -186,11 +190,10 @@ if __name__ == "__main__":
     )
 
     # save all results for plotting with 1D_vs_multi_plot.py script.
-    save_name = 'rank1_snr.pkl'
-    if not os.path.exists("figures"):
-        os.mkdir("figures")
-    save_name = os.path.join('figures', save_name)
+    file_name = 'rank1_snr.pkl'
+    save_path = figures_dir.joinpath(file_name)
+
     all_results_df = pd.DataFrame(
         results, columns='random_state sigma run_n_channels '
                          'score uv uv_hat reg'.split(' '))
-    all_results_df.to_pickle(save_name)
+    all_results_df.to_pickle(save_path)

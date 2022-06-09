@@ -3,7 +3,7 @@
 This script plots the results saved by the script 1D_vs_multi_run.py, which
 should be run beforehand.
 """
-import os
+from pathlib import Path
 import numpy as np
 import pandas as pd
 import matplotlib as mpl
@@ -25,7 +25,8 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     file_name = args.file_name
-    if not os.path.exists(file_name):
+
+    if not Path(file_name).exists():
         raise FileNotFoundError("Could not find result file '{}'. Make sure "
                                 "to run 1D_vs_multi_run.py before using this "
                                 "script.")
