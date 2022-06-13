@@ -83,6 +83,7 @@ def test_flip_uv():
     D_flip = get_D(uv_flip, n_channels)
     assert_allclose(D, D_flip)
 
+
 def test_patch_reconstruction_error():
     rng = check_random_state(42)
     n_times_atoms, n_times = 21, 128
