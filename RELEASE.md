@@ -2,6 +2,50 @@
 
 This page describes the procedure to release to PyPI.
 
+### Before release
+
+Before each release [switcher.json](doc/_static/switcher.json) file should be
+updated with the latest release version. For example, `the switcher.json` file for
+latest stable release `0.3`:
+
+```json
+[
+  {
+    "name": "dev",
+    "version": "dev",
+    "url": "/dev/"
+  },
+  {
+    "name": "0.3 (stable)",
+    "version": "0.3",
+    "url": "/stable/"
+  }
+]
+```
+becomes:
+
+```json
+[
+  {
+    "name": "dev",
+    "version": "dev",
+    "url": "/dev/"
+  },
+  {
+    "name": "0.3",
+    "version": "0.3",
+    "url": "/0.3/"
+  },
+  {
+    "name": "0.4.0 (stable)",
+    "version": "0.4.0",
+    "url": "/stable/"
+  }
+]
+```
+for release `0.4.0`.
+
+
 ### Automatic procedure
 
 Create a [Github release](https://github.com/alphacsc/alphacsc/releases) with a version tag (e.g. "v1.2.3").

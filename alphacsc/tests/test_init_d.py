@@ -6,7 +6,6 @@ from numpy.testing import assert_allclose
 
 from alphacsc.init_dict import init_dictionary
 from alphacsc.update_d_multi import prox_uv, prox_d
-from alphacsc.update_d_multi import check_solver_and_constraints
 from alphacsc.learn_d_z_multi import learn_d_z_multi
 from alphacsc.utils import check_random_state
 
@@ -18,13 +17,9 @@ def test_init_array(rank1, solver_d, uv_constraint):
     n_trials, n_channels, n_times = 5, 3, 100
     n_times_atom, n_atoms = 10, 4
 
-    _, uv_constraint_ = check_solver_and_constraints(
-        rank1, solver_d, uv_constraint
-    )
-
     if rank1:
         expected_shape = (n_atoms, n_channels + n_times_atom)
-        prox = functools.partial(prox_uv, uv_constraint=uv_constraint_,
+        prox = functools.partial(prox_uv, uv_constraint=uv_constraint,
                                  n_channels=n_channels)
     else:
         expected_shape = (n_atoms, n_channels, n_times_atom)
@@ -35,7 +30,7 @@ def test_init_array(rank1, solver_d, uv_constraint):
     # Test that init_dictionary is doing what we expect for D_init array
     D_init = np.random.randn(*expected_shape)
     D_hat = init_dictionary(X, n_atoms, n_times_atom, D_init=D_init,
-                            rank1=rank1, uv_constraint=uv_constraint_)
+                            rank1=rank1, uv_constraint=uv_constraint)
 
     D_init = prox(D_init)
     assert_allclose(D_hat, D_init)
@@ -58,13 +53,9 @@ def test_init_random(rank1, solver_d, uv_constraint):
     n_trials, n_channels, n_times = 5, 3, 100
     n_times_atom, n_atoms = 10, 4
 
-    _, uv_constraint_ = check_solver_and_constraints(
-        rank1, solver_d, uv_constraint
-    )
-
     if rank1:
         expected_shape = (n_atoms, n_channels + n_times_atom)
-        prox = functools.partial(prox_uv, uv_constraint=uv_constraint_,
+        prox = functools.partial(prox_uv, uv_constraint=uv_constraint,
                                  n_channels=n_channels)
     else:
         expected_shape = (n_atoms, n_channels, n_times_atom)
@@ -75,7 +66,7 @@ def test_init_random(rank1, solver_d, uv_constraint):
     # Test that init_dictionary is doing what we expect for D_init random
     random_state = 42
     D_hat = init_dictionary(X, n_atoms, n_times_atom, D_init='random',
-                            rank1=rank1, uv_constraint=uv_constraint_,
+                            rank1=rank1, uv_constraint=uv_constraint,
                             random_state=random_state)
     rng = check_random_state(random_state)
 
@@ -101,7 +92,7 @@ def test_init_random(rank1, solver_d, uv_constraint):
 
 @pytest.mark.parametrize("rank1", [True, False])
 @pytest.mark.parametrize("D_init", [
-    None, 'random', 'chunk', 'kmeans'
+    None, 'random', 'chunk',
 ])
 def test_init_shape(D_init, rank1):
     n_trials, n_channels, n_times = 5, 3, 100

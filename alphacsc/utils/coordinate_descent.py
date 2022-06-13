@@ -2,7 +2,6 @@
 
 import time
 import numpy as np
-from scipy import sparse
 
 from . import check_random_state
 from .dictionary import get_D_shape
@@ -82,8 +81,9 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
         pobj = [objective(z_hat)]
         t_start = time.time()
 
-    beta, dz_opt, tol = _init_beta(Xi, z_hat, D, constants, reg, norm_Dk,
-                                   tol, use_sparse_dz=False)
+    beta, dz_opt, tol = _init_beta(
+        Xi, z_hat, D, constants, reg, norm_Dk, tol
+    )
 
     # If we freeze the support, we put dz_opt to zero outside the support of z0
     if freeze_support:
@@ -158,11 +158,10 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
     return z_hat
 
 
-def _init_beta(Xi, z_hat, D, constants, reg, norm_Dk, tol,
-               use_sparse_dz=False):
+def _init_beta(Xi, z_hat, D, constants, reg, norm_Dk, tol):
     # Init beta with -DtX
-    beta = gradient_zi(Xi, z_hat, D=D, reg=None, loss='l2',
-                       return_func=False, constants=constants)
+    beta = gradient_zi(Xi, z_hat, D=D, reg=None, return_func=False,
+                       constants=constants)
 
     for k, t in zip(*z_hat.nonzero()):
         beta[k, t] -= z_hat[k, t] * norm_Dk[k]  # np.sum(DtD[k, k, t0])
@@ -170,9 +169,6 @@ def _init_beta(Xi, z_hat, D, constants, reg, norm_Dk, tol,
     dz_opt = np.maximum(-beta - reg, 0) / norm_Dk - z_hat
 
     tol = tol * np.std(Xi)
-    if use_sparse_dz:
-        dz_opt[abs(dz_opt) < tol] = 0
-        dz_opt = sparse.lil_matrix(dz_opt)
 
     return beta, dz_opt, tol
 

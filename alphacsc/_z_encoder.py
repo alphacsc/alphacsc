@@ -1,28 +1,21 @@
 import numpy as np
 
+from .utils import construct_X_multi
 from .utils.dictionary import get_D_shape
 from .update_z_multi import update_z_multi
-from .utils.dictionary import _patch_reconstruction_error
-from .loss_and_gradient import compute_X_and_objective_multi
+from .utils.dictionary import (
+    _patch_reconstruction_error, get_uv, get_lambda_max
+)
+from .loss_and_gradient import compute_objective
 
 DEFAULT_TOL_Z = 1e-3
 
 # XXX check consistency / proper use!
 
 
-def get_z_encoder_for(
-        X,
-        D_hat,
-        n_atoms,
-        n_times_atom,
-        n_jobs,
-        solver='l-bfgs',
-        solver_kwargs=dict(),
-        reg=0.1,
-        loss='l2',
-        loss_params=None,
-        uv_constraint='auto',
-        feasible_evaluation=False):
+def get_z_encoder_for(X, D_hat, n_atoms, n_times_atom, n_jobs,
+                      solver='l-bfgs', solver_kwargs=dict(),
+                      reg=0.1):
     """
     Returns a z encoder for the required solver.
 
@@ -48,23 +41,6 @@ def get_z_encoder_for(
         Additional keyword arguments to pass to update_z_multi.
     reg : float
         The regularization parameter.
-    loss : {{ 'l2' (default) | 'dtw' | 'whitening'}}
-        Loss for the data-fit term. Either the norm l2 or the soft-DTW.
-        If solver is 'dicodile', then the loss must be 'l2'.
-    loss_params : dict | None
-        Parameters of the loss.
-        If solver_z is 'dicodile', then loss_params should be None.
-    uv_constraint : {{'auto' | 'joint' | 'separate'}}
-        The kind of norm constraint on the atoms:
-
-        - :code:`'joint'`: the constraint is ||[u, v]||_2 <= 1
-        - :code:`'separate'`: the constraint is ||u||_2 <= 1 and ||v||_2 <= 1
-
-        If solver_z is 'dicodile', then uv_constraint must be auto.
-    feasible_evaluation : boolean, default False
-        If feasible_evaluation is True, it first projects on the feasible set,
-        i.e. norm(uv_hat) <= 1.
-        If solver_z is 'dicodile', then feasible_evaluation must be False.
 
     Returns
     -------
@@ -87,54 +63,18 @@ def get_z_encoder_for(
 
     assert reg is not None, 'reg value cannot be None.'
 
-    assert loss in ['l2', 'dtw', 'whitening'], (
-        f'unrecognized loss type: {loss}.'
-    )
-
-    assert (loss_params is None) or isinstance(loss_params, dict), (
-        'loss_params should be a valid dict or None.'
-    )
-
-    assert uv_constraint in ['joint', 'separate', 'auto'], (
-        f'unrecognized uv_constraint type: {uv_constraint}.'
-    )
-
     if solver in ['l-bfgs', 'lgcd']:
-        if uv_constraint == 'auto':
-            uv_constraint = 'separate'
 
         return AlphaCSCEncoder(
-            X,
-            D_hat,
-            n_atoms,
-            n_times_atom,
-            n_jobs,
-            solver,
-            solver_kwargs,
-            reg,
-            loss,
-            loss_params,
-            uv_constraint,
-            feasible_evaluation)
-    elif solver == 'dicodile':
-        assert loss == 'l2', f"DiCoDiLe requires a l2 loss ('{loss}' passed)."
-        assert loss_params is None, "DiCoDiLe requires loss_params=None."
-        assert feasible_evaluation is False, (
-            "DiCoDiLe requires feasible_evaluation=False."
-        )
-        assert uv_constraint == 'auto',  (
-            "DiCoDiLe requires uv_constraint=auto."
+            X, D_hat, n_atoms, n_times_atom, n_jobs,
+            solver, solver_kwargs, reg
         )
 
+    elif solver == 'dicodile':
+
         return DicodileEncoder(
-            X,
-            D_hat,
-            n_atoms,
-            n_times_atom,
-            n_jobs,
-            solver_kwargs,
-            reg,
-            loss
+            X, D_hat, n_atoms, n_times_atom, n_jobs,
+            solver_kwargs, reg
         )
     else:
         raise ValueError(f'unrecognized solver type: {solver}.')
@@ -142,16 +82,8 @@ def get_z_encoder_for(
 
 class BaseZEncoder:
 
-    def __init__(
-            self,
-            X,
-            D_hat,
-            n_atoms,
-            n_times_atom,
-            n_jobs,
-            solver_kwargs,
-            reg,
-            loss):
+    def __init__(self, X, D_hat, n_atoms, n_times_atom, n_jobs,
+                 solver_kwargs, reg):
 
         self.X = X
         self.D_hat = D_hat
@@ -161,7 +93,6 @@ class BaseZEncoder:
 
         self.solver_kwargs = solver_kwargs
         self.reg = reg
-        self.loss = loss
 
         self.n_trials, self.n_channels, self.n_times = X.shape
         self.n_times_valid = self.n_times - self.n_times_atom + 1
@@ -186,6 +117,23 @@ class BaseZEncoder:
         """
         raise NotImplementedError()
 
+    def compute_objective(self, D):
+        '''Compute the value of the objective function.
+
+        Parameters
+        ----------
+        D : array, shape (n_atoms, n_channels + n_times_atom) or
+                         (n_atoms, n_channels, n_times_atom)
+            The atoms to learn from the data.
+            D should be feasible.
+
+        Returns
+        -------
+        obj :
+            The value of objective function.
+        '''
+        return compute_objective(D=D, constants=self.get_constants())
+
     def get_cost(self):
         """
         Computes the cost of the current sparse representation (z_hat)
@@ -193,6 +141,7 @@ class BaseZEncoder:
         Returns
         -------
         cost: float
+            The value of the objective function
         """
         raise NotImplementedError()
 
@@ -266,37 +215,27 @@ class BaseZEncoder:
         """
         raise NotImplementedError()
 
-    def set_reg(self, reg):
+    def update_reg(self, is_per_atom):
         """
         Update the regularization parameter.
 
         Parameters
         ----------
-        reg : float
-              Regularization parameter
+        is_per_atom: bool
+            True if lmbd_max='per_atom'; False otherwise
+
         """
-        raise NotImplementedError()
+        self.reg = self.reg * get_lambda_max(self.X, self.D_hat)
+
+        if not is_per_atom:
+            self.reg = self.reg.max()
 
     def get_constants(self):
         """
         """
 
-        return dict(n_channels=self.n_channels,
-                    XtX=self.XtX,
-                    ztz=self.ztz,
-                    ztX=self.ztX)
-
-    def add_one_atom(self, new_atom):
-        """
-        Add one atom to the dictionary and extend z_hat
-        to match the new dimensions.
-
-        Parameters
-        ----------
-        new_atom : array, shape (n_channels + n_times_atom)
-            A new atom to add to the dictionary.
-        """
-        raise NotImplementedError()
+        return dict(n_channels=self.n_channels, XtX=self.XtX,
+                    ztz=self.ztz, ztX=self.ztX)
 
     def __enter__(self):
         return self
@@ -306,37 +245,14 @@ class BaseZEncoder:
 
 
 class AlphaCSCEncoder(BaseZEncoder):
-    def __init__(
-            self,
-            X,
-            D_hat,
-            n_atoms,
-            n_times_atom,
-            n_jobs,
-            solver,
-            solver_kwargs,
-            reg,
-            loss,
-            loss_params,
-            uv_constraint,
-            feasible_evaluation):
+    def __init__(self, X, D_hat, n_atoms, n_times_atom, n_jobs,
+                 solver, solver_kwargs, reg):
 
-        super().__init__(X,
-                         D_hat,
-                         n_atoms,
-                         n_times_atom,
-                         n_jobs,
-                         solver_kwargs,
-                         reg,
-                         loss)
-
-        if loss_params is None:
-            loss_params = dict(gamma=.1, sakoe_chiba_band=10, ordar=10)
+        super().__init__(
+            X, D_hat, n_atoms, n_times_atom, n_jobs,  solver_kwargs, reg
+        )
 
         self.solver = solver
-        self.loss_params = loss_params
-        self.uv_constraint = uv_constraint
-        self.feasible_evaluation = feasible_evaluation
 
         effective_n_atoms = self.D_hat.shape[0]
         self.z_hat = self._get_new_z_hat(effective_n_atoms)
@@ -353,17 +269,10 @@ class AlphaCSCEncoder(BaseZEncoder):
         reg = self.reg if not unbiased_z_hat else 0
 
         return update_z_multi(
-            X,
-            self.D_hat,
-            reg=reg,
-            z0=z0,
-            solver=self.solver,
-            solver_kwargs=self.solver_kwargs,
-            freeze_support=unbiased_z_hat,
-            loss=self.loss,
-            loss_params=self.loss_params,
-            n_jobs=self.n_jobs,
-            return_ztz=True)
+            X, self.D_hat, reg=reg, z0=z0, solver=self.solver,
+            solver_kwargs=self.solver_kwargs, freeze_support=unbiased_z_hat,
+            n_jobs=self.n_jobs, return_ztz=True
+        )
 
     def compute_z(self, unbiased_z_hat=False):
         self.z_hat, self.ztz, self.ztX = self._compute_z_aux(self.X,
@@ -385,16 +294,12 @@ class AlphaCSCEncoder(BaseZEncoder):
         self.ztX = alpha * self.ztX + self.ztX_i0
 
     def get_cost(self):
-        cost = compute_X_and_objective_multi(self.X,
-                                             self.z_hat,
-                                             self.D_hat,
-                                             reg=self.reg,
-                                             loss=self.loss,
-                                             loss_params=self.loss_params,
-                                             uv_constraint=self.uv_constraint,
-                                             feasible_evaluation=True,
-                                             return_X_hat=False)
-        return cost
+
+        X_hat = construct_X_multi(self.z_hat, D=self.D_hat,
+                                  n_channels=self.n_channels)
+
+        return compute_objective(X=self.X, X_hat=X_hat, z_hat=self.z_hat,
+                                 reg=self.reg)
 
     def get_sufficient_statistics(self):
         assert hasattr(self, 'ztz') and hasattr(self, 'ztX'), (
@@ -426,20 +331,23 @@ class AlphaCSCEncoder(BaseZEncoder):
 
         n_channels = self.X.shape[1]
         *_, n_times_atom = get_D_shape(self.D_hat, n_channels)
-        return self.X[n0, :, t0:t0 + n_times_atom][None]
+
+        patch = self.X[n0, :, t0:t0 + n_times_atom][None]
+        if self.D_hat.ndim == 2:
+            patch = get_uv(patch)
+        return patch
 
     def set_D(self, D):
         self.D_hat = D
 
-    def set_reg(self, reg):
-        self.reg = reg
+        nb_missing_atoms = D.shape[0] - self.z_hat.shape[1]
 
-    def add_one_atom(self, new_atom):
-        assert new_atom.shape == (self.n_times_atom + self.X.shape[1],)
-        self.D_hat = np.concatenate([self.D_hat, new_atom[None]])
-        self.z_hat = np.concatenate(
-            [self.z_hat, self._get_new_z_hat(1)], axis=1
-        )
+        assert nb_missing_atoms >= 0
+
+        if nb_missing_atoms > 0:
+            self.z_hat = np.concatenate(
+                [self.z_hat, self._get_new_z_hat(nb_missing_atoms)], axis=1
+            )
 
     def get_z_hat(self):
         return self.z_hat
@@ -459,16 +367,8 @@ class AlphaCSCEncoder(BaseZEncoder):
 
 
 class DicodileEncoder(BaseZEncoder):
-    def __init__(
-            self,
-            X,
-            D_hat,
-            n_atoms,
-            n_times_atom,
-            n_jobs,
-            solver_kwargs,
-            reg,
-            loss):
+    def __init__(self, X, D_hat, n_atoms, n_times_atom, n_jobs,
+                 solver_kwargs, reg):
         try:
             import dicodile
         except ImportError as ie:
@@ -476,14 +376,9 @@ class DicodileEncoder(BaseZEncoder):
                 'Please install DiCoDiLe by running '
                 '"pip install alphacsc[dicodile]"') from ie
 
-        super().__init__(X,
-                         D_hat,
-                         n_atoms,
-                         n_times_atom,
-                         n_jobs,
-                         solver_kwargs,
-                         reg,
-                         loss)
+        super().__init__(
+            X, D_hat, n_atoms, n_times_atom, n_jobs, solver_kwargs, reg
+        )
 
         self._encoder = dicodile.update_z.distributed_sparse_encoder.DistributedSparseEncoder(  # noqa: E501
             n_workers=n_jobs)
@@ -542,6 +437,7 @@ class DicodileEncoder(BaseZEncoder):
         Returns
         -------
         cost: float
+            The value of the objective function.
         """
         if hasattr(self, 'run_statistics'):
             return self._encoder.get_cost()
@@ -600,7 +496,11 @@ class DicodileEncoder(BaseZEncoder):
 
         n_channels = self.X.shape[1]
         *_, n_times_atom = get_D_shape(self.D_hat, n_channels)
-        return self.X[n0, :, t0:t0 + n_times_atom][None]
+
+        patch = self.X[n0, :, t0:t0 + n_times_atom][None]
+        if self.D_hat.ndim == 2:
+            patch = get_uv(patch)
+        return patch
 
     def get_z_hat(self):
         """
@@ -646,29 +546,17 @@ class DicodileEncoder(BaseZEncoder):
         self.D_hat = D
         self._encoder.set_worker_D(D)
 
-    def set_reg(self, reg):
+    def update_reg(self, is_per_atom):
         """
         Update the regularization parameter.
 
         Parameters
         ----------
-        reg : float
-              Regularization parameter
-        """
-        self._encoder.set_worker_params({'reg': reg})  # XXX
-
-    def add_one_atom(self, new_atom):
-        """
-        Add one atom to the dictionary and extend z_hat
-        to match the new dimensions.
-
-        Parameters
-        ----------
-        new_atom : array, shape (n_channels + n_times_atom)
-            A new atom to add to the dictionary.
-        """
-        raise NotImplementedError(
-            "Greedy learning is not available in DiCoDiLe")
+        is_per_atom: bool
+            True if lmbd_max='per_atom'; False otherwise
+       """
+        super().update_reg(is_per_atom)
+        self._encoder.set_worker_params({'reg': self.reg})  # XXX
 
     def __enter__(self):
         # XXX run init here?

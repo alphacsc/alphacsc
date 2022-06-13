@@ -7,8 +7,6 @@ from joblib import Memory
 import matplotlib.pyplot as plt
 from scipy.stats.mstats import gmean
 
-from alphacsc.cython import _fast_compute_ztX
-
 memory = Memory(location='', verbose=0)
 
 
@@ -31,7 +29,6 @@ def compute_ztX(z, X):
 
 all_func = [
     compute_ztX,
-    _fast_compute_ztX,
 ]
 
 
@@ -44,13 +41,7 @@ def test_equality():
 
     reference = all_func[0](z, X)
     for func in all_func:
-
-        if 'fast' in func.__name__:
-            z_ = [sparse.lil_matrix(zi) for zi in np.swapaxes(z, 0, 1)]
-        else:
-            z_ = z
-
-        assert np.allclose(func(z_, X), reference)
+        assert np.allclose(func(z, X), reference)
 
 
 @memory.cache
@@ -62,9 +53,6 @@ def run_one(n_atoms, sparsity, n_times_atom, n_times_valid, func):
     n_channels = 3
     n_times = n_times_valid + n_times_atom - 1
     X = np.random.randn(n_trials, n_channels, n_times)
-
-    if 'fast' in func.__name__:
-        z = [sparse.lil_matrix(zi) for zi in np.swapaxes(z, 0, 1)]
 
     start = time.time()
     func(z, X)
