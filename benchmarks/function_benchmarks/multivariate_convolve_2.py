@@ -7,9 +7,6 @@ from joblib import Memory
 import matplotlib.pyplot as plt
 from scipy.stats.mstats import gmean
 
-from alphacsc.cython import _fast_sparse_convolve_multi
-from alphacsc.cython import _fast_sparse_convolve_multi_uv
-
 memory = Memory(location='', verbose=0)
 
 
@@ -95,8 +92,6 @@ all_func = [
     _dense_convolve_multi_uv,
     _sparse_convolve_multi,
     _sparse_convolve_multi_uv,
-    _fast_sparse_convolve_multi,
-    _fast_sparse_convolve_multi_uv,
 ]
 
 
@@ -114,9 +109,6 @@ def test_equality():
         else:
             kwargs = dict(ds=D)
 
-        if 'fast' in func.__name__:
-            z_i = sparse.lil_matrix(z_i)
-
         result = func(z_i, **kwargs)
         assert np.allclose(result, reference)
 
@@ -124,16 +116,14 @@ def test_equality():
 @memory.cache
 def run_one(n_atoms, sparsity, n_times_atom, n_times_valid, func):
     n_channels = 4
-    z_i = sparse.random(n_atoms, n_times_valid, density=sparsity, format='lil')
+    z_i = sparse.random(n_atoms, n_times_valid, density=sparsity)
+    z_i = z_i.toarray()
 
     if 'uv' in func.__name__:
         uv = np.random.randn(n_atoms, n_channels + n_times_atom)
         kwargs = dict(uv=uv, n_channels=n_channels)
     else:
         kwargs = dict(ds=np.random.randn(n_atoms, n_channels, n_times_atom))
-
-    if 'fast' not in func.__name__:
-        z_i = z_i.toarray()
 
     start = time.time()
     func(z_i, **kwargs)

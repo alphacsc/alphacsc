@@ -7,8 +7,6 @@
 *.egg-info
 .coverage*
 !.coveragerc
-alphacsc/cython_code/*.c
-alphacsc/error_test_init_dictionary_failed.py
 
 # Exps directories
 build
