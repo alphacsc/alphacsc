@@ -1,3 +1,4 @@
+# %%
 import numpy as np
 from scipy import sparse
 from numpy.testing import assert_allclose
@@ -73,16 +74,17 @@ def test_flip_uv():
     uv_flip = flip_uv(uv, n_channels)
     v_flip = uv_flip[:, n_channels:]
     index_array = np.argmax(np.absolute(v_flip), axis=1)
-    peak_value = v_flip[:, index_array]
+    peak_value = np.array([v_flip[i, ind]
+                           for i, ind in enumerate(index_array)])
     # ensure that all temporal patterns v peak in positive after flip
-    assert all(peak_value >= 0)
+    assert np.all(peak_value >= 0)
 
     # ensure that the resulting dictionnaries D stay close
     D = get_D(uv, n_channels)
     D_flip = get_D(uv_flip, n_channels)
     assert_allclose(D, D_flip)
 
-
+# %%
 def test_patch_reconstruction_error():
     rng = check_random_state(42)
     n_times_atoms, n_times = 21, 128
