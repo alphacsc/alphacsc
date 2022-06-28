@@ -594,7 +594,7 @@ class DicodileEncoder(BaseZEncoder):
             computation of z_hat.
         """
         self.D_hat = D
-        self._encoder.set_worker_D(self._as_dicodile_dict())
+        self._encoder.set_worker_D(self._as_dicodile_D())
 
     def update_reg(self, is_per_atom):
         """
