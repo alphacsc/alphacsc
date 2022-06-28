@@ -27,10 +27,6 @@ DOC_FMT = """{short_desc}
         The number of atoms to learn.
     n_times_atom : int
         The support of the atom.
-    loss : {{ 'l2' | 'dtw' | 'whitening' }}
-        Loss for the data-fit term. Either the norm l2 or the soft-DTW.
-    loss_params : dict
-        Parameters of the loss.
     rank1 : boolean
         If set to True, learn rank 1 dictionary atoms.
     window : boolean
@@ -93,10 +89,7 @@ DOC_FMT = """{short_desc}
     D_init : str or array
         The initial atoms with shape (n_atoms, n_channels + n_times_atoms) or
         (n_atoms, n_channels, n_times_atom) or an initialization scheme str in
-        {{'kmeans' | 'ssa' | 'chunk' | 'random' | 'greedy'}}.
-    D_init_params : dict
-        Dictionnary of parameters for the kmeans init method.
-
+        {{'chunk' | 'random' | 'greedy'}}.
 
     Technical parameters
 
@@ -138,12 +131,11 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
     __doc__ = DOC_FMT.format(**DEFAULT)
 
     def __init__(self, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
-                 loss='l2', loss_params=None,
                  rank1=True, window=False, uv_constraint='auto',
                  solver_z='l_bfgs', solver_z_kwargs={},
                  solver_d='auto', solver_d_kwargs={},
                  reg=0.1, lmbd_max='fixed', eps=1e-10,
-                 D_init=None, D_init_params={},
+                 D_init=None,
                  algorithm='batch', algorithm_params={},
                  alpha=.8, batch_size=1, batch_selection='random',
                  unbiased_z_hat=False, verbose=10, callback=None,
@@ -158,8 +150,6 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
         self.n_atoms = n_atoms
         self.n_times_atom = n_times_atom
         self.reg = reg
-        self.loss = loss
-        self.loss_params = loss_params
         self.rank1 = rank1
         self.window = window
         self.uv_constraint = uv_constraint
@@ -181,7 +171,6 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
         self.solver_d = solver_d
         self.solver_d_kwargs = solver_d_kwargs
         self.D_init = D_init
-        self.D_init_params = D_init_params
 
         # Technical parameters
         self.n_jobs = n_jobs
@@ -200,14 +189,13 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
         res = learn_d_z_multi(
             X, self.n_atoms, self.n_times_atom,
             reg=self.reg, lmbd_max=self.lmbd_max,
-            loss=self.loss, loss_params=self.loss_params,
             rank1=self.rank1, window=self.window,
             uv_constraint=self.uv_constraint,
             algorithm=self.algorithm, algorithm_params=self.algorithm_params,
             n_iter=self.n_iter, eps=self.eps,
             solver_z=self.solver_z, solver_z_kwargs=self.solver_z_kwargs,
             solver_d=self.solver_d, solver_d_kwargs=self.solver_d_kwargs,
-            D_init=self.D_init, D_init_params=self.D_init_params,
+            D_init=self.D_init,
             unbiased_z_hat=False, verbose=self.verbose, callback=self.callback,
             random_state=self.random_state, n_jobs=self.n_jobs,
             name=self.name, raise_on_increase=self.raise_on_increase,
@@ -233,7 +221,7 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
                 X, self._D_hat, z0=z_hat, n_jobs=self.n_jobs,
                 reg=0, freeze_support=True,
                 solver=self.solver_z, solver_kwargs=self.solver_z_kwargs,
-                loss=self.loss, loss_params=self.loss_params)
+            )
             if self.verbose > 0:
                 print("done")
 
@@ -246,7 +234,7 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
         z_hat, _, _ = update_z_multi(
             X, self._D_hat, reg=self.reg_, n_jobs=self.n_jobs,
             solver=self.solver_z, solver_kwargs=self.solver_z_kwargs,
-            loss=self.loss, loss_params=self.loss_params)
+        )
 
         if self.unbiased_z_hat:
             if self.verbose > 0:
@@ -256,7 +244,7 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
                 X, self._D_hat, z0=z_hat, n_jobs=self.n_jobs,
                 reg=0, freeze_support=True,
                 solver=self.solver_z, solver_kwargs=self.solver_z_kwargs,
-                loss=self.loss, loss_params=self.loss_params)
+            )
             if self.verbose > 0:
                 print("done")
         return z_hat
@@ -350,7 +338,7 @@ class BatchCDL(ConvolutionalDictionaryLearning):
                  solver_z='lgcd', solver_z_kwargs={}, unbiased_z_hat=False,
                  solver_d='auto', solver_d_kwargs={},
                  rank1=True, window=False, uv_constraint='auto',
-                 lmbd_max='scaled', eps=1e-10, D_init=None, D_init_params={},
+                 lmbd_max='scaled', eps=1e-10, D_init=None,
                  verbose=10, random_state=None, sort_atoms=False):
         super().__init__(
             n_atoms, n_times_atom, reg=reg, n_iter=n_iter,
@@ -358,9 +346,9 @@ class BatchCDL(ConvolutionalDictionaryLearning):
             rank1=rank1, window=window, uv_constraint=uv_constraint,
             unbiased_z_hat=unbiased_z_hat, sort_atoms=sort_atoms,
             solver_d=solver_d, solver_d_kwargs=solver_d_kwargs,
-            eps=eps, D_init=D_init, D_init_params=D_init_params,
+            eps=eps, D_init=D_init,
             algorithm='batch', lmbd_max=lmbd_max, raise_on_increase=True,
-            loss='l2', n_jobs=n_jobs, verbose=verbose, callback=None,
+            n_jobs=n_jobs, verbose=verbose, callback=None,
             random_state=random_state, name="BatchCDL"
         )
 
@@ -377,7 +365,7 @@ class GreedyCDL(ConvolutionalDictionaryLearning):
                  solver_z='lgcd', solver_z_kwargs={}, unbiased_z_hat=False,
                  solver_d='auto', solver_d_kwargs={},
                  rank1=True, window=False, uv_constraint='auto',
-                 lmbd_max='scaled', eps=1e-10, D_init=None, D_init_params={},
+                 lmbd_max='scaled', eps=1e-10, D_init=None,
                  verbose=10, random_state=None, sort_atoms=False):
         super().__init__(
             n_atoms, n_times_atom, reg=reg, n_iter=n_iter,
@@ -385,8 +373,8 @@ class GreedyCDL(ConvolutionalDictionaryLearning):
             rank1=rank1, window=window, uv_constraint=uv_constraint,
             unbiased_z_hat=unbiased_z_hat, sort_atoms=sort_atoms,
             solver_d=solver_d, solver_d_kwargs=solver_d_kwargs,
-            eps=eps, D_init=D_init, D_init_params=D_init_params,
+            eps=eps, D_init=D_init,
             algorithm='greedy', lmbd_max=lmbd_max, raise_on_increase=True,
-            loss='l2', n_jobs=n_jobs, verbose=verbose, callback=None,
+            n_jobs=n_jobs, verbose=verbose, callback=None,
             random_state=random_state, name="GreedyCDL"
         )

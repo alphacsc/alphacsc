@@ -98,6 +98,18 @@ Here is an example to present briefly the API:
 
     plt.show()
 
+Dicodile backend
+================
+
+AlphaCSC can use a `dicodile <https://github.com/tomMoral/dicodile>`_-based backend to perform sparse encoding in parallel.
+
+To install dicodile, run ``pip install alphacsc[dicodile]``.
+
+Known OpenMPI issues
+--------------------
+
+When self-installing OpenMPI (for instance to run `dicodile` on a single machine, or for continuous integration), running the `dicodile` solver might end up causing a deadlock (no output for a long time). It is often due to communication issue between the workers. This issue can often be solved by disabling Docker-related virtual NICs, for instance by running ``export OMPI_MCA_btl_tcp_if_exclude="docker0"``.
+
 Bug reports
 ===========
 

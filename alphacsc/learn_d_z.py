@@ -45,7 +45,7 @@ def compute_X_and_objective(X, z_hat, d_hat, reg, sample_weights=None,
 def learn_d_z(X, n_atoms, n_times_atom, func_d=update_d_block, reg=0.1,
               lmbd_max='fixed', n_iter=60, random_state=None, n_jobs=1,
               solver_z='l-bfgs', solver_d_kwargs=dict(),
-              solver_z_kwargs=dict(), ds_init=None, ds_init_params=dict(),
+              solver_z_kwargs=dict(), ds_init=None,
               sample_weights=None, verbose=10, callback=None,
               stopping_pobj=None):
     """Univariate Convolutional Sparse Coding.
@@ -86,10 +86,7 @@ def learn_d_z(X, n_atoms, n_times_atom, func_d=update_d_block, reg=0.1,
     solver_z_kwargs : dict
         Additional keyword arguments to pass to update_z
     ds_init : str or array, shape (n_atoms, n_times_atom)
-        The initial atoms or an initialization scheme in {'kmeans' | 'ssa' |
-        'chunk' | 'random'}.
-    ds_init_params : dict
-        Dictionnary of parameters for the kmeans init method.
+        The initial atoms or an initialization scheme in {'chunk' | 'random'}.
     sample_weights : array, shape (n_trials, n_times)
         The weights in the alphaCSC problem. Should be None
         when using vanilla CSC.
@@ -121,8 +118,7 @@ def learn_d_z(X, n_atoms, n_times_atom, func_d=update_d_block, reg=0.1,
     if isinstance(ds_init, np.ndarray):
         ds_init = ds_init[:, None, :]
     d_hat = init_dictionary(X[:, None, :], n_atoms, n_times_atom,
-                            D_init=ds_init, rank1=False,
-                            D_init_params=ds_init_params, random_state=rng)
+                            D_init=ds_init, rank1=False, random_state=rng)
     d_hat = d_hat[:, 0, :]
 
     # strategy for rescaling the regularization parameter

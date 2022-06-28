@@ -92,7 +92,7 @@ def test_init_random(rank1, solver_d, uv_constraint):
 
 @pytest.mark.parametrize("rank1", [True, False])
 @pytest.mark.parametrize("D_init", [
-    None, 'random', 'chunk', 'kmeans'
+    None, 'random', 'chunk',
 ])
 def test_init_shape(D_init, rank1):
     n_trials, n_channels, n_times = 5, 3, 100

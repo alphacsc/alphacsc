@@ -102,7 +102,6 @@ def test_get_solver_d(rank1, solver_d, uv_constraint, window, momentum):
                             solver_d=solver_d,
                             rank1=rank1,
                             D_init='random',
-                            D_init_params=None,
                             window=window,
                             momentum=momentum)
 
@@ -123,7 +122,6 @@ def test_get_solver_d_error_solver(solver_d):
                      solver_d=solver_d,
                      rank1=False,
                      D_init='random',
-                     D_init_params=None,
                      window=True,
                      momentum=False)
 
@@ -144,7 +142,6 @@ def test_get_solver_d_error_uv_constraint(solver_d, uv_constraint):
                      uv_constraint=uv_constraint,
                      rank1=False,
                      D_init='random',
-                     D_init_params=None,
                      window=True,
                      momentum=False)
 
@@ -165,7 +162,6 @@ def test_get_solver_d_error_rank1_uv_constraint(solver_d):
                      uv_constraint='joint',
                      rank1=True,
                      D_init='random',
-                     D_init_params=None,
                      window=True,
                      momentum=False)
 
@@ -182,7 +178,7 @@ def test_get_solver_d_error_rank1_uv_constraint(solver_d):
     ('alternate_adaptive', 'separate', True, (N_ATOMS, N_CHANNELS+N_TIMES_ATOM)),  # noqa
 ])
 @pytest.mark.parametrize('window', [True, False])
-@pytest.mark.parametrize('D_init', ['random', 'chunk', 'kmeans', 'ssa'])
+@pytest.mark.parametrize('D_init', ['random', 'chunk'])
 def test_init_dictionary(X, D_init, solver_d, uv_constraint, rank1, shape,
                          window):
     """Tests for valid values when D_init is specified as type."""
@@ -192,7 +188,6 @@ def test_init_dictionary(X, D_init, solver_d, uv_constraint, rank1, shape,
                             solver_d=solver_d,
                             uv_constraint=uv_constraint,
                             D_init=D_init,
-                            D_init_params=dict(),
                             rank1=rank1,
                             window=window)
 
@@ -221,7 +216,6 @@ def test_init_dictionary_initial_D_init(X, D_init, solver_d, window,
                             rank1=False,
                             window=window,
                             D_init=D_init,
-                            D_init_params=None,
                             random_state=42)
 
     assert d_solver is not None
@@ -253,7 +247,6 @@ def test_init_dictionary_rank1_initial_D_init(X, D_init, solver_d,
                             rank1=True,
                             window=False,
                             D_init=D_init,
-                            D_init_params=None,
                             random_state=42)
 
     assert d_solver is not None
@@ -277,10 +270,9 @@ def test_init_dictionary_rank1_initial_D_init(X, D_init, solver_d,
     (True, 'fista', 'joint'),
     (False, 'fista', 'auto'),
 ])
-@pytest.mark.parametrize('loss', ['l2'])
 @pytest.mark.parametrize('window', ['True', 'False'])
 def test_update_D(D_hat, rank1, solver_d, uv_constraint, window,
-                  z_encoder, rng):
+                  z_encoder):
 
     d_solver = get_solver_d(N_CHANNELS,
                             N_ATOMS,
@@ -288,7 +280,6 @@ def test_update_D(D_hat, rank1, solver_d, uv_constraint, window,
                             solver_d=solver_d,
                             uv_constraint=uv_constraint,
                             D_init=D_hat,
-                            D_init_params=None,
                             rank1=rank1,
                             window=window,
                             max_iter=1000)
@@ -310,7 +301,6 @@ def test_update_D(D_hat, rank1, solver_d, uv_constraint, window,
                             solver_d=solver_d,
                             uv_constraint=uv_constraint,
                             D_init='random',
-                            D_init_params=None,
                             rank1=rank1,
                             window=window,
                             max_iter=1000)
@@ -324,28 +314,6 @@ def test_update_D(D_hat, rank1, solver_d, uv_constraint, window,
     cost2 = z_encoder.compute_objective(d_hat2)
 
     assert cost2 < cost1, "Learning is not going down"
-
-
-@pytest.mark.parametrize('rank1, solver_d, uv_constraint', [
-    (True, 'alternate', 'separate'),
-])
-@pytest.mark.parametrize('loss', ['dtw', 'whitening'])
-def test_update_D_error(X, D_hat, rank1, solver_d, uv_constraint, z_encoder):
-
-    d_solver = get_solver_d(N_CHANNELS,
-                            N_ATOMS,
-                            N_TIMES_ATOM,
-                            solver_d=solver_d,
-                            uv_constraint=uv_constraint,
-                            rank1=rank1,
-                            D_init=D_hat,
-                            D_init_params=None,
-                            max_iter=1000)
-
-    d_solver.init_dictionary(X)
-
-    with pytest.raises(NotImplementedError):
-        d_solver.update_D(z_encoder)
 
 
 @pytest.mark.parametrize('rank1, solver_d, uv_constraint', [
@@ -365,7 +333,6 @@ def test_add_one_atom(X, rank1, solver_d, uv_constraint, window):
                             solver_d=solver_d,
                             rank1=rank1,
                             D_init='greedy',
-                            D_init_params=None,
                             window=window)
 
     D_hat = d_solver.init_dictionary(X)

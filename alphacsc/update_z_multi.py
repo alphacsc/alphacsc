@@ -19,7 +19,7 @@ from .utils.compute_constants import compute_DtD, compute_ztz, compute_ztX
 
 
 def update_z_multi(X, D, reg, z0=None, solver='l-bfgs', solver_kwargs=dict(),
-                   loss='l2', loss_params=dict(), freeze_support=False,
+                   freeze_support=False,
                    return_ztz=False, timing=False, n_jobs=1,
                    random_state=None, debug=False):
     """Update z using L-BFGS with positivity constraints
@@ -40,10 +40,6 @@ def update_z_multi(X, D, reg, z0=None, solver='l-bfgs', solver_kwargs=dict(),
         The solver to use.
     solver_kwargs : dict
         Parameters for the solver
-    loss : 'l2' | 'dtw' | 'whitening'
-        The data fit loss, either classical l2 norm or the soft-DTW loss.
-    loss_params : dict
-        Parameters of the loss
     freeze_support : boolean
         If True, the support of z0 is frozen.
     return_ztz : boolean
@@ -81,21 +77,20 @@ def update_z_multi(X, D, reg, z0=None, solver='l-bfgs', solver_kwargs=dict(),
 
     results = Parallel(n_jobs=n_jobs)(
         delayed_update_z(X[i], D, reg, z0[i], debug, solver, solver_kwargs,
-                         freeze_support, loss, loss_params=loss_params,
-                         return_ztz=return_ztz,
+                         freeze_support, return_ztz=return_ztz,
                          timing=timing, random_state=seed)
         for i, seed in enumerate(parallel_seeds))
 
     # Post process the results to get separate objects
     z_hats, pobj, times = [], [], []
-    if loss == 'l2' and return_ztz:
+    if return_ztz:
         ztz = np.zeros((n_atoms, n_atoms, 2 * n_times_atom - 1))
         ztX = np.zeros((n_atoms, n_channels, n_times_atom))
     else:
         ztz, ztX = None, None
     for z_hat, ztz_i, ztX_i, pobj_i, times_i in results:
         z_hats.append(z_hat), pobj.append(pobj_i), times.append(times_i)
-        if loss == 'l2' and return_ztz:
+        if return_ztz:
             ztz += ztz_i
             ztX += ztX_i
 
@@ -124,9 +119,8 @@ class BoundGenerator(object):
 
 
 def _update_z_multi_idx(X_i, D, reg, z0_i, debug, solver='l-bfgs',
-                        solver_kwargs=dict(), freeze_support=False, loss='l2',
-                        loss_params=dict(), return_ztz=False,
-                        timing=False, random_state=None):
+                        solver_kwargs=dict(), freeze_support=False,
+                        return_ztz=False, timing=False, random_state=None):
     t_start = time.time()
     n_channels, n_times = X_i.shape
     n_atoms, n_channels, n_times_atom = get_D_shape(D, n_channels)
@@ -143,8 +137,7 @@ def _update_z_multi_idx(X_i, D, reg, z0_i, debug, solver='l-bfgs',
 
     def func_and_grad(zi):
         return gradient_zi(Xi=X_i, zi=zi, D=D, constants=constants,
-                           reg=reg, return_func=True, flatten=True,
-                           loss=loss, loss_params=loss_params)
+                           reg=reg, return_func=True, flatten=True)
 
     if z0_i is None:
         z0_i = np.zeros(n_atoms, n_times_valid)
@@ -224,7 +217,7 @@ def _update_z_multi_idx(X_i, D, reg, z0_i, debug, solver='l-bfgs',
 
     z_hat = z_hat.reshape(n_atoms, n_times_valid)
 
-    if loss == 'l2' and return_ztz:
+    if return_ztz:
         ztz = compute_ztz(z_hat[None], n_times_atom)
         ztX = compute_ztX(z_hat[None], X_i[None])
     else:
