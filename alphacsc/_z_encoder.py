@@ -415,7 +415,7 @@ class DicodileEncoder(BaseZEncoder):
         n_channels = self.X.shape[1]
         if self.D_hat.ndim == 2:  # AlphaCSC convention for rank-1 matrices
             # Dicodile convention: rank-1 dicts are tuples
-            return (self.D_hat[:, :n_channels],  # XXX ?
+            return (self.D_hat[:, :n_channels],
                     self.D_hat[:, n_channels:])
         else:
             return self.D_hat
@@ -536,7 +536,6 @@ class DicodileEncoder(BaseZEncoder):
         z_nnz : ndarray, shape (n_atoms,)
             Ratio of non-zero activations for each atom.
         """
-        from dicodile.utils.csc import _is_rank1
         from dicodile.utils.dictionary import D_shape
 
         effective_n_atoms = D_shape(self.D_hat)[0]
