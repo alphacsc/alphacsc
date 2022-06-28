@@ -444,10 +444,10 @@ class DicodileEncoder(BaseZEncoder):
                       freeze_support=False, random_state=None)
         params.update(solver_kwargs)
         self.params = params
-        self._encoder.init_workers(self.X[0], self._as_dicodile_dict(),
+        self._encoder.init_workers(self.X[0], self._as_dicodile_D(),
                                    reg, self.params)
 
-    def _as_dicodile_dict(self):
+    def _as_dicodile_D(self):
         n_channels = self.X.shape[1]
         if self.D_hat.ndim == 2:  # AlphaCSC convention for rank-1 matrices
             # Dicodile convention: rank-1 dicts are tuples
