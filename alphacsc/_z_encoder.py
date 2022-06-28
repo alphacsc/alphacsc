@@ -575,10 +575,7 @@ class DicodileEncoder(BaseZEncoder):
         from dicodile.utils.csc import _is_rank1
         from dicodile.utils.dictionary import D_shape
 
-        if _is_rank1(self.D_hat):
-            effective_n_atoms = D_shape(self.D_hat)[0]
-        else:
-            effective_n_atoms = self.D_hat.shape[0]
+        effective_n_atoms = D_shape(self.D_hat)[0]
         if not hasattr(self, 'run_statistics'):
             return np.zeros(effective_n_atoms)
 
