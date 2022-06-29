@@ -153,15 +153,15 @@ n_iter = 100
 methods_univariate = [
     [run_fista, 'Jas et al (2017) FISTA', n_iter],
     [run_l_bfgs, 'Jas et al (2017) LBFGS', n_iter],
-    [run_multichannel_gcd, 'Proposed (univariate)', n_iter],
+    [run_multichannel_gcd, 'gcd', n_iter],
 ]
 
 n_iter_multi = 20
 methods_multivariate = [
-    [run_multichannel_gcd_fullrank, 'Proposed (multivariate)', n_iter_multi],
+    [run_multichannel_gcd_fullrank, 'gcd fullrank', n_iter_multi],
     [run_multichannel_dicodile_fullrank,
-        'Proposed dicodile (multivariate)', n_iter_multi],
-    [run_multichannel_gcd, 'Proposed (multichannel)', n_iter_multi],
+        'dicodile fullrank', n_iter_multi],
+    [run_multichannel_gcd, 'gcd', n_iter_multi],
 ]
 
 
