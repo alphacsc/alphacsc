@@ -118,7 +118,7 @@ def plot_convergence(data_frame, threshold, normalize_method, save_name):
                 plt.ylabel('(objective - best) / best')
 
             # ---- Cleaner fig for the paper
-            # plt.legend(loc=0, ncol=1)
+            plt.legend(loc=0, ncol=1)
             plt.ylabel('')
 
             # plt.ylim(ymin=ymin / 10)
