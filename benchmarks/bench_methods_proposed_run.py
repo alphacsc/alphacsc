@@ -11,7 +11,6 @@ This script needs the following packages:
 """
 
 from __future__ import print_function
-import os
 from pathlib import Path
 import time
 import itertools
