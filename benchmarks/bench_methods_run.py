@@ -4,7 +4,7 @@ Benchmark different solver of the same CSC univariate or multivariate problem.
 This script needs the following packages:
     pip install pandas pyfftw
 
-- Use bench_methods_proposed_run.py to run the benchmark.
+- Use bench_methods_run.py to run the benchmark.
   The results are saved in alphacsc/figures.
 - Use bench_methods_plot.py to plot the results.
   The figures are saved in alphacsc/figures.
