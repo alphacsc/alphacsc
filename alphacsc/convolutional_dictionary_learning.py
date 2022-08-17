@@ -313,7 +313,7 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
 
     @property
     def pobj_(self):
-        """list: Objective function value at each step of the alternate minimization.
+        """Objective function value at each step of the alternate minimization.
         """
         self._check_fitted()
         return self._pobj

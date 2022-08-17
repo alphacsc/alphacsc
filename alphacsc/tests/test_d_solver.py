@@ -205,8 +205,9 @@ def test_init_dictionary(X, D_init, solver_d, uv_constraint, rank1, shape,
 @pytest.mark.parametrize('window', [True, False])
 def test_init_dictionary_initial_D_init(X, D_init, solver_d, window,
                                         uv_constraint, shape):
-    """Tests if init_dictionary is doing what is expected when rank1 is False and
-    initial D_init is provided."""
+    """Tests if init_dictionary is doing what is expected when rank1 is False
+    and initial D_init is provided.
+    """
 
     d_solver = get_solver_d(N_CHANNELS,
                             N_ATOMS,

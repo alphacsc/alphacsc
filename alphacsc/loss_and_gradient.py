@@ -341,7 +341,8 @@ def _l2_gradient_zi(Xi, z_i, D=None, return_func=False):
 
 
 def _dense_transpose_convolve_z(residual, z):
-    """Convolve residual[i] with the transpose for each atom k, and return the sum
+    """Convolve residual[i] with the transpose for each atom k, and return the
+    sum for all the atoms.
 
     Parameters
     ----------

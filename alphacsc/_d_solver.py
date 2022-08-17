@@ -231,7 +231,8 @@ class BaseDSolver:
         return self.D_hat
 
     def get_max_error_dict(self, z_encoder):
-        """Get the maximal reconstruction error patch from the data as a new atom
+        """Get the maximal reconstruction error patch from the data
+        as a new atom.
 
         This idea is used for instance in [Yellin2017]
 
