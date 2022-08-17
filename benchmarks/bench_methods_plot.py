@@ -284,5 +284,5 @@ if __name__ == '__main__':
 
     # plot the aggregation of all results
     plot_barplot(all_results_df, threshold=1e-2, normalize_method='last',
-                 save_name=str(figures_dir.joinpath('all')))
+                 save_name=str(figures_dir / 'all'))
     plt.close('all')
