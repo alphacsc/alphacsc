@@ -145,8 +145,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     figures_dir = Path('figures')
-    if not figures_dir.exists():
-        figures_dir.mkdir(exist_ok=True)
+    figures_dir.mkdir(exist_ok=True)
 
     # Use the caching utilities from joblib to same intermediate results and
     # avoid loosing computations when the interpreter crashes.

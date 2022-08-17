@@ -232,8 +232,7 @@ if __name__ == '__main__':
                                      n_channel_list, reg_list)
 
     figures_dir = Path('figures')
-    if not figures_dir.exists():
-        figures_dir.mkdir(exist_ok=True)
+    figures_dir.mkdir(exist_ok=True)
 
     for params in out_iterator:
         n_times_atom, n_atoms, n_channels, reg = params
