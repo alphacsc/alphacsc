@@ -39,7 +39,11 @@ verbose = 1
 # base string for the save names.
 base_name = 'run_0'
 # n_jobs for the parallel running of single core methods
-n_jobs = 1
+n_jobs = 30
+# max_iter for z step
+max_iter = 1000
+# tol for z step
+tol = 1e-3
 # number of random states
 n_states = 1
 # loop over parameters
@@ -88,13 +92,13 @@ def run_multichannel_gcd(X, ds_init, reg, n_iter, random_state, label):
         n_atoms, n_channels, n_times_atom = ds_init.shape
         ds_init = get_uv(ds_init)  # project init to rank 1
 
-    solver_z_kwargs = dict(max_iter=2, tol=1e-3)
+    solver_z_kwargs = dict(max_iter=max_iter, tol=tol)
     pobj, times, d_hat, z_hat, reg = learn_d_z_multi(
         X, n_atoms, n_times_atom, solver_d='alternate_adaptive',
         solver_z="lgcd", uv_constraint='separate', eps=-np.inf,
         solver_z_kwargs=solver_z_kwargs, reg=reg, solver_d_kwargs=dict(
             max_iter=100), n_iter=n_iter, random_state=random_state,
-        raise_on_increase=False, D_init=ds_init, n_jobs=1, verbose=verbose)
+        raise_on_increase=False, D_init=ds_init, n_jobs=n_jobs, verbose=verbose)
 
     # remove the ds init duration
     times[0] = 0
@@ -107,13 +111,13 @@ def run_multichannel_gcd_fullrank(X, ds_init, reg, n_iter, random_state,
     assert X.ndim == 3
     n_atoms, n_channels, n_times_atom = ds_init.shape
 
-    solver_z_kwargs = dict(max_iter=2, tol=1e-3)
+    solver_z_kwargs = dict(max_iter=max_iter, tol=tol)
     pobj, times, d_hat, z_hat, reg = learn_d_z_multi(
         X, n_atoms, n_times_atom, solver_d='fista', solver_z="lgcd",
         uv_constraint='auto', eps=-np.inf, solver_z_kwargs=solver_z_kwargs,
         reg=reg, solver_d_kwargs=dict(max_iter=100), n_iter=n_iter,
         random_state=random_state, raise_on_increase=False, D_init=ds_init,
-        n_jobs=1, verbose=verbose, rank1=False)
+        n_jobs=n_jobs, verbose=verbose, rank1=False)
 
     # remove the ds init duration
     times[0] = 0
@@ -126,13 +130,13 @@ def run_multichannel_dicodile_fullrank(X, ds_init, reg, n_iter, random_state,
     assert X.ndim == 3
     n_atoms, n_channels, n_times_atom = ds_init.shape
 
-    solver_z_kwargs = dict(max_iter=1000, tol=1e-3)
+    solver_z_kwargs = dict(max_iter=max_iter, tol=tol)
     pobj, times, d_hat, z_hat, reg = learn_d_z_multi(
         X, n_atoms, n_times_atom, solver_d='auto', solver_z="dicodile",
         uv_constraint='auto', eps=-np.inf, solver_z_kwargs=solver_z_kwargs,
         reg=reg, solver_d_kwargs=dict(max_iter=100), n_iter=n_iter,
         random_state=random_state, raise_on_increase=False, D_init=ds_init,
-        n_jobs=10, verbose=verbose, rank1=False)
+        n_jobs=n_jobs, verbose=verbose, rank1=False)
 
     # remove the ds init duration
     times[0] = 0
