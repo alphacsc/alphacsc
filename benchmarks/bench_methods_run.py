@@ -4,7 +4,7 @@ Benchmark different solver of the same CSC univariate or multivariate problem.
 This script needs the following packages:
     pip install pandas pyfftw
 
-- Use bench_methods_proposed_run.py to run the benchmark.
+- Use bench_methods_run.py to run the benchmark.
   The results are saved in alphacsc/figures.
 - Use bench_methods_plot.py to plot the results.
   The figures are saved in alphacsc/figures.
@@ -275,7 +275,7 @@ if __name__ == '__main__':
         all_results.extend(results)
 
         file_name = base_name + str(params) + '.pkl'
-        save_path = figures_dir.joinpath(file_name)
+        save_path = figures_dir / file_name
 
         all_results_df = pd.DataFrame(
             all_results, columns='random_state label pobj times d_hat '
