@@ -276,7 +276,7 @@ if __name__ == '__main__':
         all_results.extend(results)
 
         file_name = base_name + str(params) + '.pkl'
-        save_path = figures_dir.joinpath(file_name)
+        save_path = figures_dir / file_name
 
         all_results_df = pd.DataFrame(
             all_results, columns='random_state label pobj times d_hat '
