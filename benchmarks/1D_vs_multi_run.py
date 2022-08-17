@@ -191,7 +191,7 @@ if __name__ == "__main__":
 
     # save all results for plotting with 1D_vs_multi_plot.py script.
     file_name = 'rank1_snr.pkl'
-    save_path = figures_dir.joinpath(file_name)
+    save_path = figures_dir / 'rank1_snr.pkl'
 
     all_results_df = pd.DataFrame(
         results, columns='random_state sigma run_n_channels '
