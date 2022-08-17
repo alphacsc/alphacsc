@@ -163,8 +163,7 @@ methods_univariate = [
 n_iter_multi = 20
 methods_multivariate = [
     [run_multichannel_gcd_fullrank, 'gcd fullrank', n_iter_multi],
-    [run_multichannel_dicodile_fullrank,
-        'dicodile fullrank', n_iter_multi],
+    [run_multichannel_dicodile_fullrank, 'dicodile fullrank', n_iter_multi],
     [run_multichannel_gcd, 'gcd', n_iter_multi],
 ]
 
