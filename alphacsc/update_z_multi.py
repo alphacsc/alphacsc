@@ -131,7 +131,7 @@ def _update_z_multi_idx(X_i, D, reg, z0_i, debug, solver='l-bfgs',
     rng = check_random_state(random_state)
 
     constants = {}
-    if solver == "lgcd":
+    if solver in ["lgcd", "dicodile"]:
         constants['DtD'] = compute_DtD(D=D, n_channels=n_channels)
     init_timing = time.time() - t_start
 
@@ -194,7 +194,7 @@ def _update_z_multi_idx(X_i, D, reg, z0_i, debug, solver='l-bfgs',
         else:
             z_hat, pobj = output
 
-    elif solver == "lgcd":
+    elif solver in ["lgcd", "dicodile"]:
 
         # Default values
         tol = solver_kwargs.get('tol', 1e-3)
