@@ -188,13 +188,18 @@ texinfo_documents = [
      'Miscellaneous'),
 ]
 
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3', None),
+    'mne': ('http://mne.tools/stable/', None),
+    'numpy': ('http://docs.scipy.org/doc/numpy-1.9.1', None),
+    'scipy': ('http://docs.scipy.org/doc/scipy-0.17.0/reference', None),
+    'mayavi': ('http://docs.enthought.com/mayavi/mayavi', None)
+}
+
 sphinx_gallery_conf = {
     'examples_dirs': '../examples',
     'gallery_dirs': 'auto_examples',
     'reference_url': {
-        'mne': 'http://mne.tools/stable/',
-        'alphacsc': 'http://alphacsc.github.io/',
-        'numpy': 'http://docs.scipy.org/doc/numpy-1.9.1',
-        'scipy': 'http://docs.scipy.org/doc/scipy-0.17.0/reference',
-        'mayavi': 'http://docs.enthought.com/mayavi/mayavi'}
+        'alphacsc': None
+    }
 }
