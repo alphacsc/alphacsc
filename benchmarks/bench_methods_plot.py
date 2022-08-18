@@ -119,10 +119,11 @@ def plot_convergence(data_frame, threshold, normalize_method, save_name):
 
             # ---- Cleaner fig for the paper
             plt.legend(loc=0, ncol=1)
+
             plt.ylabel('')
 
             # plt.ylim(ymin=ymin / 10)
-            # plt.title('K = %d, L = %d' % (n_atoms, n_times_atom))
+            plt.title('K = %d, L = %d' % (n_atoms, n_times_atom))
             plt.gca().tick_params(axis='x', which='both', bottom='off',
                                   top='off')
             plt.gca().tick_params(axis='y', which='both', left='off',
@@ -238,7 +239,7 @@ def plot_barplot(all_results_df, threshold, normalize_method, save_name):
         labels = [text.get_text() for text in ax.get_legend().get_texts()]
         if len(labels) > 3:
             ncol = 2
-            top = 0.75
+            top = 0.65
         else:
             ncol = 3
             top = 0.85
