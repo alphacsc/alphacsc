@@ -106,6 +106,30 @@ def run_multichannel_gcd(X, ds_init, reg, n_iter, random_state, label):
     return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
 
 
+def run_multichannel_dicodile(X, ds_init, reg, n_iter, random_state,
+                              label):
+    if X.ndim == 2:
+        n_atoms, n_times_atom = ds_init.shape
+        ds_init = np.c_[np.ones((n_atoms, 1)), ds_init]
+        X = X[:, None, :]
+    else:
+        n_atoms, n_channels, n_times_atom = ds_init.shape
+        ds_init = get_uv(ds_init)  # project init to rank 1
+
+    solver_z_kwargs = dict(max_iter=z_max_iter, tol=z_tol)
+    pobj, times, d_hat, z_hat, reg = learn_d_z_multi(
+        X, n_atoms, n_times_atom, solver_d='auto', solver_z="dicodile",
+        uv_constraint='auto', eps=-np.inf, solver_z_kwargs=solver_z_kwargs,
+        reg=reg, solver_d_kwargs=dict(max_iter=100), n_iter=n_iter,
+        random_state=random_state, raise_on_increase=False, D_init=ds_init,
+        n_jobs=30, verbose=verbose, rank1=True)
+
+    # remove the ds init duration
+    times[0] = 0
+
+    return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
+
+
 def run_multichannel_gcd_fullrank(X, ds_init, reg, n_iter, random_state,
                                   label):
     assert X.ndim == 3
@@ -164,6 +188,7 @@ n_iter_multi = 20
 methods_multivariate = [
     [run_multichannel_gcd_fullrank, 'gcd fullrank', n_iter_multi],
     [run_multichannel_dicodile_fullrank, 'dicodile fullrank', n_iter_multi],
+    [run_multichannel_dicodile, 'dicodile', n_iter_multi],
     [run_multichannel_gcd, 'gcd', n_iter_multi],
 ]
 
