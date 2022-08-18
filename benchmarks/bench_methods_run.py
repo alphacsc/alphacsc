@@ -98,7 +98,8 @@ def run_multichannel_gcd(X, ds_init, reg, n_iter, random_state, label):
         solver_z="lgcd", uv_constraint='separate', eps=-np.inf,
         solver_z_kwargs=solver_z_kwargs, reg=reg, solver_d_kwargs=dict(
             max_iter=100), n_iter=n_iter, random_state=random_state,
-        raise_on_increase=False, D_init=ds_init, n_jobs=30, verbose=verbose)
+        raise_on_increase=False, D_init=ds_init, n_jobs=n_jobs,
+        verbose=verbose)
 
     # remove the ds init duration
     times[0] = 0
@@ -141,7 +142,7 @@ def run_multichannel_gcd_fullrank(X, ds_init, reg, n_iter, random_state,
         uv_constraint='auto', eps=-np.inf, solver_z_kwargs=solver_z_kwargs,
         reg=reg, solver_d_kwargs=dict(max_iter=100), n_iter=n_iter,
         random_state=random_state, raise_on_increase=False, D_init=ds_init,
-        n_jobs=30, verbose=verbose, rank1=False)
+        n_jobs=n_jobs, verbose=verbose, rank1=False)
 
     # remove the ds init duration
     times[0] = 0
