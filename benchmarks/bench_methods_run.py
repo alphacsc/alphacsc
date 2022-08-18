@@ -224,7 +224,7 @@ def one_run(X, X_shape, random_state, method, n_atoms, n_times_atom, reg):
     # run the selected algorithm with one iter to remove compilation overhead
     # if dicodile, the workers are started but not stopped or reused, so
     # doubles the requirement for workers
-    if label != 'dicodile fullrank':
+    if 'dicodile' not in label:
         _, _, _, _ = func(X, ds_init, reg, 1, random_state, label)
 
     # run the selected algorithm
