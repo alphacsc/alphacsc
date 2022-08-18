@@ -200,7 +200,7 @@ if __name__ == '__main__':
         suffix = "_dicodile"
 
     file_name = f'methods_scaling_reg{reg}{suffix}.pkl'
-    save_path = figures_dir.joinpath(file_name)
+    save_path = figures_dir / file_name
 
     all_results_df = pd.DataFrame(
         all_results, columns='n_channels random_state label pobj times '
