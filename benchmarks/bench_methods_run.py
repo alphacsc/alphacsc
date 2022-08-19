@@ -11,6 +11,7 @@ This script needs the following packages:
 """
 
 from __future__ import print_function
+from functools import partial
 from pathlib import Path
 import time
 import itertools
@@ -108,7 +109,7 @@ def run_multichannel_gcd(X, ds_init, reg, n_iter, random_state, label):
 
 
 def run_multichannel_dicodile(X, ds_init, reg, n_iter, random_state,
-                              label):
+                              label, njobs=30):
     if X.ndim == 2:
         n_atoms, n_times_atom = ds_init.shape
         ds_init = np.c_[np.ones((n_atoms, 1)), ds_init]
@@ -123,7 +124,7 @@ def run_multichannel_dicodile(X, ds_init, reg, n_iter, random_state,
         uv_constraint='auto', eps=-np.inf, solver_z_kwargs=solver_z_kwargs,
         reg=reg, solver_d_kwargs=dict(max_iter=100), n_iter=n_iter,
         random_state=random_state, raise_on_increase=False, D_init=ds_init,
-        n_jobs=30, verbose=verbose, rank1=True)
+        n_jobs=njobs, verbose=verbose, rank1=True)
 
     # remove the ds init duration
     times[0] = 0
@@ -151,7 +152,7 @@ def run_multichannel_gcd_fullrank(X, ds_init, reg, n_iter, random_state,
 
 
 def run_multichannel_dicodile_fullrank(X, ds_init, reg, n_iter, random_state,
-                                       label):
+                                       label, njobs=30):
     assert X.ndim == 3
     n_atoms, n_channels, n_times_atom = ds_init.shape
 
@@ -161,7 +162,7 @@ def run_multichannel_dicodile_fullrank(X, ds_init, reg, n_iter, random_state,
         uv_constraint='auto', eps=-np.inf, solver_z_kwargs=solver_z_kwargs,
         reg=reg, solver_d_kwargs=dict(max_iter=100), n_iter=n_iter,
         random_state=random_state, raise_on_increase=False, D_init=ds_init,
-        n_jobs=30, verbose=verbose, rank1=False)
+        n_jobs=njobs, verbose=verbose, rank1=False)
 
     # remove the ds init duration
     times[0] = 0
@@ -188,9 +189,19 @@ methods_univariate = [
 n_iter_multi = 20
 methods_multivariate = [
     [run_multichannel_gcd_fullrank, 'gcd fullrank', n_iter_multi],
-    [run_multichannel_dicodile_fullrank, 'dicodile fullrank', n_iter_multi],
+    [partial(run_multichannel_dicodile_fullrank, njobs=5),
+     'dicodile fullrank 5', n_iter_multi],
+    [partial(run_multichannel_dicodile_fullrank, njobs=10),
+     'dicodile fullrank 10', n_iter_multi],
+    [partial(run_multichannel_dicodile_fullrank, njobs=30),
+     'dicodile fullrank 30', n_iter_multi],
     [run_multichannel_gcd, 'gcd', n_iter_multi],
-    [run_multichannel_dicodile, 'dicodile', n_iter_multi],
+    [partial(run_multichannel_dicodile, njobs=5),
+     'dicodile 5', n_iter_multi],
+    [partial(run_multichannel_dicodile, njobs=10),
+     'dicodile 10', n_iter_multi],
+    [partial(run_multichannel_dicodile, njobs=30),
+     'dicodile 30', n_iter_multi],
 ]
 
 
