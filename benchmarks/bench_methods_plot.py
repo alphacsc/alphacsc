@@ -56,7 +56,7 @@ def plot_convergence(data_frame, threshold, normalize_method, save_name):
             best_pobj = min([min(pobj) for pobj in this_res['pobj']])
 
             # draw a different figure for each setting
-            fig = plt.figure(figsize=(6, 4))
+            fig = plt.figure(figsize=(11, 6))
             ax = fig.gca()
             plt.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
             # ymin = np.inf
@@ -118,7 +118,10 @@ def plot_convergence(data_frame, threshold, normalize_method, save_name):
                 plt.ylabel('(objective - best) / best')
 
             # ---- Cleaner fig for the paper
-            plt.legend(loc=0, ncol=1)
+            ncol = (len(labels) // 2) + (len(labels) % 2)
+
+            plt.legend(bbox_to_anchor=(0, 1, 1, 0), loc="lower left",
+                       mode="expand", ncol=ncol, columnspacing=0.8)
 
             plt.ylabel('')
 
