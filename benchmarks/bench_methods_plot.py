@@ -204,7 +204,7 @@ def plot_barplot(all_results_df, threshold, normalize_method, save_name):
         regs.sort()
         x_positions = np.arange(regs.size)
 
-        fig = plt.figure(figsize=(11, 4))
+        fig = plt.figure(figsize=(11, 6))
         ax = fig.gca()
         rect_list = []
         for i, label in enumerate(labels):
@@ -237,12 +237,8 @@ def plot_barplot(all_results_df, threshold, normalize_method, save_name):
         # legend to the top
         plt.legend()
         labels = [text.get_text() for text in ax.get_legend().get_texts()]
-        if len(labels) > 3:
-            ncol = 2
-            top = 0.65
-        else:
-            ncol = 3
-            top = 0.85
+        ncol = (len(labels) // 2) + (len(labels) % 2)
+        top = 0.75
         fig.legend(rect_list, labels, loc='upper center', ncol=ncol,
                    columnspacing=0.8)
         ax.legend_.remove()
