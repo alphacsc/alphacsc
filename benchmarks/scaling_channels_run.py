@@ -3,13 +3,12 @@
 This script needs the following packages:
     conda install pandas
     conda install -c conda-forge pyfftw
-    pip install alphacsc/other/sporco
 
 This script performs the computations and save the results in a pickled file
 `figures/methods_scaling_reg*.pkl` which can be plotted using
 `scaling_channels_plot.py`.
 """
-import os
+from pathlib import Path
 import time
 import itertools
 
@@ -17,7 +16,6 @@ import numpy as np
 import pandas as pd
 import scipy.sparse as sp
 from joblib import Parallel, delayed, Memory
-from sporco.admm.cbpdndl import ConvBPDNDictLearn
 
 from alphacsc.utils.profile_this import profile_this  # noqa
 from alphacsc.utils import check_random_state, get_D
@@ -74,56 +72,21 @@ def run_multivariate(X, D_init, reg, n_iter, random_state,
         raise_on_increase=False)
 
 
-def run_cbpdn(X, ds_init, reg, n_iter, random_state, label, n_channels):
-    # use only one thread in fft
-    import sporco.linalg
-    sporco.linalg.pyfftw_threads = 1
-
-    n_atoms, n_channels_n_times_atom = ds_init.shape
+def run_multivariate_dicodile(X, D_init, reg, n_iter, random_state,
+                              label, n_channels):
+    n_atoms, n_channels_n_times_atom = D_init.shape
     n_times_atom = n_channels_n_times_atom - n_channels
-    ds_init = get_D(ds_init, n_channels)
+    D_init = get_D(D_init, n_channels)
 
-    if X.ndim == 2:
-        ds_init = np.swapaxes(ds_init, 0, 1)[:, None, :]
-        X = np.swapaxes(X, 0, 1)[:, None, :]
-        single_channel = True
-    else:
-        ds_init = np.swapaxes(ds_init, 0, 2)
-        X = np.swapaxes(X, 0, 2)
-        single_channel = False
-
-    options = {
-        'Verbose': VERBOSE > 0,
-        'MaxMainIter': n_iter,
-        'CBPDN': dict(NonNegCoef=True),
-        'CCMOD': dict(ZeroMean=False),
-        'DictSize': ds_init.shape,
-    }
-
-    # wohlberg / convolutional basis pursuit
-    opt = ConvBPDNDictLearn.Options(options)
-    cbpdn = ConvBPDNDictLearn(ds_init, X, reg, opt, dimN=1)
-    results = cbpdn.solve()
-    times = np.cumsum(cbpdn.getitstat().Time)
-
-    d_hat, pobj = results
-    if single_channel:
-        d_hat = d_hat.squeeze().T
-        n_atoms, n_times_atom = d_hat.shape
-    else:
-        d_hat = d_hat.squeeze()
-        if d_hat.ndim == 2:
-            d_hat = d_hat[:, None]
-        d_hat = d_hat.swapaxes(0, 2)
-        n_atoms, n_channels, n_times_atom = d_hat.shape
-
-    z_hat = cbpdn.getcoef().squeeze().swapaxes(0, 2)
-    times = np.concatenate([[0], times])
-
-    # z_hat.shape = (n_atoms, n_trials, n_times)
-    z_hat = z_hat[:, :, :-n_times_atom + 1]
-
-    return pobj, times, d_hat, z_hat, reg
+    solver_z_kwargs = dict(max_iter=500, tol=1e-1)
+    return learn_d_z_multi(
+        X, n_atoms, n_times_atom, reg=reg, n_iter=n_iter,
+        uv_constraint='auto', rank1=False, D_init=D_init,
+        solver_d='auto', solver_d_kwargs=dict(max_iter=50),
+        solver_z="dicodile", solver_z_kwargs=solver_z_kwargs,
+        name="dicodile-{}-{}".format(n_channels, random_state),
+        random_state=random_state, n_jobs=10, verbose=VERBOSE,
+        raise_on_increase=False)
 
 
 ####################################
@@ -176,10 +139,13 @@ if __name__ == '__main__':
                         help='number of cores used to run the experiment')
     parser.add_argument('--dense', action="store_true",
                         help='run the experiment for multivariate')
-    parser.add_argument('--wohlberg', action="store_true",
-                        help='run the experiment for wohlberg')
+    parser.add_argument('--dicodile', action="store_true",
+                        help='run the experiment for multivariate dicodile')
 
     args = parser.parse_args()
+
+    figures_dir = Path('figures')
+    figures_dir.mkdir(exist_ok=True)
 
     # Use the caching utilities from joblib to same intermediate results and
     # avoid loosing computations when the interpreter crashes.
@@ -189,7 +155,8 @@ if __name__ == '__main__':
 
     # load somato data
     from alphacsc.datasets.mne_data import load_data
-    X, info = load_data(dataset='somato', epoch=False, n_jobs=args.njobs)
+    X, info = load_data(dataset='somato', epoch=False, n_jobs=args.njobs,
+                        n_splits=1)
 
     # Set dictionary learning parameters
     n_atoms = 2  # K
@@ -211,10 +178,10 @@ if __name__ == '__main__':
         span_channels = np.unique(np.floor(
             np.logspace(0, np.log10(n_channels), 10)).astype(int))[:5]
 
-    if args.wohlberg:
-        methods = [[run_cbpdn, 'wohlberg', n_iter]]
+    if args.dicodile:
+        methods = [[run_multivariate_dicodile, 'dicodile', n_iter]]
         span_channels = np.unique(np.floor(
-            np.logspace(0, np.log10(n_channels), 10)).astype(int))[:-3]
+            np.logspace(0, np.log10(n_channels), 10)).astype(int))[:5]
 
     # Create a grid a parameter for which we which to run the benchmark.
     iterator = itertools.product(range(n_states), methods, span_channels)
@@ -229,15 +196,15 @@ if __name__ == '__main__':
     suffix = ""
     if args.dense:
         suffix = "_dense"
-    if args.wohlberg:
-        suffix = "_wohlberg"
+    if args.dicodile:
+        suffix = "_dicodile"
 
-    save_name = 'methods_scaling_reg{}{}.pkl'.format(reg, suffix)
-    if not os.path.exists("figures"):
-        os.mkdir("figures")
-    save_name = os.path.join('figures', save_name)
+    file_name = f'methods_scaling_reg{reg}{suffix}.pkl'
+    save_path = figures_dir / file_name
+
     all_results_df = pd.DataFrame(
         all_results, columns='n_channels random_state label pobj times '
         'd_hat z_hat n_atoms n_times_atom reg'.split(' '))
-    all_results_df.to_pickle(save_name)
+
+    all_results_df.to_pickle(save_path)
     print('-- End of the script --')

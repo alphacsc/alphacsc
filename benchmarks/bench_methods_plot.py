@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 import itertools
 
 import matplotlib
@@ -56,7 +56,7 @@ def plot_convergence(data_frame, threshold, normalize_method, save_name):
             best_pobj = min([min(pobj) for pobj in this_res['pobj']])
 
             # draw a different figure for each setting
-            fig = plt.figure(figsize=(6, 4))
+            fig = plt.figure(figsize=(11, 6))
             ax = fig.gca()
             plt.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
             # ymin = np.inf
@@ -118,11 +118,15 @@ def plot_convergence(data_frame, threshold, normalize_method, save_name):
                 plt.ylabel('(objective - best) / best')
 
             # ---- Cleaner fig for the paper
-            # plt.legend(loc=0, ncol=1)
+            ncol = (len(labels) // 2) + (len(labels) % 2)
+
+            plt.legend(bbox_to_anchor=(0, 1, 1, 0), loc="lower left",
+                       mode="expand", ncol=ncol, columnspacing=0.8)
+
             plt.ylabel('')
 
             # plt.ylim(ymin=ymin / 10)
-            # plt.title('K = %d, L = %d' % (n_atoms, n_times_atom))
+            plt.title('K = %d, L = %d' % (n_atoms, n_times_atom))
             plt.gca().tick_params(axis='x', which='both', bottom='off',
                                   top='off')
             plt.gca().tick_params(axis='y', which='both', left='off',
@@ -203,7 +207,7 @@ def plot_barplot(all_results_df, threshold, normalize_method, save_name):
         regs.sort()
         x_positions = np.arange(regs.size)
 
-        fig = plt.figure(figsize=(11, 4))
+        fig = plt.figure(figsize=(11, 6))
         ax = fig.gca()
         rect_list = []
         for i, label in enumerate(labels):
@@ -236,12 +240,8 @@ def plot_barplot(all_results_df, threshold, normalize_method, save_name):
         # legend to the top
         plt.legend()
         labels = [text.get_text() for text in ax.get_legend().get_texts()]
-        if len(labels) > 3:
-            ncol = 2
-            top = 0.75
-        else:
-            ncol = 3
-            top = 0.85
+        ncol = (len(labels) // 2) + (len(labels) % 2)
+        top = 0.75
         fig.legend(rect_list, labels, loc='upper center', ncol=ncol,
                    columnspacing=0.8)
         ax.legend_.remove()
@@ -261,8 +261,9 @@ if __name__ == '__main__':
     ############################
 
     all_results_df = None
-    for load_name in os.listdir('figures'):
-        load_name = os.path.join('figures', load_name)
+    figures_dir = Path('figures')
+    for load_name in figures_dir.iterdir():
+        load_name = str(load_name)
         if (load_name[-4:] == '.pkl' and
                 ('run' in load_name or 'debug' in load_name)):
             print("load %s" % load_name)
@@ -283,5 +284,5 @@ if __name__ == '__main__':
 
     # plot the aggregation of all results
     plot_barplot(all_results_df, threshold=1e-2, normalize_method='last',
-                 save_name=os.path.join('figures', 'all'))
+                 save_name=str(figures_dir / 'all'))
     plt.close('all')

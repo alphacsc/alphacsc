@@ -5,7 +5,7 @@ This script requires `pandas` which can be installed with `pip install pandas`.
 This script performs the computations and save the results in a pickled file
 `figures/rank1_snr.pkl` which can be plotted using `1D_vs_multi_plot.py`.
 """
-import os
+from pathlib import Path
 import itertools
 import numpy as np
 import pandas as pd
@@ -80,8 +80,7 @@ def get_signals(n_channels=50, n_times_atom=64, n_times_valid=640,
     # add atoms
     z = np.array([sparse.random(n_atoms, n_times_valid, density=.05,
                                 random_state=random_state).toarray()
-                 for _ in range(n_trials)])
-    z = np.swapaxes(z, 0, 1)
+                  for _ in range(n_trials)])
 
     X = construct_X_multi(z, uv, n_channels=n_channels)
 
@@ -153,6 +152,9 @@ if __name__ == "__main__":
                         help='Number of processes used to run the benchmark.')
     args = parser.parse_args()
 
+    figures_dir = Path('figures')
+    figures_dir.mkdir(exist_ok=True)
+
     # Use the caching utilities from joblib to same intermediate results and
     # avoid loosing computations when the interpreter crashes.
     mem = Memory(location='.', verbose=VERBOSE)
@@ -187,11 +189,9 @@ if __name__ == "__main__":
     )
 
     # save all results for plotting with 1D_vs_multi_plot.py script.
-    save_name = 'rank1_snr.pkl'
-    if not os.path.exists("figures"):
-        os.mkdir("figures")
-    save_name = os.path.join('figures', save_name)
+    save_path = figures_dir / 'rank1_snr.pkl'
+
     all_results_df = pd.DataFrame(
         results, columns='random_state sigma run_n_channels '
                          'score uv uv_hat reg'.split(' '))
-    all_results_df.to_pickle(save_name)
+    all_results_df.to_pickle(save_path)

@@ -3,7 +3,7 @@
 This script plots the results saved by the script 1D_vs_multi_run.py, which
 should be run beforehand.
 """
-import os
+from pathlib import Path
 import numpy as np
 import pandas as pd
 import matplotlib as mpl
@@ -25,7 +25,8 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     file_name = args.file_name
-    if not os.path.exists(file_name):
+
+    if not Path(file_name).exists():
         raise FileNotFoundError("Could not find result file '{}'. Make sure "
                                 "to run 1D_vs_multi_run.py before using this "
                                 "script.")
@@ -56,7 +57,7 @@ if __name__ == "__main__":
             all_results_df['run_n_channels'] == n_channels]
         for sigma in span_sigma:
             results = results_n_channel[results_n_channel['sigma'] == sigma]
-            results = results.groupby(['random_state']).min()
+            results = results.groupby(['random_state']).min(numeric_only=True)
             curve += [results.score.mean()]
         color = colormap(normalize(n_channels))
         plt.loglog(span_sigma, curve, color=color,
