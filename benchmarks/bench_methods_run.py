@@ -13,6 +13,7 @@ This script needs the following packages:
 from __future__ import print_function
 from functools import partial
 from pathlib import Path
+import argparse
 import time
 import itertools
 
@@ -187,7 +188,7 @@ methods_univariate = [
 ]
 
 n_iter_multi = 20
-methods_multivariate = [
+methods_multivariate_full_rank = [
     [run_multichannel_gcd_fullrank, 'gcd fullrank', n_iter_multi],
     [partial(run_multichannel_dicodile_fullrank, njobs=5),
      'dicodile fullrank 5', n_iter_multi],
@@ -195,6 +196,9 @@ methods_multivariate = [
      'dicodile fullrank 10', n_iter_multi],
     [partial(run_multichannel_dicodile_fullrank, njobs=30),
      'dicodile fullrank 30', n_iter_multi],
+]
+
+methods_multivariate_rank_1 = [
     [run_multichannel_gcd, 'gcd', n_iter_multi],
     [partial(run_multichannel_dicodile, njobs=5),
      'dicodile 5', n_iter_multi],
@@ -264,6 +268,18 @@ def one_run(X, X_shape, random_state, method, n_atoms, n_times_atom, reg):
 
 
 if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--rank', choices=['rank1', 'full', 'both'], default='both',
+      help='run rank-1, full-rank or both multivariate algorithms')
+    args = parser.parse_args()
+
+    if args.rank == 'rank1':
+        methods_multivariate = methods_multivariate_rank_1
+    elif args.rank == 'full':
+        methods_multivariate = methods_multivariate_full_rank
+    else:
+        methods_multivariate = methods_multivariate_full_rank + methods_multivariate_rank_1
 
     out_iterator = itertools.product(n_times_atom_list, n_atoms_list,
                                      n_channel_list, reg_list)
