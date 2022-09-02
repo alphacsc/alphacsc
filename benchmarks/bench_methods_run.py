@@ -256,7 +256,7 @@ def one_run(X, X_shape, random_state, method, n_atoms, n_times_atom, reg):
     print(colorify(msg, GREEN))
     return (random_state, label, np.asarray(pobj), np.asarray(times),
             np.asarray(d_hat), np.asarray(z_hat), n_atoms, n_times_atom,
-            n_trials, n_times, n_channels, reg)
+            n_trials, n_times, n_channels, reg, eps)
 
 
 #################################################
@@ -317,7 +317,7 @@ if __name__ == '__main__':
 
         all_results_df = pd.DataFrame(
             all_results, columns='random_state label pobj times d_hat '
-            'z_hat n_atoms n_times_atom n_trials n_times n_channels reg'.
+            'z_hat n_atoms n_times_atom n_trials n_times n_channels reg eps'.
             split(' '))
         all_results_df.to_pickle(save_path)
 
