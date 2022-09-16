@@ -45,6 +45,7 @@ n_jobs = 1
 z_max_iter = 1000
 # tol for z step
 z_tol = 1e-3
+eps = 1e-3
 # number of random states
 n_states = 1
 # loop over parameters
@@ -96,7 +97,7 @@ def run_multichannel_gcd(X, ds_init, reg, n_iter, random_state, label):
     solver_z_kwargs = dict(max_iter=z_max_iter, tol=z_tol)
     pobj, times, d_hat, z_hat, reg = learn_d_z_multi(
         X, n_atoms, n_times_atom, solver_d='alternate_adaptive',
-        solver_z="lgcd", uv_constraint='separate', eps=-np.inf,
+        solver_z="lgcd", uv_constraint='separate', eps=eps,
         solver_z_kwargs=solver_z_kwargs, reg=reg, solver_d_kwargs=dict(
             max_iter=100), n_iter=n_iter, random_state=random_state,
         raise_on_increase=False, D_init=ds_init, n_jobs=n_jobs,
@@ -121,7 +122,7 @@ def run_multichannel_dicodile(X, ds_init, reg, n_iter, random_state,
     solver_z_kwargs = dict(max_iter=z_max_iter, tol=z_tol)
     pobj, times, d_hat, z_hat, reg = learn_d_z_multi(
         X, n_atoms, n_times_atom, solver_d='auto', solver_z="dicodile",
-        uv_constraint='auto', eps=-np.inf, solver_z_kwargs=solver_z_kwargs,
+        uv_constraint='auto', eps=eps, solver_z_kwargs=solver_z_kwargs,
         reg=reg, solver_d_kwargs=dict(max_iter=100), n_iter=n_iter,
         random_state=random_state, raise_on_increase=False, D_init=ds_init,
         n_jobs=njobs, verbose=verbose, rank1=True)
@@ -140,7 +141,7 @@ def run_multichannel_gcd_fullrank(X, ds_init, reg, n_iter, random_state,
     solver_z_kwargs = dict(max_iter=z_max_iter, tol=z_tol)
     pobj, times, d_hat, z_hat, reg = learn_d_z_multi(
         X, n_atoms, n_times_atom, solver_d='fista', solver_z="lgcd",
-        uv_constraint='auto', eps=-np.inf, solver_z_kwargs=solver_z_kwargs,
+        uv_constraint='auto', eps=eps, solver_z_kwargs=solver_z_kwargs,
         reg=reg, solver_d_kwargs=dict(max_iter=100), n_iter=n_iter,
         random_state=random_state, raise_on_increase=False, D_init=ds_init,
         n_jobs=n_jobs, verbose=verbose, rank1=False)
@@ -159,7 +160,7 @@ def run_multichannel_dicodile_fullrank(X, ds_init, reg, n_iter, random_state,
     solver_z_kwargs = dict(max_iter=z_max_iter, tol=z_tol)
     pobj, times, d_hat, z_hat, reg = learn_d_z_multi(
         X, n_atoms, n_times_atom, solver_d='auto', solver_z="dicodile",
-        uv_constraint='auto', eps=-np.inf, solver_z_kwargs=solver_z_kwargs,
+        uv_constraint='auto', eps=eps, solver_z_kwargs=solver_z_kwargs,
         reg=reg, solver_d_kwargs=dict(max_iter=100), n_iter=n_iter,
         random_state=random_state, raise_on_increase=False, D_init=ds_init,
         n_jobs=njobs, verbose=verbose, rank1=False)
