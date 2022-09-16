@@ -25,8 +25,6 @@ from alphacsc.update_d import update_d_block
 from alphacsc.learn_d_z import learn_d_z
 from alphacsc.learn_d_z_multi import learn_d_z_multi
 from alphacsc.datasets.mne_data import load_data
-from alphacsc.init_dict import init_dictionary
-from alphacsc.utils.dictionary import get_uv
 
 START = time.time()
 BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE = range(30, 38)
@@ -55,6 +53,7 @@ n_times_atom_list = [32]
 n_atoms_list = [2]
 n_channel_list = [1, 5, 204]
 reg_list = [10.]
+ds_init = "chunk"
 
 
 ######################################
@@ -87,8 +86,8 @@ def run_l_bfgs(X, ds_init, reg, n_iter, random_state, label, factr_d=1e7,
     return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
 
 
-def run_multivariete(X, ds_init, solver_z, reg, n_iter, random_state, label,
-                     rank1, njobs):
+def run_multivariete(X, solver_z, reg, n_iter, random_state, label, rank1,
+                     njobs):
 
     solver_z_kwargs = dict(max_iter=z_max_iter, tol=z_tol)
     pobj, times, d_hat, z_hat, reg = learn_d_z_multi(
@@ -106,45 +105,33 @@ def run_multivariete(X, ds_init, solver_z, reg, n_iter, random_state, label,
 
 def run_multichannel_gcd(X, ds_init, reg, n_iter, random_state, label):
     if X.ndim == 2:
-        n_atoms, n_times_atom = ds_init.shape
-        ds_init = np.c_[np.ones((n_atoms, 1)), ds_init]
         X = X[:, None, :]
-    else:
-        n_atoms, n_channels, n_times_atom = ds_init.shape
-        ds_init = get_uv(ds_init)  # project init to rank 1
 
-    return run_multivariete(X, ds_init, "lgcd", reg, n_iter, random_state,
-                            label, True, n_jobs)
+    return run_multivariete(X, "lgcd", reg, n_iter, random_state, label,
+                            True, n_jobs)
 
 
-def run_multichannel_dicodile(X, ds_init, reg, n_iter, random_state,
-                              label, njobs=30):
+def run_multichannel_dicodile(X, reg, n_iter, random_state, label, njobs=30):
     if X.ndim == 2:
-        n_atoms, n_times_atom = ds_init.shape
-        ds_init = np.c_[np.ones((n_atoms, 1)), ds_init]
         X = X[:, None, :]
-    else:
-        n_atoms, n_channels, n_times_atom = ds_init.shape
-        ds_init = get_uv(ds_init)  # project init to rank 1
 
-    return run_multivariete(X, ds_init, "dicodile", reg, n_iter, random_state,
-                            label, True, njobs)
+    return run_multivariete(X, "dicodile", reg, n_iter, random_state, label,
+                            True, njobs)
 
 
-def run_multichannel_gcd_fullrank(X, ds_init, reg, n_iter, random_state,
-                                  label):
+def run_multichannel_gcd_fullrank(X, reg, n_iter, random_state, label):
     assert X.ndim == 3
 
-    return run_multivariete(X, ds_init, "lgcd", reg, n_iter, random_state,
-                            label, False, n_jobs)
+    return run_multivariete(X, "lgcd", reg, n_iter, random_state, label, False,
+                            n_jobs)
 
 
-def run_multichannel_dicodile_fullrank(X, ds_init, reg, n_iter, random_state,
-                                       label, njobs=30):
+def run_multichannel_dicodile_fullrank(X, reg, n_iter, random_state, label,
+                                       njobs=30):
     assert X.ndim == 3
 
-    return run_multivariete(X, ds_init, "dicodile", reg, n_iter, random_state,
-                            label, False, njobs)
+    return run_multivariete(X, "dicodile", reg, n_iter, random_state, label,
+                            False, njobs)
 
 
 def colorify(message, color=BLUE):
@@ -196,28 +183,17 @@ def one_run(X, X_shape, random_state, method, n_atoms, n_times_atom, reg):
 
     if len(X_shape) == 2:
         n_trials, n_times = X.shape
-        n_channels = 1
-        X_init = X[:, None, :]
     else:
         n_trials, n_channels, n_times = X.shape
-        X_init = X
-
-    # use the same init for all methods
-    ds_init = init_dictionary(X_init, n_atoms, n_times_atom, D_init='chunk',
-                              rank1=False, uv_constraint='separate',
-                              random_state=random_state)
-    if len(X_shape) == 2:
-        ds_init = ds_init[:, 0, :]
 
     # run the selected algorithm with one iter to remove compilation overhead
     # if dicodile, the workers are started but not stopped or reused, so
     # doubles the requirement for workers
     if 'dicodile' not in label:
-        _, _, _, _ = func(X, ds_init, reg, 1, random_state, label)
+        _, _, _, _ = func(X, reg, 1, random_state, label)
 
     # run the selected algorithm
-    pobj, times, d_hat, z_hat = func(X, ds_init, reg, n_iter, random_state,
-                                     label)
+    pobj, times, d_hat, z_hat = func(X, reg, n_iter, random_state, label)
 
     # store z_hat in a sparse matrix to reduce size
     for z in z_hat:
