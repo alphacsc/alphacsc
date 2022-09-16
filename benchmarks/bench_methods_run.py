@@ -43,6 +43,8 @@ base_name = 'run_0'
 n_jobs = 1
 # max_iter for z step
 z_max_iter = 1000
+# number of outer iterations
+n_iter_multi = 20
 # tol for z step
 z_tol = 1e-3
 eps = 1e-3
@@ -187,7 +189,6 @@ methods_univariate = [
     [run_multichannel_gcd, 'gcd', n_iter],
 ]
 
-n_iter_multi = 20
 methods_multivariate = [
     [run_multichannel_gcd_fullrank, 'gcd fullrank', n_iter_multi],
     [partial(run_multichannel_dicodile_fullrank, njobs=5),
