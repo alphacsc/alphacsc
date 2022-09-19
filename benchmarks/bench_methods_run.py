@@ -86,7 +86,7 @@ def run_l_bfgs(X, ds_init, reg, n_iter, random_state, label, factr_d=1e7,
     return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
 
 
-def run_multivariete(X, solver_z, reg, n_iter, random_state, label, rank1,
+def run_multivariate(X, solver_z, reg, n_iter, random_state, label, rank1,
                      njobs):
 
     solver_z_kwargs = dict(max_iter=z_max_iter, tol=z_tol)
@@ -107,7 +107,7 @@ def run_multichannel_gcd(X, ds_init, reg, n_iter, random_state, label):
     if X.ndim == 2:
         X = X[:, None, :]
 
-    return run_multivariete(X, "lgcd", reg, n_iter, random_state, label,
+    return run_multivariate(X, "lgcd", reg, n_iter, random_state, label,
                             True, n_jobs)
 
 
@@ -115,14 +115,14 @@ def run_multichannel_dicodile(X, reg, n_iter, random_state, label, njobs=30):
     if X.ndim == 2:
         X = X[:, None, :]
 
-    return run_multivariete(X, "dicodile", reg, n_iter, random_state, label,
+    return run_multivariate(X, "dicodile", reg, n_iter, random_state, label,
                             True, njobs)
 
 
 def run_multichannel_gcd_fullrank(X, reg, n_iter, random_state, label):
     assert X.ndim == 3
 
-    return run_multivariete(X, "lgcd", reg, n_iter, random_state, label, False,
+    return run_multivariate(X, "lgcd", reg, n_iter, random_state, label, False,
                             n_jobs)
 
 
@@ -130,7 +130,7 @@ def run_multichannel_dicodile_fullrank(X, reg, n_iter, random_state, label,
                                        njobs=30):
     assert X.ndim == 3
 
-    return run_multivariete(X, "dicodile", reg, n_iter, random_state, label,
+    return run_multivariate(X, "dicodile", reg, n_iter, random_state, label,
                             False, njobs)
 
 
