@@ -175,6 +175,8 @@ def test_unbiased_z_hat(X, solver_z):
 @pytest.mark.parametrize('rank1', [False, True])
 @pytest.mark.parametrize('n_iter', [1, 5])
 def test_learn_d_z_multi_solver_z(X, rank1, n_iter):
+    pytest.importorskip('dicodile')
+
     X, info = load_data(
         dataset='somato', epoch=False, n_jobs=1, n_splits=1
     )
