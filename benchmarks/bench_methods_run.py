@@ -61,9 +61,8 @@ ds_init = "chunk"
 ######################################
 
 
-def run_fista(X, ds_init, reg, n_iter, random_state, label):
+def run_fista(X, reg, n_iter, random_state, label):
     assert X.ndim == 2
-    n_atoms, n_times_atom = ds_init.shape
     pobj, times, d_hat, z_hat, reg = learn_d_z(
         X, n_atoms, n_times_atom, func_d=update_d_block, solver_z='fista',
         solver_z_kwargs=dict(max_iter=2), reg=reg, n_iter=n_iter,
@@ -72,10 +71,9 @@ def run_fista(X, ds_init, reg, n_iter, random_state, label):
     return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
 
 
-def run_l_bfgs(X, ds_init, reg, n_iter, random_state, label, factr_d=1e7,
+def run_l_bfgs(X, reg, n_iter, random_state, label, factr_d=1e7,
                factr_z=1e14):
     assert X.ndim == 2
-    n_atoms, n_times_atom = ds_init.shape
     pobj, times, d_hat, z_hat, reg = learn_d_z(
         X, n_atoms, n_times_atom,
         func_d=update_d_block, solver_z='l-bfgs', solver_z_kwargs=dict(
@@ -103,7 +101,7 @@ def run_multivariate(X, solver_z, reg, n_iter, random_state, label, rank1,
     return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
 
 
-def run_multichannel_gcd(X, ds_init, reg, n_iter, random_state, label):
+def run_multichannel_gcd(X, reg, n_iter, random_state, label):
     if X.ndim == 2:
         X = X[:, None, :]
 
@@ -183,6 +181,7 @@ def one_run(X, X_shape, random_state, method, n_atoms, n_times_atom, reg):
 
     if len(X_shape) == 2:
         n_trials, n_times = X.shape
+        n_channels = 1
     else:
         n_trials, n_channels, n_times = X.shape
 
