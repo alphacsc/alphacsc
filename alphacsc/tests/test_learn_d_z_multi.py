@@ -205,6 +205,6 @@ def test_learn_d_z_multi_solver_z(X, rank1, n_iter):
         n_jobs=njobs, rank1=rank1)
 
     assert reg_d == reg_g
-    assert np.allclose(d_hat_d, d_hat_g, rtol=1e-10, atol=1e-10)
-    assert np.allclose(z_hat_d, z_hat_g, rtol=1e-10, atol=1e-10)
-    assert np.allclose(pobj_d, pobj_g, rtol=1e-10, atol=1e-10)
+    assert np.allclose(d_hat_d, d_hat_g, rtol=1e-9, atol=1e-9)
+    assert np.allclose(z_hat_d, z_hat_g, rtol=1e-9, atol=1e-9)
+    assert np.allclose(pobj_d, pobj_g, rtol=1e-9, atol=1e-9)
