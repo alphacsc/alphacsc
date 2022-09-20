@@ -54,14 +54,14 @@ def test_learn_d_z_multi(X, rank1, solver_d, uv_constraint, window,
 
 
 @pytest.mark.parametrize('window', [False, True])
-# TODO expand params when DiCoDiLe is rank-1-capable
+@pytest.mark.parametrize('rank1', [False, True])
 @pytest.mark.parametrize('n_trials', [1])
-def test_learn_d_z_multi_dicodile(X, window):
+def test_learn_d_z_multi_dicodile(X, window, rank1):
     pytest.importorskip('dicodile')
     # smoke test for learn_d_z_multi
 
     pobj, times, uv_hat, z_hat, reg = learn_d_z_multi(
-        X, N_ATOMS, N_TIMES_ATOM, uv_constraint='auto', rank1=False,
+        X, N_ATOMS, N_TIMES_ATOM, uv_constraint='auto', rank1=rank1,
         solver_d='auto', random_state=0,
         n_iter=30, eps=-np.inf, solver_z='dicodile', window=window,
         verbose=0
