@@ -121,7 +121,8 @@ def plot_convergence(data_frame, threshold, normalize_method, save_name):
             ncol = (len(labels) // 2) + (len(labels) % 2)
 
             plt.legend(bbox_to_anchor=(0, 1, 1, 0), loc="lower left",
-                       mode="expand", ncol=ncol, columnspacing=0.8)
+                       mode="expand", ncol=ncol, columnspacing=0.8,
+                       fontsize="x-small")
 
             plt.ylabel('')
 
@@ -243,7 +244,7 @@ def plot_barplot(all_results_df, threshold, normalize_method, save_name):
         ncol = (len(labels) // 2) + (len(labels) % 2)
         top = 0.75
         fig.legend(rect_list, labels, loc='upper center', ncol=ncol,
-                   columnspacing=0.8)
+                   columnspacing=0.8, fontsize="x-small")
         ax.legend_.remove()
         fig.subplots_adjust(top=top)
 
