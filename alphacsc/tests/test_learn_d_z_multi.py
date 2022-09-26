@@ -7,7 +7,6 @@ from alphacsc.convolutional_dictionary_learning import BatchCDL, GreedyCDL
 from alphacsc.online_dictionary_learning import OnlineCDL
 from alphacsc.init_dict import init_dictionary
 
-from alphacsc.datasets.mne_data import load_data
 from alphacsc.tests.conftest import parametrize_solver_and_constraint
 
 from conftest import N_ATOMS, N_TIMES, N_TIMES_ATOM, N_CHANNELS
@@ -173,20 +172,18 @@ def test_unbiased_z_hat(X, solver_z):
 
 
 @pytest.mark.parametrize('rank1', [False, True])
-@pytest.mark.parametrize('n_iter', [1, 5])
-def test_learn_d_z_multi_solver_z(X, rank1, n_iter):
+@pytest.mark.parametrize('n_iter', [0, 1, 5])
+def test_learn_d_z_multi_solver_z(rank1, n_iter):
     pytest.importorskip('dicodile')
 
-    X, info = load_data(
-        dataset='somato', epoch=False, n_jobs=1, n_splits=1
-    )
+    X = np.random.randn(1, 20, 256)
 
     n_atoms = 2
-    n_times_atom = 32
+    n_times_atom = 5
     z_max_iter = 1
     z_tol = 1e-3
     eps = 1e-3
-    reg = 10
+    reg = 0.1
     njobs = 1
     ds_init = "chunk"
     random_state = 0
