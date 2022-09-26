@@ -54,10 +54,12 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
     else:
         z_hat = z0.copy()
 
-    n_times_seg = 2 * np.array(n_times_atom) + 1
+    n_times_seg = 2 * np.array(n_times_atom) - 1
     if n_seg == 'auto':
         if strategy == 'greedy':
-            n_seg = max(n_times_valid // n_times_seg + 1, 1)
+            rem = n_times_valid % n_times_seg
+            n_seg = max(n_times_valid // n_times_seg +
+                        (1 if rem != 0 else 0), 1)
         elif strategy in ('random', 'cyclic'):
             n_seg = 1
             n_coordinates = n_times_valid * n_atoms
