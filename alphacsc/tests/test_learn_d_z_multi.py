@@ -56,7 +56,8 @@ def test_learn_d_z_multi(X, rank1, solver_d, uv_constraint, window,
 @pytest.mark.parametrize('window', [False, True])
 # TODO expand params when DiCoDiLe is rank-1-capable
 @pytest.mark.parametrize('n_trials', [1])
-def test_learn_d_z_multi_dicodile(X, window):
+@pytest.mark.parametrize('algorithm', ['batch', 'greedy'])
+def test_learn_d_z_multi_dicodile(X, window, algorithm):
     pytest.importorskip('dicodile')
     # smoke test for learn_d_z_multi
 
@@ -64,7 +65,7 @@ def test_learn_d_z_multi_dicodile(X, window):
         X, N_ATOMS, N_TIMES_ATOM, uv_constraint='auto', rank1=False,
         solver_d='auto', random_state=0,
         n_iter=30, eps=-np.inf, solver_z='dicodile', window=window,
-        verbose=0
+        algorithm=algorithm, verbose=0
     )
 
     msg = "Cost function does not go down"
