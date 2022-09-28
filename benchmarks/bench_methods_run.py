@@ -66,7 +66,8 @@ def run_fista(X, reg, n_iter, random_state, label):
     pobj, times, d_hat, z_hat, reg = learn_d_z(
         X, n_atoms, n_times_atom, func_d=update_d_block, solver_z='fista',
         solver_z_kwargs=dict(max_iter=2), reg=reg, n_iter=n_iter,
-        random_state=random_state, ds_init=ds_init, n_jobs=1, verbose=verbose)
+        random_state=random_state, ds_init=ds_init, n_jobs=1, verbose=verbose
+    )
 
     return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
 
@@ -75,11 +76,11 @@ def run_l_bfgs(X, reg, n_iter, random_state, label, factr_d=1e7,
                factr_z=1e14):
     assert X.ndim == 2
     pobj, times, d_hat, z_hat, reg = learn_d_z(
-        X, n_atoms, n_times_atom,
-        func_d=update_d_block, solver_z='l-bfgs', solver_z_kwargs=dict(
-            factr=factr_z), reg=reg, n_iter=n_iter, solver_d_kwargs=dict(
-                factr=factr_d), random_state=random_state, ds_init=ds_init,
-        n_jobs=1, verbose=verbose)
+        X, n_atoms, n_times_atom, func_d=update_d_block, solver_z='l-bfgs',
+        solver_z_kwargs=dict(factr=factr_z), reg=reg, n_iter=n_iter,
+        solver_d_kwargs=dict(factr=factr_d), random_state=random_state,
+        ds_init=ds_init, n_jobs=1, verbose=verbose
+    )
 
     return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
 
@@ -93,7 +94,8 @@ def run_multivariate(X, solver_z, reg, n_iter, random_state, label, rank1,
         uv_constraint='auto', eps=eps, solver_z_kwargs=solver_z_kwargs,
         reg=reg, solver_d_kwargs=dict(max_iter=100), n_iter=n_iter,
         random_state=random_state, raise_on_increase=False, D_init=ds_init,
-        n_jobs=njobs, verbose=verbose, rank1=rank1)
+        n_jobs=njobs, verbose=verbose, rank1=rank1
+    )
 
     # remove the ds init duration
     times[0] = 0
@@ -105,31 +107,35 @@ def run_multichannel_gcd(X, reg, n_iter, random_state, label):
     if X.ndim == 2:
         X = X[:, None, :]
 
-    return run_multivariate(X, "lgcd", reg, n_iter, random_state, label,
-                            True, n_jobs)
+    return run_multivariate(
+        X, "lgcd", reg, n_iter, random_state, label, True, n_jobs
+    )
 
 
 def run_multichannel_dicodile(X, reg, n_iter, random_state, label, njobs=30):
     if X.ndim == 2:
         X = X[:, None, :]
 
-    return run_multivariate(X, "dicodile", reg, n_iter, random_state, label,
-                            True, njobs)
+    return run_multivariate(
+        X, "dicodile", reg, n_iter, random_state, label, True, njobs
+    )
 
 
 def run_multichannel_gcd_fullrank(X, reg, n_iter, random_state, label):
     assert X.ndim == 3
 
-    return run_multivariate(X, "lgcd", reg, n_iter, random_state, label, False,
-                            n_jobs)
+    return run_multivariate(
+        X, "lgcd", reg, n_iter, random_state, label, False, n_jobs
+    )
 
 
 def run_multichannel_dicodile_fullrank(X, reg, n_iter, random_state, label,
                                        njobs=30):
     assert X.ndim == 3
 
-    return run_multivariate(X, "dicodile", reg, n_iter, random_state, label,
-                            False, njobs)
+    return run_multivariate(
+        X, "dicodile", reg, n_iter, random_state, label, False, njobs
+    )
 
 
 def colorify(message, color=BLUE):
@@ -256,9 +262,11 @@ if __name__ == '__main__':
         else:
             # run the methods for different random_state
             delayed_one_run = delayed(one_run)
-            results = Parallel(n_jobs=n_jobs)(delayed_one_run(
-                X, X_shape, random_state, method, n_atoms, n_times_atom,
-                reg) for method, random_state in iterator)
+            results = Parallel(n_jobs=n_jobs)(
+                delayed_one_run(X, X_shape, random_state, method, n_atoms,
+                                n_times_atom, reg)
+                for method, random_state in iterator
+            )
 
         all_results.extend(results)
 
@@ -268,7 +276,8 @@ if __name__ == '__main__':
         all_results_df = pd.DataFrame(
             all_results, columns='random_state label pobj times d_hat '
             'z_hat n_atoms n_times_atom n_trials n_times n_channels reg'.
-            split(' '))
+            split(' ')
+        )
         all_results_df.to_pickle(save_path)
 
     print('-- End of the script --')
