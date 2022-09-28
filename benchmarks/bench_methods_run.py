@@ -129,7 +129,7 @@ def run_multichannel_fullrank(X, solver_z, reg, n_iter, random_state, label,
                               njobs=1):
     assert X.ndim == 3
 
-    label += f" fullrank {njobs}"
+    label += f" full_rank {njobs}"
     return run_multivariate(
         X, solver_z, reg, n_iter, random_state, label, False, njobs
     )
@@ -285,7 +285,8 @@ if __name__ == '__main__':
 
         all_results_df = pd.DataFrame(
             all_results, columns='random_state label pobj times d_hat '
-            'z_hat n_atoms n_times_atom n_trials n_times n_channels reg'.
+            'z_hat n_atoms n_times_atom n_trials n_times n_channels reg z_tol '
+            'eps'.
             split(' ')
         )
         all_results_df.to_pickle(save_path)
