@@ -54,6 +54,7 @@ n_atoms_list = [2]
 n_channel_list = [1, 5, 204]
 reg_list = [10.]
 ds_init = "chunk"
+rank1_list = [False, True]
 
 
 ######################################
@@ -61,24 +62,34 @@ ds_init = "chunk"
 ######################################
 
 
-def run_fista(X, reg, n_iter, random_state, label):
+def run_fista(X, solver_z, reg, n_iter, random_state, label):
+
+    solver_z_kwargs = dict(max_iter=2)
+
+    return run_univariete(X, solver_z, solver_z_kwargs, reg, n_iter,
+                          random_state, label)
+
+
+def run_l_bfgs(X, solver_z, reg, n_iter, random_state, label):
+
+    factr_z = 1e14
+    factr_d = 1e7
+
+    solver_z_kwargs = dict(factr=factr_z)
+    solver_d_kwargs = dict(factr=factr_d)
+
+    return run_univariete(X, solver_z, solver_z_kwargs, reg, n_iter,
+                          random_state, label, solver_d_kwargs)
+
+
+def run_univariete(X, solver_z, solver_z_kwargs, reg, n_iter, random_state,
+                   label, solver_d_kwargs=dict()):
     assert X.ndim == 2
+
     pobj, times, d_hat, z_hat, reg = learn_d_z(
-        X, n_atoms, n_times_atom, func_d=update_d_block, solver_z='fista',
-        solver_z_kwargs=dict(max_iter=2), reg=reg, n_iter=n_iter,
-        random_state=random_state, ds_init=ds_init, n_jobs=1, verbose=verbose
-    )
-
-    return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
-
-
-def run_l_bfgs(X, reg, n_iter, random_state, label, factr_d=1e7,
-               factr_z=1e14):
-    assert X.ndim == 2
-    pobj, times, d_hat, z_hat, reg = learn_d_z(
-        X, n_atoms, n_times_atom, func_d=update_d_block, solver_z='l-bfgs',
-        solver_z_kwargs=dict(factr=factr_z), reg=reg, n_iter=n_iter,
-        solver_d_kwargs=dict(factr=factr_d), random_state=random_state,
+        X, n_atoms, n_times_atom, func_d=update_d_block, solver_z=solver_z,
+        solver_z_kwargs=solver_z_kwargs, reg=reg, n_iter=n_iter,
+        solver_d_kwargs=solver_d_kwargs, random_state=random_state,
         ds_init=ds_init, n_jobs=1, verbose=verbose
     )
 
@@ -103,38 +114,24 @@ def run_multivariate(X, solver_z, reg, n_iter, random_state, label, rank1,
     return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
 
 
-def run_multichannel_gcd(X, reg, n_iter, random_state, label):
+def run_multichannel(X, solver_z, reg, n_iter, random_state, label, njobs=1):
     if X.ndim == 2:
         X = X[:, None, :]
 
+    label += f" {njobs}"
+
     return run_multivariate(
-        X, "lgcd", reg, n_iter, random_state, label, True, n_jobs
+        X, solver_z, reg, n_iter, random_state, label, True, n_jobs
     )
 
 
-def run_multichannel_dicodile(X, reg, n_iter, random_state, label, njobs=30):
-    if X.ndim == 2:
-        X = X[:, None, :]
-
-    return run_multivariate(
-        X, "dicodile", reg, n_iter, random_state, label, True, njobs
-    )
-
-
-def run_multichannel_gcd_fullrank(X, reg, n_iter, random_state, label):
+def run_multichannel_fullrank(X, solver_z, reg, n_iter, random_state, label,
+                              njobs=1):
     assert X.ndim == 3
 
+    label += f" fullrank {njobs}"
     return run_multivariate(
-        X, "lgcd", reg, n_iter, random_state, label, False, n_jobs
-    )
-
-
-def run_multichannel_dicodile_fullrank(X, reg, n_iter, random_state, label,
-                                       njobs=30):
-    assert X.ndim == 3
-
-    return run_multivariate(
-        X, "dicodile", reg, n_iter, random_state, label, False, njobs
+        X, solver_z, reg, n_iter, random_state, label, False, njobs
     )
 
 
@@ -149,26 +146,31 @@ def colorify(message, color=BLUE):
 
 n_iter = 100
 methods_univariate = [
-    [run_fista, 'Jas et al (2017) FISTA', n_iter],
-    [run_l_bfgs, 'Jas et al (2017) LBFGS', n_iter],
-    [run_multichannel_gcd, 'gcd', n_iter],
+    [run_fista, 'Jas et al (2017) FISTA', n_iter, "fista"],
+    [run_l_bfgs, 'Jas et al (2017) LBFGS', n_iter, "l-bfgs"],
+    [run_multichannel, 'gcd', n_iter, "lgcd"],
 ]
 
 methods_multivariate = [
-    [run_multichannel_gcd_fullrank, 'gcd fullrank', n_iter_multi],
-    [partial(run_multichannel_dicodile_fullrank, njobs=5),
-     'dicodile fullrank 5', n_iter_multi],
-    [partial(run_multichannel_dicodile_fullrank, njobs=10),
-     'dicodile fullrank 10', n_iter_multi],
-    [partial(run_multichannel_dicodile_fullrank, njobs=30),
-     'dicodile fullrank 30', n_iter_multi],
-    [run_multichannel_gcd, 'gcd', n_iter_multi],
-    [partial(run_multichannel_dicodile, njobs=5),
-     'dicodile 5', n_iter_multi],
-    [partial(run_multichannel_dicodile, njobs=10),
-     'dicodile 10', n_iter_multi],
-    [partial(run_multichannel_dicodile, njobs=30),
-     'dicodile 30', n_iter_multi],
+    [run_multichannel_fullrank, 'gcd', n_iter_multi, "lgcd"],
+    [run_multichannel_fullrank, 'dicodile', n_iter_multi, "dicodile"],
+    [partial(run_multichannel_fullrank, njobs=5),
+     'dicodile', n_iter_multi, "dicodile"],
+    [partial(run_multichannel_fullrank, njobs=10),
+     'dicodile', n_iter_multi, "dicodile"],
+    [partial(run_multichannel_fullrank, njobs=30),
+     'dicodile', n_iter_multi, "dicodile"],
+]
+
+methods_multivariate_rank1 = [
+    [run_multichannel, 'gcd', n_iter_multi, "lgcd"],
+    [run_multichannel, 'dicodile', n_iter_multi, "dicodile"],
+    [partial(run_multichannel, njobs=5),
+     'dicodile', n_iter_multi, "dicodile"],
+    [partial(run_multichannel, njobs=10),
+     'dicodile', n_iter_multi, "dicodile"],
+    [partial(run_multichannel, njobs=30),
+     'dicodile', n_iter_multi, "dicodile"],
 ]
 
 
@@ -179,7 +181,7 @@ methods_multivariate = [
 
 def one_run(X, X_shape, random_state, method, n_atoms, n_times_atom, reg):
     assert X.shape == X_shape
-    func, label, n_iter = method
+    func, label, n_iter, solver_z = method
     current_time = time.time() - START
     msg = ('%s - %s: started at T=%.0f sec' % (random_state, label,
                                                current_time))
@@ -195,10 +197,12 @@ def one_run(X, X_shape, random_state, method, n_atoms, n_times_atom, reg):
     # if dicodile, the workers are started but not stopped or reused, so
     # doubles the requirement for workers
     if 'dicodile' not in label:
-        _, _, _, _ = func(X, reg, 1, random_state, label)
+        _, _, _, _ = func(X, solver_z, reg, 1, random_state, label)
 
     # run the selected algorithm
-    pobj, times, d_hat, z_hat = func(X, reg, n_iter, random_state, label)
+    pobj, times, d_hat, z_hat = func(
+        X, solver_z, reg, n_iter, random_state, label
+    )
 
     # store z_hat in a sparse matrix to reduce size
     for z in z_hat:
@@ -223,14 +227,14 @@ def one_run(X, X_shape, random_state, method, n_atoms, n_times_atom, reg):
 if __name__ == '__main__':
 
     out_iterator = itertools.product(n_times_atom_list, n_atoms_list,
-                                     n_channel_list, reg_list)
+                                     n_channel_list, reg_list, rank1_list)
 
     figures_dir = Path('figures')
     figures_dir.mkdir(exist_ok=True)
 
     for params in out_iterator:
-        n_times_atom, n_atoms, n_channels, reg = params
-        msg = 'n_times_atom, n_atoms, n_channels, reg = ' + str(params)
+        n_times_atom, n_atoms, n_channels, reg, rank1 = params
+        msg = 'n_times_atom, n_atoms, n_channels, reg, rank1 = ' + str(params)
         print(colorify(msg, RED))
         print(colorify('-' * len(msg), RED))
 
@@ -248,9 +252,14 @@ if __name__ == '__main__':
         X_shape = X.shape
 
         if n_channels == 1:
+            if rank1:
+                next(out_iterator)
             methods = methods_univariate
         else:
-            methods = methods_multivariate
+            if rank1:
+                methods = methods_multivariate_rank1
+            else:
+                methods = methods_multivariate
 
         iterator = itertools.product(methods, range(n_states))
         if n_jobs == 1:
