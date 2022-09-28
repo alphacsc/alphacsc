@@ -216,7 +216,7 @@ def one_run(X, X_shape, random_state, method, n_atoms, n_times_atom, reg):
     print(colorify(msg, GREEN))
     return (random_state, label, np.asarray(pobj), np.asarray(times),
             np.asarray(d_hat), np.asarray(z_hat), n_atoms, n_times_atom,
-            n_trials, n_times, n_channels, reg)
+            n_trials, n_times, n_channels, reg, z_tol, eps)
 
 
 #################################################
@@ -253,7 +253,7 @@ if __name__ == '__main__':
 
         if n_channels == 1:
             if rank1:
-                next(out_iterator)
+                continue
             methods = methods_univariate
         else:
             if rank1:
@@ -279,7 +279,8 @@ if __name__ == '__main__':
 
         all_results.extend(results)
 
-        file_name = base_name + str(params) + '.pkl'
+        file_params = params + (z_tol, eps)
+        file_name = base_name + str(file_params) + '.pkl'
         save_path = figures_dir / file_name
 
         all_results_df = pd.DataFrame(
