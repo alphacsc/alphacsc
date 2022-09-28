@@ -114,7 +114,8 @@ def run_multivariate(X, solver_z, reg, n_iter, random_state, label, rank1,
     return pobj[::2], np.cumsum(times)[::2], d_hat, z_hat
 
 
-def run_multichannel(X, solver_z, reg, n_iter, random_state, label, njobs=1):
+def run_multichannel_rank1(X, solver_z, reg, n_iter, random_state, label,
+                           njobs=1):
     if X.ndim == 2:
         X = X[:, None, :]
 
@@ -125,8 +126,7 @@ def run_multichannel(X, solver_z, reg, n_iter, random_state, label, njobs=1):
     )
 
 
-def run_multichannel_fullrank(X, solver_z, reg, n_iter, random_state, label,
-                              njobs=1):
+def run_multichannel(X, solver_z, reg, n_iter, random_state, label, njobs=1):
     assert X.ndim == 3
 
     label += f" full_rank {njobs}"
@@ -152,17 +152,6 @@ methods_univariate = [
 ]
 
 methods_multivariate = [
-    [run_multichannel_fullrank, 'gcd', n_iter_multi, "lgcd"],
-    [run_multichannel_fullrank, 'dicodile', n_iter_multi, "dicodile"],
-    [partial(run_multichannel_fullrank, njobs=5),
-     'dicodile', n_iter_multi, "dicodile"],
-    [partial(run_multichannel_fullrank, njobs=10),
-     'dicodile', n_iter_multi, "dicodile"],
-    [partial(run_multichannel_fullrank, njobs=30),
-     'dicodile', n_iter_multi, "dicodile"],
-]
-
-methods_multivariate_rank1 = [
     [run_multichannel, 'gcd', n_iter_multi, "lgcd"],
     [run_multichannel, 'dicodile', n_iter_multi, "dicodile"],
     [partial(run_multichannel, njobs=5),
@@ -170,6 +159,17 @@ methods_multivariate_rank1 = [
     [partial(run_multichannel, njobs=10),
      'dicodile', n_iter_multi, "dicodile"],
     [partial(run_multichannel, njobs=30),
+     'dicodile', n_iter_multi, "dicodile"],
+]
+
+methods_multivariate_rank1 = [
+    [run_multichannel_rank1, 'gcd', n_iter_multi, "lgcd"],
+    [run_multichannel_rank1, 'dicodile', n_iter_multi, "dicodile"],
+    [partial(run_multichannel_rank1, njobs=5),
+     'dicodile', n_iter_multi, "dicodile"],
+    [partial(run_multichannel_rank1, njobs=10),
+     'dicodile', n_iter_multi, "dicodile"],
+    [partial(run_multichannel_rank1, njobs=30),
      'dicodile', n_iter_multi, "dicodile"],
 ]
 
