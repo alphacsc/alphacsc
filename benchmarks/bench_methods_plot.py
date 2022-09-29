@@ -9,6 +9,9 @@ import pandas as pd
 matplotlib.rc('font', size=18)
 matplotlib.rc('mathtext', fontset='cm')
 
+normalize_method = 'last'
+threshold = 1e-2
+
 
 def color_palette(n_colors=4, cmap='viridis', extrema=False):
     """Create a color palette from a matplotlib color map"""
@@ -41,7 +44,7 @@ def normalize_pobj(pobj, best_pobj=None, normalize_method='best'):
 
 
 def plot_convergence(data_frame, threshold, normalize_method, save_name):
-    save_name += '_%s' % (normalize_method, )
+    save_name += f'_{normalize_method}'
     for n_atoms in data_frame['n_atoms'].unique():
 
         for n_times_atom in data_frame['n_times_atom'].unique():
@@ -49,6 +52,7 @@ def plot_convergence(data_frame, threshold, normalize_method, save_name):
             this_res = this_res[this_res['n_atoms'] == n_atoms]
             this_res = this_res[this_res['n_times_atom'] == n_times_atom]
             labels = this_res['label'].unique()
+            eps = this_res['eps'].unique()
 
             if this_res.size == 0:
                 continue
@@ -75,7 +79,7 @@ def plot_convergence(data_frame, threshold, normalize_method, save_name):
                 # geometric mean on the n_iter_min first iterations
                 n_iter_min = min([t.shape[0] for t in pobj])
                 pobj_stack = np.vstack([p[:n_iter_min] for p in pobj])
-                pobj_stack = np.log10(pobj_stack + 1e-15)
+                pobj_stack = np.log10(pobj_stack + eps)
                 pobj_mean = 10 ** (np.mean(pobj_stack, axis=0))
                 times_mean = np.vstack([t[:n_iter_min] for t in times])
                 times_mean = times_mean.mean(axis=0)
@@ -149,7 +153,7 @@ def plot_barplot(all_results_df, threshold, normalize_method, save_name):
 
     if normalize_method is None:
         return None
-    save_name += '_%s_%s' % (normalize_method, threshold)
+    save_name += f'_{normalize_method}_{threshold}'
     labels = all_results_df['label'].unique()
     to_plot = []
     iterator = itertools.product(
@@ -248,7 +252,7 @@ def plot_barplot(all_results_df, threshold, normalize_method, save_name):
         ax.legend_.remove()
         fig.subplots_adjust(top=top)
 
-        this_save_name = '%s_%s' % (save_name, setting)
+        this_save_name = f'{save_name}_{setting}'
         this_save_name = this_save_name.replace(' ', '_').replace('.', '')
         this_save_name = this_save_name.replace(',', '').replace('=', '')
         this_save_name = this_save_name.replace('(', '').replace(')', '')
@@ -279,11 +283,13 @@ if __name__ == '__main__':
             all_results_df = data_frame
 
         # plot the results of each setting
-        plot_convergence(data_frame, threshold=1e-2, normalize_method='last',
+        plot_convergence(data_frame, threshold=threshold,
+                         normalize_method=normalize_method,
                          save_name=load_name[:-4])
         plt.close('all')
 
     # plot the aggregation of all results
-    plot_barplot(all_results_df, threshold=1e-2, normalize_method='last',
+    plot_barplot(all_results_df, threshold=threshold,
+                 normalize_method=normalize_method,
                  save_name=str(figures_dir / 'all'))
     plt.close('all')
