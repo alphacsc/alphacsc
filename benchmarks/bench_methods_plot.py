@@ -295,6 +295,6 @@ if __name__ == '__main__':
 
     # plot the aggregation of all results
     plot_barplot(all_results_df, threshold=threshold,
-                 normalize_method=normalize_method,
+                 normalize_method='last',
                  save_name=str(figures_dir / 'all'))
     plt.close('all')
