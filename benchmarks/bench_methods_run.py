@@ -176,7 +176,8 @@ methods_multivariate_rank1 = [
 ###################################
 
 
-def one_run(X, X_shape, random_state, method, n_atoms, n_times_atom, reg):
+def one_run(X, X_shape, random_state, method, n_atoms, n_times_atom, reg,
+            rank1):
     assert X.shape == X_shape
     func, label, n_iter, solver_z = method
     current_time = time.time() - START
@@ -213,7 +214,7 @@ def one_run(X, X_shape, random_state, method, n_atoms, n_times_atom, reg):
     print(colorify(msg, GREEN))
     return (random_state, label, np.asarray(pobj), np.asarray(times),
             np.asarray(d_hat), np.asarray(z_hat), n_atoms, n_times_atom,
-            n_trials, n_times, n_channels, reg, z_tol, eps)
+            n_trials, n_times, n_channels, reg, rank1, z_tol, eps)
 
 
 #################################################
@@ -262,7 +263,7 @@ if __name__ == '__main__':
         if n_jobs == 1:
             results = [
                 one_run(X, X_shape, random_state, method, n_atoms,
-                        n_times_atom, reg)
+                        n_times_atom, reg, rank1)
                 for method, random_state in iterator
             ]
         else:
@@ -270,7 +271,7 @@ if __name__ == '__main__':
             delayed_one_run = delayed(one_run)
             results = Parallel(n_jobs=n_jobs)(
                 delayed_one_run(X, X_shape, random_state, method, n_atoms,
-                                n_times_atom, reg)
+                                n_times_atom, reg, rank1)
                 for method, random_state in iterator
             )
 
@@ -282,9 +283,8 @@ if __name__ == '__main__':
 
         all_results_df = pd.DataFrame(
             all_results, columns='random_state label pobj times d_hat '
-            'z_hat n_atoms n_times_atom n_trials n_times n_channels reg z_tol '
-            'eps'.
-            split(' ')
+            'z_hat n_atoms n_times_atom n_trials n_times n_channels reg rank1 '
+            'z_tol eps'.split(' ')
         )
         all_results_df.to_pickle(save_path)
 

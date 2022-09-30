@@ -162,16 +162,21 @@ def plot_barplot(all_results_df, threshold, normalize_method, save_name):
         all_results_df['n_times_atom'].unique(),
         all_results_df['n_times'].unique(),
         all_results_df['reg'].unique(),
+        all_results_df['rank1'].unique(),
         labels, )
-    for n_channels, n_atoms, n_times_atom, n_times, reg, label in iterator:
-        setting = 'T_%d, P=%d, K=%d, L=%d' % (n_times, n_channels, n_atoms,
-                                              n_times_atom)
+    for n_channels, n_atoms, n_times_atom, n_times, reg, rank1, label in (
+            iterator):
+
+        setting = (f'T_{n_times}, P = {n_channels}, K = {n_atoms}, ' +
+                   f'L = {n_times_atom}, rank1 = {rank1}'
+                   )
         this_res = all_results_df
         this_res = this_res[this_res['n_atoms'] == n_atoms]
         this_res = this_res[this_res['n_times_atom'] == n_times_atom]
         this_res = this_res[this_res['n_times'] == n_times]
         this_res = this_res[this_res['n_channels'] == n_channels]
         this_res = this_res[this_res['reg'] == reg]
+        this_res = this_res[this_res['rank1'] == rank1]
         this_res = this_res[this_res['label'] == label]
 
         if this_res.size == 0:
