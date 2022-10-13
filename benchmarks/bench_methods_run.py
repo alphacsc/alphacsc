@@ -120,7 +120,7 @@ def run_multichannel_rank1(X, solver_z, reg, n_iter, random_state, label,
         X = X[:, None, :]
 
     return run_multivariate(
-        X, solver_z, reg, n_iter, random_state, label, True, n_jobs
+        X, solver_z, reg, n_iter, random_state, label, True, njobs
     )
 
 
