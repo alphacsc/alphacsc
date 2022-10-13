@@ -194,13 +194,13 @@ class BaseDSolver:
 
         return prox
 
-    def _get_grad(self, X, z_hat, constants):
+    def _get_grad(self, z_encoder):
 
         def grad(D):
 
             D = self._windower.window(D)
 
-            grad = self.grad(D, X, z_hat, constants)
+            grad = self.grad(D, z_encoder)
 
             return self._windower.window(grad)
 
@@ -324,9 +324,7 @@ class BaseDSolver:
         D_hat0 = self._windower.remove_window(self.D_hat)
 
         D_hat, pobj = fista(
-            self._get_objective(z_encoder),
-            self._get_grad(z_encoder.X, z_encoder.get_z_hat(),
-                           z_encoder.get_constants()),
+            self._get_objective(z_encoder), self._get_grad(z_encoder),
             self._get_prox(), None, D_hat0, self.max_iter,
             momentum=self.momentum, eps=self.eps, adaptive_step_size=True,
             name=self.name, debug=self.debug, verbose=self.verbose
@@ -384,8 +382,11 @@ class JointDSolver(Rank1DSolver):
             window, eps, max_iter, momentum, random_state, verbose, debug
         )
 
-    def grad(self, D, X, z_hat, constants):
-        return gradient_uv(uv=D, X=X, z=z_hat, constants=constants)
+    def grad(self, D, z_encoder):
+        return gradient_uv(
+            uv=D, X=z_encoder.X, z=z_encoder.get_z_hat(),
+            constants=z_encoder.get_constants()
+        )
 
 
 class AlternateDSolver(Rank1DSolver):
@@ -427,21 +428,13 @@ class AlternateDSolver(Rank1DSolver):
         # use FISTA on alternate u and v
 
         pobj = []
-        X = z_encoder.X
-        z_hat = z_encoder.get_z_hat()
-        ztz = z_encoder.ztz
-        n_channels = z_encoder.n_channels
-        constants = z_encoder.get_constants()
-
         for jj in range(1):
 
             # update u
-            uv_hat, pobj_u = self._update_u(uv_hat, objective, X, z_hat,
-                                            constants, ztz, n_channels)
+            uv_hat, pobj_u = self._update_u(uv_hat, objective, z_encoder)
 
             # update v
-            uv_hat, pobj_v = self._update_v(uv_hat, objective, X, z_hat,
-                                            constants, ztz, n_channels)
+            uv_hat, pobj_v = self._update_v(uv_hat, objective, z_encoder)
 
             if self.debug:
                 pobj.extend(pobj_u)
@@ -455,8 +448,7 @@ class AlternateDSolver(Rank1DSolver):
             return self.D_hat, pobj
         return self.D_hat
 
-    def _update_u(self, uv_hat0, objective, X, z_hat, constants, ztz,
-                  z_n_channels):
+    def _update_u(self, uv_hat0, objective, z_encoder):
 
         n_channels = self.n_channels
 
@@ -467,9 +459,12 @@ class AlternateDSolver(Rank1DSolver):
 
             uv = np.c_[u, self._windower.simple_window(v_hat)]
 
-            grad_d = gradient_d(uv, X=X, z=z_hat, constants=constants)
+            grad_d = gradient_d(
+                uv, X=z_encoder.X, z=z_encoder.get_z_hat(),
+                constants=z_encoder.get_constants()
+            )
 
-            return (grad_d * uv[:, None, z_n_channels:]).sum(axis=2)
+            return (grad_d * uv[:, None, z_encoder.n_channels:]).sum(axis=2)
 
         def prox_u(u, step_size=None):
             u /= np.maximum(1., np.linalg.norm(u, axis=1, keepdims=True))
@@ -482,22 +477,20 @@ class AlternateDSolver(Rank1DSolver):
         def op_Hu(u):
             u = np.reshape(u, (self.D_hat.shape[0], n_channels))
             uv = np.c_[u, v_hat]
-            H_d = numpy_convolve_uv(ztz, uv)
+            H_d = numpy_convolve_uv(z_encoder.ztz, uv)
             H_u = (H_d * uv[:, None, n_channels:]).sum(axis=2)
             return H_u.ravel()
 
         u_hat, pobj_u = self._run_fista(u_hat, uv_hat, obj, grad_u,
-                                        prox_u, op_Hu, 'u', z_n_channels)
+                                        prox_u, op_Hu, 'u', z_encoder)
 
         uv_hat = np.c_[u_hat, v_hat]
 
         return uv_hat, pobj_u
 
-    def _update_v(self, uv_hat0, objective, X, z_hat, constants, ztz,
-                  z_n_channels):
+    def _update_v(self, uv_hat0, objective, z_encoder):
 
         n_channels = self.n_channels
-        assert n_channels == z_n_channels
 
         uv_hat = uv_hat0.copy()
         u_hat, v_hat = uv_hat[:, :n_channels], uv_hat[:, n_channels:]
@@ -508,9 +501,12 @@ class AlternateDSolver(Rank1DSolver):
 
             uv = np.c_[u_hat, v]
 
-            grad_d = gradient_d(uv, X=X, z=z_hat, constants=constants)
+            grad_d = gradient_d(
+                uv, X=z_encoder.X, z=z_encoder.get_z_hat(),
+                constants=z_encoder.get_constants()
+            )
 
-            grad_v = (grad_d * uv[:, :z_n_channels, None]).sum(axis=1)
+            grad_v = (grad_d * uv[:, :z_encoder.n_channels, None]).sum(axis=1)
 
             return self._windower.simple_window(grad_v)
 
@@ -529,19 +525,19 @@ class AlternateDSolver(Rank1DSolver):
         def op_Hv(v):
             v = np.reshape(v, (self.D_hat.shape[0], self.n_times_atom))
             uv = np.c_[u_hat, v]
-            H_d = numpy_convolve_uv(ztz, uv)
+            H_d = numpy_convolve_uv(z_encoder.ztz, uv)
             H_v = (H_d * uv[:, :n_channels, None]).sum(axis=1)
             return H_v.ravel()
 
         v_hat, pobj_v = self._run_fista(v_hat, uv_hat, obj, grad_v, prox_v,
-                                        op_Hv, 'v', z_n_channels)
+                                        op_Hv, 'v', z_encoder)
 
         uv_hat = np.c_[u_hat, v_hat]
 
         return uv_hat, pobj_v
 
     def _run_fista(self, d_hat, uv_hat, f_obj, f_grad, f_prox, op, variable,
-                   n_channels):
+                   z_encoder):
         """Run FISTA for given the objective with adaptive step size or 1/L.
 
         Parameters
@@ -561,7 +557,8 @@ class AlternateDSolver(Rank1DSolver):
 
         variable : str
             'u' or 'v'
-        n_channels : int
+        z_encoder : BaseZEncoder
+            ZEncoder object.
 
         Returns
         -------
@@ -573,7 +570,7 @@ class AlternateDSolver(Rank1DSolver):
 
         """
 
-        L = self._get_step_size(uv_hat, op, variable, n_channels)
+        L = self._get_step_size(uv_hat, op, variable, z_encoder)
 
         return fista(
             f_obj, f_grad, f_prox, 0.99 / L, d_hat, self.max_iter,
@@ -582,7 +579,7 @@ class AlternateDSolver(Rank1DSolver):
             verbose=self.verbose, name="Update " + variable
         )
 
-    def _get_step_size(self, uv_hat, op, variable, n_channels):
+    def _get_step_size(self, uv_hat, op, variable, z_encoder):
         if self.adaptive_step_size:
             L = 1
         else:
@@ -595,12 +592,12 @@ class AlternateDSolver(Rank1DSolver):
 
             if variable == 'u':
                 b_hat_0 = b_hat_0.reshape(
-                    n_atoms, -1)[:, :n_channels].ravel()
-                n_points = n_atoms * n_channels
+                    n_atoms, -1)[:, :z_encoder.n_channels].ravel()
+                n_points = n_atoms * z_encoder.n_channels
                 L = power_iteration(op, n_points, b_hat_0=b_hat_0)
             elif variable == 'v':
                 b_hat_0 = b_hat_0.reshape(
-                    n_atoms, -1)[:, n_channels:].ravel()
+                    n_atoms, -1)[:, z_encoder.n_channels:].ravel()
                 n_points = n_atoms * self.n_times_atom
 
             L = power_iteration(op, n_points, b_hat_0=b_hat_0)
@@ -638,5 +635,8 @@ class DSolver(BaseDSolver):
         """
         return (self.n_atoms, self.n_channels, self.n_times_atom)
 
-    def grad(self, D, X, z_hat, constants):
-        return gradient_d(D=D, X=X, z=z_hat, constants=constants)
+    def grad(self, D, z_encoder):
+        return gradient_d(
+            D=D, X=z_encoder.X, z=z_encoder.get_z_hat(),
+            constants=z_encoder.get_constants()
+        )
