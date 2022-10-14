@@ -62,6 +62,8 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
         elif strategy in ('random', 'cyclic'):
             n_seg = 1
             n_coordinates = n_times_valid * n_atoms
+    else:
+        n_times_seg = n_times_valid // n_seg + ((n_times_valid % n_seg) != 0)
 
     rng = check_random_state(random_state)
 
