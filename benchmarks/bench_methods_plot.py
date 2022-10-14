@@ -9,7 +9,7 @@ import pandas as pd
 matplotlib.rc('font', size=18)
 matplotlib.rc('mathtext', fontset='cm')
 
-normalize_method = 'last'
+normalize_method = None
 threshold = 1e-2
 
 
