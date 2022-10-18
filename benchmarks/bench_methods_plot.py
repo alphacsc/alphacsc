@@ -75,7 +75,7 @@ def plot_convergence(data_frame, threshold, normalize_method, save_name):
                 # geometric mean on the n_iter_min first iterations
                 n_iter_min = min([t.shape[0] for t in pobj])
                 pobj_stack = np.vstack([p[:n_iter_min] for p in pobj])
-                pobj_stack = np.log10(pobj_stack + 1e-15)
+                pobj_stack = np.log10(pobj_stack + this_res_2['eps'].min())
                 pobj_mean = 10 ** (np.mean(pobj_stack, axis=0))
                 times_mean = np.vstack([t[:n_iter_min] for t in times])
                 times_mean = times_mean.mean(axis=0)
