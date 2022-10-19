@@ -169,3 +169,41 @@ def test_unbiased_z_hat(X, solver_z):
         verbose=0)
 
     assert np.all(z_hat_unbiased[z_hat == 0] == 0)
+
+
+@pytest.mark.parametrize('rank1', [False, True])
+@pytest.mark.parametrize('n_iter', [0, 1, 5])
+def test_learn_d_z_multi_solver_z(rank1, n_iter):
+    pytest.importorskip('dicodile')
+
+    X = np.random.randn(1, 20, 256)
+
+    n_atoms = 2
+    n_times_atom = 5
+    z_max_iter = 1
+    z_tol = 1e-3
+    eps = 1e-3
+    reg = 0.1
+    njobs = 1
+    ds_init = "chunk"
+    random_state = 0
+    solver_z_kwargs = dict(max_iter=z_max_iter, tol=z_tol)
+
+    pobj_g, _, d_hat_g, z_hat_g, reg_g = learn_d_z_multi(
+        X, n_atoms, n_times_atom, solver_d='auto', solver_z="lgcd",
+        uv_constraint='auto', eps=eps, solver_z_kwargs=solver_z_kwargs,
+        reg=reg, solver_d_kwargs=dict(max_iter=100), n_iter=n_iter,
+        random_state=random_state, raise_on_increase=False, D_init=ds_init,
+        n_jobs=njobs, rank1=rank1)
+
+    pobj_d, _, d_hat_d, z_hat_d, reg_d = learn_d_z_multi(
+        X, n_atoms, n_times_atom, solver_d='auto', solver_z="dicodile",
+        uv_constraint='auto', eps=eps, solver_z_kwargs=solver_z_kwargs,
+        reg=reg, solver_d_kwargs=dict(max_iter=100), n_iter=n_iter,
+        random_state=random_state, raise_on_increase=False, D_init=ds_init,
+        n_jobs=njobs, rank1=rank1)
+
+    assert reg_d == reg_g
+    assert np.allclose(d_hat_d, d_hat_g, rtol=1e-9, atol=1e-9)
+    assert np.allclose(z_hat_d, z_hat_g, rtol=1e-9, atol=1e-9)
+    assert np.allclose(pobj_d, pobj_g, rtol=1e-9, atol=1e-9)
