@@ -54,6 +54,7 @@ def load_data(dataset="somato", n_splits=10, sfreq=None, epoch=None,
         raw = mne.io.read_raw_fif(file_name, preload=True)
         raw.notch_filter(np.arange(50, 101, 50), n_jobs=n_jobs)
         event_id = 1
+        event_des = {'somato': 1}
 
         # Dipole fit information
         cov = None  # see below
@@ -68,6 +69,9 @@ def load_data(dataset="somato", n_splits=10, sfreq=None, epoch=None,
         raw = mne.io.read_raw_fif(file_name, preload=True)
         raw.notch_filter(np.arange(60, 181, 60), n_jobs=n_jobs)
         event_id = [1, 2, 3, 4]
+        event_des = {'auditory/left': 1, 'auditory/right': 2,
+                     'visual/left': 3, 'visual/right': 4,
+                     'smiley': 5, 'buttonpress': 32}
 
         # Dipole fit information
         cov = join(data_dir, 'sample_audvis-cov.fif')
@@ -127,6 +131,7 @@ def load_data(dataset="somato", n_splits=10, sfreq=None, epoch=None,
     # Deep copy before modifying info to avoid issues when saving EvokedArray
     info = deepcopy(info)
     event_info = dict(event_id=event_id,
+                      event_des=event_des,
                       events=events,
                       subject=dataset,
                       subjects_dir=subjects_dir,
