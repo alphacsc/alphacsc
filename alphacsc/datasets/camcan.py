@@ -20,7 +20,11 @@ from joblib import Memory
 
 from mne_bids import BIDSPath, read_raw_bids
 
-from alphacsc.utils.signal import split_signal
+try:
+    from ..utils.signal import split_signal
+except ValueError:
+    from alphacsc.utils.signal import split_signal
+
 
 DATA_DIR = "/storage/store/data/"
 PARTICIPANTS_FILE = join(DATA_DIR, "camcan/BIDSsep/smt/participants.tsv")
@@ -34,8 +38,9 @@ def get_subject_info(subject_id, participants_file=PARTICIPANTS_FILE):
     Parameters
     ----------
     subject_id : str
-
+        Subject id, similar to the name of its corresponding folder
     participants_file : str
+        Path to the CamCAN subjects' informations file.
 
     Returns
     -------
@@ -60,7 +65,7 @@ def load_data(data_dir=DATA_DIR, subject_id='sub-CC110033', n_splits=10,
 
     Parameters
     ----------
-    data_dir : str | pathlib.Path instance
+    data_dir : str
         Path in which the CamCAN files are located, structure is as follows.
         .
         ├── camcan
@@ -72,7 +77,24 @@ def load_data(data_dir=DATA_DIR, subject_id='sub-CC110033', n_splits=10,
         └── camcan-mne
             ├── Cam-CAN_sss_cal.dat       # calibration file
             └── Cam-CAN_ct_sparse.fif     # cross_talk file
-
+    subject_id : str
+        Subject id, similar to the name of its corresponding folder
+    n_splits : int
+        Split the signal in n_split signals of same length before returning it.
+        If epoch is provided, the signal is instead splitted according to the
+        epochs and this option is not followed.
+    sfreq : float
+        Sampling frequency of the signal. The data are resampled to match it.
+    epoch : tuple or None
+        If set to a tuple, extract epochs from the raw data, using
+        t_min=epoch[0] and t_max=epoch[1]. Else, use the raw signal, divided
+        in n_splits chunks.
+    filter_params : tuple of length 2
+        Boundaries of filtering, e.g. (2, None), (30, 40), (None, 40).
+    return_array : boolean
+        If True, return an NumPy array, instead of mne objects.
+    n_jobs : int
+        Number of jobs that can be used for preparing (filtering) the data.
 
     Returns
     -------
@@ -166,10 +188,10 @@ def load_data(data_dir=DATA_DIR, subject_id='sub-CC110033', n_splits=10,
 
     # Deep copy before modifying info to avoid issues when saving EvokedArray
     info = deepcopy(info)
-    event_info = dict(event_id=event_id, event_des=event_des, events=events)
+    event_info = dict(event_id=event_id, event_des=event_des,
+                      events=events, subject_info=subject_info)
 
-    info['event_info'] = event_info
-    info['subject_info'] = subject_info
+    info['temp'] = event_info
 
     if return_array:
         X /= np.std(X)
