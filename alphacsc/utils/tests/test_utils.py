@@ -73,8 +73,7 @@ def test_flip_uv():
     uv_flip = flip_uv(uv, n_channels)
     v_flip = uv_flip[:, n_channels:]
     index_array = np.argmax(np.abs(v_flip), axis=1)
-    peak_value = np.array([v_flip[i, ind]
-                           for i, ind in enumerate(index_array)])
+    peak_value = v_flip[np.arange(len(v_flip)), index_array]
     # ensure that all temporal patterns v peak in positive after flip
     assert np.all(peak_value >= 0)
 
