@@ -54,17 +54,20 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
     else:
         z_hat = z0.copy()
 
+    n_times_seg = 2 * np.array(n_times_atom) - 1
     if n_seg == 'auto':
         if strategy == 'greedy':
-            n_seg = max(n_times_valid // (2 * n_times_atom), 1)
+            n_seg = max(1, n_times_valid // n_times_seg +
+                        ((n_times_valid % n_times_seg) != 0))
         elif strategy in ('random', 'cyclic'):
             n_seg = 1
             n_coordinates = n_times_valid * n_atoms
+    else:
+        n_times_seg = n_times_valid // n_seg + ((n_times_valid % n_seg) != 0)
 
     rng = check_random_state(random_state)
 
     max_iter *= n_seg
-    n_times_seg = n_times_valid // n_seg + 1
 
     def objective(zi):
         Dzi = _choose_convolve_multi(zi, D=D, n_channels=n_channels)
@@ -95,6 +98,7 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
     i_seg = 0
     seg_bounds = [0, n_times_seg]
     t0, k0 = -1, 0
+
     for ii in range(int(max_iter)):
         k0, t0, dz = _select_coordinate(strategy, dz_opt, active_segs[i_seg],
                                         n_atoms, n_times_valid, n_times_seg,

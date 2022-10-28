@@ -7,16 +7,39 @@ def get_D(uv_hat, n_channels):
 
     Parameter
     ---------
-    uv: array (n_atoms, n_channels + n_times_atom)
+    uv: array, shape (n_atoms, n_channels + n_times_atom)
     n_channels: int
         number of channels in the original multivariate series
 
     Returns
     -------
-    D: array (n_atoms, n_channels, n_times_atom)
+    D: array, shape (n_atoms, n_channels, n_times_atom)
     """
 
     return uv_hat[:, :n_channels, None] * uv_hat[:, None, n_channels:]
+
+
+def flip_uv(uv, n_channels):
+    """Ensure the temporal pattern v peak is positive for each atom.
+
+    If necessary, multiply both u and v by -1.
+
+    Parameter
+    ---------
+    uv: array, shape (n_atoms, n_channels + n_times_atom)
+        Rank1 dictionary which should be modified.
+    n_channels: int
+        number of channels in the original multivariate series
+
+    Return
+    ------
+    uv: array, shape (n_atoms, n_channels + n_times_atom)
+    """
+    v = uv[:, n_channels:]
+    index_array = np.argmax(np.abs(v), axis=1)
+    peak_value = v[np.arange(len(v)), index_array]
+    uv[peak_value < 0] *= -1
+    return uv
 
 
 def get_uv(D):
@@ -24,18 +47,18 @@ def get_uv(D):
 
     Parameter
     ---------
-    D: array (n_atoms, n_channels, n_times_atom)
+    D: array, shape (n_atoms, n_channels, n_times_atom)
 
     Returns
     -------
-    uv: array (n_atoms, n_channels + n_times_atom)
+    uv: array, shape (n_atoms, n_channels + n_times_atom)
     """
     n_atoms, n_channels, n_times_atom = D.shape
     uv = np.zeros((n_atoms, n_channels + n_times_atom))
     for k, d in enumerate(D):
         U, s, V = np.linalg.svd(d)
         uv[k] = np.r_[U[:, 0], V[0]]
-    return uv
+    return flip_uv(uv, n_channels)
 
 
 def get_D_shape(D, n_channels):
