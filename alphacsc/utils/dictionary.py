@@ -37,7 +37,7 @@ def flip_uv(uv, n_channels):
     """
     v = uv[:, n_channels:]
     index_array = np.argmax(np.abs(v), axis=1)
-    peak_value = np.array([v[i, ind] for i, ind in enumerate(index_array)])
+    peak_value = v[np.arange(len(v)), index_array]
     uv[peak_value < 0] *= -1
     return uv
 
