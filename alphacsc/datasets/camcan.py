@@ -9,7 +9,6 @@ multidisciplinary examination of healthy cognitive ageing. BMC Neurology,
 14(204). doi:10.1186/s12883-014-0204-1
 https://bmcneurol.biomedcentral.com/articles/10.1186/s12883-014-0204-1 
 """
-# %%
 import os
 from os.path import join
 from copy import deepcopy
@@ -200,7 +199,3 @@ def load_data(data_dir=DATA_DIR, subject_id='sub-CC110033', n_splits=10,
         return epoch, info
     else:
         return raw, info
-
-
-raw, info = load_data()
-# %%
