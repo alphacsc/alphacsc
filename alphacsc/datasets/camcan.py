@@ -26,13 +26,10 @@ except (ValueError, ImportError):
     from alphacsc.utils.signal import split_signal
 
 
-DATA_DIR = "/storage/store/data/"
-PARTICIPANTS_FILE = join(DATA_DIR, "camcan/BIDSsep/smt/participants.tsv")
-
 mem = Memory(location='.', verbose=0)
 
 
-def get_subject_info(subject_id, participants_file=PARTICIPANTS_FILE):
+def get_subject_info(subject_id, participants_file):
     """Get the subject's informations
 
     Parameters
@@ -58,25 +55,17 @@ def get_subject_info(subject_id, participants_file=PARTICIPANTS_FILE):
 
 
 @mem.cache(ignore=['n_jobs'])
-def load_data(data_dir=DATA_DIR, subject_id='sub-CC110033', n_splits=10,
-              sfreq=None, epoch=None, filter_params=[2., 45],
+def load_data(BIDS_root, sss_cal, ct_sparse, subject_id='sub-CC110033',
+              n_splits=10, sfreq=None, epoch=None, filter_params=[2., 45],
               return_array=True, n_jobs=1):
-    """Load and prepare the CamCAN dataset for multiCSC
+    """Load and prepare the CamCAN dataset of one subject for multiCSC
 
     Parameters
     ----------
-    data_dir : str
-        Path in which the CamCAN files are located, structure is as follows.
-        .
-        ├── camcan
-        │   └── BIDSsep
-        │       └── smt
-        │           ├── participants.tsv  # subjects' informations
-        │           ├── sub-CC110033      # one subject's folder
-        │           └── ...
-        └── camcan-mne
-            ├── Cam-CAN_sss_cal.dat       # calibration file
-            └── Cam-CAN_ct_sparse.fif     # cross_talk file
+    BIDS_root : str
+        The root directory of the BIDS dataset.
+    sss_cal, ct_sparse : str
+        Path to the calibration file and cross-talk file for Maxwell filter
     subject_id : str
         Subject id, similar to the name of its corresponding folder
     n_splits : int
@@ -103,10 +92,7 @@ def load_data(data_dir=DATA_DIR, subject_id='sub-CC110033', n_splits=10,
     info : dict
         MNE dictionary of information about recording settings.
     """
-
-    sss_cal = join(data_dir, "camcan-mne/Cam-CAN_sss_cal.dat")
-    ct_sparse = join(data_dir, "camcan-mne/Cam-CAN_ct_sparse.fif")
-    BIDS_root = join(data_dir, "camcan/BIDSsep/smt/")
+    # path to the CamCAN subjects' informations file
     participants_file = join(BIDS_root, "participants.tsv")
 
     pick_types_epoch = dict(meg='grad', eeg=False, eog=True, stim=False)
