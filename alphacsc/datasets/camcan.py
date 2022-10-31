@@ -7,7 +7,7 @@ Brayne, C., CamCAN, & Matthews, F.E. (2014). The Cambridge Centre for Ageing
 and Neuroscience (CamCAN) study protocol: a cross-sectional, lifespan,
 multidisciplinary examination of healthy cognitive ageing. BMC Neurology,
 14(204). doi:10.1186/s12883-014-0204-1
-https://bmcneurol.biomedcentral.com/articles/10.1186/s12883-014-0204-1 
+https://bmcneurol.biomedcentral.com/articles/10.1186/s12883-014-0204-1
 """
 import os
 from os.path import join
