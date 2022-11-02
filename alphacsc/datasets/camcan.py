@@ -182,6 +182,6 @@ def load_data(BIDS_root, sss_cal, ct_sparse, subject_id='sub-CC110033',
         X /= np.std(X)
         return X, info
     elif epoch:
-        return epoch, info
+        return epochs, info
     else:
         return raw, info
