@@ -71,8 +71,8 @@ cdl = GreedyCDL(
     eps=1e-4,
     # solver for the z-step
     solver_z="lgcd",
-    solver_z_kwargs={'tol': 1e-3,
-                     'max_iter': 100000},
+    solver_z_kwargs={'tol': 1e-2,
+                     'max_iter': 10000},
     # solver for the d-step
     solver_d='alternate_adaptive',
     solver_d_kwargs={'max_iter': 300},

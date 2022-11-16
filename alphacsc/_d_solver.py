@@ -384,7 +384,7 @@ class JointDSolver(Rank1DSolver):
 
     def grad(self, D, z_encoder):
         return gradient_uv(
-            uv=D, X=z_encoder.X, z=z_encoder.get_z_hat(),
+            uv=D, X=z_encoder.X, z=None,
             constants=z_encoder.get_constants()
         )
 
@@ -460,7 +460,7 @@ class AlternateDSolver(Rank1DSolver):
             uv = np.c_[u, self._windower.simple_window(v_hat)]
 
             grad_d = gradient_d(
-                uv, X=z_encoder.X, z=z_encoder.get_z_hat(),
+                uv, X=z_encoder.X, z=None,
                 constants=z_encoder.get_constants()
             )
 
@@ -502,7 +502,7 @@ class AlternateDSolver(Rank1DSolver):
             uv = np.c_[u_hat, v]
 
             grad_d = gradient_d(
-                uv, X=z_encoder.X, z=z_encoder.get_z_hat(),
+                uv, X=z_encoder.X, z=None,
                 constants=z_encoder.get_constants()
             )
 
@@ -637,6 +637,6 @@ class DSolver(BaseDSolver):
 
     def grad(self, D, z_encoder):
         return gradient_d(
-            D=D, X=z_encoder.X, z=z_encoder.get_z_hat(),
+            D=D, X=z_encoder.X, z=None,
             constants=z_encoder.get_constants()
         )

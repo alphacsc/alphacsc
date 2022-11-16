@@ -8,7 +8,7 @@ from sklearn.base import TransformerMixin
 from sklearn.exceptions import NotFittedError
 
 from .update_z_multi import update_z_multi
-from .utils.dictionary import get_D, get_uv
+from .utils.dictionary import get_D, get_uv, flip_uv
 from .learn_d_z_multi import learn_d_z_multi
 from .loss_and_gradient import construct_X_multi
 from ._d_solver import check_solver_and_constraints
@@ -275,6 +275,8 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
     def uv_hat_(self):
         """array: dictionary in rank 1 mode. If `rank1 = False`, this is an
         approximation of the dictionary obtained through svd.
+        Ensure, for each atom, that the temporal pattern v peaks is positive,
+        to uniformize visual representation (simple practical convention).
 
         shape (n_atoms, n_channels + n_times_atom)
         """
@@ -282,7 +284,7 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
         if self._D_hat.ndim == 3:
             return get_uv(self._D_hat)
 
-        return self._D_hat
+        return flip_uv(self._D_hat, self.n_channels_)
 
     @property
     def u_hat_(self):

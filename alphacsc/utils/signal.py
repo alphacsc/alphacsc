@@ -40,8 +40,8 @@ def split_signal(X, n_splits=1, apply_window=True):
         reduce the border artifacts by reducing the weights of the chunk
         borders.
 
-    Return
-    ------
+    Returns
+    -------
     X_split: ndarray, shape (n_splits, n_channels, n_times // n_splits)
         The signal splitted in ``n_splits``.
     """
@@ -77,8 +77,8 @@ def check_univariate_signal(X):
     X : ndarray, shape (n_times,) or (n_trials, n_times)
         Signal to be reshaped. It should be a single signal.
 
-    Return
-    ------
+    Returns
+    -------
     X: ndarray, shape (n_trials, n_channels, n_times)
         The signal with the correct number of dimensions to be use with
         alphacsc transformers.
@@ -101,8 +101,8 @@ def check_multivariate_signal(X):
     X : ndarray, shape (n_channels, n_times) or (n_trials, n_channels, n_times)
         Signal to be reshaped. It should be a single signal.
 
-    Return
-    ------
+    Returns
+    -------
     X: ndarray, shape (n_trials, n_channels, n_times)
         The signal with the correct number of dimensions to be use with
         alphacsc transformers.

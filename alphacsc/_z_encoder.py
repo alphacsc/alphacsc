@@ -362,8 +362,7 @@ class AlphaCSCEncoder(BaseZEncoder):
             Ratio of non-zero activations for each atom.
         """
         z_nnz = np.sum(self.z_hat != 0, axis=(0, 2))
-        z_size = self.z_hat.size / self.z_hat.shape[1]
-        return z_nnz / z_size
+        return z_nnz / z_nnz.shape[-1]
 
 
 class DicodileEncoder(BaseZEncoder):
