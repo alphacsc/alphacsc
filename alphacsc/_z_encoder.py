@@ -15,7 +15,7 @@ DEFAULT_TOL_Z = 1e-3
 
 def get_z_encoder_for(X, D_hat, n_atoms, n_times_atom, n_jobs,
                       solver='l-bfgs', solver_kwargs=dict(),
-                      reg=0.1):
+                      reg=0.1, X_test=None):
     """
     Returns a z encoder for the required solver.
 
@@ -41,6 +41,8 @@ def get_z_encoder_for(X, D_hat, n_atoms, n_times_atom, n_jobs,
         Additional keyword arguments to pass to update_z_multi.
     reg : float
         The regularization parameter.
+    X_test : array, shape (n_trials_test, n_channels, n_times)
+        The data on which to test CSC.
 
     Returns
     -------
@@ -67,7 +69,7 @@ def get_z_encoder_for(X, D_hat, n_atoms, n_times_atom, n_jobs,
 
         return AlphaCSCEncoder(
             X, D_hat, n_atoms, n_times_atom, n_jobs,
-            solver, solver_kwargs, reg
+            solver, solver_kwargs, reg, X_test
         )
 
     elif solver == 'dicodile':
@@ -83,7 +85,7 @@ def get_z_encoder_for(X, D_hat, n_atoms, n_times_atom, n_jobs,
 class BaseZEncoder:
 
     def __init__(self, X, D_hat, n_atoms, n_times_atom, n_jobs,
-                 solver_kwargs, reg):
+                 solver_kwargs, reg, X_test=None):
 
         self.X = X
         self.D_hat = D_hat
@@ -98,6 +100,12 @@ class BaseZEncoder:
         self.n_times_valid = self.n_times - self.n_times_atom + 1
 
         self.XtX = np.dot(X.ravel(), X.ravel())
+
+        if X_test is not None:
+            self.test = True
+            self.n_trials_test = X_test.shape[0]
+        else:
+            self.test = False
 
     def compute_z(self):
         """
@@ -144,6 +152,21 @@ class BaseZEncoder:
             The value of the objective function
         """
         raise NotImplementedError()
+
+    def get_cost_test(self):
+        """
+        Computes the cost of the sparse representation on the test set
+        (z_hat_test)
+
+        Returns
+        -------
+        cost: float
+            The value of the objective function
+        """
+        if self.test:  # only if a test set is passed
+            raise NotImplementedError()
+        else:
+            pass
 
     def get_sufficient_statistics(self):
         """
@@ -246,16 +269,18 @@ class BaseZEncoder:
 
 class AlphaCSCEncoder(BaseZEncoder):
     def __init__(self, X, D_hat, n_atoms, n_times_atom, n_jobs,
-                 solver, solver_kwargs, reg):
+                 solver, solver_kwargs, reg, X_test=None):
 
         super().__init__(
-            X, D_hat, n_atoms, n_times_atom, n_jobs,  solver_kwargs, reg
+            X, D_hat, n_atoms, n_times_atom, n_jobs,  solver_kwargs, reg,
+            X_test
         )
 
         self.solver = solver
 
         effective_n_atoms = self.D_hat.shape[0]
         self.z_hat = self._get_new_z_hat(effective_n_atoms)
+        self.z_hat_test = self._get_new_z_hat(effective_n_atoms)
 
     def _get_new_z_hat(self, n_atoms):
         """
@@ -263,6 +288,14 @@ class AlphaCSCEncoder(BaseZEncoder):
         """
         return np.zeros((
             self.n_trials, n_atoms, self.n_times_valid
+        ))
+
+    def _get_new_z_hat_test(self, n_atoms):
+        """
+        Returns a array filed with 0 with the right size for sparse codes.
+        """
+        return np.zeros((
+            self.n_trials_test, n_atoms, self.n_times_valid
         ))
 
     def _compute_z_aux(self, X, z0, unbiased_z_hat):
@@ -279,6 +312,11 @@ class AlphaCSCEncoder(BaseZEncoder):
                                                              self.z_hat,
                                                              unbiased_z_hat)
 
+    def compute_z_test(self, unbiased_z_hat=False):
+        self.z_hat_test, _, _ = self._compute_z_aux(self.X_test,
+                                                    self.z_hat_test,
+                                                    unbiased_z_hat)
+
     def compute_z_partial(self, i0, alpha=.8):
         if not hasattr(self, 'ztz'):
             self.ztz = np.zeros(
@@ -294,12 +332,19 @@ class AlphaCSCEncoder(BaseZEncoder):
         self.ztX = alpha * self.ztX + self.ztX_i0
 
     def get_cost(self):
-
         X_hat = construct_X_multi(self.z_hat, D=self.D_hat,
                                   n_channels=self.n_channels)
 
         return compute_objective(X=self.X, X_hat=X_hat, z_hat=self.z_hat,
                                  reg=self.reg)
+
+    def get_cost_test(self):
+        self.compute_z_test()
+        X_hat_test = construct_X_multi(self.z_hat_test, D=self.D_hat,
+                                       n_channels=self.n_channels)
+
+        return compute_objective(X=self.X_test, X_hat=X_hat_test,
+                                 z_hat=self.z_hat_test, reg=self.reg)
 
     def get_sufficient_statistics(self):
         assert hasattr(self, 'ztz') and hasattr(self, 'ztX'), (

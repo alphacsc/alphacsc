@@ -183,11 +183,11 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
         # Init property
         self._D_hat = None
 
-    def fit(self, X, y=None):
+    def fit(self, X, X_test=None, y=None):
         """Learn a convolutional dictionary from the set of signals X.
         """
         res = learn_d_z_multi(
-            X, self.n_atoms, self.n_times_atom,
+            X, self.n_atoms, self.n_times_atom, X_test=X_test,
             reg=self.reg, lmbd_max=self.lmbd_max,
             rank1=self.rank1, window=self.window,
             uv_constraint=self.uv_constraint,
@@ -206,10 +206,10 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
         self.n_channels_ = X.shape[1]
         return self
 
-    def fit_transform(self, X, y=None):
+    def fit_transform(self, X, X_test=None, y=None):
         """Learn a convolutional dictionary and returns sparse codes.
         """
-        self.fit(X)
+        self.fit(X, X_test)
 
         z_hat = self._z_hat
 
