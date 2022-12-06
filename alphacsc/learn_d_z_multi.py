@@ -324,7 +324,7 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
 
         # Compute D update
         start = time.time()
-        d_solver.update_D(z_encoder)            
+        d_solver.update_D(z_encoder)
 
         # monitor cost function
         times.append(time.time() - start)
@@ -431,6 +431,7 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
         times.append(time.time() - start)
         pobj.append(z_encoder.get_cost())
         if z_encoder.test:
+            z_encoder.compute_z_test()
             pobj_test.append(z_encoder.get_cost_test())
 
         null_atom_indices = np.where(z_nnz == 0)[0]
