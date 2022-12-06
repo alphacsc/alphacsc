@@ -107,6 +107,8 @@ class BaseZEncoder:
         else:
             self.test = False
 
+        self.X_test = X_test
+
     def compute_z(self):
         """
         Perform one incremental z update.
@@ -339,7 +341,6 @@ class AlphaCSCEncoder(BaseZEncoder):
                                  reg=self.reg)
 
     def get_cost_test(self):
-        self.compute_z_test()
         X_hat_test = construct_X_multi(self.z_hat_test, D=self.D_hat,
                                        n_channels=self.n_channels)
 

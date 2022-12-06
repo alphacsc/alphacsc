@@ -201,8 +201,10 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
             name=self.name, raise_on_increase=self.raise_on_increase,
             sort_atoms=self.sort_atoms
         )
-
-        self._pobj, self._times, self._D_hat, self._z_hat, self.reg_ = res
+        if X_test is None:
+            self._pobj, self._times, self._D_hat, self._z_hat, self.reg_ = res
+        else:
+            self._pobj, self._pobj_test, self._times, self._D_hat, self._z_hat, self.reg_ = res
         self.n_channels_ = X.shape[1]
         return self
 
@@ -319,6 +321,13 @@ class ConvolutionalDictionaryLearning(TransformerMixin):
         """
         self._check_fitted()
         return self._pobj
+
+    @property
+    def pobj_test_(self):
+        """Objective function value at each step of the alternate minimization.
+        """
+        self._check_fitted()
+        return self._pobj_test
 
     @property
     def times_(self):
