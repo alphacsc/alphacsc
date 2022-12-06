@@ -282,7 +282,7 @@ class AlphaCSCEncoder(BaseZEncoder):
 
         effective_n_atoms = self.D_hat.shape[0]
         self.z_hat = self._get_new_z_hat(effective_n_atoms)
-        self.z_hat_test = self._get_new_z_hat(effective_n_atoms)
+        self.z_hat_test = self._get_new_z_hat_test(effective_n_atoms)
 
     def _get_new_z_hat(self, n_atoms):
         """
