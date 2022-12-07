@@ -4,7 +4,7 @@ import numpy as np
 from scipy import optimize
 
 from .compute_constants import compute_DtD
-from . import check_random_state
+from .validation import check_random_state
 
 
 MIN_STEP_SIZE = 1e-20
@@ -91,10 +91,10 @@ def fista(f_obj, f_grad, f_prox, step_size, x0, max_iter, verbose=0,
         If debug is True, pobj contains the value of the cost function at each
         iteration.
     """
-    obj_uv = f_obj(x0)
+    obj_t = f_obj(x0)
     pobj = None
     if debug or timing:
-        pobj = [obj_uv]
+        pobj = [obj_t]
     if timing:
         times = [0]
         start = time.time()
@@ -133,9 +133,10 @@ def fista(f_obj, f_grad, f_prox, step_size, x0, max_iter, verbose=0,
 
             if scipy_line_search:
                 norm_grad = np.dot(grad.ravel(), grad.ravel())
-                step_size, obj_uv = optimize.linesearch.scalar_search_armijo(
-                    compute_obj_and_step, obj_uv, -norm_grad, c1=1e-5,
-                    alpha0=step_size, amin=MIN_STEP_SIZE)
+                step_size, obj_t = optimize.linesearch.scalar_search_armijo(
+                    compute_obj_and_step, obj_t, -norm_grad, c1=1e-5,
+                    alpha0=step_size, amin=MIN_STEP_SIZE
+                )
                 if step_size is not None:
                     # compute the next point
                     x_hat_aux -= step_size * grad
@@ -144,8 +145,9 @@ def fista(f_obj, f_grad, f_prox, step_size, x0, max_iter, verbose=0,
             else:
                 from functools import partial
                 f = partial(compute_obj_and_step, return_x_hat=True)
-                obj_uv, x_hat_aux, step_size = _adaptive_step_size(
-                    f, obj_uv, alpha=step_size)
+                obj_t, x_hat_aux, step_size = _adaptive_step_size(
+                    f, obj_t, alpha=step_size
+                )
 
             if step_size is None or step_size < MIN_STEP_SIZE:
                 # We did not find a valid step size. We should restart
@@ -168,7 +170,7 @@ def fista(f_obj, f_grad, f_prox, step_size, x0, max_iter, verbose=0,
         if debug or timing:
             pobj.append(f_obj(x_hat))
             if adaptive_step_size:
-                assert len(pobj) < 2 or pobj[-1] <= pobj[-2]
+                assert len(pobj) < 2 or pobj[-1] <= pobj[-2], pobj
         if timing:
             times.append(time.time() - start)
             start = time.time()
@@ -177,12 +179,12 @@ def fista(f_obj, f_grad, f_prox, step_size, x0, max_iter, verbose=0,
         if f <= eps and not has_restarted:
             break
         if f > 1e50:
-            raise RuntimeError("The D update have diverged.")
+            raise RuntimeError(f"[{name}] FISTA has diverged.")
     else:
-        if verbose > 1:
-            print('\r[{}] update did not converge'.format(name))
-    if verbose > 1:
-        print('\r[{}]: {} iterations'.format(name, ii + 1))
+        if verbose > 1 and max_iter > 0:
+            print(f'\r[{name}] update did not converge')
+    if verbose > 1 and max_iter > 0:
+        print(f'\r[{name}]: {ii + 1} iterations')
 
     if timing:
         return x_hat, pobj, times
