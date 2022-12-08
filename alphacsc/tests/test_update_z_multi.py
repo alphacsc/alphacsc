@@ -41,7 +41,6 @@ def test_support_least_square(solver_z):
     n_times_atom, n_atoms = 10, 4
     n_times_valid = n_times - n_times_atom + 1
     reg = 0.1
-    solver_kwargs = {'factr': 1e7} if solver_z == 'l-bfgs' else {}
 
     rng = np.random.RandomState(0)
     X = rng.randn(n_trials, n_channels, n_times)
@@ -53,15 +52,13 @@ def test_support_least_square(solver_z):
                                            feasible_evaluation=False)
 
     # The loss after updating z should be lower
-    z_hat, _, _ = update_z_multi(X, uv, reg, z0=z, solver=solver_z,
-                                 solver_kwargs=solver_kwargs)
+    z_hat, _, _ = update_z_multi(X, uv, reg, z0=z, solver=solver_z)
     loss_1 = compute_X_and_objective_multi(X, z_hat=z_hat, D_hat=uv, reg=0,
                                            feasible_evaluation=False)
     assert loss_1 < loss_0
 
     # Here we recompute z on the support of z_hat, with reg=0
     z_hat_2, _, _ = update_z_multi(X, uv, reg=0, z0=z_hat, solver=solver_z,
-                                   solver_kwargs=solver_kwargs,
                                    freeze_support=True)
     loss_2 = compute_X_and_objective_multi(X, z_hat_2, uv, 0,
                                            feasible_evaluation=False)
@@ -70,7 +67,6 @@ def test_support_least_square(solver_z):
     # Here we recompute z with reg=0, but with no support restriction
     z_hat_3, _, _ = update_z_multi(X, uv, reg=0, z0=z_hat_2,
                                    solver=solver_z,
-                                   solver_kwargs=solver_kwargs,
                                    freeze_support=True)
     loss_3 = compute_X_and_objective_multi(X, z_hat_3, uv, 0,
                                            feasible_evaluation=False)

@@ -4,6 +4,7 @@
 #          Alexandre Gramfort <alexandre.gramfort@inria.fr>
 #          Thomas Moreau <thomas.moreau@inria.fr>
 import time
+import warnings
 
 import numpy as np
 from scipy import optimize
@@ -174,11 +175,32 @@ def _update_z_multi_idx(X_i, D, reg, z0_i, debug, solver='l-bfgs',
             callback = None
 
         # Default values
-        lbfgs_kwargs = dict(factr=1e7, max_iter=15000, verbose=0)
+        lbfgs_kwargs = dict(tol=1e-5, max_iter=15000, verbose=0)
         lbfgs_kwargs.update(solver_kwargs)
-        lbfgs_kwargs['maxiter'] = lbfgs_kwargs['max_iter']
+
+        # Remap parameters to l-BFGS parameters
+        if 'maxiter' in solver_kwargs:
+            warnings.warn(
+                "maxiter for l-BFGS solver has been deprecated. "
+                "Please use max_iter.", DeprecationWarning
+            )
+        else:
+            lbfgs_kwargs['maxiter'] = lbfgs_kwargs['max_iter']
+        del lbfgs_kwargs['max_iter']
+
+        if 'factr' in solver_kwargs:
+            warnings.warn(
+                "factr for l-BFGS solver has been deprecated. "
+                "Please use tol, which corresponds to factr * float.eps.",
+                DeprecationWarning
+            )
+        else:
+            lbfgs_kwargs['factr'] = lbfgs_kwargs['tol'] / np.finfo(float).eps
+        del lbfgs_kwargs['tol']
+
         lbfgs_kwargs['disp'] = lbfgs_kwargs['verbose']
-        del lbfgs_kwargs['max_iter'], lbfgs_kwargs['verbose']
+        del lbfgs_kwargs['verbose']
+
         z_hat, f, d = optimize.fmin_l_bfgs_b(
             func_and_grad, x0=z0_i, fprime=None, args=(), approx_grad=False,
             bounds=bounds, callback=callback, **lbfgs_kwargs
@@ -187,11 +209,22 @@ def _update_z_multi_idx(X_i, D, reg, z0_i, debug, solver='l-bfgs',
     elif solver in ("ista", "fista"):
         # Default values
         fista_kwargs = dict(
-            max_iter=100, eps=None, verbose=0, scipy_line_search=False,
-            momentum=(solver == "fista"), step_size=None, debug=True,
-            adaptive_step_size=True,
+            max_iter=15000, tol=1e-2, momentum=(solver == "fista"),
+            step_size=None, adaptive_step_size=True, scipy_line_search=False,
+            verbose=0,
         )
         fista_kwargs.update(solver_kwargs)
+
+        # Remap parameters to FISTA parameters
+        # XXX: rename `eps` -> `tol` in FISTA code?
+        if 'eps' in solver_kwargs:
+            warnings.warn(
+                "eps for FISTA solver has been deprecated. "
+                "Please use tol instead.", DeprecationWarning
+            )
+        else:
+            fista_kwargs['eps'] = fista_kwargs['tol']
+        del fista_kwargs['tol']
 
         def objective(zi):
             zi = zi.reshape(1, n_atoms, -1)
@@ -228,7 +261,7 @@ def _update_z_multi_idx(X_i, D, reg, z0_i, debug, solver='l-bfgs',
 
         # Default values
         lgcd_kwargs = dict(
-            tol=1e-3, n_seg='auto', max_iter=1e15, strategy="greedy"
+            max_iter=1e15, tol=1e-3, n_seg='auto', strategy="greedy"
         )
         lgcd_kwargs.update(solver_kwargs)
         output = _coordinate_descent_idx(
