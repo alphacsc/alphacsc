@@ -14,9 +14,9 @@ from joblib import Parallel, delayed, Memory
 
 from alphacsc.simulate import get_atoms
 from alphacsc.update_d_multi import prox_uv
-from alphacsc.utils import construct_X_multi
 from alphacsc.learn_d_z_multi import learn_d_z_multi
 from alphacsc.utils.dictionary import get_lambda_max
+from alphacsc.utils.convolution import construct_X_multi
 
 
 VERBOSE = 0
