@@ -273,7 +273,8 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
     times = [0]
     pobj = [z_encoder.get_cost()]
     if z_encoder.test:
-        pobj_test = [z_encoder.get_cost_test()]
+        # pobj_test = [z_encoder.get_cost_test()]
+        pobj_test = [d_solver.D_hat]
 
     for ii in range(n_iter):  # outer loop of coordinate descent
         if verbose == 1:
@@ -304,9 +305,9 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
         # monitor cost function
         times.append(time.time() - start)
         pobj.append(z_encoder.get_cost())
-        if z_encoder.test:
-            # after z update, cost on test set stay unchanged
-            pobj_test.append(pobj_test[-1])
+        # if z_encoder.test:
+        # after z update, cost on test set stay unchanged
+        # pobj_test.append(pobj_test[-1])
 
         z_nnz = z_encoder.get_z_nnz()
         if verbose > 5:
@@ -330,8 +331,9 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
         times.append(time.time() - start)
         pobj.append(z_encoder.get_cost())
         if z_encoder.test:
-            z_encoder.compute_z_test()
-            pobj_test.append(z_encoder.get_cost_test())
+            # z_encoder.compute_z_test()
+            # pobj_test.append(z_encoder.get_cost_test())
+            pobj_test.append(d_solver.D_hat)
 
         null_atom_indices = np.where(z_nnz == 0)[0]
         if len(null_atom_indices) > 0:
@@ -342,11 +344,12 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
                 print('[{}] Resampled atom {}'.format(name, k0))
 
         if verbose > 5:
-            if z_encoder.test:
-                print('[{}] Objective (d) : {:.3e}, {:.3e}'
-                      .format(name, pobj[-1], pobj_test[-1]))
-            else:
-                print('[{}] Objective (d) : {:.3e}'.format(name, pobj[-1]))
+            # if z_encoder.test:
+            #     print('[{}] Objective (d) : {:.3e}, {:.3e}'
+            #           .format(name, pobj[-1], pobj_test[-1]))
+            # else:
+            #     print('[{}] Objective (d) : {:.3e}'.format(name, pobj[-1]))
+            print('[{}] Objective (d) : {:.3e}'.format(name, pobj[-1]))
 
         if ((not greedy or d_solver.D_hat.shape[0] == n_atoms)
                 and end_iter_func(z_encoder, pobj, ii)):
@@ -369,7 +372,8 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
     times = [0]
     pobj = [z_encoder.get_cost()]
     if z_encoder.test:
-        pobj_test = [z_encoder.get_cost_test()]
+        # pobj_test = [z_encoder.get_cost_test()]
+        pobj_test = [d_solver.D_hat]
 
     rng = check_random_state(random_state)
     for ii in range(n_iter):  # outer loop of coordinate descent
@@ -405,9 +409,9 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
         # monitor cost function
         times.append(time.time() - start)
         pobj.append(z_encoder.get_cost())
-        if z_encoder.test:
-            # after z update, cost on test set stay unchanged
-            pobj_test.append(pobj_test[-1])
+        # if z_encoder.test:
+        # after z update, cost on test set stay unchanged
+        # pobj_test.append(pobj_test[-1])
 
         z_nnz = z_encoder.get_z_nnz()
         if verbose > 5:
@@ -431,8 +435,9 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
         times.append(time.time() - start)
         pobj.append(z_encoder.get_cost())
         if z_encoder.test:
-            z_encoder.compute_z_test()
-            pobj_test.append(z_encoder.get_cost_test())
+            # z_encoder.compute_z_test()
+            # pobj_test.append(z_encoder.get_cost_test())
+            pobj_test.append(d_solver.D_hat)
 
         null_atom_indices = np.where(z_nnz == 0)[0]
         if len(null_atom_indices) > 0:
@@ -442,11 +447,12 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
                 print('[{}] Resampled atom {}'.format(name, k0))
 
         if verbose > 5:
-            if z_encoder.test:
-                print('[{}] Objective (d) : {:.3e}, {:.3e}'
-                      .format(name, pobj[-1], pobj_test[-1]))
-            else:
-                print('[{}] Objective (d) : {:.3e}'.format(name, pobj[-1]))
+            print('[{}] Objective (d) : {:.3e}'.format(name, pobj[-1]))
+            # if z_encoder.test:
+            #     print('[{}] Objective (d) : {:.3e}, {:.3e}'
+            #           .format(name, pobj[-1], pobj_test[-1]))
+            # else:
+            #     print('[{}] Objective (d) : {:.3e}'.format(name, pobj[-1]))
 
         if end_iter_func(z_encoder, pobj, ii):
             break

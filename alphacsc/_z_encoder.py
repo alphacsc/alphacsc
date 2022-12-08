@@ -103,7 +103,8 @@ class BaseZEncoder:
 
         if X_test is not None:
             self.test = True
-            self.n_trials_test = X_test.shape[0]
+            self.n_trials_test, self.n_channels_test, self.n_times_test = X_test.shape
+            self.n_times_valid_test = self.n_times_test - self.n_times_atom + 1
         else:
             self.test = False
 
@@ -297,7 +298,7 @@ class AlphaCSCEncoder(BaseZEncoder):
         Returns a array filed with 0 with the right size for sparse codes.
         """
         return np.zeros((
-            self.n_trials_test, n_atoms, self.n_times_valid
+            self.n_trials_test, n_atoms, self.n_times_valid_test
         ))
 
     def _compute_z_aux(self, X, z0, unbiased_z_hat):
