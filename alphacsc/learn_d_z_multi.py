@@ -271,7 +271,11 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
 
     # monitor cost function
     times = [0]
-    pobj = [z_encoder.get_cost()]
+    if end_iter_func is not None:
+        pobj = [z_encoder.get_cost()]
+    else:
+        pobj = None
+
     if z_encoder.test:
         # pobj_test = [z_encoder.get_cost_test()]
         pobj_test = [d_solver.D_hat]
@@ -303,14 +307,15 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
         z_encoder.compute_z()
 
         # monitor cost function
-        times.append(time.time() - start)
-        pobj.append(z_encoder.get_cost())
+        if pobj:
+            times.append(time.time() - start)
+            pobj.append(z_encoder.get_cost())
         # if z_encoder.test:
         # after z update, cost on test set stay unchanged
         # pobj_test.append(pobj_test[-1])
 
         z_nnz = z_encoder.get_z_nnz()
-        if verbose > 5:
+        if verbose > 5 and pobj:
             print(
                 '[{}] Objective (z) : {:.3e} (sparsity: {:.3e})'
                 .format(name, pobj[-1], z_nnz.mean())
@@ -329,7 +334,8 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
 
         # monitor cost function
         times.append(time.time() - start)
-        pobj.append(z_encoder.get_cost())
+        if pobj:
+            pobj.append(z_encoder.get_cost())
         if z_encoder.test:
             # z_encoder.compute_z_test()
             # pobj_test.append(z_encoder.get_cost_test())
@@ -343,7 +349,7 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
             if verbose > 5:
                 print('[{}] Resampled atom {}'.format(name, k0))
 
-        if verbose > 5:
+        if verbose > 5 and pobj:
             # if z_encoder.test:
             #     print('[{}] Objective (d) : {:.3e}, {:.3e}'
             #           .format(name, pobj[-1], pobj_test[-1]))
@@ -351,7 +357,7 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
             #     print('[{}] Objective (d) : {:.3e}'.format(name, pobj[-1]))
             print('[{}] Objective (d) : {:.3e}'.format(name, pobj[-1]))
 
-        if ((not greedy or d_solver.D_hat.shape[0] == n_atoms)
+        if (pobj and (not greedy or d_solver.D_hat.shape[0] == n_atoms)
                 and end_iter_func(z_encoder, pobj, ii)):
             break
 
@@ -370,7 +376,11 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
 
     # monitor cost function
     times = [0]
-    pobj = [z_encoder.get_cost()]
+    if end_iter_func is not None:
+        pobj = [z_encoder.get_cost()]
+    else:
+        pobj = None
+
     if z_encoder.test:
         # pobj_test = [z_encoder.get_cost_test()]
         pobj_test = [d_solver.D_hat]
@@ -407,14 +417,15 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
         z_encoder.compute_z_partial(i0, alpha)
 
         # monitor cost function
-        times.append(time.time() - start)
-        pobj.append(z_encoder.get_cost())
+        if pobj:
+            times.append(time.time() - start)
+            pobj.append(z_encoder.get_cost())
         # if z_encoder.test:
         # after z update, cost on test set stay unchanged
         # pobj_test.append(pobj_test[-1])
 
         z_nnz = z_encoder.get_z_nnz()
-        if verbose > 5:
+        if verbose > 5 and pobj:
             print(
                 '[{}] Objective (z) : {:.3e} (sparsity: {:.3e})'
                 .format(name, pobj[-1], z_nnz.mean())
@@ -433,7 +444,8 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
 
         # monitor cost function
         times.append(time.time() - start)
-        pobj.append(z_encoder.get_cost())
+        if pobj:
+            pobj.append(z_encoder.get_cost())
         if z_encoder.test:
             # z_encoder.compute_z_test()
             # pobj_test.append(z_encoder.get_cost_test())
@@ -446,7 +458,7 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
             if verbose > 5:
                 print('[{}] Resampled atom {}'.format(name, k0))
 
-        if verbose > 5:
+        if verbose > 5 and pobj:
             print('[{}] Objective (d) : {:.3e}'.format(name, pobj[-1]))
             # if z_encoder.test:
             #     print('[{}] Objective (d) : {:.3e}, {:.3e}'
@@ -454,7 +466,7 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
             # else:
             #     print('[{}] Objective (d) : {:.3e}'.format(name, pobj[-1]))
 
-        if end_iter_func(z_encoder, pobj, ii):
+        if pobj and end_iter_func(z_encoder, pobj, ii):
             break
 
     if z_encoder.test:
@@ -465,6 +477,10 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
 
 def get_iteration_func(eps, stopping_pobj, callback, lmbd_max, name, verbose,
                        raise_on_increase):
+
+    if eps is None and stopping_pobj is None:
+        return None
+
     def end_iteration(z_encoder, pobj, iteration):
         if callable(callback):
             callback(z_encoder, pobj)
