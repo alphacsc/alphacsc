@@ -11,7 +11,7 @@ from joblib import Parallel, delayed
 
 from .utils.convolution import _choose_convolve
 from .utils.optim import power_iteration
-from .utils import check_consistent_shape
+from .utils.validation import check_consistent_shape
 
 
 def update_z(X, ds, reg, z0=None, debug=False, parallel=None,

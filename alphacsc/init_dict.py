@@ -5,11 +5,11 @@
 #          Thomas Moreau <thomas.moreau@inria.fr>
 import numpy as np
 
-from .utils import check_random_state
 from .update_d_multi import prox_uv, prox_d
 
 from .utils.dictionary import tukey_window
 from .utils.dictionary import get_uv
+from .utils.validation import check_random_state
 
 
 def get_init_strategy(n_times_atom, shape, random_state, D_init):

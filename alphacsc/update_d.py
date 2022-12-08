@@ -6,7 +6,8 @@
 import numpy as np
 from scipy import linalg, optimize
 
-from .utils import construct_X, check_consistent_shape
+from .utils.convolution import construct_X
+from .utils.validation import check_consistent_shape
 
 
 def update_d(X, Z, n_times_atom, lambd0=None, ds_init=None, debug=False,

@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from alphacsc.utils import check_dimension
+from alphacsc.utils.validation import check_dimension
 
 
 def test_check_dimension():

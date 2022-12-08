@@ -4,8 +4,8 @@ from functools import partial
 from scipy.optimize import approx_fprime
 
 
-from alphacsc.utils import get_D
-from alphacsc.utils import construct_X_multi
+from alphacsc.utils.dictionary import get_D
+from alphacsc.utils.convolution import construct_X_multi
 from alphacsc.loss_and_gradient import gradient_d
 from alphacsc.loss_and_gradient import gradient_zi
 from alphacsc.loss_and_gradient import compute_X_and_objective_multi

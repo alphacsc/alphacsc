@@ -174,10 +174,11 @@ def _update_z_multi_idx(X_i, D, reg, z0_i, debug, solver='l-bfgs',
             callback = None
 
         # Default values
-        lbfgs_kwargs = dict(factr=1e7, max_iter=15000)
+        lbfgs_kwargs = dict(factr=1e7, max_iter=15000, verbose=0)
         lbfgs_kwargs.update(solver_kwargs)
         lbfgs_kwargs['maxiter'] = lbfgs_kwargs['max_iter']
-        del lbfgs_kwargs['max_iter']
+        lbfgs_kwargs['disp'] = lbfgs_kwargs['verbose']
+        del lbfgs_kwargs['max_iter'], lbfgs_kwargs['verbose']
         z_hat, f, d = optimize.fmin_l_bfgs_b(
             func_and_grad, x0=z0_i, fprime=None, args=(), approx_grad=False,
             bounds=bounds, callback=callback, **lbfgs_kwargs
@@ -186,7 +187,7 @@ def _update_z_multi_idx(X_i, D, reg, z0_i, debug, solver='l-bfgs',
     elif solver in ("ista", "fista"):
         # Default values
         fista_kwargs = dict(
-            max_iter=100, eps=None, verbose=10, scipy_line_search=False,
+            max_iter=100, eps=None, verbose=0, scipy_line_search=False,
             momentum=(solver == "fista"), step_size=None, debug=True,
             adaptive_step_size=True,
         )

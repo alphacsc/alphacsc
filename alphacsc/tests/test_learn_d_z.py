@@ -11,7 +11,8 @@ from alphacsc.update_d import solve_unit_norm_dual, solve_unit_norm_primal
 
 
 from alphacsc.simulate import simulate_data
-from alphacsc.utils import construct_X, check_random_state
+from alphacsc.utils.convolution import construct_X
+from alphacsc.utils.validation import check_random_state
 
 n_trials = 10
 reg = 0.1  # lambda

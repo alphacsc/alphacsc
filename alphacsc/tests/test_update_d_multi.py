@@ -4,7 +4,7 @@ from scipy import optimize, signal
 from alphacsc.loss_and_gradient import compute_objective
 from alphacsc.loss_and_gradient import gradient_d, gradient_uv
 from alphacsc.update_d_multi import _get_d_update_constants
-from alphacsc.utils import construct_X_multi
+from alphacsc.utils.convolution import construct_X_multi
 
 
 DEBUG = True

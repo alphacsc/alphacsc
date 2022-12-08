@@ -4,7 +4,7 @@ import numpy as np
 from alphacsc.update_z_multi import update_z_multi
 from alphacsc.update_z_multi import compute_DtD, _coordinate_descent_idx
 from alphacsc.loss_and_gradient import compute_X_and_objective_multi
-from alphacsc.utils import construct_X_multi
+from alphacsc.utils.convolution import construct_X_multi
 
 from alphacsc.utils.compute_constants import compute_ztz, compute_ztX
 
@@ -41,7 +41,7 @@ def test_support_least_square(solver_z):
     n_times_atom, n_atoms = 10, 4
     n_times_valid = n_times - n_times_atom + 1
     reg = 0.1
-    solver_kwargs = {'factr': 1e7}
+    solver_kwargs = {'factr': 1e7} if solver_z == 'l-bfgs' else {}
 
     rng = np.random.RandomState(0)
     X = rng.randn(n_trials, n_channels, n_times)

@@ -10,8 +10,8 @@ import sys
 
 import numpy as np
 
-from .utils import check_dimension
-from .utils import check_random_state
+from .utils.validation import check_dimension
+from .utils.validation import check_random_state
 from .utils.convolution import sort_atoms_by_explained_variances
 from ._z_encoder import get_z_encoder_for
 from ._d_solver import get_solver_d

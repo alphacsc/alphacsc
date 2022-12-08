@@ -7,7 +7,7 @@ from numpy.testing import assert_allclose
 from alphacsc.init_dict import init_dictionary
 from alphacsc.update_d_multi import prox_uv, prox_d
 from alphacsc.learn_d_z_multi import learn_d_z_multi
-from alphacsc.utils import check_random_state
+from alphacsc.utils.validation import check_random_state
 
 from alphacsc.tests.conftest import parametrize_solver_and_constraint
 

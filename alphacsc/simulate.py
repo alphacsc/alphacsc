@@ -5,7 +5,8 @@
 
 import numpy as np
 
-from .utils import check_random_state, construct_X
+from .utils.convolution import construct_X
+from .utils.validation import check_random_state
 
 
 def simulate_data(n_trials, n_times, n_times_atom, n_atoms, random_state=42,
