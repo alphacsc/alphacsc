@@ -17,8 +17,8 @@ from ._z_encoder import get_z_encoder_for
 from ._d_solver import get_solver_d
 
 
-def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
-                    X_test=None, lmbd_max='fixed', reg=0.1,
+def learn_d_z_multi(X, n_atoms, n_times_atom, log_D=False, n_iter=60, n_jobs=1,
+                    lmbd_max='fixed', reg=0.1,
                     rank1=True, uv_constraint='auto', eps=1e-10,
                     algorithm='batch', algorithm_params=dict(),
                     solver_z='l-bfgs', solver_z_kwargs=dict(),
@@ -38,6 +38,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         The number of atoms to learn.
     n_times_atom : int
         The support of the atom.
+    log_D : bool
+        if True, outputs the list of all D
     reg : float
         The regularization parameter
     lmbd_max : 'fixed' | 'scaled' | 'per_atom' | 'shared'
@@ -145,10 +147,6 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
     std_X = X.std()
     X = X / std_X
 
-    if X_test is not None:
-        std_X_test = X_test.std()
-        X_test = X_test / std_X_test
-
     if algorithm == "stochastic":
         # The typical stochastic algorithm samples one signal, compute the
         # associated value z and then perform one step of gradient descent
@@ -181,7 +179,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
 
     with get_z_encoder_for(
             X, d_solver.D_hat, n_atoms, n_times_atom, n_jobs,
-            solver_z, z_kwargs, reg, X_test
+            solver_z, z_kwargs, reg
     ) as z_encoder:
 
         if callable(callback):
@@ -195,7 +193,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         # common parameters
         kwargs = dict(
             z_encoder=z_encoder, d_solver=d_solver, n_iter=n_iter,
-            end_iter_func=end_iter_func, lmbd_max=lmbd_max,
+            log_D=log_D, end_iter_func=end_iter_func, lmbd_max=lmbd_max,
             verbose=verbose, random_state=random_state, name=name
         )
         kwargs.update(algorithm_params)
@@ -217,10 +215,10 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
                 "Algorithm '{}' is not implemented to learn dictionary atoms."
                 .format(algorithm))
 
-        if X_test is None:
-            pobj, times = algo_res
+        if log_D:
+            pobj, list_D, times = algo_res
         else:
-            pobj, pobj_test, times = algo_res
+            pobj, times = algo_res
 
         D_hat = d_solver.D_hat
         z_hat = z_encoder.get_z_hat()
@@ -248,13 +246,13 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         z_hat *= std_X
         reg = z_encoder.reg * std_X
 
-    if X_test is None:
-        return pobj, times, D_hat, z_hat, reg
+    if log_D:
+        return pobj, list_D, times, D_hat, z_hat, reg
     else:
-        return pobj, pobj_test, times, D_hat, z_hat, reg
+        return pobj, times, D_hat, z_hat, reg
 
 
-def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
+def _batch_learn(z_encoder, d_solver, end_iter_func, log_D=False, n_iter=100,
                  lmbd_max='fixed', reg=None, verbose=0, greedy=False,
                  random_state=None, name="batch"):
 
@@ -276,9 +274,8 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
     else:
         pobj = None
 
-    if z_encoder.test:
-        # pobj_test = [z_encoder.get_cost_test()]
-        pobj_test = [d_solver.D_hat]
+    if log_D:  # log init dictionary
+        list_D = [d_solver.D_hat]
 
     for ii in range(n_iter):  # outer loop of coordinate descent
         if verbose == 1:
@@ -310,9 +307,6 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
         if pobj:
             times.append(time.time() - start)
             pobj.append(z_encoder.get_cost())
-        # if z_encoder.test:
-        # after z update, cost on test set stay unchanged
-        # pobj_test.append(pobj_test[-1])
 
         z_nnz = z_encoder.get_z_nnz()
         if verbose > 5 and pobj:
@@ -336,10 +330,8 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
         times.append(time.time() - start)
         if pobj:
             pobj.append(z_encoder.get_cost())
-        if z_encoder.test:
-            # z_encoder.compute_z_test()
-            # pobj_test.append(z_encoder.get_cost_test())
-            pobj_test.append(d_solver.D_hat)
+        if log_D:
+            list_D.append(d_solver.D_hat)
 
         null_atom_indices = np.where(z_nnz == 0)[0]
         if len(null_atom_indices) > 0:
@@ -361,13 +353,13 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
                 and end_iter_func(z_encoder, pobj, ii)):
             break
 
-    if z_encoder.test:
-        return pobj, pobj_test, times
+    if log_D:
+        return pobj, list_D, times
 
     return pobj, times
 
 
-def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
+def _online_learn(z_encoder, d_solver, end_iter_func, log_D=False, n_iter=100,
                   verbose=0, random_state=None, lmbd_max='fixed', reg=None,
                   alpha=.8, batch_selection='random', batch_size=1,
                   name="online"):
@@ -381,9 +373,8 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
     else:
         pobj = None
 
-    if z_encoder.test:
-        # pobj_test = [z_encoder.get_cost_test()]
-        pobj_test = [d_solver.D_hat]
+    if log_D:
+        list_D = [d_solver.D_hat]
 
     rng = check_random_state(random_state)
     for ii in range(n_iter):  # outer loop of coordinate descent
@@ -420,9 +411,6 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
         if pobj:
             times.append(time.time() - start)
             pobj.append(z_encoder.get_cost())
-        # if z_encoder.test:
-        # after z update, cost on test set stay unchanged
-        # pobj_test.append(pobj_test[-1])
 
         z_nnz = z_encoder.get_z_nnz()
         if verbose > 5 and pobj:
@@ -446,10 +434,8 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
         times.append(time.time() - start)
         if pobj:
             pobj.append(z_encoder.get_cost())
-        if z_encoder.test:
-            # z_encoder.compute_z_test()
-            # pobj_test.append(z_encoder.get_cost_test())
-            pobj_test.append(d_solver.D_hat)
+        if log_D:
+            list_D.append(d_solver.D_hat)
 
         null_atom_indices = np.where(z_nnz == 0)[0]
         if len(null_atom_indices) > 0:
@@ -460,17 +446,12 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
 
         if verbose > 5 and pobj:
             print('[{}] Objective (d) : {:.3e}'.format(name, pobj[-1]))
-            # if z_encoder.test:
-            #     print('[{}] Objective (d) : {:.3e}, {:.3e}'
-            #           .format(name, pobj[-1], pobj_test[-1]))
-            # else:
-            #     print('[{}] Objective (d) : {:.3e}'.format(name, pobj[-1]))
 
         if pobj and end_iter_func(z_encoder, pobj, ii):
             break
 
-    if z_encoder.test:
-        return pobj, pobj_test, times
+    if log_D:
+        return pobj, list_D, times
 
     return pobj, times
 

@@ -4,12 +4,14 @@
 #          Alexandre Gramfort <alexandre.gramfort@telecom-paristech.fr>
 
 import numpy as np
+from scipy.stats import norm
 
 from .utils import check_random_state, construct_X
 
 
 def simulate_data(n_trials, n_times, n_times_atom, n_atoms, random_state=42,
-                  constant_amplitude=False):
+                  constant_amplitude=False,
+                  shapes=['triangle', 'square', 'sin']):
     """Simulate the data.
 
     Parameters
@@ -43,7 +45,7 @@ def simulate_data(n_trials, n_times, n_times_atom, n_atoms, random_state=42,
     # add atoms
     rng = check_random_state(random_state)
     ds = np.zeros((n_atoms, n_times_atom))
-    for idx, shape, n_cycles in cycler(n_atoms, n_times_atom):
+    for idx, shape, n_cycles in cycler(n_atoms, n_times_atom, shapes):
         ds[idx, :] = get_atoms(shape, n_times_atom, n_cycles=n_cycles)
     ds /= np.linalg.norm(ds, axis=1)[:, None]
 
@@ -58,10 +60,10 @@ def simulate_data(n_trials, n_times, n_times_atom, n_atoms, random_state=42,
     return X, ds, z
 
 
-def cycler(n_atoms, n_times_atom):
+def cycler(n_atoms, n_times_atom, shapes=['triangle', 'square', 'sin']):
     idx = 0
     for n_cycles in range(1, n_times_atom // 2):
-        for shape in ['triangle', 'square', 'sin']:
+        for shape in shapes:
             yield idx, shape, n_cycles
             idx += 1
             if idx >= n_atoms:
@@ -88,7 +90,7 @@ def get_activations(rng, shape_z, constant_amplitude=False):
     return z
 
 
-def get_atoms(shape, n_times_atom, zero_mean=True, n_cycles=1):
+def get_atoms(shape, n_times_atom, zero_mean=True, n_cycles=1, random_state=None):
     if shape == 'triangle':
         ds = list()
         for idx in range(n_cycles):
@@ -107,6 +109,16 @@ def get_atoms(shape, n_times_atom, zero_mean=True, n_cycles=1):
         d = np.sin(2 * np.pi * n_cycles * np.linspace(0, 1, n_times_atom))
     elif shape == 'cos':
         d = np.cos(2 * np.pi * n_cycles * np.linspace(0, 1, n_times_atom))
+    elif shape == 'gaussian':
+        rng = check_random_state(random_state)
+        ds = np.zeros(n_times_atom)
+        xx = np.linspace(0, n_times_atom, n_times_atom)
+        means = [(i+1) * (n_times_atom / (n_cycles+1))
+                 for i in range(n_cycles)]
+        weights = rng.choice((-1, 1), n_cycles, replace=True)
+        for m, w in zip(means, weights):
+            ds += w * norm.pdf(xx, loc=m, scale=0.1)
+
     if zero_mean:
         d -= np.mean(d)
 
