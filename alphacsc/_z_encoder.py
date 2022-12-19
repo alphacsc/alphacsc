@@ -331,7 +331,7 @@ class AlphaCSCEncoder(BaseZEncoder):
         n_channels = self.X.shape[1]
         *_, n_times_atom = get_D_shape(self.D_hat, n_channels)
 
-        patch = self.X[n0, :, t0:t0 + n_times_atom][None]
+        patch = self.X[n0, :, t0:t0 + n_times_atom][None].copy()
         if self.D_hat.ndim == 2:
             patch = get_uv(patch)
         return patch

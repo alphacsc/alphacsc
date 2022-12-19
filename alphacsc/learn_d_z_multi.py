@@ -15,6 +15,7 @@ from .utils import check_random_state
 from .utils.convolution import sort_atoms_by_explained_variances
 from ._z_encoder import get_z_encoder_for
 from ._d_solver import get_solver_d
+from .loss_and_gradient import compute_X_and_objective_multi
 
 
 def learn_d_z_multi(X, n_atoms, n_times_atom, log_D=False, n_iter=60, n_jobs=1,
@@ -275,7 +276,7 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, log_D=False, n_iter=100,
         pobj = None
 
     if log_D:  # log init dictionary
-        list_D = [d_solver.D_hat]
+        list_D = [(d_solver.D_hat.copy(), z_encoder.z_hat)]
 
     for ii in range(n_iter):  # outer loop of coordinate descent
         if verbose == 1:
@@ -331,7 +332,7 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, log_D=False, n_iter=100,
         if pobj:
             pobj.append(z_encoder.get_cost())
         if log_D:
-            list_D.append(d_solver.D_hat)
+            list_D.append((z_encoder.D_hat.copy(), z_encoder.z_hat))
 
         null_atom_indices = np.where(z_nnz == 0)[0]
         if len(null_atom_indices) > 0:
@@ -342,11 +343,6 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, log_D=False, n_iter=100,
                 print('[{}] Resampled atom {}'.format(name, k0))
 
         if verbose > 5 and pobj:
-            # if z_encoder.test:
-            #     print('[{}] Objective (d) : {:.3e}, {:.3e}'
-            #           .format(name, pobj[-1], pobj_test[-1]))
-            # else:
-            #     print('[{}] Objective (d) : {:.3e}'.format(name, pobj[-1]))
             print('[{}] Objective (d) : {:.3e}'.format(name, pobj[-1]))
 
         if (pobj and (not greedy or d_solver.D_hat.shape[0] == n_atoms)
