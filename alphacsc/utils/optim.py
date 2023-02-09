@@ -4,7 +4,7 @@ import numpy as np
 from scipy import optimize
 
 from .compute_constants import compute_DtD
-from . import check_random_state
+from .validation import check_random_state
 
 
 MIN_STEP_SIZE = 1e-20

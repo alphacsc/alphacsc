@@ -3,8 +3,8 @@
 import time
 import numpy as np
 
-from . import check_random_state
 from .dictionary import get_D_shape
+from .validation import check_random_state
 from ..loss_and_gradient import gradient_zi
 from .convolution import _choose_convolve_multi
 

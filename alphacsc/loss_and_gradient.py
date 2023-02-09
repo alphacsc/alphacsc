@@ -9,7 +9,7 @@ import numpy as np
 from .utils.convolution import numpy_convolve_uv
 from .utils.convolution import tensordot_convolve
 from .utils.convolution import _choose_convolve_multi
-from .utils import construct_X_multi
+from .utils.convolution import construct_X_multi
 
 
 def compute_objective(X=None, X_hat=None, z_hat=None, D=None,

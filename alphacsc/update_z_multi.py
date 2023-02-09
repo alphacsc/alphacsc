@@ -11,7 +11,7 @@ from joblib import Parallel, delayed
 
 
 from .utils.optim import fista
-from .utils import check_random_state
+from .utils.validation import check_random_state
 from .utils.dictionary import get_D_shape
 from .loss_and_gradient import gradient_zi
 from .utils.coordinate_descent import _coordinate_descent_idx
