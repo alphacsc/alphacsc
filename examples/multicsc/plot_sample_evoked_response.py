@@ -122,7 +122,8 @@ print('done')
 # To reduce the impact of border artifacts, we use `apply_window=True`
 # which scales down the border of each split with a tukey window.
 
-from alphacsc.utils import split_signal
+from alphacsc.utils.signal import split_signal
+
 X = raw.get_data(picks=['meg'])
 info = raw.copy().pick_types(meg=True).info  # info of the loaded channels
 X_split = split_signal(X, n_splits=n_splits, apply_window=True)

@@ -66,7 +66,7 @@ def run_fista(X, solver_z, reg, n_iter, random_state, label):
 
     solver_z_kwargs = dict(max_iter=2)
 
-    return run_univariete(X, solver_z, solver_z_kwargs, reg, n_iter,
+    return run_univariate(X, solver_z, solver_z_kwargs, reg, n_iter,
                           random_state, label)
 
 
@@ -78,11 +78,11 @@ def run_l_bfgs(X, solver_z, reg, n_iter, random_state, label):
     solver_z_kwargs = dict(factr=factr_z)
     solver_d_kwargs = dict(factr=factr_d)
 
-    return run_univariete(X, solver_z, solver_z_kwargs, reg, n_iter,
+    return run_univariate(X, solver_z, solver_z_kwargs, reg, n_iter,
                           random_state, label, solver_d_kwargs)
 
 
-def run_univariete(X, solver_z, solver_z_kwargs, reg, n_iter, random_state,
+def run_univariate(X, solver_z, solver_z_kwargs, reg, n_iter, random_state,
                    label, solver_d_kwargs=dict()):
     assert X.ndim == 2
 

@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 
-from alphacsc.utils import check_random_state
+from alphacsc.utils.validation import check_random_state
 from alphacsc.learn_d_z_multi import learn_d_z_multi
 from alphacsc.convolutional_dictionary_learning import BatchCDL, GreedyCDL
 from alphacsc.online_dictionary_learning import OnlineCDL
@@ -9,7 +9,7 @@ from alphacsc.init_dict import init_dictionary
 
 from alphacsc.tests.conftest import parametrize_solver_and_constraint
 
-from conftest import N_ATOMS, N_TIMES, N_TIMES_ATOM, N_CHANNELS
+from .conftest import N_ATOMS, N_TIMES, N_TIMES_ATOM, N_CHANNELS
 
 
 @pytest.mark.parametrize('window', [False, True])

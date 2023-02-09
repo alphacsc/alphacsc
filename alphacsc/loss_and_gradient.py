@@ -9,7 +9,7 @@ import numpy as np
 from .utils.convolution import numpy_convolve_uv
 from .utils.convolution import tensordot_convolve
 from .utils.convolution import _choose_convolve_multi
-from .utils import construct_X_multi
+from .utils.convolution import construct_X_multi
 
 
 def compute_objective(X=None, X_hat=None, z_hat=None, D=None,
@@ -36,9 +36,9 @@ def compute_objective(X=None, X_hat=None, z_hat=None, D=None,
 
     if reg is not None:
         if isinstance(reg, (int, float)):
-            obj += reg * z_hat.sum()
+            obj += reg * abs(z_hat).sum()
         else:
-            obj += np.sum(reg * z_hat.sum(axis=(1, 2)))
+            obj += np.sum(reg * abs(z_hat).sum(axis=(1, 2)))
 
     return obj
 
@@ -169,9 +169,9 @@ def gradient_uv(uv, X=None, z=None, constants=None, reg=None,
     if return_func:
         if reg is not None:
             if isinstance(reg, float):
-                cost += reg * z.sum()
+                cost += reg * abs(z).sum()
             else:
-                cost += np.sum(reg * z.sum(axis=(1, 2)))
+                cost += np.sum(reg * abs(z).sum(axis=(1, 2)))
         return cost, grad
 
     return grad
@@ -189,9 +189,9 @@ def gradient_zi(Xi, zi, D=None, constants=None, reg=None,
         grad += reg
         if return_func:
             if isinstance(reg, float):
-                cost += reg * zi.sum()
+                cost += reg * abs(zi).sum()
             else:
-                cost += np.sum(reg * zi.sum(axis=1))
+                cost += np.sum(reg * abs(zi).sum(axis=1))
 
     if flatten:
         grad = grad.ravel()

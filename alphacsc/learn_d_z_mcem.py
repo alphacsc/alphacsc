@@ -5,9 +5,9 @@
 
 import numpy as np
 
-from .utils import construct_X
-from .utils import check_dimension
-from .utils import check_random_state
+from .utils.convolution import construct_X
+from .utils.validation import check_dimension
+from .utils.validation import check_random_state
 
 from .learn_d_z import learn_d_z
 from .update_d import update_d_block

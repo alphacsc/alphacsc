@@ -6,7 +6,7 @@
 import numpy as np
 from scipy.stats import levy_stable
 
-from .utils import check_random_state
+from .utils.validation import check_random_state
 
 
 def estimate_phi_mh(X, Xhat, alpha, Phi, n_iter_mcmc, n_burnin_mcmc,

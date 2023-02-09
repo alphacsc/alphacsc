@@ -4,10 +4,7 @@ import numpy as np
 from joblib import Memory
 from scipy.signal import tukey
 
-try:
-    from ..utils import check_random_state
-except ValueError:
-    from alphacsc.utils import check_random_state
+from alphacsc.utils.validation import check_random_state
 
 
 mem = Memory(location='.', verbose=0)
