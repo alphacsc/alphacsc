@@ -92,7 +92,7 @@ def _patch_reconstruction_error(X, z, D):
                    for diff_i in diff], axis=1)
 
 
-def get_lambda_max(X, D_hat, sample_weights=None):
+def get_lambda_max(X, D_hat, sample_weights=None, q=1):
 
     # univariate case, add a dimension (n_channels = 1)
     if X.ndim == 2:
@@ -112,20 +112,20 @@ def get_lambda_max(X, D_hat, sample_weights=None):
 
     # multivariate rank-1 case
     if D_hat.ndim == 2:
-        return np.max([[
+        return np.quantile([[
             np.convolve(
                 np.dot(uv_k[:n_channels], X_i * W_i), uv_k[:n_channels - 1:-1],
                 mode='valid') for X_i, W_i in zip(X, sample_weights)
-        ] for uv_k in D_hat], axis=(1, 2))[:, None]
+        ] for uv_k in D_hat], axis=(1, 2), q=q)[:, None]
 
     # multivariate general case
     else:
-        return np.max([[
+        return np.quantile([[
             np.sum([
                 np.correlate(D_kp, X_ip * W_ip, mode='valid')
                 for D_kp, X_ip, W_ip in zip(D_k, X_i, W_i)
             ], axis=0) for X_i, W_i in zip(X, sample_weights)
-        ] for D_k in D_hat], axis=(1, 2))[:, None]
+        ] for D_k in D_hat], axis=(1, 2), q=q)[:, None]
 
 
 class NoWindow():
