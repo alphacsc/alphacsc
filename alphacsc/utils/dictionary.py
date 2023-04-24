@@ -93,7 +93,32 @@ def _patch_reconstruction_error(X, z, D):
 
 
 def get_lambda_max(X, D_hat, sample_weights=None, q=1):
+    """For each atom, compute the associated lambda_max as the q-quantile of
+    the energy patches over the signal length.
 
+    Parameters
+    ----------
+    X : array, shape (n_trials, n_times) or \
+               shape (n_trials, n_channels, n_times)
+        The data
+
+    D_hat : array, shape (n_atoms, n_channels + n_times_atoms) or \
+                   shape (n_atoms, n_channels, n_times_atom)
+        The atoms
+
+    sample_weights : None | array, shape (n_trials, n_times) or \
+                                   shape (n_trials, n_channels, n_times)
+        Weights to apply to the data.
+        Defaults is None
+
+    q : float
+        Quantile to compute, which must be between 0 and 1 inclusive.
+        Default is 1, i.e., the maximum is returned.
+
+    Returns
+    -------
+    lambda_max : array, shape (n_atoms, 1)
+    """
     # univariate case, add a dimension (n_channels = 1)
     if X.ndim == 2:
         X = X[:, None, :]
