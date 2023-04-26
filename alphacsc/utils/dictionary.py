@@ -98,7 +98,7 @@ def get_lambda_max(X, D_hat, sample_weights=None, q=1):
 
     Parameters
     ----------
-    X : array, shape (n_trials, n_times) or \
+    X : array, shape (n_trials, n_times) or
                shape (n_trials, n_channels, n_times)
         The data
 
