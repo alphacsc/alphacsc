@@ -94,7 +94,6 @@ def _patch_reconstruction_error(X, z, D):
 
 def get_lambda_max(X, D_hat, sample_weights=None, q=1):
     """For each atom, compute the regularization parameter scaling.
-    
     This value is usually defined as the smallest value for which 0 is
     a solution of the optimization problem.
     In order to avoid spurious values, this quantity can also be estimated
