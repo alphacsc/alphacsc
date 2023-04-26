@@ -69,7 +69,7 @@ DOC_FMT = """{short_desc}
 
     solver_z : str
         The solver to use for the z update. Options are
-        {{'l_bfgs' (default) | 'lgcd'}}.
+        {{'l_bfgs' (default) | 'lgcd', 'fista'}}.
     solver_z_kwargs : dict
         Additional keyword arguments to pass to update_z_multi.
     unbiased_z_hat : boolean

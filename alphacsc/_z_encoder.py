@@ -36,7 +36,7 @@ def get_z_encoder_for(X, D_hat, n_atoms, n_times_atom, n_jobs,
         The number of parallel jobs.
     solver : str
         The solver to use for the z update. Options are
-        {{'l_bfgs' (default) | 'lgcd' | 'dicodile'}}.
+        {{'l_bfgs' (default) | 'lgcd' | 'fista' | 'dicodile'}}.
     solver_kwargs : dict
         Additional keyword arguments to pass to update_z_multi.
     reg : float
@@ -63,7 +63,7 @@ def get_z_encoder_for(X, D_hat, n_atoms, n_times_atom, n_jobs,
 
     assert reg is not None, 'reg value cannot be None.'
 
-    if solver in ['l-bfgs', 'lgcd']:
+    if solver in ['l-bfgs', 'lgcd', 'fista']:
 
         return AlphaCSCEncoder(
             X, D_hat, n_atoms, n_times_atom, n_jobs,
