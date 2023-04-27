@@ -11,8 +11,9 @@ from scipy import linalg
 from joblib import Parallel
 
 from .init_dict import init_dictionary
-from .utils import construct_X, check_random_state, check_dimension
 from .utils.dictionary import get_lambda_max
+from .utils.convolution import construct_X
+from .utils.validation import check_random_state, check_dimension
 from .update_z import update_z
 from .update_d import update_d_block
 

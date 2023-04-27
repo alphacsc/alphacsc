@@ -2,7 +2,7 @@ import numpy as np
 
 from .init_dict import get_init_strategy
 from .loss_and_gradient import gradient_uv, gradient_d
-from .utils import check_random_state
+from .utils.validation import check_random_state
 from .utils.convolution import numpy_convolve_uv
 from .utils.dictionary import NoWindow, UVWindower, SimpleWindower
 from .utils.optim import fista, power_iteration

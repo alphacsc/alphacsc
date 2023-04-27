@@ -8,7 +8,7 @@ from copy import deepcopy
 from joblib import Memory
 from hcp.io.file_mapping.file_mapping import kind_map
 
-from ..utils import check_random_state
+from ..utils.validation import check_random_state
 
 
 HCP_DIR = "/storage/store/data/HCP900/"

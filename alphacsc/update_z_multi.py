@@ -4,6 +4,7 @@
 #          Alexandre Gramfort <alexandre.gramfort@inria.fr>
 #          Thomas Moreau <thomas.moreau@inria.fr>
 import time
+import warnings
 
 import numpy as np
 from scipy import optimize
@@ -11,15 +12,16 @@ from joblib import Parallel, delayed
 
 
 from .utils.optim import fista
-from .utils import check_random_state
 from .utils.dictionary import get_D_shape
 from .loss_and_gradient import gradient_zi
+from .loss_and_gradient import compute_X_and_objective_multi
+from .utils.validation import check_random_state
 from .utils.coordinate_descent import _coordinate_descent_idx
 from .utils.compute_constants import compute_DtD, compute_ztz, compute_ztX
 
 
 def update_z_multi(X, D, reg, z0=None, solver='l-bfgs', solver_kwargs=dict(),
-                   freeze_support=False,
+                   freeze_support=False, positive=True,
                    return_ztz=False, timing=False, n_jobs=1,
                    random_state=None, debug=False):
     """Update z using L-BFGS with positivity constraints
@@ -42,6 +44,8 @@ def update_z_multi(X, D, reg, z0=None, solver='l-bfgs', solver_kwargs=dict(),
         Parameters for the solver
     freeze_support : boolean
         If True, the support of z0 is frozen.
+    positive : boolean
+        If True, impose positivity constraints on z.
     return_ztz : boolean
         If True, returns the constants ztz and ztX, used to compute D-updates.
     timing : boolean
@@ -76,10 +80,12 @@ def update_z_multi(X, D, reg, z0=None, solver='l-bfgs', solver_kwargs=dict(),
     delayed_update_z = delayed(_update_z_multi_idx)
 
     results = Parallel(n_jobs=n_jobs)(
-        delayed_update_z(X[i], D, reg, z0[i], debug, solver, solver_kwargs,
-                         freeze_support, return_ztz=return_ztz,
-                         timing=timing, random_state=seed)
-        for i, seed in enumerate(parallel_seeds))
+        delayed_update_z(
+            X[i], D, reg, z0[i], debug, solver, solver_kwargs, freeze_support,
+            positive=positive, return_ztz=return_ztz, timing=timing,
+            random_state=seed,
+        ) for i, seed in enumerate(parallel_seeds)
+    )
 
     # Post process the results to get separate objects
     z_hats, pobj, times = [], [], []
@@ -120,7 +126,8 @@ class BoundGenerator(object):
 
 def _update_z_multi_idx(X_i, D, reg, z0_i, debug, solver='l-bfgs',
                         solver_kwargs=dict(), freeze_support=False,
-                        return_ztz=False, timing=False, random_state=None):
+                        positive=True, return_ztz=False, timing=False,
+                        random_state=None):
     t_start = time.time()
     n_channels, n_times = X_i.shape
     n_atoms, n_channels, n_times_atom = get_D_shape(D, n_channels)
@@ -135,26 +142,30 @@ def _update_z_multi_idx(X_i, D, reg, z0_i, debug, solver='l-bfgs',
         constants['DtD'] = compute_DtD(D=D, n_channels=n_channels)
     init_timing = time.time() - t_start
 
-    def func_and_grad(zi):
-        return gradient_zi(Xi=X_i, zi=zi, D=D, constants=constants,
-                           reg=reg, return_func=True, flatten=True)
-
     if z0_i is None:
         z0_i = np.zeros(n_atoms, n_times_valid)
 
+    # Makes sure they are defined even if timing=False
     times, pobj = None, None
-    if timing:
-        times = [init_timing]
-        pobj = [func_and_grad(z0_i)[0]]
-        t_start = [time.time()]
 
     if solver == 'l-bfgs':
+
+        assert positive, "l-BFGS-B can only be used with positive=True"
+
+        def func_and_grad(zi):
+            return gradient_zi(Xi=X_i, zi=zi, D=D, constants=constants,
+                               reg=reg, return_func=True, flatten=True)
+
         z0_i = z0_i.ravel()
         if freeze_support:
             bounds = [(0, 0) if z == 0 else (0, None) for z in z0_i]
         else:
             bounds = BoundGenerator(n_atoms * n_times_valid)
         if timing:
+            times = [init_timing]
+            pobj = [func_and_grad(z0_i)[0]]
+            t_start = [time.time()]
+
             def callback(xk):
                 times.append(time.time() - t_start[0])
                 pobj.append(func_and_grad(xk)[0])
@@ -162,32 +173,84 @@ def _update_z_multi_idx(X_i, D, reg, z0_i, debug, solver='l-bfgs',
                 t_start[0] = time.time()
         else:
             callback = None
-        factr = solver_kwargs.get('factr', 1e15)  # default value
-        maxiter = solver_kwargs.get('maxiter', 15000)  # default value
+
+        # Default values
+        lbfgs_kwargs = dict(tol=1e-5, max_iter=15000, verbose=0)
+        lbfgs_kwargs.update(solver_kwargs)
+
+        # Remap parameters to l-BFGS parameters
+        if 'maxiter' in solver_kwargs:
+            warnings.warn(
+                "maxiter for l-BFGS solver has been deprecated. "
+                "Please use max_iter.", DeprecationWarning
+            )
+        else:
+            lbfgs_kwargs['maxiter'] = lbfgs_kwargs['max_iter']
+        del lbfgs_kwargs['max_iter']
+
+        if 'factr' in solver_kwargs:
+            warnings.warn(
+                "factr for l-BFGS solver has been deprecated. "
+                "Please use tol, which corresponds to factr * float.eps.",
+                DeprecationWarning
+            )
+        else:
+            lbfgs_kwargs['factr'] = lbfgs_kwargs['tol'] / np.finfo(float).eps
+        del lbfgs_kwargs['tol']
+
+        lbfgs_kwargs['disp'] = lbfgs_kwargs['verbose']
+        del lbfgs_kwargs['verbose']
+
         z_hat, f, d = optimize.fmin_l_bfgs_b(
             func_and_grad, x0=z0_i, fprime=None, args=(), approx_grad=False,
-            bounds=bounds, factr=factr, maxiter=maxiter, callback=callback)
+            bounds=bounds, callback=callback, **lbfgs_kwargs
+        )
 
     elif solver in ("ista", "fista"):
-        # Default args
+        # Default values
         fista_kwargs = dict(
-            max_iter=100, eps=None, verbose=0, scipy_line_search=False,
-            momentum=(solver == "fista")
+            max_iter=15000, tol=1e-2, momentum=(solver == "fista"),
+            step_size=None, adaptive_step_size=True, scipy_line_search=False,
+            verbose=0,
         )
         fista_kwargs.update(solver_kwargs)
 
-        def objective(z_hat):
-            return func_and_grad(z_hat)[0]
+        # Remap parameters to FISTA parameters
+        # XXX: rename `eps` -> `tol` in FISTA code?
+        if 'eps' in solver_kwargs:
+            warnings.warn(
+                "eps for FISTA solver has been deprecated. "
+                "Please use tol instead.", DeprecationWarning
+            )
+        else:
+            fista_kwargs['eps'] = fista_kwargs['tol']
+        del fista_kwargs['tol']
 
-        def grad(z_hat):
-            return func_and_grad(z_hat)[1]
+        def objective(zi):
+            zi = zi.reshape(1, n_atoms, -1)
+            return compute_X_and_objective_multi(
+                X=X_i[None], z_hat=zi, D_hat=D, reg=reg,
+                feasible_evaluation=False
+            )
 
-        def prox(z_hat, step_size=0):
-            return np.maximum(z_hat - step_size * reg, 0.)
+        def grad(zi):
+            return gradient_zi(
+                Xi=X_i, zi=zi, D=D, constants=constants, flatten=True
+            )
+
+        if positive:
+            def prox(z_hat, step_size=0):
+                return np.maximum(z_hat - step_size * reg, 0.)
+        else:
+            def prox(z_hat, step_size=0):
+                mu = reg * step_size
+                return z_hat - np.clip(z_hat, -mu, mu)
+
         z0_i = z0_i.ravel()
-        output = fista(objective, grad, prox, step_size=None, x0=z0_i,
-                       adaptive_step_size=True, timing=timing,
-                       name="Update z", **fista_kwargs)
+        output = fista(
+            objective, grad, prox, x0=z0_i, timing=timing,
+            name="Update z", **fista_kwargs
+        )
         if timing:
             z_hat, pobj, times = output
             times[0] += init_timing
@@ -197,14 +260,15 @@ def _update_z_multi_idx(X_i, D, reg, z0_i, debug, solver='l-bfgs',
     elif solver in ["lgcd", "dicodile"]:
 
         # Default values
-        tol = solver_kwargs.get('tol', 1e-3)
-        n_seg = solver_kwargs.get('n_seg', 'auto')
-        max_iter = solver_kwargs.get('max_iter', 1e15)
-        strategy = solver_kwargs.get('strategy', 'greedy')
+        lgcd_kwargs = dict(
+            max_iter=1e15, tol=1e-3, n_seg='auto', strategy="greedy"
+        )
+        lgcd_kwargs.update(solver_kwargs)
         output = _coordinate_descent_idx(
-            X_i, D, constants, reg=reg, z0=z0_i, max_iter=max_iter, tol=tol,
-            strategy=strategy, n_seg=n_seg, freeze_support=freeze_support,
-            timing=timing, random_state=rng, name="Update z")
+            X_i, D, constants, reg=reg, z0=z0_i, freeze_support=freeze_support,
+            positive=positive, timing=timing, random_state=rng,
+            name="Update z", **lgcd_kwargs
+        )
 
         if timing:
             z_hat, pobj, times = output

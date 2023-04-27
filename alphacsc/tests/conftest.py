@@ -3,7 +3,8 @@ import pytest
 import numpy as np
 
 from alphacsc.update_d_multi import prox_uv, prox_d
-from alphacsc.utils import check_random_state
+from alphacsc.utils.convolution import construct_X_multi
+from alphacsc.utils.validation import check_random_state
 from alphacsc.utils.compute_constants import compute_ztz, compute_ztX
 from alphacsc.loss_and_gradient import compute_objective
 
@@ -84,7 +85,6 @@ class MockZEncoder:
 @pytest.fixture
 def z_encoder(D_hat, rng):
 
-    from alphacsc.utils import construct_X_multi
     z_hat = rng.normal(size=(N_TRIALS, N_ATOMS, N_TIMES - N_TIMES_ATOM + 1))
 
     X = construct_X_multi(z_hat, D=D_hat, n_channels=N_CHANNELS)

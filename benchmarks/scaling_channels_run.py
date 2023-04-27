@@ -17,10 +17,11 @@ import pandas as pd
 import scipy.sparse as sp
 from joblib import Parallel, delayed, Memory
 
-from alphacsc.utils.profile_this import profile_this  # noqa
-from alphacsc.utils import check_random_state, get_D
 from alphacsc.learn_d_z_multi import learn_d_z_multi
+from alphacsc.utils.dictionary import get_D
 from alphacsc.utils.dictionary import get_lambda_max
+from alphacsc.utils.validation import check_random_state
+from alphacsc.utils.profile_this import profile_this  # noqa
 
 
 START = time.time()
@@ -48,7 +49,8 @@ def run_multichannel(X, D_init, reg, n_iter, random_state,
     solver_z_kwargs = dict(max_iter=500, tol=1e-1)
     return learn_d_z_multi(
         X, n_atoms, n_times_atom, reg=reg, n_iter=n_iter,
-        uv_constraint='separate', rank1=True, D_init=D_init,
+        uv_constraint='s
+        eparate', rank1=True, D_init=D_init,
         solver_d='alternate_adaptive', solver_d_kwargs=dict(max_iter=50),
         solver_z="lgcd", solver_z_kwargs=solver_z_kwargs,
         name="rank1-{}-{}".format(n_channels, random_state),

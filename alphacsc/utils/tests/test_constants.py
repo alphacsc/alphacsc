@@ -1,7 +1,8 @@
 import numpy as np
 
 
-from alphacsc.utils import check_random_state, get_D
+from alphacsc.utils.dictionary import get_D
+from alphacsc.utils.validation import check_random_state
 from alphacsc.utils.compute_constants import compute_DtD, compute_ztz
 from alphacsc.utils.convolution import tensordot_convolve, construct_X_multi
 

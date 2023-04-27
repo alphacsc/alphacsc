@@ -124,7 +124,7 @@ fig = display_dictionaries(D_init, D_hat)
 ###############################################################################
 # Now, let's reconstruct the original signal.
 
-from alphacsc.utils import construct_X_multi
+from alphacsc.utils.convolution import construct_X_multi
 
 z_hat = res._z_hat
 
@@ -229,7 +229,7 @@ res = cdl.fit(X_mc_subset)
 ###############################################################################
 # Now, let’s reconstruct the original signal
 
-from alphacsc.utils import construct_X_multi
+from alphacsc.utils.convolution import construct_X_multi
 
 z_hat_mc = res._z_hat
 

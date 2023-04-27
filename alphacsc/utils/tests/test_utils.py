@@ -4,8 +4,8 @@ from numpy.testing import assert_allclose
 
 from alphacsc.utils.convolution import _sparse_convolve, _dense_convolve
 from alphacsc.utils.convolution import _choose_convolve
-from alphacsc.utils import check_random_state
-from alphacsc.utils import construct_X_multi
+from alphacsc.utils.convolution import construct_X_multi
+from alphacsc.utils.validation import check_random_state
 from alphacsc.utils.dictionary import get_D, get_uv, flip_uv
 
 from alphacsc.update_d_multi import prox_uv

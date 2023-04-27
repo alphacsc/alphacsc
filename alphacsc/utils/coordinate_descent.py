@@ -3,16 +3,17 @@
 import time
 import numpy as np
 
-from . import check_random_state
 from .dictionary import get_D_shape
+from .validation import check_random_state
 from ..loss_and_gradient import gradient_zi
 from .convolution import _choose_convolve_multi
 
 
 def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
                             tol=1e-3, strategy='greedy', n_seg='auto',
-                            freeze_support=False, debug=False, timing=False,
-                            random_state=None, name="CD", verbose=0):
+                            freeze_support=False, positive=True, debug=False,
+                            timing=False, random_state=None, name="CD",
+                            verbose=0):
     """Compute the coding signal associated to Xi with coordinate descent.
 
     Parameters
@@ -38,6 +39,8 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
         performed successively on each of these segments.
     freeze_support : boolean
         If set to True, only update the coefficient that are non-zero in z0.
+    positive : boolean
+        If True, impose positivity constraints on z.
     debug : boolean
         Activate extra check in the algorithm to assert that we have
         implemented the correct algorithm.
@@ -85,7 +88,7 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
         t_start = time.time()
 
     beta, dz_opt, tol = _init_beta(
-        Xi, z_hat, D, constants, reg, norm_Dk, tol
+        Xi, z_hat, D, constants, reg, norm_Dk, tol, positive
     )
 
     # If we freeze the support, we put dz_opt to zero outside the support of z0
@@ -100,9 +103,10 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
     t0, k0 = -1, 0
 
     for ii in range(int(max_iter)):
-        k0, t0, dz = _select_coordinate(strategy, dz_opt, active_segs[i_seg],
-                                        n_atoms, n_times_valid, n_times_seg,
-                                        seg_bounds, (t0, k0), rng=rng)
+        k0, t0, dz = _select_coordinate(
+            strategy, dz_opt, active_segs[i_seg], n_atoms, n_times_valid,
+            n_times_seg, seg_bounds, (t0, k0), rng=rng
+        )
         if strategy in ['random', 'cyclic']:
             # accumulate on all coordinates from the stopping criterion
             if ii % n_coordinates == 0:
@@ -119,7 +123,8 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
             beta, dz_opt, accumulator, active_segs = _update_beta(
                 beta, dz_opt, accumulator, active_segs, z_hat, DtD, norm_Dk,
                 dz, k0, t0, reg, tol, seg_bounds, i_seg, n_times_atom, z0,
-                freeze_support, debug)
+                freeze_support, positive, debug
+            )
 
         elif active_segs[i_seg]:
             accumulator -= 1
@@ -162,7 +167,7 @@ def _coordinate_descent_idx(Xi, D, constants, reg, z0=None, max_iter=1000,
     return z_hat
 
 
-def _init_beta(Xi, z_hat, D, constants, reg, norm_Dk, tol):
+def _init_beta(Xi, z_hat, D, constants, reg, norm_Dk, tol, positive):
     # Init beta with -DtX
     beta = gradient_zi(Xi, z_hat, D=D, reg=None, return_func=False,
                        constants=constants)
@@ -170,8 +175,10 @@ def _init_beta(Xi, z_hat, D, constants, reg, norm_Dk, tol):
     for k, t in zip(*z_hat.nonzero()):
         beta[k, t] -= z_hat[k, t] * norm_Dk[k]  # np.sum(DtD[k, k, t0])
 
-    dz_opt = np.maximum(-beta - reg, 0) / norm_Dk - z_hat
-
+    if positive:
+        dz_opt = np.maximum(-beta - reg, 0) / norm_Dk - z_hat
+    else:
+        dz_opt = -(beta - np.clip(beta, - reg, reg)) / norm_Dk - z_hat
     tol = tol * np.std(Xi)
 
     return beta, dz_opt, tol
@@ -179,7 +186,7 @@ def _init_beta(Xi, z_hat, D, constants, reg, norm_Dk, tol):
 
 def _update_beta(beta, dz_opt, accumulator, active_segs, z_hat, DtD, norm_Dk,
                  dz, k0, t0, reg, tol, seg_bounds, i_seg, n_times_atom, z0,
-                 freeze_support, debug):
+                 freeze_support, positive, debug):
     n_atoms, n_times_valid = beta.shape
 
     # define the bounds for the beta update
@@ -194,7 +201,11 @@ def _update_beta(beta, dz_opt, accumulator, active_segs, z_hat, DtD, norm_Dk,
     beta[k0, t0] = beta_i0
 
     # update dz_opt
-    tmp = np.maximum(-beta[:, t_start_up:t_end_up] - reg, 0) / norm_Dk
+    if positive:
+        tmp = np.maximum(-beta[:, t_start_up:t_end_up] - reg, 0) / norm_Dk
+    else:
+        seg = beta[:, t_start_up:t_end_up]
+        tmp = -(seg - np.clip(seg, -reg, reg)) / norm_Dk
     dz_opt[:, t_start_up:t_end_up] = tmp - z_hat[:, t_start_up:t_end_up]
     dz_opt[k0, t0] = 0
 
