@@ -53,7 +53,7 @@ def load_data(dataset="somato", n_splits=10, sfreq=None, epoch=None,
                          'sub-01_task-somato_meg.fif')
         raw = mne.io.read_raw_fif(file_name, preload=True)
         raw.notch_filter(np.arange(50, 101, 50), n_jobs=n_jobs)
-        event_id = 1
+        event_id = {'somato': 1}
 
         # Dipole fit information
         cov = None  # see below
@@ -67,7 +67,9 @@ def load_data(dataset="somato", n_splits=10, sfreq=None, epoch=None,
         file_name = join(data_dir, 'sample_audvis_raw.fif')
         raw = mne.io.read_raw_fif(file_name, preload=True)
         raw.notch_filter(np.arange(60, 181, 60), n_jobs=n_jobs)
-        event_id = [1, 2, 3, 4]
+        event_id = {'auditory/left': 1, 'auditory/right': 2,
+                    'visual/left': 3, 'visual/right': 4,
+                    'smiley': 5, 'buttonpress': 32}
 
         # Dipole fit information
         cov = join(data_dir, 'sample_audvis-cov.fif')
@@ -81,7 +83,7 @@ def load_data(dataset="somato", n_splits=10, sfreq=None, epoch=None,
 
     baseline = (None, 0)
     events = mne.find_events(raw, stim_channel='STI 014')
-    events = mne.pick_events(events, include=event_id)
+    events = mne.pick_events(events, include=list(event_id.values()))
 
     # compute the covariance matrix for somato
     if dataset == "somato":
