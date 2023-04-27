@@ -58,7 +58,7 @@ def split_signal(X, n_splits=1, apply_window=True):
 
     n_channels, n_times = X.shape
     n_times = n_times // n_splits
-    X_split = X[:, :n_splits * n_times]
+    X_split = X[:, :n_splits * n_times].copy()
     X_split = X_split.reshape(n_channels, n_splits, n_times).swapaxes(0, 1)
 
     # Apply a window to the signal to reduce the border artifacts
