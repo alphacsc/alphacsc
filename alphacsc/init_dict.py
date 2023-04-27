@@ -117,7 +117,7 @@ class ChunkStrategy():
         for i_atom in range(self.n_atoms):
             i_trial = rng.randint(n_trials)
             t0 = rng.randint(n_times - self.n_times_atom)
-            D_hat[i_atom] = X[i_trial, :, t0:t0 + self.n_times_atom]
+            D_hat[i_atom] = X[i_trial, :, t0:t0 + self.n_times_atom].copy()
 
         if self.rank1:
             D_hat = get_uv(D_hat)
@@ -196,7 +196,7 @@ def init_dictionary(X, n_atoms, n_times_atom, uv_constraint='separate',
         for i_atom in range(n_atoms):
             i_trial = rng.randint(n_trials)
             t0 = rng.randint(n_times - n_times_atom)
-            D_hat[i_atom] = X[i_trial, :, t0:t0 + n_times_atom]
+            D_hat[i_atom] = X[i_trial, :, t0:t0 + n_times_atom].copy()
         if rank1:
             D_hat = get_uv(D_hat)
 
