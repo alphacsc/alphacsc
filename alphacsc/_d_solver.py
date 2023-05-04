@@ -68,7 +68,7 @@ def get_solver_d(n_channels, n_atoms, n_times_atom,
                  solver_d='alternate_adaptive', rank1=False,
                  uv_constraint='auto', D_init=None, window=False,
                  eps=1e-8, max_iter=300, momentum=False,
-                 random_state=None, verbose=0, debug=False):
+                 random_state=None, verbose=0, debug=False, resample='patch'):
     """Returns solver depending on solver_d type and rank1 value.
 
     Parameters
@@ -123,13 +123,13 @@ def get_solver_d(n_channels, n_atoms, n_times_atom,
             return AlternateDSolver(
                 n_channels, n_atoms, n_times_atom, solver_d, uv_constraint,
                 D_init, window, eps, max_iter, momentum,
-                random_state, verbose, debug
+                random_state, verbose, debug, resample
             )
         elif solver_d in ['fista', 'joint']:
             return JointDSolver(
                 n_channels, n_atoms, n_times_atom, solver_d, uv_constraint,
                 D_init, window, eps, max_iter, momentum,
-                random_state, verbose, debug
+                random_state, verbose, debug, resample
             )
         else:
             raise ValueError('Unknown solver_d: %s' % (solver_d, ))
@@ -138,7 +138,7 @@ def get_solver_d(n_channels, n_atoms, n_times_atom,
             return DSolver(
                 n_channels, n_atoms, n_times_atom, solver_d, uv_constraint,
                 D_init, window, eps, max_iter, momentum,
-                random_state, verbose, debug
+                random_state, verbose, debug, resample
             )
         else:
             raise ValueError('Unknown solver_d: %s' % (solver_d, ))
@@ -149,7 +149,7 @@ class BaseDSolver:
 
     def __init__(self, n_channels, n_atoms, n_times_atom, solver_d,
                  uv_constraint, D_init, window, eps, max_iter,
-                 momentum, random_state, verbose, debug):
+                 momentum, random_state, verbose, debug, resample):
 
         self.n_channels = n_channels
         self.n_atoms = n_atoms
@@ -172,8 +172,7 @@ class BaseDSolver:
         else:
             self._init_windower()
 
-        self.resample_strategy = self.solver_kwargs.pop(
-            'resample_strategy', 'patch')
+        self.resample_strategy = resample
         assert self.resample_strategy in ['patch', 'chunk'], (
             "resample_strategy should be patch or chunk. "
             f"Got solver_d='{self.resample_strategy}'."
@@ -360,12 +359,12 @@ class Rank1DSolver(BaseDSolver):
 
     def __init__(self, n_channels, n_atoms, n_times_atom, solver_d,
                  uv_constraint, D_init, window, eps,
-                 max_iter, momentum, random_state, verbose, debug):
+                 max_iter, momentum, random_state, verbose, debug, resample):
 
         super().__init__(
             n_channels, n_atoms, n_times_atom, solver_d, uv_constraint,
             D_init, window, eps, max_iter, momentum,
-            random_state, verbose, debug
+            random_state, verbose, debug, resample
         )
 
         self.name = "Update uv"
@@ -392,11 +391,12 @@ class JointDSolver(Rank1DSolver):
 
     def __init__(self, n_channels, n_atoms, n_times_atom, solver_d,
                  uv_constraint, D_init, window, eps, max_iter,
-                 momentum, random_state, verbose, debug):
+                 momentum, random_state, verbose, debug, resample):
 
         super().__init__(
             n_channels, n_atoms, n_times_atom, solver_d, uv_constraint, D_init,
-            window, eps, max_iter, momentum, random_state, verbose, debug
+            window, eps, max_iter, momentum, random_state, verbose, debug,
+            resample
         )
 
     def grad(self, D, z_encoder):
@@ -413,12 +413,12 @@ class AlternateDSolver(Rank1DSolver):
 
     def __init__(self, n_channels, n_atoms, n_times_atom, solver_d,
                  uv_constraint, D_init, window, eps,
-                 max_iter, momentum, random_state, verbose, debug):
+                 max_iter, momentum, random_state, verbose, debug, resample):
 
         super().__init__(
             n_channels, n_atoms, n_times_atom, solver_d, uv_constraint, D_init,
             window, eps, max_iter, momentum, random_state,
-            verbose, debug
+            verbose, debug, resample
         )
 
         self.adaptive_step_size = (solver_d == 'alternate_adaptive')
@@ -629,11 +629,12 @@ class DSolver(BaseDSolver):
 
     def __init__(self, n_channels, n_atoms, n_times_atom, solver_d,
                  uv_constraint, D_init, window, eps, max_iter,
-                 momentum, random_state, verbose, debug):
+                 momentum, random_state, verbose, debug, resample):
 
         super().__init__(
             n_channels, n_atoms, n_times_atom, solver_d, uv_constraint, D_init,
-            window, eps, max_iter, momentum, random_state, verbose, debug
+            window, eps, max_iter, momentum, random_state, verbose, debug,
+            resample
         )
 
         self.name = "Update D"
