@@ -172,6 +172,13 @@ class BaseDSolver:
         else:
             self._init_windower()
 
+        self.resample_strategy = self.solver_kwargs.pop(
+            'resample_strategy', 'patch')
+        assert self.resample_strategy in ['patch', 'chunk'], (
+            "resample_strategy should be patch or chunk. "
+            f"Got solver_d='{self.resample_strategy}'."
+        )
+
     def _get_objective(self, z_encoder):
 
         def objective(D, full=False):
@@ -300,7 +307,16 @@ class BaseDSolver:
                              (n_atoms, n_channels, n_times_atom)
             The atoms to learn from the data.
         """
-        self.D_hat[k0] = self.get_max_error_dict(z_encoder)[0]
+        if self.resample_strategy == 'patch':
+            self.D_hat[k0] = self.get_max_error_dict(z_encoder)[0]
+        elif self.resample_strategy == 'chunk':
+            from .init_dict import init_dictionary as init_dict
+            self.D_hat[k0] = init_dict(
+                z_encoder.X, 1, self.n_times_atom, self.uv_constraint,
+                rank1=self.rank1, window=(self._windower != NoWindow()),
+                D_init='chunk', random_state=None
+            )
+
         z_encoder.set_D(self.D_hat)
         return self.D_hat
 
@@ -353,6 +369,7 @@ class Rank1DSolver(BaseDSolver):
         )
 
         self.name = "Update uv"
+        self.rank1 = True
 
     def _init_windower(self):
         self._windower = UVWindower(self.n_times_atom, self.n_channels)
@@ -620,6 +637,7 @@ class DSolver(BaseDSolver):
         )
 
         self.name = "Update D"
+        self.rank1 = False
 
     def _init_windower(self):
         self._windower = SimpleWindower(self.n_times_atom)

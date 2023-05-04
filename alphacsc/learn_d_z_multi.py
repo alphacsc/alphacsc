@@ -261,6 +261,8 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
     times = [0]
     pobj = [z_encoder.get_cost()]
 
+    resample_thresh = 1 + (d_solver.resample_strategy == 'chunk')
+
     for ii in range(n_iter):  # outer loop of coordinate descent
         if verbose == 1:
             msg = '.' if ((ii + 1) % 50 != 0) else '+\n'
@@ -295,7 +297,7 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
         if verbose > 5:
             print(
                 '[{}] Objective (z) : {:.3e} (sparsity: {:.3e})'
-                .format(name, pobj[-1], z_nnz.mean())
+                .format(name, pobj[-1], (z_nnz/z_nnz.shape[-1]).mean())
             )
 
         if np.all(z_nnz == 0):
@@ -313,7 +315,7 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
         times.append(time.time() - start)
         pobj.append(z_encoder.get_cost())
 
-        null_atom_indices = np.where(z_nnz == 0)[0]
+        null_atom_indices = np.where(z_nnz < resample_thresh)[0]
         if len(null_atom_indices) > 0:
             k0 = null_atom_indices[0]
             d_solver.resample_atom(k0, z_encoder)
@@ -337,6 +339,7 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
                   name="online"):
 
     n_trials = z_encoder.n_trials
+    resample_thresh = 1 + (d_solver.resample_strategy == 'chunk')
 
     # monitor cost function
     times = [0]
@@ -381,7 +384,7 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
         if verbose > 5:
             print(
                 '[{}] Objective (z) : {:.3e} (sparsity: {:.3e})'
-                .format(name, pobj[-1], z_nnz.mean())
+                .format(name, pobj[-1], (z_nnz/z_nnz.shape[-1]).mean())
             )
 
         if np.all(z_nnz == 0):
@@ -399,7 +402,7 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
         times.append(time.time() - start)
         pobj.append(z_encoder.get_cost())
 
-        null_atom_indices = np.where(z_nnz == 0)[0]
+        null_atom_indices = np.where(z_nnz < resample_thresh)[0]
         if len(null_atom_indices) > 0:
             k0 = null_atom_indices[0]
             d_solver.resample_atom(k0, z_encoder)
