@@ -359,7 +359,7 @@ class AlphaCSCEncoder(BaseZEncoder):
         Returns
         -------
         z_nnz : ndarray, shape (n_atoms,)
-            Ratio of non-zero activations for each atom.
+            Number of non-zero activations for each atom.
         """
         z_nnz = np.sum(self.z_hat != 0, axis=(0, 2))
         return z_nnz

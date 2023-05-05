@@ -67,8 +67,8 @@ def check_solver_and_constraints(rank1, solver_d, uv_constraint):
 def get_solver_d(n_channels, n_atoms, n_times_atom,
                  solver_d='alternate_adaptive', rank1=False,
                  uv_constraint='auto', D_init=None, window=False,
-                 eps=1e-8, max_iter=300, momentum=False,
-                 random_state=None, verbose=0, debug=False, resample='patch'):
+                 resample='patch', eps=1e-8, max_iter=300, momentum=False,
+                 random_state=None, verbose=0, debug=False):
     """Returns solver depending on solver_d type and rank1 value.
 
     Parameters
@@ -122,14 +122,14 @@ def get_solver_d(n_channels, n_atoms, n_times_atom,
         if solver_d in ['auto', 'alternate', 'alternate_adaptive']:
             return AlternateDSolver(
                 n_channels, n_atoms, n_times_atom, solver_d, uv_constraint,
-                D_init, window, eps, max_iter, momentum,
-                random_state, verbose, debug, resample
+                D_init, window, resample, eps, max_iter, momentum,
+                random_state, verbose, debug
             )
         elif solver_d in ['fista', 'joint']:
             return JointDSolver(
                 n_channels, n_atoms, n_times_atom, solver_d, uv_constraint,
-                D_init, window, eps, max_iter, momentum,
-                random_state, verbose, debug, resample
+                D_init, window, resample, eps, max_iter, momentum,
+                random_state, verbose, debug
             )
         else:
             raise ValueError('Unknown solver_d: %s' % (solver_d, ))
@@ -137,8 +137,8 @@ def get_solver_d(n_channels, n_atoms, n_times_atom,
         if solver_d in ['auto', 'fista']:
             return DSolver(
                 n_channels, n_atoms, n_times_atom, solver_d, uv_constraint,
-                D_init, window, eps, max_iter, momentum,
-                random_state, verbose, debug, resample
+                D_init, window, resample, eps, max_iter, momentum,
+                random_state, verbose, debug
             )
         else:
             raise ValueError('Unknown solver_d: %s' % (solver_d, ))
@@ -148,8 +148,8 @@ class BaseDSolver:
     """Base class for a d solver."""
 
     def __init__(self, n_channels, n_atoms, n_times_atom, solver_d,
-                 uv_constraint, D_init, window, eps, max_iter,
-                 momentum, random_state, verbose, debug, resample):
+                 uv_constraint, D_init, window, resample, eps, max_iter,
+                 momentum, random_state, verbose, debug):
 
         self.n_channels = n_channels
         self.n_atoms = n_atoms
@@ -358,13 +358,13 @@ class Rank1DSolver(BaseDSolver):
     """Base class for a rank1 solver d."""
 
     def __init__(self, n_channels, n_atoms, n_times_atom, solver_d,
-                 uv_constraint, D_init, window, eps,
-                 max_iter, momentum, random_state, verbose, debug, resample):
+                 uv_constraint, D_init, window, resample, eps,
+                 max_iter, momentum, random_state, verbose, debug):
 
         super().__init__(
             n_channels, n_atoms, n_times_atom, solver_d, uv_constraint,
-            D_init, window, eps, max_iter, momentum,
-            random_state, verbose, debug, resample
+            D_init, window, resample, eps, max_iter, momentum,
+            random_state, verbose, debug
         )
 
         self.name = "Update uv"
@@ -390,13 +390,13 @@ class JointDSolver(Rank1DSolver):
     """A class for 'fista' or 'joint' solver_d when rank1 is True. """
 
     def __init__(self, n_channels, n_atoms, n_times_atom, solver_d,
-                 uv_constraint, D_init, window, eps, max_iter,
-                 momentum, random_state, verbose, debug, resample):
+                 uv_constraint, D_init, window, resample, eps, max_iter,
+                 momentum, random_state, verbose, debug):
 
         super().__init__(
             n_channels, n_atoms, n_times_atom, solver_d, uv_constraint, D_init,
-            window, eps, max_iter, momentum, random_state, verbose, debug,
-            resample
+            window, resample, eps, max_iter, momentum, random_state, verbose,
+            debug
         )
 
     def grad(self, D, z_encoder):
@@ -412,13 +412,13 @@ class AlternateDSolver(Rank1DSolver):
     """
 
     def __init__(self, n_channels, n_atoms, n_times_atom, solver_d,
-                 uv_constraint, D_init, window, eps,
-                 max_iter, momentum, random_state, verbose, debug, resample):
+                 uv_constraint, D_init, window, resample, eps,
+                 max_iter, momentum, random_state, verbose, debug):
 
         super().__init__(
             n_channels, n_atoms, n_times_atom, solver_d, uv_constraint, D_init,
-            window, eps, max_iter, momentum, random_state,
-            verbose, debug, resample
+            window, resample, eps, max_iter, momentum, random_state,
+            verbose, debug
         )
 
         self.adaptive_step_size = (solver_d == 'alternate_adaptive')
@@ -628,13 +628,13 @@ class DSolver(BaseDSolver):
     """A class for 'fista' solver_d when rank1 is False. """
 
     def __init__(self, n_channels, n_atoms, n_times_atom, solver_d,
-                 uv_constraint, D_init, window, eps, max_iter,
-                 momentum, random_state, verbose, debug, resample):
+                 uv_constraint, D_init, window, resample, eps, max_iter,
+                 momentum, random_state, verbose, debug):
 
         super().__init__(
             n_channels, n_atoms, n_times_atom, solver_d, uv_constraint, D_init,
-            window, eps, max_iter, momentum, random_state, verbose, debug,
-            resample
+            window, resample, eps, max_iter, momentum, random_state, verbose,
+            debug
         )
 
         self.name = "Update D"
