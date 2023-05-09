@@ -148,7 +148,7 @@ class BaseDSolver:
     """Base class for a d solver."""
 
     def __init__(self, n_channels, n_atoms, n_times_atom, solver_d,
-                 uv_constraint, D_init, window, resample, eps, max_iter,
+                 uv_constraint, D_init, window, resample_strategy, eps, max_iter,
                  momentum, random_state, verbose, debug):
 
         self.n_channels = n_channels
