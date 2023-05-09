@@ -67,7 +67,7 @@ def check_solver_and_constraints(rank1, solver_d, uv_constraint):
 def get_solver_d(n_channels, n_atoms, n_times_atom,
                  solver_d='alternate_adaptive', rank1=False,
                  uv_constraint='auto', D_init=None, window=False,
-                 resample='patch', eps=1e-8, max_iter=300, momentum=False,
+                 resample_strategy='patch', eps=1e-8, max_iter=300, momentum=False,
                  random_state=None, verbose=0, debug=False):
     """Returns solver depending on solver_d type and rank1 value.
 
