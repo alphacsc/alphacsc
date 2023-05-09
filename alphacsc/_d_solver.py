@@ -172,7 +172,7 @@ class BaseDSolver:
         else:
             self._init_windower()
 
-        self.resample_strategy = resample
+        self.resample_strategy = resample_strategy
         assert self.resample_strategy in ['patch', 'chunk'], (
             "resample_strategy should be patch or chunk. "
             f"Got solver_d='{self.resample_strategy}'."
