@@ -137,7 +137,7 @@ def get_solver_d(n_channels, n_atoms, n_times_atom,
         if solver_d in ['auto', 'fista']:
             return DSolver(
                 n_channels, n_atoms, n_times_atom, solver_d, uv_constraint,
-                D_init, window, resample, eps, max_iter, momentum,
+                D_init, window, resample_strategy, eps, max_iter, momentum,
                 random_state, verbose, debug
             )
         else:
