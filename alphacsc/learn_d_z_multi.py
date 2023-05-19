@@ -246,7 +246,7 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
                  lmbd_max='fixed', reg=None, verbose=0, greedy=False,
                  random_state=None, name="batch"):
 
-    n_atoms = d_solver.n_atoms
+    _, n_atoms, _ = z_hat_shape = z_encoder.get_z_hat_shape()
 
     if greedy:
         n_iter_by_atom = 1
@@ -294,8 +294,8 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
         z_nnz = z_encoder.get_z_nnz()
         if verbose > 5:
             print(
-                '[{}] Objective (z) : {:.3e} (sparsity: {:.3e})'
-                .format(name, pobj[-1], z_nnz.mean())
+                f"[{name}] Objective (z) : {pobj[-1]:.3e} "
+                f"(sparsity: {z_nnz.sum() / np.prod(z_hat_shape):.3e})"
             )
 
         if np.all(z_nnz == 0):
@@ -313,7 +313,7 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
         times.append(time.time() - start)
         pobj.append(z_encoder.get_cost())
 
-        null_atom_indices = np.where(z_nnz == 0)[0]
+        null_atom_indices = np.where(z_nnz < 2)[0]
         if len(null_atom_indices) > 0:
             k0 = null_atom_indices[0]
             d_solver.resample_atom(k0, z_encoder)
@@ -336,7 +336,7 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
                   alpha=.8, batch_selection='random', batch_size=1,
                   name="online"):
 
-    n_trials = z_encoder.n_trials
+    n_trials, *_ = z_hat_shape = z_encoder.get_z_hat_shape()
 
     # monitor cost function
     times = [0]
@@ -380,8 +380,8 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
         z_nnz = z_encoder.get_z_nnz()
         if verbose > 5:
             print(
-                '[{}] Objective (z) : {:.3e} (sparsity: {:.3e})'
-                .format(name, pobj[-1], z_nnz.mean())
+                f"[{name}] Objective (z) : {pobj[-1]:.3e} "
+                f"(sparsity: {z_nnz.sum() / np.prod(z_hat_shape):.3e})"
             )
 
         if np.all(z_nnz == 0):
@@ -399,7 +399,7 @@ def _online_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
         times.append(time.time() - start)
         pobj.append(z_encoder.get_cost())
 
-        null_atom_indices = np.where(z_nnz == 0)[0]
+        null_atom_indices = np.where(z_nnz < 2)[0]
         if len(null_atom_indices) > 0:
             k0 = null_atom_indices[0]
             d_solver.resample_atom(k0, z_encoder)

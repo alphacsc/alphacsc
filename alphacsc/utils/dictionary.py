@@ -11,8 +11,8 @@ def get_D(uv_hat, n_channels):
     n_channels: int
         number of channels in the original multivariate series
 
-    Returns
-    -------
+    Return
+    ------
     D: array, shape (n_atoms, n_channels, n_times_atom)
     """
 
@@ -49,8 +49,8 @@ def get_uv(D):
     ---------
     D: array, shape (n_atoms, n_channels, n_times_atom)
 
-    Returns
-    -------
+    Return
+    ------
     uv: array, shape (n_atoms, n_channels + n_times_atom)
     """
     n_atoms, n_channels, n_times_atom = D.shape

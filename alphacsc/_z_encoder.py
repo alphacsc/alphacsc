@@ -192,6 +192,17 @@ class BaseZEncoder:
         """
         raise NotImplementedError()
 
+    def get_z_hat_shape(self):
+        """
+        Returns the shape of the sparse codes.
+
+        Returns
+        -------
+        shape : tuple
+            Shape of the sparse code.
+        """
+        return (self.n_trials, self.n_atoms, self.n_times_valid)
+
     def get_z_nnz(self):
         """
         Return the number of non-zero activations per atoms for the signals.
@@ -359,10 +370,10 @@ class AlphaCSCEncoder(BaseZEncoder):
         Returns
         -------
         z_nnz : ndarray, shape (n_atoms,)
-            Ratio of non-zero activations for each atom.
+            Number of non-zero activations for each atom.
         """
         z_nnz = np.sum(self.z_hat != 0, axis=(0, 2))
-        return z_nnz / z_nnz.shape[-1]
+        return z_nnz
 
 
 class DicodileEncoder(BaseZEncoder):
@@ -542,7 +553,7 @@ class DicodileEncoder(BaseZEncoder):
             return np.zeros(effective_n_atoms)
 
         z_nnz = self._encoder.get_z_nnz()
-        return z_nnz / z_nnz.shape[-1]
+        return z_nnz
 
     def set_D(self, D):
         """
