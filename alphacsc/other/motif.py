@@ -31,7 +31,7 @@ def learn_atoms(X, n_atoms, n_times_atom, n_iter=10, max_shift=11,
 
     atoms = rng.rand(n_atoms, n_times_atom)
     corrs = np.zeros(n_trials)
-    match = np.zeros((n_atoms, n_trials), dtype=np.int)
+    match = np.zeros((n_atoms, n_trials), dtype=int)
 
     # loop through atoms
     for k in range(n_atoms):
