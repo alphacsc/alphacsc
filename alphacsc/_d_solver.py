@@ -66,8 +66,8 @@ def check_solver_and_constraints(rank1, solver_d, uv_constraint):
 
 def get_solver_d(n_channels, n_atoms, n_times_atom,
                  solver_d='alternate_adaptive', rank1=False,
-                 uv_constraint='auto', D_init=None, window=False,
-                 resample_strategy='patch', eps=1e-8, max_iter=300, momentum=False,
+                 uv_constraint='auto', D_init=None, resample_strategy='greedy',
+                 window=False, eps=1e-8, max_iter=300, momentum=False,
                  random_state=None, verbose=0, debug=False):
     """Returns solver depending on solver_d type and rank1 value.
 
@@ -95,8 +95,13 @@ def get_solver_d(n_channels, n_atoms, n_times_atom,
     D_init : {'chunk' | 'random' | 'greedy'}
              or array, shape (n_atoms, n_channels + n_times_atom) or
                          (n_atoms, n_channels, n_times_atom)
-        The initialization scheme for the dictionary or the initial
-        atoms.
+        The initialization scheme for the dictionary or the initial atoms.
+    resample_strategy : {'greedy' | 'chunk' | 'random'}
+        Resampling strategy to reset unused atoms. Can be either:
+            - 'greedy': takes the signal sub-window with the largest
+                        reconstruction error.
+            - 'chunk': get a random sub-window from the original signal.
+            - 'random': sample a random normal sub-window.
     window : boolean
         If True, re-parametrizes the atoms with a temporal Tukey window
     eps : float
@@ -122,13 +127,13 @@ def get_solver_d(n_channels, n_atoms, n_times_atom,
         if solver_d in ['auto', 'alternate', 'alternate_adaptive']:
             return AlternateDSolver(
                 n_channels, n_atoms, n_times_atom, solver_d, uv_constraint,
-                D_init, window, resample_strategy, eps, max_iter, momentum,
+                D_init, resample_strategy, window, eps, max_iter, momentum,
                 random_state, verbose, debug
             )
         elif solver_d in ['fista', 'joint']:
             return JointDSolver(
                 n_channels, n_atoms, n_times_atom, solver_d, uv_constraint,
-                D_init, window, resample_strategy, eps, max_iter, momentum,
+                D_init, resample_strategy, window, eps, max_iter, momentum,
                 random_state, verbose, debug
             )
         else:
@@ -137,7 +142,7 @@ def get_solver_d(n_channels, n_atoms, n_times_atom,
         if solver_d in ['auto', 'fista']:
             return DSolver(
                 n_channels, n_atoms, n_times_atom, solver_d, uv_constraint,
-                D_init, window, resample_strategy, eps, max_iter, momentum,
+                D_init, resample_strategy, window, eps, max_iter, momentum,
                 random_state, verbose, debug
             )
         else:
@@ -148,8 +153,8 @@ class BaseDSolver:
     """Base class for a d solver."""
 
     def __init__(self, n_channels, n_atoms, n_times_atom, solver_d,
-                 uv_constraint, D_init, window, resample_strategy, eps, max_iter,
-                 momentum, random_state, verbose, debug):
+                 uv_constraint, D_init, resample_strategy, window, eps,
+                 max_iter, momentum, random_state, verbose, debug):
 
         self.n_channels = n_channels
         self.n_atoms = n_atoms
@@ -173,9 +178,9 @@ class BaseDSolver:
             self._init_windower()
 
         self.resample_strategy = resample_strategy
-        assert self.resample_strategy in ['patch', 'chunk'], (
-            "resample_strategy should be patch or chunk. "
-            f"Got solver_d='{self.resample_strategy}'."
+        assert self.resample_strategy in ['greedy', 'chunk', 'random'], (
+            "resample_strategy should be greedy, chunk, or random. "
+            f"Got resample_strategy='{self.resample_strategy}'."
         )
 
     def _get_objective(self, z_encoder):
@@ -236,8 +241,8 @@ class BaseDSolver:
 
         return self.D_hat
 
-    def get_max_error_dict(self, z_encoder):
-        """Get the maximal reconstruction error patch from the data
+    def get_max_error_subwindow(self, z_encoder):
+        """Get the maximal reconstruction error sub-window from the data
         as a new atom.
 
         This idea is used for instance in [Yellin2017]
@@ -245,14 +250,14 @@ class BaseDSolver:
         Parameters
         ----------
         z_encoder : BaseZEncoder
-            ZEncoder object to be able to compute the largest error patch.
+            ZEncoder object to be able to compute the largest error sub-window.
 
         Return
         ------
         dk: array, shape (n_channels + n_times_atom,) or
                          (n_channels, n_times_atom,)
-            New atom for the dictionary, chosen as the chunk of data with the
-            maximal reconstruction error.
+            New atom for the dictionary, chosen as the sub-windos of the signal
+            with the maximal reconstruction error.
 
         [Yellin2017] BLOOD CELL DETECTION AND COUNTING IN HOLOGRAPHIC LENS-FREE
         IMAGING BY CONVOLUTIONAL SPARSE DICTIONARY LEARNING AND CODING.
@@ -282,7 +287,7 @@ class BaseDSolver:
         """
         assert self.D_hat.shape[0] < self.n_atoms
 
-        new_atom = self.get_max_error_dict(z_encoder)[0]
+        new_atom = self.get_max_error_subwindow(z_encoder)[0]
 
         self.D_hat = np.concatenate([self.D_hat, new_atom[None]])
 
@@ -306,14 +311,18 @@ class BaseDSolver:
                              (n_atoms, n_channels, n_times_atom)
             The atoms to learn from the data.
         """
-        if self.resample_strategy == 'patch':
-            self.D_hat[k0] = self.get_max_error_dict(z_encoder)[0]
-        elif self.resample_strategy == 'chunk':
+        if self.resample_strategy == 'greedy':
+            self.D_hat[k0] = self.get_max_error_subwindow(z_encoder)[0]
+        elif self.resample_strategy in ['chunk', 'random']:
             from .init_dict import init_dictionary as init_dict
             self.D_hat[k0] = init_dict(
                 z_encoder.X, 1, self.n_times_atom, self.uv_constraint,
                 rank1=self.rank1, window=(self._windower != NoWindow()),
-                D_init='chunk', random_state=None
+                D_init=self.resample_strategy, random_state=None
+            )
+        else:
+            raise NotImplementedError(
+                f"Unknown resampling strategy '{self.resample_strategy}'"
             )
 
         z_encoder.set_D(self.D_hat)
@@ -358,12 +367,12 @@ class Rank1DSolver(BaseDSolver):
     """Base class for a rank1 solver d."""
 
     def __init__(self, n_channels, n_atoms, n_times_atom, solver_d,
-                 uv_constraint, D_init, window, resample, eps,
+                 uv_constraint, D_init, resample_strategy, window, eps,
                  max_iter, momentum, random_state, verbose, debug):
 
         super().__init__(
             n_channels, n_atoms, n_times_atom, solver_d, uv_constraint,
-            D_init, window, resample, eps, max_iter, momentum,
+            D_init, resample_strategy, window, eps, max_iter, momentum,
             random_state, verbose, debug
         )
 
@@ -390,13 +399,13 @@ class JointDSolver(Rank1DSolver):
     """A class for 'fista' or 'joint' solver_d when rank1 is True. """
 
     def __init__(self, n_channels, n_atoms, n_times_atom, solver_d,
-                 uv_constraint, D_init, window, resample, eps, max_iter,
-                 momentum, random_state, verbose, debug):
+                 uv_constraint, D_init, resample_strategy, window,
+                 eps, max_iter, momentum, random_state, verbose, debug):
 
         super().__init__(
             n_channels, n_atoms, n_times_atom, solver_d, uv_constraint, D_init,
-            window, resample, eps, max_iter, momentum, random_state, verbose,
-            debug
+            resample_strategy,  window, eps, max_iter, momentum,
+            random_state, verbose, debug
         )
 
     def grad(self, D, z_encoder):
@@ -412,12 +421,12 @@ class AlternateDSolver(Rank1DSolver):
     """
 
     def __init__(self, n_channels, n_atoms, n_times_atom, solver_d,
-                 uv_constraint, D_init, window, resample, eps,
+                 uv_constraint, D_init, resample_strategy, window, eps,
                  max_iter, momentum, random_state, verbose, debug):
 
         super().__init__(
             n_channels, n_atoms, n_times_atom, solver_d, uv_constraint, D_init,
-            window, resample, eps, max_iter, momentum, random_state,
+            resample_strategy, window, eps, max_iter, momentum, random_state,
             verbose, debug
         )
 
@@ -628,13 +637,14 @@ class DSolver(BaseDSolver):
     """A class for 'fista' solver_d when rank1 is False. """
 
     def __init__(self, n_channels, n_atoms, n_times_atom, solver_d,
-                 uv_constraint, D_init, window, resample, eps, max_iter,
-                 momentum, random_state, verbose, debug):
+                 uv_constraint, D_init, resample_strategy,
+                 window, eps, max_iter, momentum,
+                 random_state, verbose, debug):
 
         super().__init__(
             n_channels, n_atoms, n_times_atom, solver_d, uv_constraint, D_init,
-            window, resample, eps, max_iter, momentum, random_state, verbose,
-            debug
+            resample_strategy, window, eps, max_iter, momentum,
+            random_state, verbose, debug
         )
 
         self.name = "Update D"

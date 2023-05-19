@@ -192,6 +192,17 @@ class BaseZEncoder:
         """
         raise NotImplementedError()
 
+    def get_z_hat_shape(self):
+        """
+        Returns the shape of the sparse codes.
+
+        Returns
+        -------
+        shape : tuple
+            Shape of the sparse code.
+        """
+        return (self.n_trials, self.n_atoms, self.n_times_valid)
+
     def get_z_nnz(self):
         """
         Return the number of non-zero activations per atoms for the signals.
