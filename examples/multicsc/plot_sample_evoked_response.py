@@ -26,7 +26,7 @@ non-sinusoidal oscillation.
 ###############################################################################
 # Let us first define the parameters of our model.
 
-# sampling frequency. The signal will be resampled to match this.
+# Sampling frequency the signal will be resampled to
 sfreq = 150.
 
 # Define the shape of the dictionary
@@ -36,7 +36,7 @@ n_times_atom = int(round(sfreq * 1.0))  # 1000. ms
 # Regularization parameter which control sparsity
 reg = 0.1
 
-# number of processors for parallel computing
+# Number of processors for parallel computing
 n_jobs = 5
 
 # To accelerate the run time of this example, we split the signal in n_slits.
