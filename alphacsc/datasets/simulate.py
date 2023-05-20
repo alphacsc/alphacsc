@@ -4,13 +4,14 @@ import numpy as np
 from joblib import Memory
 from scipy.signal import tukey
 
-from alphacsc.utils.validation import check_random_state
+from ..utils.config import ALPHACSC_CACHE_DIR
+from ..utils.validation import check_random_state
 
 
-mem = Memory(location='.', verbose=0)
+mem = Memory(location=ALPHACSC_CACHE_DIR, verbose=0)
 
 
-@mem.cache()
+@mem.cache(ignore=['n_jobs'])
 def load_data(n_trials=40, n_channels=1, n_times=6, sigma=.05, sfreq=300,
               f_noise=True, random_state=None, n_jobs=4):
     """Simulate data with 10Hz mu-wave and 10Hz oscillations.

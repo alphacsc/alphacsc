@@ -53,7 +53,7 @@ html-noplot:
 
 .PHONY: html
 html:
-	mpiexec -np 1 $(ALLOW_AS_ROOT) --host localhost:50 $(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
+	mpiexec -bind-to none -np 1 $(ALLOW_AS_ROOT) --host localhost:50 $(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
 

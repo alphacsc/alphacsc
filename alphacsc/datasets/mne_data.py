@@ -6,7 +6,9 @@ import numpy as np
 from joblib import Memory
 from scipy.signal import tukey
 
-mem = Memory(location='.', verbose=0)
+from ..utils.config import ALPHACSC_CACHE_DIR
+
+mem = Memory(location=ALPHACSC_CACHE_DIR, verbose=0)
 
 
 @mem.cache(ignore=['n_jobs'])

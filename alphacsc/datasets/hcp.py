@@ -8,6 +8,7 @@ from copy import deepcopy
 from joblib import Memory
 from hcp.io.file_mapping.file_mapping import kind_map
 
+from ..utils.config import ALPHACSC_CACHE_DIR
 from ..utils.validation import check_random_state
 
 
@@ -15,7 +16,7 @@ HCP_DIR = "/storage/store/data/HCP900/"
 CONVERSION_MAP = {v: k for k, v in kind_map.items()}
 
 
-mem = Memory(location='.', verbose=0)
+mem = Memory(location=ALPHACSC_CACHE_DIR, verbose=0)
 
 
 def get_all_records(hcp_path=HCP_DIR):
