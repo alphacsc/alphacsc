@@ -56,8 +56,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         The number of parallel jobs.
 
     rank1 : boolean
-        If set to True, learn rank 1 dictionary atoms.
-        If solver_z is 'dicodile', then rank1 must be False.
+        If set to True, learn rank 1 dictionary atoms
     uv_constraint : str in {'joint' | 'separate' | 'auto'}
         The kind of norm constraint on the atoms if using rank1=True.
         If 'joint', the constraint is norm_2([u, v]) <= 1
