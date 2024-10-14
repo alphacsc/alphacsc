@@ -1,5 +1,6 @@
 import numpy as np
-from scipy.signal import hilbert, tukey
+from scipy.signal import hilbert
+from scipy.signal. window import tukey
 
 
 def fast_hilbert(array):
