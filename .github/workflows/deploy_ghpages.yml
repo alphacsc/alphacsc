@@ -9,7 +9,7 @@ on:
 
 env:
   DOC_REPO: alphacsc/alphacsc.github.io
-    
+
 jobs:
 
   build_docs:
@@ -40,7 +40,7 @@ jobs:
             python -m pip install --upgrade pip
             python -m pip install -e .[doc,dicodile]
       - name:  Upload generated HTML as artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: DocHTML
           path: doc/_build/html/
@@ -90,4 +90,4 @@ jobs:
           branch: master
           directory: gh-pages
           github_token: ${{ secrets.DEPLOY_PAGES }}
-          
+

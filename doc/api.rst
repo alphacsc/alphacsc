@@ -27,9 +27,9 @@ Functions to learn atoms (d) and activations (z) from the signal
    learn_d_z
    learn_d_z_weighted
 
-Utility functions (:py:mod:`alphacsc.utils`):
+Utility functions (:py:mod:`alphacsc.utils.signal`):
 
-.. currentmodule:: alphacsc.utils
+.. currentmodule:: alphacsc.utils.signal
 
 .. autosummary::
    :toctree: generated/

@@ -169,13 +169,13 @@ def _update_z_idx(X, ds, reg, z0, idxs, debug, solver='l-bfgs', b_hat_0=None,
 
         if debug:
 
-            def pobj(zi):
+            def fobj(zi):
                 return func_and_grad(zi)[0]
 
             def fprime(zi):
                 return func_and_grad(zi)[1]
 
-            assert optimize.check_grad(pobj, fprime, f0) < 1e-5
+            assert optimize.check_grad(fobj, fprime, f0) < 1e-5
 
         if solver == 'l-bfgs':
             if timing:

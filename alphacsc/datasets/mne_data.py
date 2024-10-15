@@ -4,7 +4,7 @@ from copy import deepcopy
 import mne
 import numpy as np
 from joblib import Memory
-from scipy.signal import tukey
+from scipy.signal.windows import tukey
 
 from ..utils.config import ALPHACSC_CACHE_DIR
 

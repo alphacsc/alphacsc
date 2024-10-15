@@ -1,5 +1,5 @@
 import numpy as np
-from scipy import signal
+from scipy.signal.windows import tukey
 
 
 def get_D(uv_hat, n_channels):
@@ -206,7 +206,7 @@ class SimpleWindower(NoWindow):
 
 
 def tukey_window(n_times_atom):
-    window = signal.tukey(n_times_atom)
+    window = tukey(n_times_atom)
     window[0] = 1e-9
     window[-1] = 1e-9
     return window
