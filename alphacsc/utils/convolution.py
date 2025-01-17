@@ -66,6 +66,18 @@ def construct_X_multi(z, D=None, n_channels=None):
     return X
 
 
+def construct_sources(model, z_hat,):
+    """Compute univariate source signals using temporal atoms only."""
+    sources = []
+    for kk in range(model.v_hat_.shape[0]):
+        v_k = model.v_hat_[kk]
+        v_k_1 = np.r_[[1], v_k][None]
+        z_k = z_hat[:, kk:kk + 1]
+        X_k = construct_X_multi(z_k, v_k_1, n_channels=1)[0, 0]
+        sources.append(X_k)
+    return np.array(sources)
+
+
 def _sparse_convolve(z_i, ds):
     """Same as _dense_convolve, but use the sparsity of zi."""
     n_atoms, n_times_atom = ds.shape
