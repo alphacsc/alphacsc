@@ -82,7 +82,7 @@ def _patch_reconstruction_error(X, z, D):
     *_, n_times_atom = get_D_shape(D, n_channels)
 
     from .convolution import construct_X_multi
-    X_hat = construct_X_multi(z, D, n_channels=n_channels)
+    X_hat = construct_X_multi(z, D, n_channels=n_channels) if np.any(D) else 0
 
     diff = (X - X_hat)**2
     patch = np.ones(n_times_atom)
