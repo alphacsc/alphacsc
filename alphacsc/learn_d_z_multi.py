@@ -419,7 +419,12 @@ def get_iteration_func(eps, stopping_pobj, callback, lmbd_max, name, verbose,
                        raise_on_increase):
     def end_iteration(z_encoder, pobj, iteration):
         if callable(callback):
-            callback(z_encoder, pobj)
+            if callback(z_encoder, pobj):
+                if verbose == 1:
+                    print("")
+                print(f"[{name}] Stopping after {iteration + 1} iterations, "
+                      f"after callback returns True.")
+                return True
 
         # Only check that the cost is always going down when the regularization
         # parameter is fixed.
