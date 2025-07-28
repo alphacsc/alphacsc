@@ -111,6 +111,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
     callback : func
         A callback function called at the end of each loop of the
         coordinate descent, with z_encoder and pobj as its arguments.
+        This function can return True to stop the algorithm.
     random_state : int | None
         The random state.
     raise_on_increase : boolean

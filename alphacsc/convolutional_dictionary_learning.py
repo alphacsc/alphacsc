@@ -97,9 +97,10 @@ DOC_FMT = """{short_desc}
         The number of parallel jobs.
     verbose : int
         The verbosity level.
-    callback : func
+    callback : func | None
         A callback function called at the end of each loop of the
-        coordinate descent.
+        coordinate descent, with z_encoder and pobj as its arguments.
+        This function can return True to stop the algorithm.
     random_state : int | None
         State to seed the random number generator.
     raise_on_increase : boolean

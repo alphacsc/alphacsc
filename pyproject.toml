@@ -11,3 +11,4 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools_scm]
 write_to = "alphacsc/_version.py"
 local_scheme = "no-local-version"
+fallback_version = "99.9.dev0"
