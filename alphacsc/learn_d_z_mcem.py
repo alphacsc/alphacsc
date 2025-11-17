@@ -71,9 +71,10 @@ def learn_d_z_weighted(
         The initial atoms or an initialization scheme in {'chunk' | 'random'}.
     verbose : int
         The verbosity level.
-    callback : func
+    callback : func | None
         A callback function called at the end of each loop of the
-        coordinate descent.
+        coordinate descent, with z_encoder and pobj as its arguments.
+        This function can return True to stop the algorithm.
 
     Returns
     -------

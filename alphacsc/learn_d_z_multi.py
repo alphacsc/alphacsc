@@ -108,7 +108,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
         z_hat are recomputed with reg=0 on the frozen support.
     verbose : int
         The verbosity level.
-    callback : func
+    callback : func | None
         A callback function called at the end of each loop of the
         coordinate descent, with z_encoder and pobj as its arguments.
         This function can return True to stop the algorithm.
@@ -424,8 +424,10 @@ def get_iteration_func(eps, stopping_pobj, callback, lmbd_max, name, verbose,
                 if verbose == 1:
                     print("")
                 elif verbose > 1:
-                    print(f"[{name}] Stopping after {iteration + 1} iterations, "
-                          f"after callback returns True.")
+                    print(
+                        f"[{name}] Stopping after {iteration + 1} iterations, "
+                        f"after callback returns True."
+                    )
                 return True
 
         # Only check that the cost is always going down when the regularization
@@ -435,17 +437,21 @@ def get_iteration_func(eps, stopping_pobj, callback, lmbd_max, name, verbose,
         if ((dz < eps or du < eps) and lmbd_max in ['fixed', 'scaled']):
             if dz < 0 and raise_on_increase:
                 raise RuntimeError(
-                    "The z update have increased the objective value by {}."
-                    .format(dz))
+                    f"The z update have increased the objective value by {dz}"
+                )
             if du < -1e-10 and dz > 1e-12 and raise_on_increase:
                 raise RuntimeError(
-                    "The d update have increased the objective value by {}."
-                    "(dz={})".format(du, dz))
+                    f"The d update have increased the objective value by {du}"
+                    f"({dz=})"
+                )
             if dz < eps and du < eps:
                 if verbose == 1:
                     print("")
-                print("[{}] Converged after {} iteration, (dz, du) "
-                      "= {:.3e}, {:.3e}".format(name, iteration + 1, dz, du))
+                elif verbose > 1:
+                    print(
+                        f"[{name}] Converged after {iteration + 1} iteration, "
+                        f"(dz, du) = {dz:.3e}, {du:.3e}"
+                    )
                 return True
 
         if stopping_pobj is not None and pobj[-1] < stopping_pobj:

@@ -93,9 +93,9 @@ def learn_d_z(X, n_atoms, n_times_atom, func_d=update_d_block, reg=0.1,
         when using vanilla CSC.
     verbose : int
         The verbosity level.
-    callback : func
-        A callback function called at the end of each loop of the
-        coordinate descent.
+    callback : func | None
+        A callback function called at the end of each loop of the coordinate
+        descent. This function can return True to stop the algorithm.
 
     Returns
     -------
@@ -192,7 +192,8 @@ def learn_d_z(X, n_atoms, n_times_atom, func_d=update_d_block, reg=0.1,
                                                          pobj[-1]))
 
             if callable(callback):
-                callback(X, d_hat, z_hat, reg)
+                if callback(X, d_hat, z_hat, reg):
+                    break
 
             if stopping_pobj is not None and pobj[-1] < stopping_pobj:
                 break
