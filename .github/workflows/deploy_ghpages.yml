@@ -29,7 +29,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-build-${{ env.cache-name }}-
       - name: Generate HTML docs
-        uses: ax3l/sphinx-action@newer-sphinx
+        uses: tommoral/sphinx-action@FIX_latest_sphinx
         env:
           ALLOW: --allow-run-as-root
         with:
