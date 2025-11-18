@@ -30,7 +30,7 @@ jobs:
         python -m pytest --no-cov
 
   coverage:
-    runs-on: ubuntu-lastest
+    runs-on: ubuntu-latest
     defaults:
       run:
         shell: bash -l {0}
