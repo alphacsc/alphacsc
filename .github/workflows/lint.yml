@@ -2,7 +2,7 @@ name: lint
 on:
   pull_request:
   push:
-    branches: master
+    branches: main
 
 jobs:
   flake8:

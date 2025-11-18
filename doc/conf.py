@@ -126,9 +126,9 @@ html_theme_options = {
 html_static_path = ['_static']
 
 html_context = {
-    #    "github_user": "pandas-dev",
+    "github_user": "alphacsc",
     "github_repo": "alphacsc",
-    "github_version": "master",
+    "github_version": "main",
     "doc_path": "doc",
 }
 

@@ -39,7 +39,7 @@ install this package, please run one of the two commands:
 (Dicodile backend)
 
 .. code::
-   
+
    pip install numpy cython
    pip install alphacsc[dicodile]
 
@@ -131,5 +131,5 @@ If you use this code in your project, please consider citing our work:
 	Advances in Neural Information Processing Systems (NIPS), pages 1099--1108.
 
 .. |Build Status| image:: https://github.com/alphacsc/alphacsc/workflows/unittests/badge.svg
-.. |codecov| image:: https://codecov.io/gh/alphacsc/alphacsc/branch/master/graph/badge.svg
+.. |codecov| image:: https://codecov.io/gh/alphacsc/alphacsc/branch/main/graph/badge.svg
    :target: https://codecov.io/gh/alphacsc/alphacsc

@@ -5,7 +5,7 @@ on:
     types: [created]
   pull_request:
   push:
-    branches: master
+    branches: main
 
 env:
   DOC_REPO: alphacsc/alphacsc.github.io
@@ -46,7 +46,7 @@ jobs:
           path: doc/_build/html/
 
   deploy_docs:
-    if: github.ref == 'refs/heads/master'  || github.ref_type == 'tag'
+    if: github.ref == 'refs/heads/main'  || github.ref_type == 'tag'
     needs:
       build_docs
     runs-on: ubuntu-latest
@@ -59,7 +59,7 @@ jobs:
           path: doc/_build/html/
       - name: Commit to documentation repo
         run: |
-          git clone https://github.com/$DOC_REPO.git --branch master --single-branch gh-pages
+          git clone https://github.com/$DOC_REPO.git --branch main --single-branch gh-pages
 
           # copy documentation to dev directory
           # when it is not a tag or a it is a tag but release candidate
@@ -87,7 +87,7 @@ jobs:
         uses: ad-m/github-push-action@v0.6.0
         with:
           repository: ${{ env.DOC_REPO }}
-          branch: master
+          branch: main
           directory: gh-pages
           github_token: ${{ secrets.DEPLOY_PAGES }}
 
