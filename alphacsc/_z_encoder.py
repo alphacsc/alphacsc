@@ -305,7 +305,6 @@ class AlphaCSCEncoder(BaseZEncoder):
         self.ztX = alpha * self.ztX + self.ztX_i0
 
     def get_cost(self):
-
         X_hat = construct_X_multi(self.z_hat, D=self.D_hat,
                                   n_channels=self.n_channels)
 
