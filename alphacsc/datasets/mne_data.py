@@ -146,6 +146,6 @@ def load_data(dataset="somato", n_splits=10, sfreq=None, epoch=None,
         X /= np.std(X)
         return X, info
     elif epoch:
-        return epoch, info
+        return epochs, info
     else:
         return raw, info
