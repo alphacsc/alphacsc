@@ -3,3 +3,4 @@ repos:
     rev: '7.1.2'
     hooks:
     -   id: flake8
+        exclude: ^(examples/|benchmarks/|doc/|alphacsc/other/)
