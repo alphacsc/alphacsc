@@ -173,7 +173,7 @@ def _init_beta(Xi, z_hat, D, constants, reg, norm_Dk, tol, positive):
                        constants=constants)
 
     for k, t in zip(*z_hat.nonzero()):
-        beta[k, t] -= z_hat[k, t] * norm_Dk[k]  # np.sum(DtD[k, k, t0])
+        beta[k, t] -= z_hat[k, t] * norm_Dk[k, 0]  # np.sum(DtD[k, k, t0])
 
     if positive:
         dz_opt = np.maximum(-beta - reg, 0) / norm_Dk - z_hat

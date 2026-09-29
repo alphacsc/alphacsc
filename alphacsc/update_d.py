@@ -169,7 +169,10 @@ def update_d_block(X, Z, n_times_atom, lambd0=None, ds_init=None,
                     lhs, rhs, factr=factr, lambd0=np.array([lambd0[k]]),
                     lhs_is_toeplitz=sample_weights is None)
 
-                lambd_hats[k] = lambd_hat
+                lambd_hats[k] = (
+                    lambd_hat if isinstance(lambd_hat, float)
+                    else lambd_hat[0]
+                )
             else:
                 raise ValueError('Unknown projection %s.' % projection)
             ds[k] = d_hat[::-1]  # reversal for convolution
@@ -221,7 +224,7 @@ def solve_unit_norm_dual(lhs, rhs, lambd0, factr=1e7, debug=False,
             # lhs_inv = np.dot(V.T / (s + np.repeat(lambd, n_times_atom)), U.T)
             # return np.dot(lhs_inv, rhs)
             lhs_c_copy = lhs_c.copy()
-            lhs_c_copy[0] += lambd
+            lhs_c_copy[0] += lambd[0]
             return linalg.solve_toeplitz(lhs_c_copy, rhs)
 
     else:

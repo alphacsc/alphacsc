@@ -53,7 +53,7 @@ def test_learn_codes():
         idx_hat = np.ravel_multi_index((loc_x, loc_y), z_hat[0].shape)
         # make sure that the positions are a subset of the positions
         # in the original z
-        mask = np.in1d(idx_hat, idx)
+        mask = np.isin(idx_hat, idx)
         assert np.sum(mask) == len(mask)
 
 

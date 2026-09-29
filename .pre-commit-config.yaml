@@ -1,5 +1,6 @@
 repos:
 -   repo: https://github.com/pycqa/flake8
-    rev: '3.8.2'
+    rev: '7.1.2'
     hooks:
     -   id: flake8
+        exclude: ^(examples/|benchmarks/|doc/|alphacsc/other/)

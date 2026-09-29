@@ -40,9 +40,9 @@ def learn_atoms(X, n_atoms, n_times_atom, n_iter=10, max_shift=11,
 
         # compute Bk
         B = np.zeros((n_times_atom, n_times_atom), order='F')
-        for l in range(k):
+        for j in range(k):
             for p in np.arange(max_shift):
-                atom_shifted = np.roll(atoms[l], -p)[np.newaxis, :]
+                atom_shifted = np.roll(atoms[j], -p)[np.newaxis, :]
                 # B += np.dot(atom_shifted.T, atom_shifted)
                 B = blas.dger(1, atom_shifted, atom_shifted, a=B,
                               overwrite_a=1)

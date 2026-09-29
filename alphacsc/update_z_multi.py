@@ -175,7 +175,7 @@ def _update_z_multi_idx(X_i, D, reg, z0_i, debug, solver='l-bfgs',
             callback = None
 
         # Default values
-        lbfgs_kwargs = dict(tol=1e-5, max_iter=15000, verbose=0)
+        lbfgs_kwargs = dict(tol=1e-5, max_iter=15000)
         lbfgs_kwargs.update(solver_kwargs)
 
         # Remap parameters to l-BFGS parameters
@@ -198,10 +198,11 @@ def _update_z_multi_idx(X_i, D, reg, z0_i, debug, solver='l-bfgs',
             lbfgs_kwargs['factr'] = lbfgs_kwargs['tol'] / np.finfo(float).eps
         del lbfgs_kwargs['tol']
 
-        lbfgs_kwargs['disp'] = lbfgs_kwargs['verbose']
-        del lbfgs_kwargs['verbose']
+        # verbose is not supported by fmin_l_bfgs_b
+        if 'verbose' in lbfgs_kwargs:
+            del lbfgs_kwargs['verbose']
 
-        z_hat, f, d = optimize.fmin_l_bfgs_b(
+        z_hat, *_ = optimize.fmin_l_bfgs_b(
             func_and_grad, x0=z0_i, fprime=None, args=(), approx_grad=False,
             bounds=bounds, callback=callback, **lbfgs_kwargs
         )
