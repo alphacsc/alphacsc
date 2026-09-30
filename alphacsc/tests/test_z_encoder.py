@@ -7,7 +7,7 @@ from alphacsc.loss_and_gradient import compute_objective
 from alphacsc.utils.convolution import construct_X_multi
 from alphacsc.utils.compute_constants import compute_ztz, compute_ztX
 
-from .conftest import N_ATOMS, N_TIMES_ATOM, N_CHANNELS
+from .conftest import N_TIMES_ATOM, N_CHANNELS
 
 
 @pytest.fixture
@@ -25,8 +25,6 @@ def test_get_encoder_for_alphacsc(X, solver, D_hat):
     with get_z_encoder_for(solver=solver,
                            X=X,
                            D_hat=D_hat,
-                           n_atoms=N_ATOMS,
-                           n_times_atom=N_TIMES_ATOM,
                            n_jobs=2) as z_encoder:
 
         assert z_encoder is not None
@@ -40,8 +38,6 @@ def test_get_encoder_for_dicodile(X, D_hat, solver, requires_dicodile):
     with get_z_encoder_for(solver=solver,
                            X=X,
                            D_hat=D_hat,
-                           n_atoms=N_ATOMS,
-                           n_times_atom=N_TIMES_ATOM,
                            n_jobs=2) as z_encoder:
 
         assert z_encoder is not None
@@ -57,8 +53,6 @@ def test_get_encoder_for_dicodile_error_n_trials(solver, X, D_hat,
         get_z_encoder_for(solver=solver,
                           X=X,
                           D_hat=D_hat,
-                          n_atoms=N_ATOMS,
-                          n_times_atom=N_TIMES_ATOM,
                           n_jobs=2)
 
 
@@ -72,8 +66,6 @@ def test_get_encoder_for_error_solver(X, D_hat,  solver):
         get_z_encoder_for(solver=solver,
                           X=X,
                           D_hat=D_hat,
-                          n_atoms=N_ATOMS,
-                          n_times_atom=N_TIMES_ATOM,
                           n_jobs=2)
 
 
@@ -85,8 +77,6 @@ def test_get_encoder_for_error_solver_kwargs(X, D_hat):
         get_z_encoder_for(solver_kwargs=None,
                           X=X,
                           D_hat=D_hat,
-                          n_atoms=N_ATOMS,
-                          n_times_atom=N_TIMES_ATOM,
                           n_jobs=2)
 
 
@@ -99,8 +89,6 @@ def test_get_encoder_for_error_X(X_error, D_hat):
                        match="X should be a valid array of shape.*"):
         get_z_encoder_for(X=X_error,
                           D_hat=D_hat,
-                          n_atoms=N_ATOMS,
-                          n_times_atom=N_TIMES_ATOM,
                           n_jobs=2)
 
 
@@ -112,8 +100,6 @@ def test_get_encoder_for_error_D_hat(X, D_init):
                        match="D_hat should be a valid array of shape.*"):
         get_z_encoder_for(X=X,
                           D_hat=D_init,
-                          n_atoms=N_ATOMS,
-                          n_times_atom=N_TIMES_ATOM,
                           n_jobs=2)
 
 
@@ -125,8 +111,6 @@ def test_get_encoder_for_error_reg(X, D_hat):
                        match="reg value cannot be None."):
         get_z_encoder_for(X=X,
                           D_hat=D_hat,
-                          n_atoms=N_ATOMS,
-                          n_times_atom=N_TIMES_ATOM,
                           reg=None,
                           n_jobs=2)
 
@@ -141,8 +125,6 @@ def test_get_z_hat(solver, X, D_hat, requires_dicodile):
     with get_z_encoder_for(solver=solver,
                            X=X,
                            D_hat=D_hat,
-                           n_atoms=N_ATOMS,
-                           n_times_atom=N_TIMES_ATOM,
                            n_jobs=2) as z_encoder:
 
         assert z_encoder is not None
@@ -161,8 +143,6 @@ def test_get_cost(solver, X, D_hat, requires_dicodile):
     with get_z_encoder_for(solver=solver,
                            X=X,
                            D_hat=D_hat,
-                           n_atoms=N_ATOMS,
-                           n_times_atom=N_TIMES_ATOM,
                            n_jobs=2) as z_encoder:
         initial_cost = z_encoder.get_cost()
 
@@ -188,8 +168,6 @@ def test_compute_z(solver, X, D_hat, requires_dicodile):
     with get_z_encoder_for(solver=solver,
                            X=X,
                            D_hat=D_hat,
-                           n_atoms=N_ATOMS,
-                           n_times_atom=N_TIMES_ATOM,
                            n_jobs=2) as z_encoder:
         z_encoder.compute_z()
         assert z_encoder.get_z_hat().any()
@@ -201,8 +179,6 @@ def test_compute_z_partial(X, D_hat, n_trials, rng):
 
     with get_z_encoder_for(X=X,
                            D_hat=D_hat,
-                           n_atoms=N_ATOMS,
-                           n_times_atom=N_TIMES_ATOM,
                            n_jobs=2) as z_encoder:
 
         i0 = rng.choice(n_trials, 1, replace=False)
@@ -219,8 +195,6 @@ def test_get_sufficient_statistics(solver, X, D_hat, requires_dicodile):
     z_encoder = get_z_encoder_for(solver=solver,
                                   X=X,
                                   D_hat=D_hat,
-                                  n_atoms=N_ATOMS,
-                                  n_times_atom=N_TIMES_ATOM,
                                   n_jobs=2)
 
     z_encoder.compute_z()
@@ -244,8 +218,6 @@ def test_get_sufficient_statistics_error(solver, X, D_hat,
     z_encoder = get_z_encoder_for(solver=solver,
                                   X=X,
                                   D_hat=D_hat,
-                                  n_atoms=N_ATOMS,
-                                  n_times_atom=N_TIMES_ATOM,
                                   n_jobs=2)
 
     # test before calling compute_z
@@ -260,8 +232,6 @@ def test_get_sufficient_statistics_partial(X, D_hat, n_trials, rng):
 
     z_encoder = get_z_encoder_for(X=X,
                                   D_hat=D_hat,
-                                  n_atoms=N_ATOMS,
-                                  n_times_atom=N_TIMES_ATOM,
                                   n_jobs=2)
 
     i0 = rng.choice(n_trials, 1, replace=False)
@@ -277,8 +247,6 @@ def test_get_sufficient_statistics_partial_error(X, D_hat):
 
     z_encoder = get_z_encoder_for(X=X,
                                   D_hat=D_hat,
-                                  n_atoms=N_ATOMS,
-                                  n_times_atom=N_TIMES_ATOM,
                                   n_jobs=2)
 
     # test before calling compute_z_partial

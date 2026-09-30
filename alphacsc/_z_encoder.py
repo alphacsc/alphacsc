@@ -1,19 +1,21 @@
 import numpy as np
 
+from ._base import BaseZEncoder
 from .utils.dictionary import get_D_shape
 from .update_z_multi import update_z_multi
 from .utils.convolution import construct_X_multi
 from .utils.dictionary import (
-    _patch_reconstruction_error, get_uv, get_lambda_max
+    _patch_reconstruction_error, get_uv
 )
 from .loss_and_gradient import compute_objective
+from ._no_overlap import NoOverlapEncoder
 
 DEFAULT_TOL_Z = 1e-3
 
 # XXX check consistency / proper use!
 
 
-def get_z_encoder_for(X, D_hat, n_atoms, n_times_atom, n_jobs,
+def get_z_encoder_for(X, D_hat, n_jobs,
                       solver='l-bfgs', solver_kwargs=dict(),
                       reg=0.1):
     """
@@ -28,17 +30,14 @@ def get_z_encoder_for(X, D_hat, n_atoms, n_times_atom, n_jobs,
         The dictionary used to encode the signal X. Can be either in the form
         of a full rank dictionary D (n_atoms, n_channels, n_times_atom) or with
         the spatial and temporal atoms uv (n_atoms, n_channels + n_times_atom)
-    n_atoms : int
-        The number of atoms to learn.
-    n_times_atom : int
-        The support of the atom.
     n_jobs : int
         The number of parallel jobs.
     solver : str
         The solver to use for the z update. Options are
-        {{'l_bfgs' (default) | 'lgcd' | 'fista' | 'ista' | 'dicodile'}}.
+        {{'l_bfgs' (default), 'lgcd', 'fista', 'ista', 'dicodile',
+        'no-overlap'}}.
     solver_kwargs : dict
-        Additional keyword arguments to pass to update_z_multi.
+        Additional keyword arguments to pass to the encoder.
     reg : float
         The regularization parameter.
 
@@ -64,204 +63,18 @@ def get_z_encoder_for(X, D_hat, n_atoms, n_times_atom, n_jobs,
     assert reg is not None, 'reg value cannot be None.'
 
     if solver in ['l-bfgs', 'lgcd', 'fista', 'ista']:
-
-        return AlphaCSCEncoder(
-            X, D_hat, n_atoms, n_times_atom, n_jobs,
-            solver, solver_kwargs, reg
-        )
-
+        return AlphaCSCEncoder(X, D_hat, n_jobs, solver, solver_kwargs, reg)
     elif solver == 'dicodile':
-
-        return DicodileEncoder(
-            X, D_hat, n_atoms, n_times_atom, n_jobs,
-            solver_kwargs, reg
-        )
+        return DicodileEncoder(X, D_hat, n_jobs, solver_kwargs, reg)
+    elif solver == 'no-overlap':
+        return NoOverlapEncoder(X, D_hat, n_jobs, solver_kwargs, reg)
     else:
         raise ValueError(f'unrecognized solver type: {solver}.')
 
 
-class BaseZEncoder:
-
-    def __init__(self, X, D_hat, n_atoms, n_times_atom, n_jobs,
-                 solver_kwargs, reg):
-
-        self.X = X
-        self.D_hat = D_hat
-        self.n_atoms = n_atoms
-        self.n_times_atom = n_times_atom
-        self.n_jobs = n_jobs
-
-        self.solver_kwargs = solver_kwargs
-        self.reg = reg
-
-        self.n_trials, self.n_channels, self.n_times = X.shape
-        self.n_times_valid = self.n_times - self.n_times_atom + 1
-
-        self.XtX = np.dot(X.ravel(), X.ravel())
-
-    def compute_z(self):
-        """
-        Perform one incremental z update.
-        This is the "main" function of the algorithm.
-        """
-        raise NotImplementedError()
-
-    def compute_z_partial(self, i0):
-        """
-        Compute z on a slice of the signal X, for online learning.
-
-        Parameters
-        ----------
-        i0 : int
-            Slice index.
-        """
-        raise NotImplementedError()
-
-    def compute_objective(self, D):
-        '''Compute the value of the objective function.
-
-        Parameters
-        ----------
-        D : array, shape (n_atoms, n_channels + n_times_atom) or
-                         (n_atoms, n_channels, n_times_atom)
-            The atoms to learn from the data.
-            D should be feasible.
-
-        Returns
-        -------
-        obj :
-            The value of objective function.
-        '''
-        return compute_objective(D=D, constants=self.get_constants())
-
-    def get_cost(self):
-        """
-        Computes the cost of the current sparse representation (z_hat)
-
-        Returns
-        -------
-        cost: float
-            The value of the objective function
-        """
-        raise NotImplementedError()
-
-    def get_sufficient_statistics(self):
-        """
-        Computes sufficient statistics to update D.
-
-        Returns
-        -------
-        ztz, ztX : (ndarray, ndarray)
-            Sufficient statistics.
-        """
-        raise NotImplementedError()
-
-    def get_sufficient_statistics_partial(self):
-        """
-        Returns the partial sufficient statistics that were
-        computed during the last call to compute_z_partial.
-
-        Returns
-        -------
-        ztz, ztX : (ndarray, ndarray)
-            Sufficient statistics for the slice that was
-            selected in the last call of ``compute_z_partial``
-        """
-        raise NotImplementedError()
-
-    def get_max_error_patch(self):
-        """
-        Returns the patch of the signal with the largest reconstuction error.
-
-        Returns
-        -------
-        D_k : ndarray, shape (n_channels, n_times_atom) or
-                (n_channels + n_times_atom,)
-            Patch of the residual with the largest error.
-        """
-        raise NotImplementedError()
-
-    def get_z_hat(self):
-        """
-        Returns the sparse codes of the signals.
-
-        Returns
-        -------
-        z_hat : ndarray, shape (n_trials, n_atoms, n_times_valid)
-            Sparse codes of the signal X.
-        """
-        raise NotImplementedError()
-
-    def get_z_hat_shape(self):
-        """
-        Returns the shape of the sparse codes.
-
-        Returns
-        -------
-        shape : tuple
-            Shape of the sparse code.
-        """
-        return (self.n_trials, self.n_atoms, self.n_times_valid)
-
-    def get_z_nnz(self):
-        """
-        Return the number of non-zero activations per atoms for the signals.
-
-        Returns
-        -------
-        z_nnz : ndarray, shape (n_atoms,)
-            Ratio of non-zero activations for each atom.
-        """
-        raise NotImplementedError()
-
-    def set_D(self, D):
-        """
-        Update the dictionary.
-
-        Parameters
-        ----------
-        D : ndarray, shape (n_atoms, n_channels, n_time_atoms)
-            An updated dictionary, to be used for the next
-            computation of z_hat.
-        """
-        raise NotImplementedError()
-
-    def update_reg(self, is_per_atom):
-        """
-        Update the regularization parameter.
-
-        Parameters
-        ----------
-        is_per_atom: bool
-            True if lmbd_max='per_atom'; False otherwise
-
-        """
-        self.reg = self.reg * get_lambda_max(self.X, self.D_hat)
-
-        if not is_per_atom:
-            self.reg = self.reg.max()
-
-    def get_constants(self):
-        """
-        """
-
-        return dict(n_channels=self.n_channels, XtX=self.XtX,
-                    ztz=self.ztz, ztX=self.ztX)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        pass
-
-
 class AlphaCSCEncoder(BaseZEncoder):
-    def __init__(self, X, D_hat, n_atoms, n_times_atom, n_jobs,
-                 solver, solver_kwargs, reg):
-
-        super().__init__(
-            X, D_hat, n_atoms, n_times_atom, n_jobs,  solver_kwargs, reg
-        )
+    def __init__(self, X, D_hat, n_jobs, solver, solver_kwargs, reg):
+        super().__init__(X, D_hat, n_jobs,  solver_kwargs, reg)
 
         self.solver = solver
 
@@ -273,7 +86,7 @@ class AlphaCSCEncoder(BaseZEncoder):
         Returns a array filed with 0 with the right size for sparse codes.
         """
         return np.zeros((
-            self.n_trials, n_atoms, self.n_times_valid
+            self.X.shape[0], n_atoms, self.n_times_valid
         ))
 
     def _compute_z_aux(self, X, z0, unbiased_z_hat):
@@ -291,12 +104,17 @@ class AlphaCSCEncoder(BaseZEncoder):
                                                              unbiased_z_hat)
 
     def compute_z_partial(self, i0, alpha=.8):
+        n_atoms = self.D_hat.shape[0]
         if not hasattr(self, 'ztz'):
-            self.ztz = np.zeros(
-                (self.n_atoms, self.n_atoms, 2 * self.n_times_atom - 1))
-        if not hasattr(self, 'ztX'):
-            self.ztX = np.zeros(
-                (self.n_atoms, self.n_channels, self.n_times_atom))
+            self.ztz = np.zeros((n_atoms, n_atoms, 2 * self.n_times_atom - 1))
+            self.ztX = np.zeros((n_atoms, self.n_channels, self.n_times_atom))
+        elif self.ztz.shape[0] < n_atoms:
+            nb_missing_atoms = n_atoms - self.ztz.shape[0]
+            pad = (0, nb_missing_atoms)
+            self.ztz = np.pad(self.ztz, (pad, pad, (0, 0)),
+                              mode='constant', constant_values=0)
+            self.ztX = np.pad(self.ztz, (pad, (0, 0), (0, 0)),
+                              mode='constant', constant_values=0)
 
         self.z_hat[i0], self.ztz_i0, self.ztX_i0 = self._compute_z_aux(
             self.X[i0], self.z_hat[i0], unbiased_z_hat=False)
@@ -377,8 +195,7 @@ class AlphaCSCEncoder(BaseZEncoder):
 
 
 class DicodileEncoder(BaseZEncoder):
-    def __init__(self, X, D_hat, n_atoms, n_times_atom, n_jobs,
-                 solver_kwargs, reg):
+    def __init__(self, X, D_hat, n_jobs, solver_kwargs, reg):
         try:
             import dicodile
         except ImportError as ie:
@@ -386,9 +203,7 @@ class DicodileEncoder(BaseZEncoder):
                 'Please install DiCoDiLe by running '
                 '"pip install alphacsc[dicodile]"') from ie
 
-        super().__init__(
-            X, D_hat, n_atoms, n_times_atom, n_jobs, solver_kwargs, reg
-        )
+        super().__init__(X, D_hat, n_jobs, solver_kwargs, reg)
 
         self._encoder = dicodile.update_z.distributed_sparse_encoder.DistributedSparseEncoder(  # noqa: E501
             n_workers=n_jobs)
@@ -400,12 +215,6 @@ class DicodileEncoder(BaseZEncoder):
         assert X.shape[0] == 1, (
             "X should be a valid array of shape (1, n_channels, n_times)."
         )
-
-        n_times = X.shape[2]
-        self.D_hat = D_hat
-        self.n_times_valid = n_times - n_times_atom + 1
-        self.n_atoms = n_atoms
-        self.n_times_atom = n_times_atom
 
         tol = DEFAULT_TOL_Z * np.std(self.X[0])
 
@@ -535,7 +344,7 @@ class DicodileEncoder(BaseZEncoder):
             return self._encoder.get_z_hat()[None]
 
         # If compute_z has not been run, return 0.
-        return np.zeros([1, self.n_atoms, self.n_times_valid])
+        return np.zeros([1, self.D_hat.shape[0], self.n_times_valid])
 
     def get_z_nnz(self):
         """

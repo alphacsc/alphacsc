@@ -94,13 +94,12 @@ import os
 import mne
 import numpy as np
 
-print("Loading the data...", end='', flush=True)
+print("Loading the data...", end=' ', flush=True)
 data_path = mne.datasets.sample.data_path()
-subjects_dir = os.path.join(data_path, "subjects")
 data_dir = os.path.join(data_path, 'MEG', 'sample')
 file_name = os.path.join(data_dir, 'sample_audvis_raw.fif')
 raw = mne.io.read_raw_fif(file_name, preload=True, verbose=False)
-raw.pick_types(meg='grad', eeg=False, eog=False, stim=True)
+raw.pick(picks=['grad', 'stim'])
 print('done')
 
 
@@ -109,7 +108,7 @@ print('done')
 # drift which can impact the CSC technique. The signal is also resampled to
 # 150 Hz to reduce the computationnal burden.
 
-print("Preprocessing the data...", end='', flush=True)
+print("Preprocessing the data...", end=' ', flush=True)
 raw.notch_filter(np.arange(60, 181, 60), n_jobs=n_jobs, verbose=False)
 raw.filter(2, None, n_jobs=n_jobs, verbose=False)
 raw = raw.resample(sfreq, npad='auto', n_jobs=n_jobs, verbose=False)
@@ -125,7 +124,7 @@ print('done')
 from alphacsc.utils.signal import split_signal
 
 X = raw.get_data(picks=['meg'])
-info = raw.copy().pick_types(meg=True).info  # info of the loaded channels
+info = raw.copy().pick('meg').info  # info of the loaded channels
 X_split = split_signal(X, n_splits=n_splits, apply_window=True)
 
 
@@ -257,7 +256,7 @@ for ii, kk in enumerate(plotted_atoms):
         # plotting function
         ax = next(it_axes)
         this_info = info.copy()
-        event_info = dict(event_id = this_event_id, events=events)
+        event_info = dict(event_id=this_event_id, events=events)
         this_info['temp'] = event_info
         plot_evoked_surrogates(correlation, info=this_info, t_lim=t_lim, ax=ax,
                                n_jobs=n_jobs, label='event %d' % this_event_id)

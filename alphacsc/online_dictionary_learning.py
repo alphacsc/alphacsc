@@ -38,7 +38,7 @@ class OnlineCDL(ConvolutionalDictionaryLearning):
                  solver_z='lgcd', solver_z_kwargs={}, unbiased_z_hat=False,
                  solver_d='auto', solver_d_kwargs={}, rank1=True, window=False,
                  uv_constraint='auto', lmbd_max='scaled', eps=1e-10,
-                 D_init=None, alpha=.8, batch_size=1,
+                 D_init=None, init_kwargs={}, alpha=.8, batch_size=1,
                  batch_selection='random', verbose=10, random_state=None):
         super().__init__(
             n_atoms, n_times_atom, reg=reg, n_iter=n_iter,
@@ -46,7 +46,7 @@ class OnlineCDL(ConvolutionalDictionaryLearning):
             rank1=rank1, window=window, uv_constraint=uv_constraint,
             unbiased_z_hat=unbiased_z_hat,
             solver_d=solver_d, solver_d_kwargs=solver_d_kwargs,
-            eps=eps, D_init=D_init,
+            eps=eps, D_init=D_init, init_kwargs=init_kwargs,
             algorithm_params=dict(alpha=alpha, batch_size=batch_size,
                                   batch_selection=batch_selection),
             n_jobs=n_jobs, random_state=random_state, algorithm='online',
@@ -61,9 +61,9 @@ class OnlineCDL(ConvolutionalDictionaryLearning):
         # X_full ( X_full / X_full.std())
         self._ensure_fit_init(X)
 
-        with get_z_encoder_for(X, self._D_hat, self.n_atoms, self.n_times_atom,
-                               self.n_jobs, self.solver_z,
-                               self.solver_z_kwargs, self.reg_) as z_encoder:
+        with get_z_encoder_for(X, self._D_hat, self.n_jobs,
+                               self.solver_z, self.solver_z_kwargs,
+                               self.reg_) as z_encoder:
 
             z_encoder.compute_z()
 

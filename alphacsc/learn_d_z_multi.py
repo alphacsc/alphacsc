@@ -23,7 +23,7 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
                     algorithm='batch', algorithm_params=dict(),
                     solver_z='l-bfgs', solver_z_kwargs=dict(),
                     solver_d='auto', solver_d_kwargs=dict(),
-                    D_init=None,
+                    D_init=None, init_kwargs=dict(),
                     unbiased_z_hat=False, stopping_pobj=None,
                     raise_on_increase=True, verbose=10, callback=None,
                     random_state=None, name="DL", window=False,
@@ -89,14 +89,14 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
             iteration.
     solver_z : str
         The solver to use for the z update. Options are
-        'l-bfgs' (default) | 'lgcd' |
+        'l-bfgs' (default) | 'lgcd' | 'no-overlap' |
         'dicodile' (distributed LGCD, experimental)
     solver_z_kwargs : dict
         Additional keyword arguments to pass to update_z_multi
     solver_d : str
         The solver to use for the d update. If rank1 is False, only option is
-        'fista'. Else, options are 'alternate', 'alternate_adaptive' (default)
-        or 'joint'.
+        'fista'. Else, options are 'alternate', 'alternate_adaptive' (default),
+        'joint' or 'no-overlap'.
     solver_d_kwargs : dict
         Additional keyword arguments to provide to update_d
     D_init : str or array, shape (n_atoms, n_channels + n_times_atoms) or \
@@ -164,10 +164,18 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
     # initialization
     start = time.time()
 
+    # Use reg parameter for intialization with no-overlap
+    if (
+        isinstance(D_init, str) and D_init == "no-overlap"
+        and D_init == solver_d
+    ):
+        if "reg" not in init_kwargs:
+            init_kwargs = init_kwargs | {"reg": reg}
+
     d_solver = get_solver_d(
         n_channels, n_atoms, n_times_atom, solver_d=solver_d, rank1=rank1,
-        uv_constraint=uv_constraint, D_init=D_init, window=window,
-        random_state=random_state, **solver_d_kwargs
+        uv_constraint=uv_constraint, D_init=D_init, init_kwargs=init_kwargs,
+        window=window, random_state=random_state, **solver_d_kwargs
     )
 
     D_hat = d_solver.init_dictionary(X)
@@ -176,10 +184,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
 
     z_kwargs = dict(verbose=verbose, **solver_z_kwargs)
 
-    with get_z_encoder_for(
-            X, d_solver.D_hat, n_atoms, n_times_atom, n_jobs,
-            solver_z, z_kwargs, reg
-    ) as z_encoder:
+    with get_z_encoder_for(X, d_solver.D_hat, n_jobs,
+                           solver_z, z_kwargs, reg) as z_encoder:
 
         if callable(callback):
             callback(z_encoder, [])
@@ -237,8 +243,16 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
             print("[%s] Fit in %.1fs" % (name, time.time() - start))
 
         # Rescale the solution to match the given scale of the problem
+        # min || X / std - D * z0 ||_2^2 + reg * || z0 ||_1
+        # <=> min || X - D * z ||_2^2 + std * reg * || z ||_1
+        # with z = std * z0
         z_hat *= std_X
         reg = z_encoder.reg * std_X
+        # When the encoder is 'no-overlap', norm l0 is used as a regularizer
+        # min || X / std - D * z0 ||_2^2 + reg * || z0 ||_0
+        # <=> min || X - D * z ||_2^2 + std^2 * reg * || z ||_0
+        if solver_z == 'no-overlap':
+            reg *= std_X
 
     return pobj, times, D_hat, z_hat, reg
 
@@ -246,10 +260,8 @@ def learn_d_z_multi(X, n_atoms, n_times_atom, n_iter=60, n_jobs=1,
 def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
                  lmbd_max='fixed', reg=None, verbose=0, greedy=False,
                  random_state=None, name="batch"):
-
-    _, n_atoms, _ = z_hat_shape = z_encoder.get_z_hat_shape()
-
     if greedy:
+        n_atoms, *_ = d_solver.get_D_shape()
         n_iter_by_atom = 1
 
         if n_iter < n_atoms * n_iter_by_atom:
@@ -294,6 +306,7 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
 
         z_nnz = z_encoder.get_z_nnz()
         if verbose > 5:
+            z_hat_shape = z_encoder.get_z_hat_shape()
             print(
                 f"[{name}] Objective (z) : {pobj[-1]:.3e} "
                 f"(sparsity: {z_nnz.sum() / np.prod(z_hat_shape):.3e})"
@@ -314,6 +327,7 @@ def _batch_learn(z_encoder, d_solver, end_iter_func, n_iter=100,
         times.append(time.time() - start)
         pobj.append(z_encoder.get_cost())
 
+        z_nnz = z_encoder.get_z_nnz()
         null_atom_indices = np.where(z_nnz < 2)[0]
         if len(null_atom_indices) > 0:
             k0 = null_atom_indices[0]
@@ -437,11 +451,11 @@ def get_iteration_func(eps, stopping_pobj, callback, lmbd_max, name, verbose,
         if ((dz < eps or du < eps) and lmbd_max in ['fixed', 'scaled']):
             if dz < 0 and raise_on_increase:
                 raise RuntimeError(
-                    f"The z update have increased the objective value by {dz}"
+                    f"The z update have increased the objective value by {-dz}"
                 )
             if du < -1e-10 and dz > 1e-12 and raise_on_increase:
                 raise RuntimeError(
-                    f"The d update have increased the objective value by {du}"
+                    f"The d update have increased the objective value by {-du}"
                     f"({dz=})"
                 )
             if dz < eps and du < eps:
@@ -450,7 +464,7 @@ def get_iteration_func(eps, stopping_pobj, callback, lmbd_max, name, verbose,
                 elif verbose > 1:
                     print(
                         f"[{name}] Converged after {iteration + 1} iteration, "
-                        f"(dz, du) = {dz:.3e}, {du:.3e}"
+                        f"(dz, du) = {-dz:.3e}, {-du:.3e}"
                     )
                 return True
 

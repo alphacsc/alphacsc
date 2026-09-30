@@ -114,7 +114,8 @@ def test_get_solver_d_error_solver(solver_d):
     """Tests for the case rank1 is False and solver_d is not compatible."""
 
     with pytest.raises(AssertionError,
-                       match="solver_d should be auto or fista. Got*"):
+                       match="solver_d should be 'auto', 'fista', "
+                             "or 'no-overlap'. Got*"):
 
         get_solver_d(N_CHANNELS,
                      N_ATOMS,
@@ -338,11 +339,7 @@ def test_add_one_atom(X, rank1, solver_d, uv_constraint, window):
 
     D_hat = d_solver.init_dictionary(X)
 
-    with get_z_encoder_for(X=X,
-                           D_hat=D_hat,
-                           n_atoms=N_ATOMS,
-                           n_times_atom=N_TIMES_ATOM,
-                           n_jobs=2) as z_encoder:
+    with get_z_encoder_for(X=X, D_hat=D_hat, n_jobs=2) as z_encoder:
 
         n_atoms_initial = d_solver.D_hat.shape[0]
         assert n_atoms_initial == 0

@@ -130,7 +130,7 @@ def get_lambda_max(X, D_hat, sample_weights=None, q=1):
         if sample_weights is not None:
             sample_weights = sample_weights[:, None, :]
 
-    n_trials, n_channels, n_times = X.shape
+    n_trials, n_channels, _ = X.shape
 
     if sample_weights is None:
         # no need for the last dimension if we only have ones

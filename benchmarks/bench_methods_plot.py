@@ -141,7 +141,7 @@ def plot_convergence(data_frame, threshold, normalize_method, save_name):
 
             try:
                 reg = min(this_res_2['reg'].unique())
-            except:
+            except Exception:
                 reg = None
             this_save_name = (save_name + '_bench_K%d_L%d_r%s' %
                               (n_atoms, n_times_atom, reg))

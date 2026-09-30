@@ -12,7 +12,7 @@ from .utils.dictionary import get_uv
 from .utils.validation import check_random_state
 
 
-def get_init_strategy(n_times_atom, shape, random_state, D_init):
+def get_init_strategy(n_times_atom, shape, random_state, D_init, init_kwargs):
     """Returns dictionary initialization strategy.
 
     Parameters
@@ -27,7 +27,7 @@ def get_init_strategy(n_times_atom, shape, random_state, D_init):
     D_init : str or array, shape (n_atoms, n_channels + n_times_atoms) or \
                            shape (n_atoms, n_channels, n_times_atom)
         The initial atoms or an initialization scheme in
-        {'chunk' | 'random' | 'greedy'}.
+        {'chunk' | 'random' | 'greedy' | 'no-overlap'}.
     """
     if isinstance(D_init, np.ndarray):
         return IdentityStrategy(shape, D_init)
@@ -36,7 +36,10 @@ def get_init_strategy(n_times_atom, shape, random_state, D_init):
     elif D_init == 'chunk':
         return ChunkStrategy(n_times_atom, shape, random_state)
     elif D_init == 'greedy':
-        return GreedyStrategy(shape, random_state)
+        return GreedyStrategy(shape)
+    elif D_init == 'no-overlap':
+        from ._no_overlap import NoOverlapStrategy
+        return NoOverlapStrategy(shape, **init_kwargs)
     else:
         raise NotImplementedError('It is not possible to initialize uv'
                                   ' with parameter {}.'.format(D_init))
@@ -125,26 +128,29 @@ class ChunkStrategy():
         return D_hat
 
 
-class GreedyStrategy(RandomStrategy):
-    """A class that creates a random dictionary for a specified shape and
-    removes all elements.
+class GreedyStrategy():
+    """A class that creates an empty dictionary.
 
     Parameters
     ----------
     shape: tuple
         Expected shape of the dictionary. (n_atoms, n_channels + n_times_atoms)
-    or (n_atoms, n_channels, n_times_atom)
-    random_state: int or np.random.RandomState
-        A seed to generate a RandomState instance or the instance itself.
+        or (n_atoms, n_channels, n_times_atom)
     """
 
+    def __init__(self, shape):
+        self.shape = shape
+
     def initialize(self, X):
-        D_hat = super().initialize(X)
-        return D_hat[:0]
+        return np.empty(shape=(0, *self.shape[1:]), dtype=np.float64)
+
+
+from ._no_overlap import NoOverlapStrategy  # noqa: E402
 
 
 def init_dictionary(X, n_atoms, n_times_atom, uv_constraint='separate',
-                    rank1=True, window=False, D_init=None, random_state=None):
+                    rank1=True, window=False, D_init=None, random_state=None,
+                    reg=None):
     """Return an initial dictionary for the signals X
 
     Parameter
@@ -163,13 +169,15 @@ def init_dictionary(X, n_atoms, n_times_atom, uv_constraint='separate',
         If set to True, use a rank 1 dictionary.
     window: boolean
         If True, multiply the atoms with a temporal Tukey window.
-    D_init: array or {'chunk' | 'random'}
+    D_init: array or {'chunk' | 'random' | 'no-overlap'}
         The initialization scheme for the dictionary or the initial
         atoms. The shape should match the required dictionary shape, ie if
         rank1 is True, (n_atoms, n_channels + n_times_atom) and else
         (n_atoms, n_channels, n_times_atom)
     random_state: int | None
         The random state.
+    reg: float
+        Regularization parameter used with D_init='no-overlap'
 
     Return
     ------
@@ -180,9 +188,8 @@ def init_dictionary(X, n_atoms, n_times_atom, uv_constraint='separate',
     n_trials, n_channels, n_times = X.shape
     rng = check_random_state(random_state)
 
-    D_shape = (n_atoms, n_channels, n_times_atom)
-    if rank1:
-        D_shape = (n_atoms, n_channels + n_times_atom)
+    D_shape_full = (n_atoms, n_channels, n_times_atom)
+    D_shape = (n_atoms, n_channels + n_times_atom) if rank1 else D_shape_full
 
     if isinstance(D_init, np.ndarray):
         D_hat = D_init.copy()
@@ -192,7 +199,7 @@ def init_dictionary(X, n_atoms, n_times_atom, uv_constraint='separate',
         D_hat = rng.randn(*D_shape)
 
     elif D_init == 'chunk':
-        D_hat = np.zeros((n_atoms, n_channels, n_times_atom))
+        D_hat = np.zeros(D_shape_full)
         for i_atom in range(n_atoms):
             i_trial = rng.randint(n_trials)
             t0 = rng.randint(n_times - n_times_atom)
@@ -202,6 +209,12 @@ def init_dictionary(X, n_atoms, n_times_atom, uv_constraint='separate',
 
     elif D_init == 'greedy':
         raise NotImplementedError()
+
+    elif D_init == 'no-overlap':
+        assert reg is not None
+        D_hat = NoOverlapStrategy(D_shape_full, reg).initialize(X)
+        if rank1:
+            D_hat = get_uv(D_hat)
 
     else:
         raise NotImplementedError('It is not possible to initialize uv with'
